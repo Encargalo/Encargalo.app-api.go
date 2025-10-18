@@ -4,6 +4,60 @@
         "contact": {}
     },
     "paths": {
+        "/best-sellers": {
+            "get": {
+                "description": "Esta función maneja la solicitud para obtener los productos mas vendidos por tienda de una tienda específica.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Obtener los productos mas vendidos por tienda",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID de la tienda",
+                        "name": "shop_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dtos.ItemResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "shop_id es requerido o inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Productos más vendidos no encontrados",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/shops": {
             "get": {
                 "produces": [
@@ -106,6 +160,78 @@
         }
     },
     "definitions": {
+        "dtos.ItemResponse": {
+            "type": "object",
+            "properties": {
+                "category_id": {
+                    "type": "string",
+                    "example": "b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Pizza mediana con jamón, piña y queso mozzarella sobre una base de salsa napolitana."
+                },
+                "has_flavors": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "id": {
+                    "type": "string",
+                    "example": "7e441237-a818-42d2-bb54-9b8747198305"
+                },
+                "image": {
+                    "type": "string",
+                    "example": "https://cdn.encargalo.app/items/pizza-hawaiana-mediana.jpg"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Pizza Hawaiana Mediana"
+                },
+                "price": {
+                    "type": "integer",
+                    "example": 32000
+                },
+                "rules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dtos.ItemRule"
+                    }
+                },
+                "score": {
+                    "type": "number",
+                    "example": 4.7
+                },
+                "shop_id": {
+                    "type": "string",
+                    "example": "d33aaf08-2c43-41c4-b2e7-882b019edb1e"
+                }
+            }
+        },
+        "dtos.ItemRule": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "71c62783-820d-46f8-957d-c8d02db97264"
+                },
+                "item_id": {
+                    "type": "string",
+                    "example": "7e441237-a818-42d2-bb54-9b8747198305"
+                },
+                "rule_key": {
+                    "type": "string",
+                    "example": "max_flavors"
+                },
+                "rule_value": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "selector_type": {
+                    "type": "string",
+                    "example": "multi_select"
+                }
+            }
+        },
         "dtos.ShopResponse": {
             "type": "object",
             "properties": {

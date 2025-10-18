@@ -10,6 +10,10 @@ import (
 	"Encargalo.app-api.go/internal/shops/repo"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/dig"
+
+	appProducts "Encargalo.app-api.go/internal/products/app"
+	handProducts "Encargalo.app-api.go/internal/products/handler"
+	repoProducts "Encargalo.app-api.go/internal/products/repo"
 )
 
 var Container *dig.Container
@@ -31,12 +35,16 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(router.New)
 
 	_ = Container.Provide(groups.NewShopsGroup)
+	_ = Container.Provide(groups.NewProductsGroup)
 
 	_ = Container.Provide(handler.NewShopsHandler)
+	_ = Container.Provide(handProducts.NewProducsHandler)
 
 	_ = Container.Provide(app.NewShopsApp)
+	_ = Container.Provide(appProducts.NewProductsApp)
 
 	_ = Container.Provide(repo.NewShopsRepository)
+	_ = Container.Provide(repoProducts.NewProductsRepo)
 
 	return Container
 

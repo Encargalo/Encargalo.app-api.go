@@ -16,18 +16,21 @@ type Router struct {
 	server *echo.Echo
 	config config.Config
 
-	shopsGroup groups.ShopsGroup
+	shopsGroup    groups.ShopsGroup
+	productsGroup groups.ProductsGroup
 }
 
 func New(
 	server *echo.Echo,
 	config config.Config,
 	shopsGroup groups.ShopsGroup,
+	productsGroup groups.ProductsGroup,
 ) *Router {
 	return &Router{
 		server,
 		config,
 		shopsGroup,
+		productsGroup,
 	}
 }
 
@@ -51,5 +54,6 @@ func (r *Router) Init() {
 	r.server.GET("/docs/*", echoSwagger.EchoWrapHandler())
 
 	r.shopsGroup.Resource(r.server)
+	r.productsGroup.Resource(r.server)
 
 }
