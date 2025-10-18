@@ -5,7 +5,7 @@ import (
 
 	"Encargalo.app-api.go/api/router"
 	"Encargalo.app-api.go/cmd/server/providers"
-	"Encargalo.app-api.go/shared/config"
+	"Encargalo.app-api.go/internal/shared/config"
 	"github.com/labstack/echo/v4"
 )
 

@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"Encargalo.app-api.go/internal/health/handler"
-	"Encargalo.app-api.go/shared/config"
+	"Encargalo.app-api.go/internal/shared/config"
 	echoSwagger "github.com/swaggo/echo-swagger"
 
 	"github.com/labstack/echo/v4"

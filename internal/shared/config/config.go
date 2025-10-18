@@ -20,11 +20,20 @@ func Get() *Config {
 }
 
 type Config struct {
-	Server Server `env:"server"`
+	Server   Server   `env:"server"`
+	Postgres Postgres `env:"postgres"`
 }
 
 type Server struct {
 	Port int `env:"port"`
+}
+
+type Postgres struct {
+	Host     string `env:"host"`
+	Port     int    `env:"port"`
+	User     string `env:"user"`
+	Password string `env:"password"`
+	Database string `env:"database"`
 }
 
 func Environments() {
