@@ -1,4 +1,95 @@
+definitions:
+  dtos.ShopResponse:
+    properties:
+      address:
+        type: string
+      banner:
+        type: string
+      home_phone:
+        type: string
+      id:
+        type: string
+      logo:
+        type: string
+      name:
+        type: string
+      opened:
+        type: boolean
+      score:
+        type: number
+      tag:
+        type: string
+      type:
+        type: string
+    type: object
 info:
   contact: {}
-paths: {}
+paths:
+  /shops:
+    get:
+      parameters:
+      - description: Este es el ID del negocio, viene en formato UUID
+        in: query
+        name: id
+        type: string
+      - description: Este es el tag del negocio .ej:dmo
+        in: query
+        name: tag
+        type: string
+      - description: 'Latitud del usuario .ej: 4.678034'
+        in: query
+        name: lat
+        required: true
+        type: number
+      - description: 'Longitud del usuario .ej: -74.0496399'
+        in: query
+        name: lon
+        required: true
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dtos.ShopResponse'
+            type: array
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      summary: End Point para obtener un negocio con todos sus products, se debe enviar
+        alguno de los 2 query params requeridos.
+      tags:
+      - Shops
+  /shops/all:
+    get:
+      parameters:
+      - description: 'Latitud del usuario .ej: 4.678034'
+        in: query
+        name: lat
+        required: true
+        type: number
+      - description: 'Longitud del usuario .ej: -74.0496399'
+        in: query
+        name: lon
+        required: true
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dtos.ShopResponse'
+            type: array
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      summary: Para que no me fastidies de cual es la ruta
+      tags:
+      - Shops
 swagger: "2.0"

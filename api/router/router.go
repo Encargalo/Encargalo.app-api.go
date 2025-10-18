@@ -3,6 +3,7 @@ package router
 import (
 	"net/http"
 
+	"Encargalo.app-api.go/api/router/groups"
 	"Encargalo.app-api.go/internal/health/handler"
 	"Encargalo.app-api.go/internal/shared/config"
 	echoSwagger "github.com/swaggo/echo-swagger"
@@ -14,15 +15,19 @@ import (
 type Router struct {
 	server *echo.Echo
 	config config.Config
+
+	shopsGroup groups.ShopsGroup
 }
 
 func New(
 	server *echo.Echo,
 	config config.Config,
+	shopsGroup groups.ShopsGroup,
 ) *Router {
 	return &Router{
 		server,
 		config,
+		shopsGroup,
 	}
 }
 
@@ -44,5 +49,7 @@ func (r *Router) Init() {
 
 	r.server.GET("/health", handler.HealthCheck)
 	r.server.GET("/docs/*", echoSwagger.EchoWrapHandler())
+
+	r.shopsGroup.Resource(r.server)
 
 }
