@@ -1,4 +1,57 @@
 definitions:
+  dtos.ItemResponse:
+    properties:
+      category_id:
+        example: b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2
+        type: string
+      description:
+        example: Pizza mediana con jamón, piña y queso mozzarella sobre una base de
+          salsa napolitana.
+        type: string
+      has_flavors:
+        example: true
+        type: boolean
+      id:
+        example: 7e441237-a818-42d2-bb54-9b8747198305
+        type: string
+      image:
+        example: https://cdn.encargalo.app/items/pizza-hawaiana-mediana.jpg
+        type: string
+      name:
+        example: Pizza Hawaiana Mediana
+        type: string
+      price:
+        example: 32000
+        type: integer
+      rules:
+        items:
+          $ref: '#/definitions/dtos.ItemRule'
+        type: array
+      score:
+        example: 4.7
+        type: number
+      shop_id:
+        example: d33aaf08-2c43-41c4-b2e7-882b019edb1e
+        type: string
+    type: object
+  dtos.ItemRule:
+    properties:
+      id:
+        example: 71c62783-820d-46f8-957d-c8d02db97264
+        type: string
+      item_id:
+        example: 7e441237-a818-42d2-bb54-9b8747198305
+        type: string
+      rule_key:
+        example: max_flavors
+        type: string
+      rule_value:
+        example: 2
+        type: integer
+      selector_type:
+        example: multi_select
+        type: string
+    type: object
   dtos.ShopResponse:
     properties:
       address:
@@ -25,6 +78,43 @@ definitions:
 info:
   contact: {}
 paths:
+  /best-sellers:
+    get:
+      consumes:
+      - application/json
+      description: Esta función maneja la solicitud para obtener los productos mas
+        vendidos por tienda de una tienda específica.
+      parameters:
+      - description: ID de la tienda
+        format: uuid
+        in: query
+        name: shop_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dtos.ItemResponse'
+            type: array
+        "400":
+          description: shop_id es requerido o inválido
+          schema:
+            type: string
+        "404":
+          description: Productos más vendidos no encontrados
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      summary: Obtener los productos mas vendidos por tienda
+      tags:
+      - Products
   /shops:
     get:
       parameters:
