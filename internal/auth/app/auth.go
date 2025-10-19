@@ -20,10 +20,11 @@ const (
 type appAuth struct {
 	svc     portsCusto.CustomersApp
 	bycript bycript.Password
+	repo    ports.AuthRepo
 }
 
-func NewAuthApp(svc portsCusto.CustomersApp, bycript bycript.Password) ports.AuthApp {
-	return &appAuth{svc, bycript}
+func NewAuthApp(svc portsCusto.CustomersApp, bycript bycript.Password, repo ports.AuthRepo) ports.AuthApp {
+	return &appAuth{svc, bycript, repo}
 }
 
 func (a *appAuth) SignInCustomer(ctx context.Context, phone, password string) (uuid.UUID, error) {
@@ -47,6 +48,10 @@ func (a *appAuth) SignInCustomer(ctx context.Context, phone, password string) (u
 
 	var session models.ActiveSession
 	session.BuildActiveSessionModel(custo.ID, typeCustomer, "", "")
+
+	if err := a.repo.SaveSession(ctx, &session); err != nil {
+		return uuid.Nil, err
+	}
 
 	return session.ID, nil
 }

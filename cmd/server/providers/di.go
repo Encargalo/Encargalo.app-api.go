@@ -5,6 +5,7 @@ import (
 	"Encargalo.app-api.go/api/router/groups"
 	"Encargalo.app-api.go/internal/pkg/bycript"
 	"Encargalo.app-api.go/internal/shared/adapters/postgres"
+	"Encargalo.app-api.go/internal/shared/adapters/redis"
 	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shops/app"
 	"Encargalo.app-api.go/internal/shops/handler"
@@ -14,6 +15,7 @@ import (
 
 	appAuth "Encargalo.app-api.go/internal/auth/app"
 	handAuth "Encargalo.app-api.go/internal/auth/handler"
+	repoAuth "Encargalo.app-api.go/internal/auth/repo"
 
 	appProducts "Encargalo.app-api.go/internal/products/app"
 	handProducts "Encargalo.app-api.go/internal/products/handler"
@@ -38,6 +40,7 @@ func BuildContainer() *dig.Container {
 	})
 
 	_ = Container.Provide(postgres.NewPostgresConnection)
+	_ = Container.Provide(redis.NewRedisConnection)
 
 	_ = Container.Provide(router.New)
 
@@ -54,6 +57,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(appProducts.NewProductsApp)
 	_ = Container.Provide(appCustomer.NewCustomerApp)
 
+	_ = Container.Provide(repoAuth.NewAuthRepo)
 	_ = Container.Provide(repo.NewShopsRepository)
 	_ = Container.Provide(repoProducts.NewProductsRepo)
 	_ = Container.Provide(repoCustomer.NewCustomersRepo)

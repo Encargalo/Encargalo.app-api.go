@@ -12,5 +12,5 @@ type AuthApp interface {
 }
 
 type AuthRepo interface {
-	SignInCustomer(ctx context.Context, session models.ActiveSession) error
+	SaveSession(ctx context.Context, session *models.ActiveSession) error
 }
