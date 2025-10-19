@@ -22,6 +22,8 @@ func Get() *Config {
 type Config struct {
 	Server   Server   `env:"server"`
 	Postgres Postgres `env:"postgres"`
+	Redis    Redis    `env:"redis"`
+	JWT      JWT      `env:"jwt"`
 }
 
 type Server struct {
@@ -34,6 +36,14 @@ type Postgres struct {
 	User     string `env:"user"`
 	Password string `env:"password"`
 	Database string `env:"database"`
+}
+
+type Redis struct {
+	URL string `env:"url"`
+}
+
+type JWT struct {
+	Secret string `env:"secret"`
 }
 
 func Environments() {

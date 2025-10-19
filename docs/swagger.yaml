@@ -1,4 +1,118 @@
 definitions:
+  dto.Address:
+    properties:
+      address:
+        example: 'Calle 123 # 45-67'
+        type: string
+      alias:
+        example: Casa principal
+        type: string
+      coords:
+        $ref: '#/definitions/dto.Coords'
+      id:
+        type: string
+      reference:
+        example: Frente al parque de los niños
+        type: string
+    required:
+    - address
+    - alias
+    - coords
+    - reference
+    type: object
+  dto.Coords:
+    properties:
+      lat:
+        example: 4.60971
+        type: number
+      long:
+        example: -74.08175
+        type: number
+    required:
+    - lat
+    - long
+    type: object
+  dto.CustomerResponse:
+    properties:
+      birthday_date:
+        example: "1990-05-20"
+        type: string
+      email:
+        example: carlos.ramirez@example.com
+        type: string
+      id:
+        example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+      name:
+        example: Carlos
+        type: string
+      phone:
+        example: "+573001112233"
+        type: string
+      sur_name:
+        example: Ramírez
+        type: string
+    type: object
+  dto.RegisterCustomer:
+    properties:
+      birthday_date:
+        example: "1990-05-20"
+        type: string
+      email:
+        example: carlos.ramirez@example.com
+        type: string
+      name:
+        example: Carlos
+        minLength: 3
+        type: string
+      password:
+        example: claveSegura123
+        minLength: 8
+        type: string
+      phone:
+        example: "+573001112233"
+        type: string
+      sur_name:
+        example: Ramírez
+        minLength: 3
+        type: string
+    required:
+    - birthday_date
+    - name
+    - password
+    - phone
+    - sur_name
+    type: object
+  dto.UpdateCustomer:
+    properties:
+      email:
+        example: carlos.ramirez@example.com
+        type: string
+      name:
+        example: Carlos
+        minLength: 3
+        type: string
+      phone:
+        example: "+573001112233"
+        type: string
+      sur_name:
+        example: Ramírez
+        minLength: 3
+        type: string
+    required:
+    - name
+    - phone
+    - sur_name
+    type: object
+  dto.UpdatePassword:
+    properties:
+      password:
+        example: claveSegura123
+        minLength: 8
+        type: string
+    required:
+    - password
+    type: object
   dtos.ItemResponse:
     properties:
       category_id:
@@ -115,6 +229,209 @@ paths:
       summary: Obtener los productos mas vendidos por tienda
       tags:
       - Products
+  /customers:
+    get:
+      description: Retorna los datos del cliente identificado por el customer_id contenido
+        en el token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Datos del cliente
+          schema:
+            $ref: '#/definitions/dto.CustomerResponse'
+        "404":
+          description: not found
+          schema:
+            type: string
+        "500":
+          description: unexpected error
+          schema:
+            type: string
+      summary: Obtiene la información del cliente autenticado
+      tags:
+      - Customers
+    post:
+      consumes:
+      - application/json
+      description: Registrar un nuevo cliente en el sistema con los datos proporcionados.
+        Valida campos obligatorios como nombre, teléfono y contraseña.
+      parameters:
+      - description: Datos del cliente
+        in: body
+        name: customer
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RegisterCustomer'
+      responses:
+        "201":
+          description: customer successfully registered
+          schema:
+            type: string
+        "400":
+          description: Se retorna cuando hay un campo que no cumple con los requisitos
+            o directamente el body se envía vacío.
+          schema:
+            type: string
+        "500":
+          description: Se retorna cuando ocurre un error inexperado en el servidor.
+          schema:
+            type: string
+      summary: Registrar un nuevo cliente
+      tags:
+      - Customers
+    put:
+      consumes:
+      - application/json
+      description: Actualiza los datos del cliente usando la información enviada en
+        el cuerpo de la solicitud
+      parameters:
+      - description: Datos del cliente a actualizar
+        in: body
+        name: customer
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateCustomer'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: customer updated success
+          schema:
+            type: string
+        "400":
+          description: error de validación o formato inválido
+          schema:
+            type: string
+        "409":
+          description: customer not found
+          schema:
+            type: string
+        "500":
+          description: unexpected error
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Actualiza la información del cliente autenticado
+      tags:
+      - Customers
+  /customers/address:
+    get:
+      description: Retorna un arreglo con todas las direcciones asociadas al cliente
+        identificado en el token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lista de direcciones
+          schema:
+            items:
+              $ref: '#/definitions/dto.Address'
+            type: array
+        "404":
+          description: not found
+          schema:
+            type: string
+        "500":
+          description: unexpected error
+          schema:
+            type: string
+      summary: Obtiene todas las direcciones del cliente autenticado
+      tags:
+      - Customers Address
+    post:
+      consumes:
+      - application/json
+      description: Registra una dirección asociada al customer_id obtenido del contexto
+      parameters:
+      - description: Datos de la dirección
+        in: body
+        name: address
+        required: true
+        schema:
+          $ref: '#/definitions/dto.Address'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: address registred
+          schema:
+            type: string
+        "400":
+          description: error de validación o parseo
+          schema:
+            type: string
+        "500":
+          description: unexpected error
+          schema:
+            type: string
+      summary: Registra una nueva dirección para el cliente autenticado
+      tags:
+      - Customers Address
+  /customers/address/{address}:
+    delete:
+      description: Elimina la dirección especificada por su ID, siempre que pertenezca
+        al cliente autenticado
+      parameters:
+      - description: ID de la dirección (UUID)
+        in: path
+        name: address
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: address deleted success
+          schema:
+            type: string
+        "500":
+          description: unexpected error
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Elimina una dirección del cliente autenticado
+      tags:
+      - Customers Address
+  /customers/change-password:
+    put:
+      consumes:
+      - application/json
+      description: Permite al cliente autenticado actualizar su contraseña, validando
+        el formato y los requisitos establecidos
+      parameters:
+      - description: Datos para actualizar la contraseña
+        in: body
+        name: password
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdatePassword'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: password updated success
+          schema:
+            type: string
+        "400":
+          description: error de validación o formato inválido
+          schema:
+            type: string
+        "409":
+          description: customer not found
+          schema:
+            type: string
+        "500":
+          description: unexpected error
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Actualiza la contraseña del cliente autenticado
+      tags:
+      - Customers
   /shops:
     get:
       parameters:
