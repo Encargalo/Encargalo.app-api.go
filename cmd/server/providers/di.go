@@ -3,6 +3,7 @@ package providers
 import (
 	"Encargalo.app-api.go/api/router"
 	"Encargalo.app-api.go/api/router/groups"
+	"Encargalo.app-api.go/internal/pkg/bycript"
 	"Encargalo.app-api.go/internal/shared/adapters/postgres"
 	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shops/app"
@@ -11,9 +12,15 @@ import (
 	"github.com/labstack/echo/v4"
 	"go.uber.org/dig"
 
+	appAuth "Encargalo.app-api.go/internal/auth/app"
+	handAuth "Encargalo.app-api.go/internal/auth/handler"
+
 	appProducts "Encargalo.app-api.go/internal/products/app"
 	handProducts "Encargalo.app-api.go/internal/products/handler"
 	repoProducts "Encargalo.app-api.go/internal/products/repo"
+
+	appCustomer "Encargalo.app-api.go/internal/customers/app"
+	repoCustomer "Encargalo.app-api.go/internal/customers/repo"
 )
 
 var Container *dig.Container
@@ -34,17 +41,24 @@ func BuildContainer() *dig.Container {
 
 	_ = Container.Provide(router.New)
 
+	_ = Container.Provide(groups.NewAuthGroup)
 	_ = Container.Provide(groups.NewShopsGroup)
 	_ = Container.Provide(groups.NewProductsGroup)
 
+	_ = Container.Provide(handAuth.NewAuthHandler)
 	_ = Container.Provide(handler.NewShopsHandler)
 	_ = Container.Provide(handProducts.NewProducsHandler)
 
+	_ = Container.Provide(appAuth.NewAuthApp)
 	_ = Container.Provide(app.NewShopsApp)
 	_ = Container.Provide(appProducts.NewProductsApp)
+	_ = Container.Provide(appCustomer.NewCustomerApp)
 
 	_ = Container.Provide(repo.NewShopsRepository)
 	_ = Container.Provide(repoProducts.NewProductsRepo)
+	_ = Container.Provide(repoCustomer.NewCustomersRepo)
+
+	_ = Container.Provide(bycript.NewHashPassword)
 
 	return Container
 
