@@ -1,4 +1,4 @@
-package utils
+package jwt
 
 import (
 	"fmt"
@@ -36,7 +36,7 @@ func (s *sessions) CreateSession(sessionID uuid.UUID) (string, error) {
 		RegisteredClaims: jwt.RegisteredClaims{},
 	}
 
-	claims.ExpiresAt = jwt.NewNumericDate(time.Now().AddDate(0, 1, 0))
+	claims.ExpiresAt = jwt.NewNumericDate(time.Now().AddDate(1, 0, 0))
 
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(configJWT.Secret))
 

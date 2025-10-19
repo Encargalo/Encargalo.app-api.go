@@ -2,12 +2,13 @@ package handler
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
+	"time"
 
 	"Encargalo.app-api.go/internal/auth/domain/ports"
 	"Encargalo.app-api.go/internal/auth/handler/request"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/shared/jwt"
 	"github.com/labstack/echo/v4"
 )
 
@@ -17,10 +18,11 @@ type Auth interface {
 
 type auth struct {
 	svc ports.AuthApp
+	jwt jwt.Sessions
 }
 
-func NewAuthHandler(svc ports.AuthApp) Auth {
-	return &auth{svc}
+func NewAuthHandler(svc ports.AuthApp, jwt jwt.Sessions) Auth {
+	return &auth{svc, jwt}
 }
 
 func (a *auth) SignInCustomer(e echo.Context) error {
@@ -47,7 +49,21 @@ func (a *auth) SignInCustomer(e echo.Context) error {
 
 	}
 
-	fmt.Println(sessionID)
+	jwtSession, err := a.jwt.CreateSession(sessionID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
+	}
+
+	cookie := &http.Cookie{
+		Name:     "encargalo_session",
+		Value:    jwtSession,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		HttpOnly: true,
+		Path:     "/",
+		Expires:  time.Now().Add(365 * 24 * time.Hour)}
+
+	e.SetCookie(cookie)
 
 	return e.JSON(http.StatusCreated, "session created")
 }

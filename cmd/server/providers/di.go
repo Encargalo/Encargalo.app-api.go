@@ -7,6 +7,7 @@ import (
 	"Encargalo.app-api.go/internal/shared/adapters/postgres"
 	"Encargalo.app-api.go/internal/shared/adapters/redis"
 	"Encargalo.app-api.go/internal/shared/config"
+	"Encargalo.app-api.go/internal/shared/jwt"
 	"Encargalo.app-api.go/internal/shops/app"
 	"Encargalo.app-api.go/internal/shops/handler"
 	"Encargalo.app-api.go/internal/shops/repo"
@@ -63,6 +64,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(repoCustomer.NewCustomersRepo)
 
 	_ = Container.Provide(bycript.NewHashPassword)
+	_ = Container.Provide(jwt.NewSessionUtils)
 
 	return Container
 
