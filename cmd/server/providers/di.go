@@ -4,6 +4,7 @@ import (
 	"Encargalo.app-api.go/api/router"
 	"Encargalo.app-api.go/api/router/groups"
 	"Encargalo.app-api.go/internal/pkg/bycript"
+	"Encargalo.app-api.go/internal/pkg/cookie"
 	"Encargalo.app-api.go/internal/shared/adapters/postgres"
 	"Encargalo.app-api.go/internal/shared/adapters/redis"
 	"Encargalo.app-api.go/internal/shared/config"
@@ -65,6 +66,7 @@ func BuildContainer() *dig.Container {
 
 	_ = Container.Provide(bycript.NewHashPassword)
 	_ = Container.Provide(jwt.NewSessionUtils)
+	_ = Container.Provide(cookie.NewCookie)
 
 	return Container
 

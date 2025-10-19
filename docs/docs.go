@@ -69,6 +69,310 @@ const docTemplate = `{
                 }
             }
         },
+        "/customers": {
+            "get": {
+                "description": "Retorna los datos del cliente identificado por el customer_id contenido en el token",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Customers"
+                ],
+                "summary": "Obtiene la información del cliente autenticado",
+                "responses": {
+                    "200": {
+                        "description": "Datos del cliente",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CustomerResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "unexpected error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Actualiza los datos del cliente usando la información enviada en el cuerpo de la solicitud",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Customers"
+                ],
+                "summary": "Actualiza la información del cliente autenticado",
+                "parameters": [
+                    {
+                        "description": "Datos del cliente a actualizar",
+                        "name": "customer",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateCustomer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "customer updated success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "error de validación o formato inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "customer not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "unexpected error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Registrar un nuevo cliente en el sistema con los datos proporcionados. Valida campos obligatorios como nombre, teléfono y contraseña.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Customers"
+                ],
+                "summary": "Registrar un nuevo cliente",
+                "parameters": [
+                    {
+                        "description": "Datos del cliente",
+                        "name": "customer",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.RegisterCustomer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "customer successfully registered",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Se retorna cuando hay un campo que no cumple con los requisitos o directamente el body se envía vacío.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Se retorna cuando ocurre un error inexperado en el servidor.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/customers/address": {
+            "get": {
+                "description": "Retorna un arreglo con todas las direcciones asociadas al cliente identificado en el token",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Customers Address"
+                ],
+                "summary": "Obtiene todas las direcciones del cliente autenticado",
+                "responses": {
+                    "200": {
+                        "description": "Lista de direcciones",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dto.Address"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "unexpected error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Registra una dirección asociada al customer_id obtenido del contexto",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Customers Address"
+                ],
+                "summary": "Registra una nueva dirección para el cliente autenticado",
+                "parameters": [
+                    {
+                        "description": "Datos de la dirección",
+                        "name": "address",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.Address"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "address registred",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "error de validación o parseo",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "unexpected error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/customers/address/{address}": {
+            "delete": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Elimina la dirección especificada por su ID, siempre que pertenezca al cliente autenticado",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Customers Address"
+                ],
+                "summary": "Elimina una dirección del cliente autenticado",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID de la dirección (UUID)",
+                        "name": "address",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "address deleted success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "unexpected error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/customers/change-password": {
+            "put": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Permite al cliente autenticado actualizar su contraseña, validando el formato y los requisitos establecidos",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Customers"
+                ],
+                "summary": "Actualiza la contraseña del cliente autenticado",
+                "parameters": [
+                    {
+                        "description": "Datos para actualizar la contraseña",
+                        "name": "password",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdatePassword"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "password updated success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "error de validación o formato inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "customer not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "unexpected error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/shops": {
             "get": {
                 "produces": [
@@ -171,6 +475,161 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "dto.Address": {
+            "type": "object",
+            "required": [
+                "address",
+                "alias",
+                "coords",
+                "reference"
+            ],
+            "properties": {
+                "address": {
+                    "type": "string",
+                    "example": "Calle 123 # 45-67"
+                },
+                "alias": {
+                    "type": "string",
+                    "example": "Casa principal"
+                },
+                "coords": {
+                    "$ref": "#/definitions/dto.Coords"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "reference": {
+                    "type": "string",
+                    "example": "Frente al parque de los niños"
+                }
+            }
+        },
+        "dto.Coords": {
+            "type": "object",
+            "required": [
+                "lat",
+                "long"
+            ],
+            "properties": {
+                "lat": {
+                    "type": "number",
+                    "example": 4.60971
+                },
+                "long": {
+                    "type": "number",
+                    "example": -74.08175
+                }
+            }
+        },
+        "dto.CustomerResponse": {
+            "type": "object",
+            "properties": {
+                "birthday_date": {
+                    "type": "string",
+                    "example": "1990-05-20"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "carlos.ramirez@example.com"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "123e4567-e89b-12d3-a456-426614174000"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Carlos"
+                },
+                "phone": {
+                    "type": "string",
+                    "example": "+573001112233"
+                },
+                "sur_name": {
+                    "type": "string",
+                    "example": "Ramírez"
+                }
+            }
+        },
+        "dto.RegisterCustomer": {
+            "type": "object",
+            "required": [
+                "birthday_date",
+                "name",
+                "password",
+                "phone",
+                "sur_name"
+            ],
+            "properties": {
+                "birthday_date": {
+                    "type": "string",
+                    "example": "1990-05-20"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "carlos.ramirez@example.com"
+                },
+                "name": {
+                    "type": "string",
+                    "minLength": 3,
+                    "example": "Carlos"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "example": "claveSegura123"
+                },
+                "phone": {
+                    "type": "string",
+                    "example": "+573001112233"
+                },
+                "sur_name": {
+                    "type": "string",
+                    "minLength": 3,
+                    "example": "Ramírez"
+                }
+            }
+        },
+        "dto.UpdateCustomer": {
+            "type": "object",
+            "required": [
+                "name",
+                "phone",
+                "sur_name"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "carlos.ramirez@example.com"
+                },
+                "name": {
+                    "type": "string",
+                    "minLength": 3,
+                    "example": "Carlos"
+                },
+                "phone": {
+                    "type": "string",
+                    "example": "+573001112233"
+                },
+                "sur_name": {
+                    "type": "string",
+                    "minLength": 3,
+                    "example": "Ramírez"
+                }
+            }
+        },
+        "dto.UpdatePassword": {
+            "type": "object",
+            "required": [
+                "password"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "example": "claveSegura123"
+                }
+            }
+        },
         "dtos.ItemResponse": {
             "type": "object",
             "properties": {
