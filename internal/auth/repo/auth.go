@@ -59,3 +59,15 @@ func (s *authRepo) SearchSession(ctx context.Context, sessionID uuid.UUID) (*mod
 
 	return &session, nil
 }
+
+func (s *authRepo) DeleteSession(ctx context.Context, session_id uuid.UUID) error {
+	sessionIDStr := session_id.String()
+
+	if err := s.redis.Del(ctx, sessionIDStr).Err(); err != nil {
+		slog.Error("Error deleting session:", "error", err)
+		s.slackLogs.Slack(err)
+		return errcustom.ErrUnexpectedError
+	}
+
+	return nil
+}

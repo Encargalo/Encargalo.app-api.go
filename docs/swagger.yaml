@@ -265,6 +265,31 @@ definitions:
 info:
   contact: {}
 paths:
+  /api/sessions:
+    delete:
+      deprecated: true
+      description: Elimina la sesión activa identificada por session_id en la cookie
+        de autenticación
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: session deleted success
+          schema:
+            type: string
+        "404":
+          description: not found
+          schema:
+            type: string
+        "500":
+          description: unexpected error
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Cierra la sesión actual del cliente autenticado
+      tags:
+      - Sessions
   /best-sellers:
     get:
       consumes:
@@ -505,6 +530,30 @@ paths:
       summary: Actualiza la contraseña del cliente autenticado
       tags:
       - Customers
+  /customers/sessions:
+    delete:
+      description: Elimina la sesión activa identificada por session_id en la cookie
+        de autenticación
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: session deleted success
+          schema:
+            type: string
+        "404":
+          description: not found
+          schema:
+            type: string
+        "500":
+          description: unexpected error
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Cierra la sesión actual del cliente autenticado
+      tags:
+      - Sessions
   /orders:
     post:
       consumes:
