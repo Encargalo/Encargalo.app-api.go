@@ -13,7 +13,7 @@ var (
 )
 
 type SignInRequest struct {
-	Phone    string `json:"phone" validate:"required,e164" example:"+573001112233"`
+	Phone    string `json:"phone_number" validate:"required,e164" example:"+573001112233"`
 	Password string `json:"password" validate:"required" example:"claveSegura123"`
 }
 
