@@ -3,5 +3,878 @@
     "info": {
         "contact": {}
     },
-    "paths": {}
+    "paths": {
+        "/best-sellers": {
+            "get": {
+                "description": "Esta función maneja la solicitud para obtener los productos mas vendidos por tienda de una tienda específica.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Obtener los productos mas vendidos por tienda",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID de la tienda",
+                        "name": "shop_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dtos.ItemResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "shop_id es requerido o inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Productos más vendidos no encontrados",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/customers": {
+            "get": {
+                "description": "Retorna los datos del cliente identificado por el customer_id contenido en el token",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Customers"
+                ],
+                "summary": "Obtiene la información del cliente autenticado",
+                "responses": {
+                    "200": {
+                        "description": "Datos del cliente",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CustomerResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "unexpected error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Actualiza los datos del cliente usando la información enviada en el cuerpo de la solicitud",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Customers"
+                ],
+                "summary": "Actualiza la información del cliente autenticado",
+                "parameters": [
+                    {
+                        "description": "Datos del cliente a actualizar",
+                        "name": "customer",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateCustomer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "customer updated success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "error de validación o formato inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "customer not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "unexpected error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Registrar un nuevo cliente en el sistema con los datos proporcionados. Valida campos obligatorios como nombre, teléfono y contraseña.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Customers"
+                ],
+                "summary": "Registrar un nuevo cliente",
+                "parameters": [
+                    {
+                        "description": "Datos del cliente",
+                        "name": "customer",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.RegisterCustomer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "customer successfully registered",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Se retorna cuando hay un campo que no cumple con los requisitos o directamente el body se envía vacío.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Se retorna cuando ocurre un error inexperado en el servidor.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/customers/address": {
+            "get": {
+                "description": "Retorna un arreglo con todas las direcciones asociadas al cliente identificado en el token",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Customers Address"
+                ],
+                "summary": "Obtiene todas las direcciones del cliente autenticado",
+                "responses": {
+                    "200": {
+                        "description": "Lista de direcciones",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dto.Address"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "unexpected error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Registra una dirección asociada al customer_id obtenido del contexto",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Customers Address"
+                ],
+                "summary": "Registra una nueva dirección para el cliente autenticado",
+                "parameters": [
+                    {
+                        "description": "Datos de la dirección",
+                        "name": "address",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.Address"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "address registred",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "error de validación o parseo",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "unexpected error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/customers/address/{address}": {
+            "delete": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Elimina la dirección especificada por su ID, siempre que pertenezca al cliente autenticado",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Customers Address"
+                ],
+                "summary": "Elimina una dirección del cliente autenticado",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID de la dirección (UUID)",
+                        "name": "address",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "address deleted success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "unexpected error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/customers/change-password": {
+            "put": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Permite al cliente autenticado actualizar su contraseña, validando el formato y los requisitos establecidos",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Customers"
+                ],
+                "summary": "Actualiza la contraseña del cliente autenticado",
+                "parameters": [
+                    {
+                        "description": "Datos para actualizar la contraseña",
+                        "name": "password",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdatePassword"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "password updated success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "error de validación o formato inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "customer not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "unexpected error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/orders": {
+            "post": {
+                "description": "Creates a new order with the provided details",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Create a new order",
+                "parameters": [
+                    {
+                        "description": "Order payload",
+                        "name": "order",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dtos.CreateOrder"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Order created successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body or validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/shops": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops"
+                ],
+                "summary": "End Point para obtener un negocio con todos sus products, se debe enviar alguno de los 2 query params requeridos.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Este es el ID del negocio, viene en formato UUID",
+                        "name": "id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Este es el tag del negocio .ej:dmo",
+                        "name": "tag",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Latitud del usuario .ej: 4.678034",
+                        "name": "lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Longitud del usuario .ej: -74.0496399",
+                        "name": "lon",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dtos.ShopResponse"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/shops/all": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops"
+                ],
+                "summary": "Para que no me fastidies de cual es la ruta",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "Latitud del usuario .ej: 4.678034",
+                        "name": "lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Longitud del usuario .ej: -74.0496399",
+                        "name": "lon",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dtos.ShopResponse"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "dto.Address": {
+            "type": "object",
+            "required": [
+                "address",
+                "alias",
+                "coords",
+                "reference"
+            ],
+            "properties": {
+                "address": {
+                    "type": "string",
+                    "example": "Calle 123 # 45-67"
+                },
+                "alias": {
+                    "type": "string",
+                    "example": "Casa principal"
+                },
+                "coords": {
+                    "$ref": "#/definitions/dto.Coords"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "reference": {
+                    "type": "string",
+                    "example": "Frente al parque de los niños"
+                }
+            }
+        },
+        "dto.Coords": {
+            "type": "object",
+            "required": [
+                "lat",
+                "long"
+            ],
+            "properties": {
+                "lat": {
+                    "type": "number",
+                    "example": 4.60971
+                },
+                "long": {
+                    "type": "number",
+                    "example": -74.08175
+                }
+            }
+        },
+        "dto.CustomerResponse": {
+            "type": "object",
+            "properties": {
+                "birthday_date": {
+                    "type": "string",
+                    "example": "1990-05-20"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "carlos.ramirez@example.com"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "123e4567-e89b-12d3-a456-426614174000"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Carlos"
+                },
+                "phone": {
+                    "type": "string",
+                    "example": "+573001112233"
+                },
+                "sur_name": {
+                    "type": "string",
+                    "example": "Ramírez"
+                }
+            }
+        },
+        "dto.RegisterCustomer": {
+            "type": "object",
+            "required": [
+                "birthday_date",
+                "name",
+                "password",
+                "phone",
+                "sur_name"
+            ],
+            "properties": {
+                "birthday_date": {
+                    "type": "string",
+                    "example": "1990-05-20"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "carlos.ramirez@example.com"
+                },
+                "name": {
+                    "type": "string",
+                    "minLength": 3,
+                    "example": "Carlos"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "example": "claveSegura123"
+                },
+                "phone": {
+                    "type": "string",
+                    "example": "+573001112233"
+                },
+                "sur_name": {
+                    "type": "string",
+                    "minLength": 3,
+                    "example": "Ramírez"
+                }
+            }
+        },
+        "dto.UpdateCustomer": {
+            "type": "object",
+            "required": [
+                "name",
+                "phone",
+                "sur_name"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "carlos.ramirez@example.com"
+                },
+                "name": {
+                    "type": "string",
+                    "minLength": 3,
+                    "example": "Carlos"
+                },
+                "phone": {
+                    "type": "string",
+                    "example": "+573001112233"
+                },
+                "sur_name": {
+                    "type": "string",
+                    "minLength": 3,
+                    "example": "Ramírez"
+                }
+            }
+        },
+        "dto.UpdatePassword": {
+            "type": "object",
+            "required": [
+                "password"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "example": "claveSegura123"
+                }
+            }
+        },
+        "dtos.Address": {
+            "type": "object",
+            "required": [
+                "address",
+                "latitude",
+                "longitude"
+            ],
+            "properties": {
+                "address": {
+                    "type": "string",
+                    "example": "Calle 123 # 45-67"
+                },
+                "latitude": {
+                    "type": "number",
+                    "example": 37.7749
+                },
+                "longitude": {
+                    "type": "number",
+                    "example": -74.08175
+                }
+            }
+        },
+        "dtos.CreateAdditionsOrders": {
+            "type": "object",
+            "properties": {
+                "addition_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "dtos.CreateItemsOrder": {
+            "type": "object",
+            "required": [
+                "amount",
+                "item_id"
+            ],
+            "properties": {
+                "additions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dtos.CreateAdditionsOrders"
+                    }
+                },
+                "amount": {
+                    "type": "integer"
+                },
+                "item_id": {
+                    "type": "string"
+                },
+                "observation": {
+                    "type": "string"
+                }
+            }
+        },
+        "dtos.CreateOrder": {
+            "type": "object",
+            "required": [
+                "address",
+                "id",
+                "items",
+                "method_payment",
+                "shop_id"
+            ],
+            "properties": {
+                "address": {
+                    "$ref": "#/definitions/dtos.Address"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dtos.CreateItemsOrder"
+                    }
+                },
+                "method_payment": {
+                    "type": "string",
+                    "enum": [
+                        "Nequi",
+                        "Efectivo"
+                    ],
+                    "example": "Nequi"
+                },
+                "shop_id": {
+                    "type": "string",
+                    "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                }
+            }
+        },
+        "dtos.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer",
+                    "example": 400
+                },
+                "message": {
+                    "type": "string",
+                    "example": "invalid request"
+                }
+            }
+        },
+        "dtos.ItemResponse": {
+            "type": "object",
+            "properties": {
+                "category_id": {
+                    "type": "string",
+                    "example": "b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Pizza mediana con jamón, piña y queso mozzarella sobre una base de salsa napolitana."
+                },
+                "has_flavors": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "id": {
+                    "type": "string",
+                    "example": "7e441237-a818-42d2-bb54-9b8747198305"
+                },
+                "image": {
+                    "type": "string",
+                    "example": "https://cdn.encargalo.app/items/pizza-hawaiana-mediana.jpg"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Pizza Hawaiana Mediana"
+                },
+                "price": {
+                    "type": "integer",
+                    "example": 32000
+                },
+                "rules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dtos.ItemRule"
+                    }
+                },
+                "score": {
+                    "type": "number",
+                    "example": 4.7
+                },
+                "shop_id": {
+                    "type": "string",
+                    "example": "d33aaf08-2c43-41c4-b2e7-882b019edb1e"
+                }
+            }
+        },
+        "dtos.ItemRule": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "71c62783-820d-46f8-957d-c8d02db97264"
+                },
+                "item_id": {
+                    "type": "string",
+                    "example": "7e441237-a818-42d2-bb54-9b8747198305"
+                },
+                "rule_key": {
+                    "type": "string",
+                    "example": "max_flavors"
+                },
+                "rule_value": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "selector_type": {
+                    "type": "string",
+                    "example": "multi_select"
+                }
+            }
+        },
+        "dtos.ShopResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "banner": {
+                    "type": "string"
+                },
+                "home_phone": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "logo": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "opened": {
+                    "type": "boolean"
+                },
+                "score": {
+                    "type": "number"
+                },
+                "tag": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        }
+    }
 }
