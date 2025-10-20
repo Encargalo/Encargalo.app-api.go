@@ -20,10 +20,11 @@ func Get() *Config {
 }
 
 type Config struct {
-	Server   Server   `env:"server"`
-	Postgres Postgres `env:"postgres"`
-	Redis    Redis    `env:"redis"`
-	JWT      JWT      `env:"jwt"`
+	Server      Server      `env:"server"`
+	Postgres    Postgres    `env:"postgres"`
+	Redis       Redis       `env:"redis"`
+	RedisStream RedisStream `env:"redis_stream"`
+	JWT         JWT         `env:"jwt"`
 }
 
 type Server struct {
@@ -40,6 +41,15 @@ type Postgres struct {
 
 type Redis struct {
 	URL string `env:"url"`
+}
+
+type RedisStream struct {
+	Host       string `validate:"required" env:"host"`
+	Port       int    `validate:"required" env:"port"`
+	StreamName string `validate:"required" env:"stream_name"`
+	Db         int    `validate:"min=0" env:"db"`
+	User       string `validate:"required" env:"user"`
+	Password   string `validate:"required" env:"password"`
 }
 
 type JWT struct {
