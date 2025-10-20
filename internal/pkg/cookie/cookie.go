@@ -12,6 +12,7 @@ const (
 
 type Cookie interface {
 	CreateCookieSession(jwtSession string) *http.Cookie
+	DeleteCookieSession() *http.Cookie
 }
 
 type cookie struct{}
@@ -29,5 +30,18 @@ func (c *cookie) CreateCookieSession(jwtSession string) *http.Cookie {
 		HttpOnly: true,
 		Path:     cookiePath,
 		Expires:  time.Now().Add(365 * 24 * time.Hour),
+	}
+}
+
+func (c *cookie) DeleteCookieSession() *http.Cookie {
+	return &http.Cookie{
+		Name:     "cookieName",
+		Value:    "",
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		HttpOnly: true,
+		Path:     cookiePath,
+		Expires:  time.Unix(0, 0),
+		MaxAge:   -1,
 	}
 }
