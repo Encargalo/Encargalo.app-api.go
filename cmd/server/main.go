@@ -13,15 +13,10 @@ func main() {
 
 	container := providers.BuildContainer()
 
-	err := container.Invoke(func(server *echo.Echo, router *router.Router, config config.Config) {
-
+	if err := container.Invoke(func(server *echo.Echo, router *router.Router, config config.Config) {
 		router.Init()
-
 		server.Logger.Fatal(server.Start(fmt.Sprintf(":%d", config.Server.Port)))
-
-	})
-
-	if err != nil {
+	}); err != nil {
 		panic(err)
 	}
 

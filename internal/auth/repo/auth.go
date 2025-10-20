@@ -3,23 +3,24 @@ package repo
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
+	"log/slog"
 	"time"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/auth/domain/ports"
+	"Encargalo.app-api.go/internal/pkg/logs"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
 type authRepo struct {
-	redis *redis.Client
+	redis     *redis.Client
+	slackLogs logs.Logs
 }
 
-func NewAuthRepo(redis *redis.Client) ports.AuthRepo {
-	return &authRepo{redis: redis}
+func NewAuthRepo(redis *redis.Client, slackLogs logs.Logs) ports.AuthRepo {
+	return &authRepo{redis, slackLogs}
 }
 
 func (s *authRepo) SaveSession(ctx context.Context, session *models.ActiveSession) error {
@@ -27,7 +28,8 @@ func (s *authRepo) SaveSession(ctx context.Context, session *models.ActiveSessio
 	sessionData, _ := json.Marshal(session)
 
 	if err := s.redis.Set(ctx, session.ID.String(), sessionData, 365*24*time.Hour).Err(); err != nil {
-		fmt.Println("Error saving session:", err)
+		slog.Error("error al registrar la sesion - "+session.ID.String(), "error", err)
+		s.slackLogs.Slack(err)
 		return errcustom.ErrUnexpectedError
 	}
 
@@ -36,24 +38,22 @@ func (s *authRepo) SaveSession(ctx context.Context, session *models.ActiveSessio
 
 func (s *authRepo) SearchSession(ctx context.Context, sessionID uuid.UUID) (*models.ActiveSession, error) {
 
-	if sessionID == uuid.Nil {
-		return nil, errors.New("invalid session ID")
-	}
-
 	sessionIDStr := sessionID.String()
 
 	sessionData, err := s.redis.Get(ctx, sessionIDStr).Result()
 	if err != nil {
 		if err == redis.Nil {
-			return nil, errors.New("session not found")
+			return nil, errcustom.ErrNotFound
 		}
-		fmt.Println("Error getting session:", err)
+		slog.Error("Error getting session:", "error", err)
+		s.slackLogs.Slack(err)
 		return nil, errcustom.ErrUnexpectedError
 	}
 
 	var session models.ActiveSession
 	if err := json.Unmarshal([]byte(sessionData), &session); err != nil {
-		fmt.Println("Error unmarshalling session data:", err)
+		slog.Error("Error unmarshalling session data:", "error", err)
+		s.slackLogs.Slack(err)
 		return nil, errcustom.ErrUnexpectedError
 	}
 
