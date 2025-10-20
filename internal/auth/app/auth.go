@@ -58,5 +58,4 @@ func (a *appAuth) SignInCustomer(ctx context.Context, phone, password string) (u
 
 func (a *appAuth) SearchSessions(ctx context.Context, session_id uuid.UUID) (*models.ActiveSession, error) {
 	return a.repo.SearchSession(ctx, session_id)
-
 }

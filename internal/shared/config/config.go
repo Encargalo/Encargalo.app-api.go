@@ -25,6 +25,7 @@ type Config struct {
 	Redis       Redis       `env:"redis"`
 	RedisStream RedisStream `env:"redis_stream"`
 	JWT         JWT         `env:"jwt"`
+	Slack       Slack       `env:"slack"`
 }
 
 type Server struct {
@@ -54,6 +55,11 @@ type RedisStream struct {
 
 type JWT struct {
 	Secret string `env:"secret"`
+}
+
+type Slack struct {
+	Token   string `env:"token"`
+	Channel string `env:"channel"`
 }
 
 func Environments() {

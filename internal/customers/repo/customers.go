@@ -4,60 +4,54 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
+	"log/slog"
 
 	"Encargalo.app-api.go/internal/customers/domain/dto"
 	"Encargalo.app-api.go/internal/customers/domain/models"
 	"Encargalo.app-api.go/internal/customers/domain/ports"
+	"Encargalo.app-api.go/internal/pkg/logs"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
 
 type customersRepo struct {
-	db *bun.DB
+	db        *bun.DB
+	slackLogs logs.Logs
 }
 
-func NewCustomersRepo(db *bun.DB) ports.CustomersRepo {
-	return &customersRepo{db}
+func NewCustomersRepo(db *bun.DB, slackLogs logs.Logs) ports.CustomersRepo {
+	return &customersRepo{db, slackLogs}
 }
 
 func (c *customersRepo) RegisterCustomer(ctx context.Context, customer *models.Accounts) (*models.Accounts, error) {
 
-	tx, err := c.db.BeginTx(ctx, nil)
-	if err != nil {
-		fmt.Println("error iniciando transacción: %w", err)
-		return nil, errors.New("unexpected error")
-	}
+	if err := c.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 
-	if _, err := tx.NewInsert().Model(customer).Returning("*").Exec(ctx); err != nil {
-		_ = tx.Rollback()
-		fmt.Println("error al insertar el customer")
-		return nil, errors.New("unexpected error")
-	}
+		if _, err := tx.NewInsert().Model(customer).Returning("*").Exec(ctx); err != nil {
+			slog.Error("error al insertar el customer", "error", err)
+			c.slackLogs.Slack(err)
+			return errcustom.ErrUnexpectedError
+		}
 
-	activationAccount := new(models.ActivateAccount)
-	activationAccount.BuildActivateAccount(customer.ID)
+		activationAccount := new(models.ActivateAccount)
+		activationAccount.BuildActivateAccount(customer.ID)
 
-	if _, err := tx.NewInsert().Model(activationAccount).Exec(ctx); err != nil {
-		_ = tx.Rollback()
-		fmt.Println("error al registrar el codigo de activación")
-		return nil, errors.New("unexpected error")
-	}
+		if _, err := tx.NewInsert().Model(activationAccount).Exec(ctx); err != nil {
+			slog.Error("error al registrar el codigo de activación", "error", err)
+			c.slackLogs.Slack(err)
+			return errcustom.ErrUnexpectedError
+		}
 
-	if err := tx.Commit(); err != nil {
-		fmt.Println("error al confirmar transacción: %w", err)
-		return nil, errors.New("unexpected error")
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	return customer, nil
 }
 
 func (c *customersRepo) SearchCustomerBy(ctx context.Context, criteria dto.SearchCustomerBy) (*models.Accounts, error) {
-
-	if criteria.ID == uuid.Nil && criteria.Phone == "" {
-		return nil, errors.New("no search criteria provided")
-	}
 
 	account := new(models.Accounts)
 
@@ -79,6 +73,7 @@ func (c *customersRepo) SearchCustomerBy(ctx context.Context, criteria dto.Searc
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errcustom.ErrNotFound
 		}
+		c.slackLogs.Slack(err)
 		return nil, errcustom.ErrUnexpectedError
 	}
 
@@ -97,9 +92,10 @@ func (c *customersRepo) SearchCustomerByPhoneAndNotIDEquals(ctx context.Context,
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, errors.New("not found")
+			return nil, errcustom.ErrNotFound
 		}
-		return nil, errors.New("unexpected error")
+		c.slackLogs.Slack(err)
+		return nil, errcustom.ErrUnexpectedError
 	}
 
 	return account, nil
@@ -109,8 +105,9 @@ func (c *customersRepo) SearchCustomerByPhoneAndNotIDEquals(ctx context.Context,
 func (c *customersRepo) UpdateCustomer(ctx context.Context, customer_id uuid.UUID, customer *models.Accounts) error {
 
 	if _, err := c.db.NewUpdate().Model(customer).OmitZero().Where("id = ?", customer_id).Exec(ctx); err != nil {
-		fmt.Println(err.Error())
-		return errors.New("unexpected error")
+		slog.Error("error al modificar la información del cliente", "error", err)
+		c.slackLogs.Slack(err)
+		return errcustom.ErrUnexpectedError
 	}
 	return nil
 }
@@ -118,8 +115,9 @@ func (c *customersRepo) UpdateCustomer(ctx context.Context, customer_id uuid.UUI
 func (c *customersRepo) UpdatePassword(ctx context.Context, customer_id uuid.UUID, customer *models.Accounts) error {
 
 	if _, err := c.db.NewUpdate().Model(customer).OmitZero().Where("id = ?", customer_id).Exec(ctx); err != nil {
-		fmt.Println(err.Error())
-		return errors.New("unexpected error")
+		slog.Error("error al modificar la contraseña del customer", "error", err)
+		c.slackLogs.Slack(err)
+		return errcustom.ErrUnexpectedError
 	}
 
 	return nil
