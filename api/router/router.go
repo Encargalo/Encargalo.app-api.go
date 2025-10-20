@@ -20,6 +20,7 @@ type Router struct {
 	shopsGroup    groups.ShopsGroup
 	productsGroup groups.ProductsGroup
 	customerGroup groups.CustomersGroup
+	ordersGroup   groups.OrdersGroup
 }
 
 func New(
@@ -30,6 +31,7 @@ func New(
 	shopsGroup groups.ShopsGroup,
 	productsGroup groups.ProductsGroup,
 	customerGroup groups.CustomersGroup,
+	ordersGroup groups.OrdersGroup,
 ) *Router {
 	return &Router{
 		server,
@@ -39,6 +41,7 @@ func New(
 		shopsGroup,
 		productsGroup,
 		customerGroup,
+		ordersGroup,
 	}
 }
 
@@ -65,5 +68,6 @@ func (r *Router) Init() {
 	r.shopsGroup.Resource(r.server)
 	r.productsGroup.Resource(r.server)
 	r.customerGroup.Resource(r.server)
+	r.ordersGroup.Resource(r.server)
 
 }

@@ -28,6 +28,10 @@ import (
 	appCustomer "Encargalo.app-api.go/internal/customers/app"
 	handCustomer "Encargalo.app-api.go/internal/customers/handler"
 	repoCustomer "Encargalo.app-api.go/internal/customers/repo"
+
+	appOrders "Encargalo.app-api.go/internal/orders/app"
+	handOrders "Encargalo.app-api.go/internal/orders/handler"
+	repoOrders "Encargalo.app-api.go/internal/orders/repo"
 )
 
 var Container *dig.Container
@@ -53,6 +57,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(groups.NewShopsGroup)
 	_ = Container.Provide(groups.NewProductsGroup)
 	_ = Container.Provide(groups.NewCustomersGroup)
+	_ = Container.Provide(groups.NewOrdersGroup)
 
 	_ = Container.Provide(requestinfo.NewRequestMiddleware)
 	_ = Container.Provide(customerauth.NewAuthMidlleware)
@@ -62,18 +67,21 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(handProducts.NewProducsHandler)
 	_ = Container.Provide(handCustomer.NewCustomersHandler)
 	_ = Container.Provide(handCustomer.NewCustomersAddressHandler)
+	_ = Container.Provide(handOrders.NewOrderHandler)
 
 	_ = Container.Provide(appAuth.NewAuthApp)
 	_ = Container.Provide(app.NewShopsApp)
 	_ = Container.Provide(appProducts.NewProductsApp)
 	_ = Container.Provide(appCustomer.NewCustomerApp)
 	_ = Container.Provide(appCustomer.NewCustomersAddressApp)
+	_ = Container.Provide(appOrders.NewOrderApp)
 
 	_ = Container.Provide(repoAuth.NewAuthRepo)
 	_ = Container.Provide(repo.NewShopsRepository)
 	_ = Container.Provide(repoProducts.NewProductsRepo)
 	_ = Container.Provide(repoCustomer.NewCustomersRepo)
 	_ = Container.Provide(repoCustomer.NewCustomersAddressRepo)
+	_ = Container.Provide(repoOrders.NewOrdersRepo)
 
 	_ = Container.Provide(bycript.NewHashPassword)
 	_ = Container.Provide(jwt.NewSessionUtils)

@@ -373,6 +373,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/orders": {
+            "post": {
+                "description": "Creates a new order with the provided details",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Create a new order",
+                "parameters": [
+                    {
+                        "description": "Order payload",
+                        "name": "order",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dtos.CreateOrder"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Order created successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body or validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/shops": {
             "get": {
                 "produces": [
@@ -627,6 +673,110 @@ const docTemplate = `{
                     "type": "string",
                     "minLength": 8,
                     "example": "claveSegura123"
+                }
+            }
+        },
+        "dtos.Address": {
+            "type": "object",
+            "required": [
+                "address",
+                "latitude",
+                "longitude"
+            ],
+            "properties": {
+                "address": {
+                    "type": "string",
+                    "example": "Calle 123 # 45-67"
+                },
+                "latitude": {
+                    "type": "number",
+                    "example": 37.7749
+                },
+                "longitude": {
+                    "type": "number",
+                    "example": -74.08175
+                }
+            }
+        },
+        "dtos.CreateAdditionsOrders": {
+            "type": "object",
+            "properties": {
+                "addition_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "dtos.CreateItemsOrder": {
+            "type": "object",
+            "required": [
+                "amount",
+                "item_id"
+            ],
+            "properties": {
+                "additions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dtos.CreateAdditionsOrders"
+                    }
+                },
+                "amount": {
+                    "type": "integer"
+                },
+                "item_id": {
+                    "type": "string"
+                },
+                "observation": {
+                    "type": "string"
+                }
+            }
+        },
+        "dtos.CreateOrder": {
+            "type": "object",
+            "required": [
+                "address",
+                "id",
+                "items",
+                "method_payment",
+                "shop_id"
+            ],
+            "properties": {
+                "address": {
+                    "$ref": "#/definitions/dtos.Address"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dtos.CreateItemsOrder"
+                    }
+                },
+                "method_payment": {
+                    "type": "string",
+                    "enum": [
+                        "Nequi",
+                        "Efectivo"
+                    ],
+                    "example": "Nequi"
+                },
+                "shop_id": {
+                    "type": "string",
+                    "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                }
+            }
+        },
+        "dtos.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer",
+                    "example": 400
+                },
+                "message": {
+                    "type": "string",
+                    "example": "invalid request"
                 }
             }
         },

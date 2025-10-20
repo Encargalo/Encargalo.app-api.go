@@ -113,6 +113,79 @@ definitions:
     required:
     - password
     type: object
+  dtos.Address:
+    properties:
+      address:
+        example: 'Calle 123 # 45-67'
+        type: string
+      latitude:
+        example: 37.7749
+        type: number
+      longitude:
+        example: -74.08175
+        type: number
+    required:
+    - address
+    - latitude
+    - longitude
+    type: object
+  dtos.CreateAdditionsOrders:
+    properties:
+      addition_id:
+        type: string
+    type: object
+  dtos.CreateItemsOrder:
+    properties:
+      additions:
+        items:
+          $ref: '#/definitions/dtos.CreateAdditionsOrders'
+        type: array
+      amount:
+        type: integer
+      item_id:
+        type: string
+      observation:
+        type: string
+    required:
+    - amount
+    - item_id
+    type: object
+  dtos.CreateOrder:
+    properties:
+      address:
+        $ref: '#/definitions/dtos.Address'
+      id:
+        example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/dtos.CreateItemsOrder'
+        type: array
+      method_payment:
+        enum:
+        - Nequi
+        - Efectivo
+        example: Nequi
+        type: string
+      shop_id:
+        example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        type: string
+    required:
+    - address
+    - id
+    - items
+    - method_payment
+    - shop_id
+    type: object
+  dtos.ErrorResponse:
+    properties:
+      code:
+        example: 400
+        type: integer
+      message:
+        example: invalid request
+        type: string
+    type: object
   dtos.ItemResponse:
     properties:
       category_id:
@@ -432,6 +505,36 @@ paths:
       summary: Actualiza la contraseña del cliente autenticado
       tags:
       - Customers
+  /orders:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new order with the provided details
+      parameters:
+      - description: Order payload
+        in: body
+        name: order
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.CreateOrder'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Order created successfully
+          schema:
+            type: string
+        "400":
+          description: Invalid request body or validation failed
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Unexpected internal server error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Create a new order
+      tags:
+      - Orders
   /shops:
     get:
       parameters:
