@@ -50,6 +50,7 @@ func BuildContainer() *dig.Container {
 
 	_ = Container.Provide(postgres.NewPostgresConnection)
 	_ = Container.Provide(redis.NewRedisConnection)
+	_ = Container.Provide(redis.NewProducerRedisStreamConnection)
 
 	_ = Container.Provide(router.New)
 
@@ -82,6 +83,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(repoCustomer.NewCustomersRepo)
 	_ = Container.Provide(repoCustomer.NewCustomersAddressRepo)
 	_ = Container.Provide(repoOrders.NewOrdersRepo)
+	_ = Container.Provide(repoOrders.NewRepositoryProducerStream)
 
 	_ = Container.Provide(bycript.NewHashPassword)
 	_ = Container.Provide(jwt.NewSessionUtils)

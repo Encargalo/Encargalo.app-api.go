@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/orders/domain/models"
@@ -11,11 +12,12 @@ import (
 )
 
 type orderApp struct {
-	repo ports.OrdersRepo
+	repo   ports.OrdersRepo
+	stream ports.RedisStream
 }
 
-func NewOrderApp(repo ports.OrdersRepo) ports.OrdersApp {
-	return &orderApp{repo}
+func NewOrderApp(repo ports.OrdersRepo, stream ports.RedisStream) ports.OrdersApp {
+	return &orderApp{repo, stream}
 }
 
 func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) error {
@@ -57,9 +59,28 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) err
 		return err
 	}
 
+	if err := o.stream.Producer(ctx, buildToDataProduceOrder(*orderModel)); err != nil {
+		fmt.Println(err)
+	}
+
 	return nil
 }
 
 func (o *orderApp) SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*models.Order, error) {
 	return o.repo.SearchOrdersByID(ctx, orderID)
+}
+
+func buildToDataProduceOrder(items models.Order) []models.DataProduceOrder {
+
+	dataProduceOrder := []models.DataProduceOrder{}
+
+	for _, item := range items.ItemsOrders {
+		dataProduceOrder = append(dataProduceOrder, models.DataProduceOrder{
+			MessageType: "add_sold_product",
+			ProductID:   item.ItemID,
+			Quantity:    item.Amount,
+		})
+	}
+
+	return dataProduceOrder
 }
