@@ -8,4 +8,5 @@ import (
 
 type RedisStream interface {
 	Producer(ctx context.Context, items []models.DataProduceOrder) error
+	EventOrderCreated(ctx context.Context, event models.DataEventOrderCreated) error
 }

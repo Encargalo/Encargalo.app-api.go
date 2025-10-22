@@ -32,3 +32,17 @@ func (stream *redisRepository) Producer(ctx context.Context, items []models.Data
 
 	return nil
 }
+
+func (stream *redisRepository) EventOrderCreated(ctx context.Context, event models.DataEventOrderCreated) error {
+
+	message, err := json.StructToMap(event)
+	if err != nil {
+		return err
+	}
+
+	if err = stream.producer.Produce(ctx, message); err != nil {
+		return err
+	}
+
+	return nil
+}
