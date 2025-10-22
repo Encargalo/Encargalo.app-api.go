@@ -63,6 +63,13 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) err
 		fmt.Println(err)
 	}
 
+	eventOrderCreateModel := models.DataEventOrderCreated{}
+	eventOrderCreateModel.BuidlToModelEvent(*orderModel)
+
+	if err := o.stream.EventOrderCreated(ctx, eventOrderCreateModel); err != nil {
+		fmt.Println(err)
+	}
+
 	return nil
 }
 
