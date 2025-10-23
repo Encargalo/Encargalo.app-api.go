@@ -66,16 +66,16 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(customerauth.NewAuthMidlleware)
 
 	_ = Container.Provide(handAuth.NewAuthHandler)
+	_ = Container.Provide(handCustomer.NewCustomersHandler)
 	_ = Container.Provide(handler.NewShopsHandler)
 	_ = Container.Provide(handProducts.NewProducsHandler)
-	_ = Container.Provide(handCustomer.NewCustomersHandler)
 	_ = Container.Provide(handCustomer.NewCustomersAddressHandler)
 	_ = Container.Provide(handOrders.NewOrderHandler)
 
+	_ = Container.Provide(appCustomer.NewCustomerApp)
 	_ = Container.Provide(appAuth.NewAuthApp)
 	_ = Container.Provide(app.NewShopsApp)
 	_ = Container.Provide(appProducts.NewProductsApp)
-	_ = Container.Provide(appCustomer.NewCustomerApp)
 	_ = Container.Provide(appCustomer.NewCustomersAddressApp)
 	_ = Container.Provide(appOrders.NewOrderApp)
 

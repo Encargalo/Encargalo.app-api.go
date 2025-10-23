@@ -24,17 +24,17 @@ func NewCustomerApp(repo ports.CustomersRepo, pass bycript.Password) ports.Custo
 	}
 }
 
-func (c *customersApp) RegisterCustomer(ctx context.Context, customer dto.RegisterCustomer) (uuid.UUID, error) {
+func (c *customersApp) RegisterCustomer(ctx context.Context, customer dto.RegisterCustomer) error {
 
 	custo, err := c.SearchCustomerBy(ctx, dto.SearchCustomerBy{Phone: customer.Phone})
 	if err != nil {
 		if err == errors.New("not found") {
-			return uuid.Nil, err
+			return err
 		}
 	}
 
 	if custo != nil {
-		return uuid.Nil, errors.New("phone al ready exist")
+		return errors.New("phone al ready exist")
 	}
 
 	c.pass.HashPassword(&customer.Password)
@@ -42,12 +42,12 @@ func (c *customersApp) RegisterCustomer(ctx context.Context, customer dto.Regist
 	customerModel := models.Accounts{}
 	customerModel.BuildCustomerRegisterModel(customer)
 
-	custo, err = c.repo.RegisterCustomer(ctx, &customerModel)
+	err = c.repo.RegisterCustomer(ctx, &customerModel)
 	if err != nil {
-		return uuid.Nil, err
+		return err
 	}
 
-	return uuid.New(), nil
+	return nil
 }
 
 func (c *customersApp) SearchCustomerBy(ctx context.Context, criteria dto.SearchCustomerBy) (*models.Accounts, error) {
