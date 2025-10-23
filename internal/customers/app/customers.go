@@ -3,14 +3,11 @@ package app
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"Encargalo.app-api.go/internal/customers/domain/dto"
 	"Encargalo.app-api.go/internal/customers/domain/models"
 	"Encargalo.app-api.go/internal/customers/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/bycript"
-
-	auth "Encargalo.app-api.go/internal/auth/domain/ports"
 
 	"github.com/google/uuid"
 )
@@ -18,28 +15,26 @@ import (
 type customersApp struct {
 	repo ports.CustomersRepo
 	pass bycript.Password
-	auth auth.AuthApp
 }
 
-func NewCustomerApp(repo ports.CustomersRepo, pass bycript.Password, auth auth.AuthApp) ports.CustomersApp {
+func NewCustomerApp(repo ports.CustomersRepo, pass bycript.Password) ports.CustomersApp {
 	return &customersApp{
 		repo,
 		pass,
-		auth,
 	}
 }
 
-func (c *customersApp) RegisterCustomer(ctx context.Context, customer dto.RegisterCustomer) (uuid.UUID, error) {
+func (c *customersApp) RegisterCustomer(ctx context.Context, customer dto.RegisterCustomer) error {
 
 	custo, err := c.SearchCustomerBy(ctx, dto.SearchCustomerBy{Phone: customer.Phone})
 	if err != nil {
 		if err == errors.New("not found") {
-			return uuid.Nil, err
+			return err
 		}
 	}
 
 	if custo != nil {
-		return uuid.Nil, errors.New("phone al ready exist")
+		return errors.New("phone al ready exist")
 	}
 
 	c.pass.HashPassword(&customer.Password)
@@ -47,17 +42,12 @@ func (c *customersApp) RegisterCustomer(ctx context.Context, customer dto.Regist
 	customerModel := models.Accounts{}
 	customerModel.BuildCustomerRegisterModel(customer)
 
-	_, err = c.repo.RegisterCustomer(ctx, &customerModel)
+	err = c.repo.RegisterCustomer(ctx, &customerModel)
 	if err != nil {
-		return uuid.Nil, err
+		return err
 	}
 
-	sessionID, err := c.auth.SignInCustomer(ctx, customer.Phone, customer.Password)
-	if err != nil {
-		fmt.Println("Error al iniciar session.")
-	}
-
-	return sessionID, nil
+	return nil
 }
 
 func (c *customersApp) SearchCustomerBy(ctx context.Context, criteria dto.SearchCustomerBy) (*models.Accounts, error) {

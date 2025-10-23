@@ -24,11 +24,11 @@ func NewCustomersRepo(db *bun.DB, slackLogs logs.Logs) ports.CustomersRepo {
 	return &customersRepo{db, slackLogs}
 }
 
-func (c *customersRepo) RegisterCustomer(ctx context.Context, customer *models.Accounts) (*models.Accounts, error) {
+func (c *customersRepo) RegisterCustomer(ctx context.Context, customer *models.Accounts) error {
 
 	if err := c.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 
-		if _, err := tx.NewInsert().Model(customer).Returning("*").Exec(ctx); err != nil {
+		if _, err := tx.NewInsert().Model(customer).Exec(ctx); err != nil {
 			slog.Error("error al insertar el customer", "error", err)
 			c.slackLogs.Slack(err)
 			return errcustom.ErrUnexpectedError
@@ -45,10 +45,10 @@ func (c *customersRepo) RegisterCustomer(ctx context.Context, customer *models.A
 
 		return nil
 	}); err != nil {
-		return nil, err
+		return err
 	}
 
-	return customer, nil
+	return nil
 }
 
 func (c *customersRepo) SearchCustomerBy(ctx context.Context, criteria dto.SearchCustomerBy) (*models.Accounts, error) {

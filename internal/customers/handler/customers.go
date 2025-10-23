@@ -13,6 +13,8 @@ import (
 	"Encargalo.app-api.go/internal/shared/jwt"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+
+	portsAuth "Encargalo.app-api.go/internal/auth/domain/ports"
 )
 
 type CustomersHandler interface {
@@ -24,12 +26,13 @@ type CustomersHandler interface {
 
 type customersHandler struct {
 	customerApp ports.CustomersApp
+	auth        portsAuth.AuthApp
 	jwt         jwt.Sessions
 	cookie      cookie.Cookie
 }
 
-func NewCustomersHandler(customerApp ports.CustomersApp, jwt jwt.Sessions, cookie cookie.Cookie) CustomersHandler {
-	return &customersHandler{customerApp, jwt, cookie}
+func NewCustomersHandler(customerApp ports.CustomersApp, auth portsAuth.AuthApp, jwt jwt.Sessions, cookie cookie.Cookie) CustomersHandler {
+	return &customersHandler{customerApp, auth, jwt, cookie}
 }
 
 // RegisterCustomer godoc
@@ -56,7 +59,7 @@ func (c *customersHandler) RegisterCustomer(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	sessionID, err := c.customerApp.RegisterCustomer(ctx, customer)
+	err := c.customerApp.RegisterCustomer(ctx, customer)
 	if err != nil {
 		if errors.Is(err, errcustom.ErrPhoneAlreadyExist) {
 			return echo.NewHTTPError(http.StatusConflict, err.Error())
@@ -64,7 +67,12 @@ func (c *customersHandler) RegisterCustomer(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	jwtSession, err := c.jwt.CreateSession(sessionID)
+	sessionId, err := c.auth.SignInCustomer(ctx, customer.Phone, customer.Password)
+	if err != nil {
+		fmt.Println()
+	}
+
+	jwtSession, err := c.jwt.CreateSession(sessionId)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
 	}
