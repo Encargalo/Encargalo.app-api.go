@@ -3,11 +3,14 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"Encargalo.app-api.go/internal/customers/domain/dto"
 	"Encargalo.app-api.go/internal/customers/domain/models"
 	"Encargalo.app-api.go/internal/customers/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/bycript"
+
+	auth "Encargalo.app-api.go/internal/auth/domain/ports"
 
 	"github.com/google/uuid"
 )
@@ -15,12 +18,14 @@ import (
 type customersApp struct {
 	repo ports.CustomersRepo
 	pass bycript.Password
+	auth auth.AuthApp
 }
 
-func NewCustomerApp(repo ports.CustomersRepo, pass bycript.Password) ports.CustomersApp {
+func NewCustomerApp(repo ports.CustomersRepo, pass bycript.Password, auth auth.AuthApp) ports.CustomersApp {
 	return &customersApp{
 		repo,
 		pass,
+		auth,
 	}
 }
 
@@ -42,12 +47,17 @@ func (c *customersApp) RegisterCustomer(ctx context.Context, customer dto.Regist
 	customerModel := models.Accounts{}
 	customerModel.BuildCustomerRegisterModel(customer)
 
-	custo, err = c.repo.RegisterCustomer(ctx, &customerModel)
+	_, err = c.repo.RegisterCustomer(ctx, &customerModel)
 	if err != nil {
 		return uuid.Nil, err
 	}
 
-	return uuid.New(), nil
+	sessionID, err := c.auth.SignInCustomer(ctx, customer.Phone, customer.Password)
+	if err != nil {
+		fmt.Println("Error al iniciar session.")
+	}
+
+	return sessionID, nil
 }
 
 func (c *customersApp) SearchCustomerBy(ctx context.Context, criteria dto.SearchCustomerBy) (*models.Accounts, error) {
