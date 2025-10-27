@@ -64,7 +64,7 @@ type Slack struct {
 }
 
 type Limit struct {
-	Status bool `validate:"required" env:"status"`
+	Status *bool `validate:"required" env:"status"`
 }
 
 func Environments() {

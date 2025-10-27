@@ -27,7 +27,7 @@ func (s *shopsRepo) GetAllShops(ctx context.Context, coords shopsDTO.Coords) (sh
 
 	var shops shops.Shops
 
-	if config.Get().Limit.Status {
+	if *config.Get().Limit.Status {
 		if err := s.db.NewSelect().Model(&shops).Order("score DESC").
 			Where("license_status = ?", "active").
 			Where(`
@@ -64,7 +64,7 @@ func (p *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 
 	products := new(shops.Shops)
 
-	if config.Get().Limit.Status {
+	if *config.Get().Limit.Status {
 		if err := p.db.NewSelect().
 			Model(products).
 			Where("license_status = ?", "active").
