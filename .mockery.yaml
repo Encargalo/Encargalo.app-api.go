@@ -1,0 +1,24 @@
+all: True
+recursive: True
+disable-version-string: True
+mockname: "{{.InterfaceName}}"
+filename: "mock_{{.InterfaceName}}.go"
+with-expecter: False
+outpkg: "mocks"
+packages:
+  
+  Encargalo.app-api.go/internal/pkg/cookie:
+    config:
+      dir: "internal/mocks/pkg/cookie"
+
+  Encargalo.app-api.go/internal/shared/jwt:
+    config:
+      dir: "internal/mocks/shared/jwt"    
+
+  Encargalo.app-api.go/internal/auth/handler:
+    config:
+      dir: "internal/mocks/auth/handler"
+
+  Encargalo.app-api.go/internal/auth/domain/ports:
+    config:
+      dir: "internal/mocks/auth/domain/ports"

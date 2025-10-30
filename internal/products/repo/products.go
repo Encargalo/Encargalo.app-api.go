@@ -2,25 +2,38 @@ package repo
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log/slog"
+	"time"
 
 	"Encargalo.app-api.go/internal/products/domain/dtos"
 	"Encargalo.app-api.go/internal/products/domain/models"
 	"Encargalo.app-api.go/internal/products/domain/ports"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"github.com/uptrace/bun"
 )
 
+const prefix_shop_cashe = "prod_"
+
 type productsRepo struct {
-	db *bun.DB
+	db    *bun.DB
+	cache *redis.Client
 }
 
-func NewProductsRepo(db *bun.DB) ports.ProductsRepo {
-	return &productsRepo{db}
+func NewProductsRepo(db *bun.DB, cache *redis.Client) ports.ProductsRepo {
+	return &productsRepo{db, cache}
 }
 
 func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.UUID) (dtos.CategoriesResponse, error) {
 
+	prods, _ := p.getProductsToCache(ctx, shopID)
+	if prods != nil {
+		return prods, nil
+	}
+
+	var prodsResponse dtos.CategoriesResponse
 	var categories models.Categories
 
 	if err := p.db.NewSelect().
@@ -39,7 +52,11 @@ func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.U
 		return nil, fmt.Errorf("products not found")
 	}
 
-	return categories.ToDomainDTO(), nil
+	prodsResponse = categories.ToDomainDTO()
+
+	p.setProductsToCache(ctx, shopID, prodsResponse)
+
+	return prodsResponse, nil
 }
 
 func (p *productsRepo) SearchAdditionsByShopID(ctx context.Context, categoryID uuid.UUID) (dtos.AdditionsResponse, error) {
@@ -121,4 +138,38 @@ func (p *productsRepo) AddSoldItem(ctx context.Context, item models.DataProduceO
 		Exec(ctx)
 	return err
 
+}
+
+func (p *productsRepo) getProductsToCache(ctx context.Context, shopID uuid.UUID) (dtos.CategoriesResponse, error) {
+
+	products, err := p.cache.Get(ctx, prefix_shop_cashe+shopID.String()).Result()
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	if products != "" {
+		var prods dtos.CategoriesResponse
+
+		err := json.Unmarshal([]byte(products), &prods)
+		if err != nil {
+			fmt.Println(err.Error())
+			return nil, fmt.Errorf("unexpected error")
+		}
+
+		return prods, nil
+	}
+
+	return nil, fmt.Errorf("products not found")
+}
+
+func (p *productsRepo) setProductsToCache(ctx context.Context, shopID uuid.UUID, prods dtos.CategoriesResponse) {
+	products, err := json.Marshal(prods)
+	if err != nil {
+		slog.Error("error al hacer marshal de los products", "error", err)
+	}
+
+	if err = p.cache.Set(ctx, prefix_shop_cashe+shopID.String(), products, 1*1*time.Hour).
+		Err(); err != nil {
+		slog.Error("error al guardar el chache de los productos", "error", err)
+	}
 }
