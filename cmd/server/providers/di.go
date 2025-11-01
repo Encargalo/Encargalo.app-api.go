@@ -4,6 +4,7 @@ import (
 	"Encargalo.app-api.go/api/router"
 	"Encargalo.app-api.go/api/router/groups"
 	"Encargalo.app-api.go/internal/pkg/bycript"
+	"Encargalo.app-api.go/internal/pkg/cache"
 	"Encargalo.app-api.go/internal/pkg/cookie"
 	"Encargalo.app-api.go/internal/pkg/logs"
 	"Encargalo.app-api.go/internal/shared/adapters/postgres"
@@ -53,6 +54,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(postgres.NewPostgresConnection)
 	_ = Container.Provide(redis.NewRedisConnection)
 	_ = Container.Provide(redis.NewProducerRedisStreamConnection)
+	_ = Container.Provide(cache.NewCache)
 
 	_ = Container.Provide(router.New)
 

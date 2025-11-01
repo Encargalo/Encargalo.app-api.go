@@ -2,25 +2,47 @@ package repo
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log/slog"
+	"time"
 
+	"Encargalo.app-api.go/internal/pkg/cache"
 	"Encargalo.app-api.go/internal/products/domain/dtos"
 	"Encargalo.app-api.go/internal/products/domain/models"
 	"Encargalo.app-api.go/internal/products/domain/ports"
+	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
 
+const (
+	prefix_shop_cashe         = "prod_"
+	prefix_best_sellers_cache = "best_sellers_"
+)
+
 type productsRepo struct {
-	db *bun.DB
+	db    *bun.DB
+	cache cache.Cache
 }
 
-func NewProductsRepo(db *bun.DB) ports.ProductsRepo {
-	return &productsRepo{db}
+func NewProductsRepo(db *bun.DB, cache cache.Cache) ports.ProductsRepo {
+	return &productsRepo{db, cache}
 }
 
 func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.UUID) (dtos.CategoriesResponse, error) {
 
+	var prods dtos.CategoriesResponse
+
+	products, _ := p.cache.Get(ctx, prefix_shop_cashe+shopID.String())
+	if products != "" {
+		err := json.Unmarshal([]byte(products), &prods)
+		if err != nil {
+			slog.Error("error al hacer unmarshal de los products", "error", err)
+		}
+
+		return prods, nil
+	}
 	var categories models.Categories
 
 	if err := p.db.NewSelect().
@@ -31,12 +53,16 @@ func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.U
 		}).
 		Relation("Items.ItemRule").
 		Scan(ctx); err != nil {
-		fmt.Println(err.Error())
-		return nil, fmt.Errorf("unexpected error")
+		slog.Error("error al obtener los productos", "error", err)
+		return nil, errcustom.ErrUnexpectedError
 	}
 
 	if len(categories) == 0 {
-		return nil, fmt.Errorf("products not found")
+		return nil, errcustom.ErrNotFound
+	}
+
+	if err := p.cache.Set(ctx, prefix_shop_cashe+shopID.String(), categories.ToDomainDTO(), 1*1*time.Hour); err != nil {
+		slog.Error("error al guardar los productos en el cache", "error", err)
 	}
 
 	return categories.ToDomainDTO(), nil
@@ -94,6 +120,22 @@ func (p *productsRepo) SearchFlavorsByItemID(ctx context.Context, itemID uuid.UU
 
 func (p *productsRepo) SearchBestSellersByShopID(ctx context.Context, shopID uuid.UUID) (dtos.ItemsResponse, error) {
 
+	var items dtos.ItemsResponse
+
+	prod, err := p.cache.Get(ctx, prefix_best_sellers_cache+shopID.String())
+	if err != nil {
+		slog.Error("error al obtener los productos mas vendidos del cache", "error", err)
+	}
+
+	if prod != "" {
+		err := json.Unmarshal([]byte(prod), &items)
+		if err != nil {
+			slog.Error("error al hacer unmarshal de los productos mas vendidos", "error", err)
+		}
+
+		return items, nil
+	}
+
 	var topSeller models.Items
 
 	if err := p.db.NewSelect().
@@ -101,12 +143,16 @@ func (p *productsRepo) SearchBestSellersByShopID(ctx context.Context, shopID uui
 		Where("shop_id = ?", shopID).
 		Order("sold desc").Limit(5).
 		Scan(ctx); err != nil {
-		fmt.Println(err.Error())
-		return topSeller.ToDomainDTO(), fmt.Errorf("unexpected error")
+		slog.Error("error al obtener los productos mas vendidos", "error", err)
+		return topSeller.ToDomainDTO(), errcustom.ErrUnexpectedError
 	}
 
 	if len(topSeller) == 0 {
-		return topSeller.ToDomainDTO(), fmt.Errorf("top sellers not found")
+		return topSeller.ToDomainDTO(), errcustom.ErrNotFound
+	}
+
+	if err := p.cache.Set(ctx, prefix_best_sellers_cache+shopID.String(), topSeller.ToDomainDTO(), 1*1*time.Hour); err != nil {
+		slog.Error("error al guardar los productos mas vendidos en el cache", "error", err)
 	}
 
 	return topSeller.ToDomainDTO(), nil
