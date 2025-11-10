@@ -12,6 +12,7 @@ type Order struct {
 	ID            uuid.UUID `bun:"id,pk,type:uuid"`
 	ShopID        uuid.UUID `bun:"shop_id"`
 	CustomerID    uuid.UUID `bun:"customer_id"`
+	BatchID       uuid.UUID `bun:"batch_id,nullzero,type:uuid"`
 	Address       string    `bun:"address"`
 	Latitude      float64   `bun:"latitude"`
 	Longitude     float64   `bun:"longitude"`
@@ -22,10 +23,11 @@ type Order struct {
 	ItemsOrders []ItemsOrder `bun:"rel:has-many,join:id=order_id"`
 }
 
-func (o *Order) BuildDtoToModel(dto dtos.CreateOrder) {
+func (o *Order) BuildDtoToModel(dto dtos.CreateOrder, batchID uuid.UUID) {
 	o.ID = dto.ID
 	o.ShopID = dto.ShopID
 	o.CustomerID = dto.CustomerID
+	o.BatchID = batchID
 	o.Address = dto.Address.Address
 	o.Latitude = dto.Address.Latitude
 	o.Longitude = dto.Address.Longitude

@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"Encargalo.app-api.go/internal/shops/domain/dtos"
-	ports "Encargalo.app-api.go/internal/shops/domain/ports/shops"
+	ports "Encargalo.app-api.go/internal/shops/domain/ports"
 	"github.com/labstack/echo/v4"
 )
 

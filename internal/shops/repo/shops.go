@@ -15,7 +15,7 @@ import (
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	shopsDTO "Encargalo.app-api.go/internal/shops/domain/dtos"
 	"Encargalo.app-api.go/internal/shops/domain/models/shops"
-	ports "Encargalo.app-api.go/internal/shops/domain/ports/shops"
+	ports "Encargalo.app-api.go/internal/shops/domain/ports"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
@@ -206,4 +206,20 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 	}
 
 	return shops.ToDomainDTO(), nil
+}
+
+func (s *shopsRepo) SearchBatchByShopID(ctx context.Context, shopID uuid.UUID) (uuid.UUID, error) {
+
+	var batchID uuid.UUID
+
+	if err := s.db.NewSelect().Table("business.batches").Column("id").Where("shop_id = ? and opened = ?", shopID, true).
+		Scan(ctx, &batchID); err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			slog.Error("error al obtener el batch por shop id", "error", err)
+			return uuid.Nil, errcustom.ErrUnexpectedError
+		}
+		return uuid.Nil, errcustom.ErrNotFound
+	}
+
+	return batchID, nil
 }
