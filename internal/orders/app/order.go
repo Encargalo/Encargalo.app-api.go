@@ -8,16 +8,19 @@ import (
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
+	"Encargalo.app-api.go/internal/shared/errcustom"
+	shops "Encargalo.app-api.go/internal/shops/domain/ports"
 	"github.com/google/uuid"
 )
 
 type orderApp struct {
 	repo   ports.OrdersRepo
+	shops  shops.ShopsRepo
 	stream ports.RedisStream
 }
 
-func NewOrderApp(repo ports.OrdersRepo, stream ports.RedisStream) ports.OrdersApp {
-	return &orderApp{repo, stream}
+func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, stream ports.RedisStream) ports.OrdersApp {
+	return &orderApp{repo, shops, stream}
 }
 
 func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) error {
@@ -33,8 +36,15 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) err
 		}
 	}
 
+	batchID, err := o.shops.SearchBatchByShopID(ctx, order.ShopID)
+	if err != nil {
+		if errors.Is(err, errcustom.ErrNotFound) {
+			return errors.New("batch not open")
+		}
+	}
+
 	orderModel := new(models.Order)
-	orderModel.BuildDtoToModel(*order)
+	orderModel.BuildDtoToModel(*order, batchID)
 
 	items, err := o.repo.SearchItemsByID(ctx, orderModel.GetItemsID())
 	if err != nil {
