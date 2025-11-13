@@ -17,6 +17,7 @@ import (
 
 type Auth interface {
 	SignInCustomer(e echo.Context) error
+	SignInEmployee(e echo.Context) error
 	Logout(e echo.Context) error
 }
 
@@ -64,6 +65,41 @@ func (a *auth) SignInCustomer(e echo.Context) error {
 	e.SetCookie(cookie)
 
 	return e.JSON(http.StatusCreated, "session created")
+}
+
+func (a *auth) SignInEmployee(e echo.Context) error {
+
+	ctx := e.Request().Context()
+
+	var signIn request.SignInRequest
+
+	if err := e.Bind(&signIn); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := signIn.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	sessionID, err := a.svc.SignInEmployee(ctx, signIn.Phone, signIn.Password)
+	if err != nil {
+		if errors.Is(err, errcustom.ErrIncorrectAccessData) {
+			return echo.NewHTTPError(http.StatusUnprocessableEntity, err.Error())
+		}
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	jwtSession, err := a.jwt.CreateSession(sessionID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
+	}
+
+	cookie := a.cookie.CreateCookieSession(jwtSession)
+
+	e.SetCookie(cookie)
+
+	return e.JSON(http.StatusCreated, "session created")
+
 }
 
 // DeleteSession godoc

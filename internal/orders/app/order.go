@@ -3,7 +3,7 @@ package app
 import (
 	"context"
 	"errors"
-	"fmt"
+	"log/slog"
 
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/orders/domain/models"
@@ -17,10 +17,11 @@ type orderApp struct {
 	repo   ports.OrdersRepo
 	shops  shops.ShopsRepo
 	stream ports.RedisStream
+	socket AppManagerOrder
 }
 
-func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, stream ports.RedisStream) ports.OrdersApp {
-	return &orderApp{repo, shops, stream}
+func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, stream ports.RedisStream, socket AppManagerOrder) ports.OrdersApp {
+	return &orderApp{repo, shops, stream, socket}
 }
 
 func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) error {
@@ -69,15 +70,20 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) err
 		return err
 	}
 
+	err = o.socket.BroadcastOrder(*orderModel)
+	if err != nil {
+		slog.Error("error broadcasting order to websockets", "error", err)
+	}
+
 	if err := o.stream.Producer(ctx, buildToDataProduceOrder(*orderModel)); err != nil {
-		fmt.Println(err)
+		slog.Error("error producing order to stream", "error", err)
 	}
 
 	eventOrderCreateModel := models.DataEventOrderCreated{}
 	eventOrderCreateModel.BuidlToModelEvent(*orderModel)
 
 	if err := o.stream.EventOrderCreated(ctx, eventOrderCreateModel); err != nil {
-		fmt.Println(err)
+		slog.Error("error producing event order created to stream", "error", err)
 	}
 
 	return nil

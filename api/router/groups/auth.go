@@ -23,5 +23,6 @@ func (a *authGroup) Resource(g *echo.Echo) {
 	group := g.Group("/auth")
 
 	group.POST("/sign-in/customers", a.authHand.SignInCustomer)
+	group.POST("/sign-in/employee", a.authHand.SignInEmployee)
 	group.DELETE("/logout", a.authHand.Logout, a.middleAuth.Auth)
 }

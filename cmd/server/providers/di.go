@@ -35,6 +35,9 @@ import (
 	appOrders "Encargalo.app-api.go/internal/orders/app"
 	handOrders "Encargalo.app-api.go/internal/orders/handler"
 	repoOrders "Encargalo.app-api.go/internal/orders/repo"
+
+	appEmployee "Encargalo.app-api.go/internal/employee/app"
+	repoEmployee "Encargalo.app-api.go/internal/employee/repo"
 )
 
 var Container *dig.Container
@@ -73,6 +76,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(handProducts.NewProducsHandler)
 	_ = Container.Provide(handCustomer.NewCustomersAddressHandler)
 	_ = Container.Provide(handOrders.NewOrderHandler)
+	_ = Container.Provide(handOrders.New)
 
 	_ = Container.Provide(appCustomer.NewCustomerApp)
 	_ = Container.Provide(appAuth.NewAuthApp)
@@ -80,6 +84,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(appProducts.NewProductsApp)
 	_ = Container.Provide(appCustomer.NewCustomersAddressApp)
 	_ = Container.Provide(appOrders.NewOrderApp)
+	_ = Container.Provide(appOrders.NewManagerOrderApp)
 
 	_ = Container.Provide(repoAuth.NewAuthRepo)
 	_ = Container.Provide(repo.NewShopsRepository)
@@ -88,6 +93,9 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(repoCustomer.NewCustomersAddressRepo)
 	_ = Container.Provide(repoOrders.NewOrdersRepo)
 	_ = Container.Provide(repoOrders.NewRepositoryProducerStream)
+
+	_ = Container.Provide(appEmployee.New)
+	_ = Container.Provide(repoEmployee.New)
 
 	_ = Container.Provide(bycript.NewHashPassword)
 	_ = Container.Provide(jwt.NewSessionUtils)
