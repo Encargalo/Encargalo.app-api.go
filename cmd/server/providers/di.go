@@ -13,6 +13,7 @@ import (
 	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/jwt"
 	customerauth "Encargalo.app-api.go/internal/shared/middleware/customerAuth"
+	employeeAuth "Encargalo.app-api.go/internal/shared/middleware/employeeAuth"
 	requestinfo "Encargalo.app-api.go/internal/shared/middleware/requestInfo"
 	"Encargalo.app-api.go/internal/shops/app"
 	"Encargalo.app-api.go/internal/shops/handler"
@@ -69,6 +70,7 @@ func BuildContainer() *dig.Container {
 
 	_ = Container.Provide(requestinfo.NewRequestMiddleware)
 	_ = Container.Provide(customerauth.NewAuthMidlleware)
+	_ = Container.Provide(employeeAuth.NewAuthMidlleware)
 
 	_ = Container.Provide(handAuth.NewAuthHandler)
 	_ = Container.Provide(handCustomer.NewCustomersHandler)

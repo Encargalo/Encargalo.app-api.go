@@ -2,12 +2,20 @@ package handler
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 
+	"Encargalo.app-api.go/internal/auth/domain/models"
+	"Encargalo.app-api.go/internal/employee/domain/ports"
 	"Encargalo.app-api.go/internal/orders/app"
+	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
+)
+
+const (
+	roleEmployee = "Order Manager"
 )
 
 type ManagerOrder interface {
@@ -15,11 +23,12 @@ type ManagerOrder interface {
 }
 
 type managerOrder struct {
-	svc app.AppManagerOrder
+	svc  app.AppManagerOrder
+	svc2 ports.EmployeeApp
 }
 
-func New(svc app.AppManagerOrder) ManagerOrder {
-	return &managerOrder{svc}
+func New(svc app.AppManagerOrder, svc2 ports.EmployeeApp) ManagerOrder {
+	return &managerOrder{svc, svc2}
 }
 
 var upgrader = websocket.Upgrader{
@@ -27,6 +36,26 @@ var upgrader = websocket.Upgrader{
 }
 
 func (h *managerOrder) HandleWebSocket(c echo.Context) error {
+
+	ctx := c.Request().Context()
+
+	session, ok := ctx.Value("session").(models.ActiveSession)
+	if !ok {
+		slog.Error("No se encontró el usuario en el contexto")
+		return errcustom.ErrUnexpectedError
+	}
+
+	if session.UserType != roleEmployee {
+		slog.Error("Usuario no autorizado para acceder a esta ruta")
+		return echo.NewHTTPError(http.StatusForbidden, "usuario no autorizado")
+	}
+
+	employee, err := h.svc2.SearchEmployeeByID(ctx, session.UserID)
+	if err != nil {
+		slog.Error("Error al buscar el empleado:", slog.String("error", err.Error()))
+		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
+	}
+
 	conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
 		fmt.Println("Error al actualizar conexión:", err)
@@ -34,31 +63,23 @@ func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 	}
 	defer conn.Close()
 
-	fmt.Println("Cliente conectado")
-
-	shopID := uuid.New()
-
-	if err := h.svc.Register(shopID, conn); err != nil {
+	if err := h.svc.Register(employee.ShopID, conn); err != nil {
 		fmt.Println("Error registrando conexión:", err)
 		conn.WriteMessage(websocket.TextMessage, []byte("error al registrar conexión"))
 		return nil
 	}
-	defer h.svc.Unregister(shopID)
+	defer h.svc.Unregister(employee.ShopID)
 
 	conn.WriteMessage(websocket.TextMessage, []byte("registrado correctamente"))
 
 	for {
-		_, msg, err := conn.ReadMessage()
+		_, _, err := conn.ReadMessage()
 		if err != nil {
-			fmt.Println("Cliente desconectado:", err)
-			if shopID != uuid.Nil {
-				h.svc.Unregister(shopID)
+			if employee.ID != uuid.Nil {
+				h.svc.Unregister(employee.ShopID)
 			}
 			break
 		}
-
-		fmt.Println("Mensaje recibido:", string(msg))
-
 		continue
 	}
 

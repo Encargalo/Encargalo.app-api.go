@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"sync"
 
 	"Encargalo.app-api.go/internal/orders/domain/models"
@@ -31,7 +32,7 @@ func (s *appManagerOrder) Register(shopID uuid.UUID, conn *websocket.Conn) error
 	defer s.mu.Unlock()
 
 	s.connections[shopID] = conn
-	fmt.Println("Registrado local:", shopID)
+	slog.Info("Conectado local:", "shopID", shopID)
 	return nil
 }
 
