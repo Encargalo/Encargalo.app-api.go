@@ -6,9 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
+	"Encargalo.app-api.go/internal/shared/errcustom"
+	modelsBusiness "Encargalo.app-api.go/internal/shops/domain/models"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
@@ -112,5 +115,37 @@ func (o *orders) SearchAdditionsByID(ctx context.Context, additionID []uuid.UUID
 	}
 
 	return additions, err
+
+}
+
+func (o *orders) SearchOrderByBatchIsOpen(ctx context.Context, shopID uuid.UUID) ([]models.Order, error) {
+	var orders []models.Order
+	var batch modelsBusiness.Batch
+
+	err := o.db.NewSelect().
+		Model(&batch).
+		Where("shop_id = ? AND opened = TRUE", shopID).
+		Scan(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errcustom.ErrNotFound
+		}
+		slog.Error("SearchOrderByBatchIsOpen: failed to find open batch", "shopID", shopID, "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	err = o.db.NewSelect().
+		Model(&orders).
+		Where("batch_id = ?", batch.ID).
+		Scan(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errcustom.ErrNotFound
+		}
+		slog.Error("SearchOrderByBatchIsOpen: failed to find orders for open batch", "batchID", batch.ID, "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	return orders, nil
 
 }

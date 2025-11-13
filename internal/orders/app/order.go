@@ -17,11 +17,10 @@ type orderApp struct {
 	repo   ports.OrdersRepo
 	shops  shops.ShopsRepo
 	stream ports.RedisStream
-	socket AppManagerOrder
 }
 
-func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, stream ports.RedisStream, socket AppManagerOrder) ports.OrdersApp {
-	return &orderApp{repo, shops, stream, socket}
+func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, stream ports.RedisStream) ports.OrdersApp {
+	return &orderApp{repo, shops, stream}
 }
 
 func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) error {
@@ -70,11 +69,6 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) err
 		return err
 	}
 
-	err = o.socket.BroadcastOrder(*orderModel)
-	if err != nil {
-		slog.Error("error broadcasting order to websockets", "error", err)
-	}
-
 	if err := o.stream.Producer(ctx, buildToDataProduceOrder(*orderModel)); err != nil {
 		slog.Error("error producing order to stream", "error", err)
 	}
@@ -106,4 +100,8 @@ func buildToDataProduceOrder(items models.Order) []models.DataProduceOrder {
 	}
 
 	return dataProduceOrder
+}
+
+func (o *orderApp) SearchOrderByBatchIsOpen(ctx context.Context, shopID uuid.UUID) ([]models.Order, error) {
+	return o.repo.SearchOrderByBatchIsOpen(ctx, shopID)
 }

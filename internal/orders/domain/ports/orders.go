@@ -11,6 +11,7 @@ import (
 type OrdersApp interface {
 	CreateOrder(ctx context.Context, order *dtos.CreateOrder) error
 	SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*models.Order, error)
+	SearchOrderByBatchIsOpen(ctx context.Context, shopID uuid.UUID) ([]models.Order, error)
 }
 
 type OrdersRepo interface {
@@ -18,4 +19,5 @@ type OrdersRepo interface {
 	SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*models.Order, error)
 	SearchItemsByID(ctx context.Context, ItemsID []uuid.UUID) ([]models.Items, error)
 	SearchAdditionsByID(ctx context.Context, additionID []uuid.UUID) ([]models.Addition, error)
+	SearchOrderByBatchIsOpen(ctx context.Context, shopID uuid.UUID) ([]models.Order, error)
 }

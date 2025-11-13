@@ -63,7 +63,7 @@ func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 	}
 	defer conn.Close()
 
-	if err := h.svc.Register(employee.ShopID, conn); err != nil {
+	if err := h.svc.Register(ctx, employee.ShopID, conn); err != nil {
 		fmt.Println("Error registrando conexión:", err)
 		conn.WriteMessage(websocket.TextMessage, []byte("error al registrar conexión"))
 		return nil
