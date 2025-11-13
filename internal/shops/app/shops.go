@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"Encargalo.app-api.go/internal/shops/domain/dtos"
-	portsShops "Encargalo.app-api.go/internal/shops/domain/ports/shops"
+	portsShops "Encargalo.app-api.go/internal/shops/domain/ports"
 )
 
 type shopsApp struct {

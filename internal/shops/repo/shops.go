@@ -15,7 +15,7 @@ import (
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	shopsDTO "Encargalo.app-api.go/internal/shops/domain/dtos"
 	"Encargalo.app-api.go/internal/shops/domain/models/shops"
-	ports "Encargalo.app-api.go/internal/shops/domain/ports/shops"
+	ports "Encargalo.app-api.go/internal/shops/domain/ports"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
@@ -67,11 +67,12 @@ func (s *shopsRepo) GetAllShops(ctx context.Context, coords shopsDTO.Coords) (sh
 			) <= 4.5
 		`, coords.Latitude, coords.Longitude, coords.Latitude).
 			Scan(ctx); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return shopsDTO.ShopsResponse{}, errcustom.ErrNotFound
-			}
 			slog.Error("error al obtener los negocios", "error", err)
 			return shopsDTO.ShopsResponse{}, errcustom.ErrUnexpectedError
+		}
+
+		if len(shops) == 0 {
+			return shopsDTO.ShopsResponse{}, errcustom.ErrNotFound
 		}
 
 		if err = s.cache.Set(ctx, keyCache, shops.ToDomainDTO(), timeCache); err != nil {
@@ -96,11 +97,12 @@ func (s *shopsRepo) GetAllShops(ctx context.Context, coords shopsDTO.Coords) (sh
 
 	if err := s.db.NewSelect().Model(&shops).Order("score DESC").
 		Where("license_status = ?", "active").Scan(ctx); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return shopsDTO.ShopsResponse{}, errcustom.ErrNotFound
-		}
 		slog.Error("error al obtener los negocios", "error", err)
 		return shopsDTO.ShopsResponse{}, errcustom.ErrUnexpectedError
+	}
+
+	if len(shops) == 0 {
+		return shopsDTO.ShopsResponse{}, errcustom.ErrNotFound
 	}
 
 	if err = s.cache.Set(ctx, keyCache, shops.ToDomainDTO(), timeCache); err != nil {
@@ -117,7 +119,7 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 	keyCache := shops_all + criteria.Tag + lat + lon
 	timeCache := 1 * 2 * time.Minute
 
-	shops := new(shops.Shops)
+	var shops shops.Shops
 
 	if *config.Get().Limit.Status {
 
@@ -135,7 +137,7 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 		}
 
 		if err := s.db.NewSelect().
-			Model(shops).
+			Model(&shops).
 			Where("license_status = ?", "active").
 			Where(`
 			6371 * acos(
@@ -154,11 +156,12 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 				return sq
 			}).
 			Scan(ctx); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return shopsDTO.ShopsResponse{}, errcustom.ErrNotFound
-			}
 			slog.Error("error al obtener los negocios", "error", err)
 			return shopsDTO.ShopsResponse{}, errcustom.ErrUnexpectedError
+		}
+
+		if len(shops) == 0 {
+			return shopsDTO.ShopsResponse{}, errcustom.ErrNotFound
 		}
 
 		if err = s.cache.Set(ctx, keyCache, shops.ToDomainDTO(), timeCache); err != nil {
@@ -182,7 +185,7 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 	}
 
 	if err := s.db.NewSelect().
-		Model(shops).
+		Model(&shops).
 		Where("license_status = ?", "active").
 		WhereGroup("and", func(sq *bun.SelectQuery) *bun.SelectQuery {
 			if criteria.ID != uuid.Nil {
@@ -194,11 +197,12 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 			return sq
 		}).
 		Scan(ctx); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return shopsDTO.ShopsResponse{}, errcustom.ErrNotFound
-		}
 		slog.Error("error al obtener los negocios", "error", err)
 		return shopsDTO.ShopsResponse{}, errcustom.ErrUnexpectedError
+	}
+
+	if len(shops) == 0 {
+		return shopsDTO.ShopsResponse{}, errcustom.ErrNotFound
 	}
 
 	if err = s.cache.Set(ctx, keyCache, shops.ToDomainDTO(), timeCache); err != nil {
@@ -206,4 +210,20 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 	}
 
 	return shops.ToDomainDTO(), nil
+}
+
+func (s *shopsRepo) SearchBatchByShopID(ctx context.Context, shopID uuid.UUID) (uuid.UUID, error) {
+
+	var batchID uuid.UUID
+
+	if err := s.db.NewSelect().Table("business.batches").Column("id").Where("shop_id = ? and opened = ?", shopID, true).
+		Scan(ctx, &batchID); err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			slog.Error("error al obtener el batch por shop id", "error", err)
+			return uuid.Nil, errcustom.ErrUnexpectedError
+		}
+		return uuid.Nil, errcustom.ErrNotFound
+	}
+
+	return batchID, nil
 }
