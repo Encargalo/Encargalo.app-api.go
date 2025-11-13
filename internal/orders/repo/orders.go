@@ -135,7 +135,7 @@ func (o *orders) SearchOrderByBatchIsOpen(ctx context.Context, shopID uuid.UUID)
 	}
 
 	err = o.db.NewSelect().
-		Model(&orders).
+		Model(&orders).Relation("ItemsOrders").Relation("ItemsOrders.Additions").
 		Where("batch_id = ?", batch.ID).
 		Scan(ctx)
 	if err != nil {
