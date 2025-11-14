@@ -2,6 +2,7 @@ package models
 
 import (
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
+	"Encargalo.app-api.go/internal/products/domain/models"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
@@ -53,7 +54,7 @@ func (o *Order) GetItemsID() []uuid.UUID {
 
 }
 
-func (o *Order) SetPrices(items []Items) {
+func (o *Order) SetPrices(items models.Items) {
 
 	priceMap := make(map[uuid.UUID]int, len(items))
 	for _, item := range items {

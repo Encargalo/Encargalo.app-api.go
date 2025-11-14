@@ -25,5 +25,5 @@ func NewOrdersGroup(middle customerauth.AuthMiddleware, midleEmployee employeeau
 func (o *ordersGroup) Resource(g *echo.Echo) {
 	group := g.Group("/orders")
 	group.POST("", o.handlerOrders.CreateOrder, o.middle.Auth)
-	group.GET("/ws", o.hanlderManagerOrders.HandleWebSocket, o.midleEmployee.Auth)
+	group.GET("/manager", o.hanlderManagerOrders.HandleWebSocket, o.midleEmployee.Auth)
 }

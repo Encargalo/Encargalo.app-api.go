@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
@@ -37,6 +38,8 @@ func (s *appManagerOrder) Register(ctx context.Context, shopID uuid.UUID, conn *
 	s.mu.Lock()
 	s.connections[shopID] = conn
 	s.mu.Unlock()
+
+	go s.ping()
 
 	orders, err := s.svc.SearchOrderByBatchIsOpen(ctx, shopID)
 	if err != nil {
@@ -76,4 +79,19 @@ func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
 
 	defer s.mu.RUnlock()
 	return nil
+}
+
+func (s *appManagerOrder) ping() {
+
+	data, _ := json.Marshal("ping")
+
+	for id, conn := range s.connections {
+		if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
+			fmt.Printf("Error enviando mensaje a %s: %v\n", id, err)
+			continue
+		}
+		fmt.Println("ping enviado al local:", id)
+		time.Sleep(1 * time.Minute)
+		s.ping()
+	}
 }

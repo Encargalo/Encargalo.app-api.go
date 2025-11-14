@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"log/slog"
 
 	"Encargalo.app-api.go/internal/orders/domain/models"
@@ -14,6 +13,8 @@ import (
 	modelsBusiness "Encargalo.app-api.go/internal/shops/domain/models"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
+
+	items "Encargalo.app-api.go/internal/products/domain/models"
 )
 
 type orders struct {
@@ -29,12 +30,12 @@ func (o *orders) CreateOrder(ctx context.Context, order *models.Order) error {
 	if err := o.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 
 		if _, err := tx.NewInsert().Model(order).Exec(ctx); err != nil {
-			fmt.Println("error al insertar order: %w", err)
+			slog.Error("CreateOrder: failed to insert order", "orderID", order.ID, "error", err)
 			return err
 		}
 
 		if _, err := tx.NewInsert().Model(&order.ItemsOrders).Exec(ctx); err != nil {
-			fmt.Println("error al insertar items_orders: %w", err)
+			slog.Error("CreateOrder: failed to insert items_orders", "orderID", order.ID, "error", err)
 			return err
 		}
 
@@ -42,7 +43,7 @@ func (o *orders) CreateOrder(ctx context.Context, order *models.Order) error {
 
 			if len(v.Additions) != 0 {
 				if _, err := tx.NewInsert().Model(&v.Additions).Exec(ctx); err != nil {
-					fmt.Println("error al insertar el additions_order")
+					slog.Error("CreateOrder: failed to insert items_orders_additions", "orderID", order.ID, "error", err)
 					return err
 				}
 			}
@@ -67,7 +68,7 @@ func (o *orders) SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*mode
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errors.New("order not found")
 		}
-		log.Printf("SearchOrderByID: query failed for orderID=%s: %v", orderID, err)
+		slog.Error("SearchOrdersByID: failed to find order", "orderID", orderID, "error", err)
 		return nil, errors.New("unexpected error")
 	}
 
@@ -75,9 +76,9 @@ func (o *orders) SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*mode
 
 }
 
-func (o *orders) SearchItemsByID(ctx context.Context, ItemsID []uuid.UUID) ([]models.Items, error) {
+func (o *orders) SearchItemsByID(ctx context.Context, ItemsID []uuid.UUID) (items.Items, error) {
 
-	var items []models.Items
+	var items items.Items
 
 	err := o.db.NewSelect().Model(&items).Where("id in (?)", bun.In(ItemsID)).Scan(ctx, &items)
 	if err != nil {

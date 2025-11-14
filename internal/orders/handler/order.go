@@ -2,8 +2,10 @@ package handler
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 
+	"Encargalo.app-api.go/internal/orders/app"
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
 	"github.com/google/uuid"
@@ -15,11 +17,12 @@ type OrderHandler interface {
 }
 
 type orderHandler struct {
-	svc ports.OrdersApp
+	svc  ports.OrdersApp
+	svc2 app.AppManagerOrder
 }
 
-func NewOrderHandler(svc ports.OrdersApp) OrderHandler {
-	return &orderHandler{svc}
+func NewOrderHandler(svc ports.OrdersApp, svc2 app.AppManagerOrder) OrderHandler {
+	return &orderHandler{svc, svc2}
 }
 
 // CreateOrder godoc
@@ -55,7 +58,8 @@ func (o *orderHandler) CreateOrder(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	if err := o.svc.CreateOrder(ctx, &order); err != nil {
+	orderModel, err := o.svc.CreateOrder(ctx, &order)
+	if err != nil {
 		switch err.Error() {
 		case "order already exists":
 			return echo.NewHTTPError(http.StatusConflict, err.Error())
@@ -64,6 +68,10 @@ func (o *orderHandler) CreateOrder(c echo.Context) error {
 		default:
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
+	}
+
+	if err = o.svc2.BroadcastOrder(*orderModel); err != nil {
+		slog.Error("error broadcasting order to websockets", "error", err)
 	}
 
 	return c.JSON(http.StatusCreated, "Order created successfully")
