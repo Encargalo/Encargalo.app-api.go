@@ -3,7 +3,7 @@ package app
 import (
 	"context"
 	"errors"
-	"fmt"
+	"log/slog"
 
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/orders/domain/models"
@@ -23,23 +23,23 @@ func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, stream ports.Redi
 	return &orderApp{repo, shops, stream}
 }
 
-func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) error {
+func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*models.Order, error) {
 
 	ord, err := o.SearchOrdersByID(ctx, order.ID)
 	if ord != nil {
-		return errors.New("order already exists")
+		return &models.Order{}, errors.New("order already exists")
 	}
 
 	if err != nil {
 		if err.Error() != "order not found" {
-			return err
+			return &models.Order{}, err
 		}
 	}
 
 	batchID, err := o.shops.SearchBatchByShopID(ctx, order.ShopID)
 	if err != nil {
 		if errors.Is(err, errcustom.ErrNotFound) {
-			return errors.New("batch not open")
+			return &models.Order{}, errors.New("batch not open")
 		}
 	}
 
@@ -48,7 +48,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) err
 
 	items, err := o.repo.SearchItemsByID(ctx, orderModel.GetItemsID())
 	if err != nil {
-		return err
+		return &models.Order{}, err
 	}
 
 	orderModel.SetPrices(items)
@@ -57,7 +57,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) err
 		if v.Additions != nil {
 			additions, err := o.repo.SearchAdditionsByID(ctx, v.GetAdditionsID())
 			if err != nil {
-				return err
+				return &models.Order{}, err
 			}
 
 			orderModel.SetAdditionalsPrices(additions)
@@ -66,21 +66,21 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) err
 
 	err = o.repo.CreateOrder(ctx, orderModel)
 	if err != nil {
-		return err
+		return &models.Order{}, err
 	}
 
 	if err := o.stream.Producer(ctx, buildToDataProduceOrder(*orderModel)); err != nil {
-		fmt.Println(err)
+		slog.Error("error producing order to stream", "error", err)
 	}
 
 	eventOrderCreateModel := models.DataEventOrderCreated{}
 	eventOrderCreateModel.BuidlToModelEvent(*orderModel)
 
 	if err := o.stream.EventOrderCreated(ctx, eventOrderCreateModel); err != nil {
-		fmt.Println(err)
+		slog.Error("error producing event order created to stream", "error", err)
 	}
 
-	return nil
+	return orderModel, nil
 }
 
 func (o *orderApp) SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*models.Order, error) {
@@ -100,4 +100,8 @@ func buildToDataProduceOrder(items models.Order) []models.DataProduceOrder {
 	}
 
 	return dataProduceOrder
+}
+
+func (o *orderApp) SearchOrderByBatchIsOpen(ctx context.Context, shopID uuid.UUID) ([]models.Order, error) {
+	return o.repo.SearchOrderByBatchIsOpen(ctx, shopID)
 }

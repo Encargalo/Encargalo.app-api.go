@@ -778,6 +778,9 @@ const docTemplate = `{
             "properties": {
                 "addition_id": {
                     "type": "string"
+                },
+                "name": {
+                    "type": "string"
                 }
             }
         },
@@ -785,7 +788,8 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "amount",
-                "item_id"
+                "item_id",
+                "name"
             ],
             "properties": {
                 "additions": {
@@ -797,7 +801,16 @@ const docTemplate = `{
                 "amount": {
                     "type": "integer"
                 },
+                "flavors": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
                 "item_id": {
+                    "type": "string"
+                },
+                "name": {
                     "type": "string"
                 },
                 "observation": {

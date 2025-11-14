@@ -5,12 +5,16 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
+	"Encargalo.app-api.go/internal/shared/errcustom"
+	modelsBusiness "Encargalo.app-api.go/internal/shops/domain/models"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
+
+	items "Encargalo.app-api.go/internal/products/domain/models"
 )
 
 type orders struct {
@@ -26,12 +30,12 @@ func (o *orders) CreateOrder(ctx context.Context, order *models.Order) error {
 	if err := o.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 
 		if _, err := tx.NewInsert().Model(order).Exec(ctx); err != nil {
-			fmt.Println("error al insertar order: %w", err)
+			slog.Error("CreateOrder: failed to insert order", "orderID", order.ID, "error", err)
 			return err
 		}
 
 		if _, err := tx.NewInsert().Model(&order.ItemsOrders).Exec(ctx); err != nil {
-			fmt.Println("error al insertar items_orders: %w", err)
+			slog.Error("CreateOrder: failed to insert items_orders", "orderID", order.ID, "error", err)
 			return err
 		}
 
@@ -39,7 +43,7 @@ func (o *orders) CreateOrder(ctx context.Context, order *models.Order) error {
 
 			if len(v.Additions) != 0 {
 				if _, err := tx.NewInsert().Model(&v.Additions).Exec(ctx); err != nil {
-					fmt.Println("error al insertar el additions_order")
+					slog.Error("CreateOrder: failed to insert items_orders_additions", "orderID", order.ID, "error", err)
 					return err
 				}
 			}
@@ -64,7 +68,7 @@ func (o *orders) SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*mode
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errors.New("order not found")
 		}
-		log.Printf("SearchOrderByID: query failed for orderID=%s: %v", orderID, err)
+		slog.Error("SearchOrdersByID: failed to find order", "orderID", orderID, "error", err)
 		return nil, errors.New("unexpected error")
 	}
 
@@ -72,9 +76,9 @@ func (o *orders) SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*mode
 
 }
 
-func (o *orders) SearchItemsByID(ctx context.Context, ItemsID []uuid.UUID) ([]models.Items, error) {
+func (o *orders) SearchItemsByID(ctx context.Context, ItemsID []uuid.UUID) (items.Items, error) {
 
-	var items []models.Items
+	var items items.Items
 
 	err := o.db.NewSelect().Model(&items).Where("id in (?)", bun.In(ItemsID)).Scan(ctx, &items)
 	if err != nil {
@@ -112,5 +116,37 @@ func (o *orders) SearchAdditionsByID(ctx context.Context, additionID []uuid.UUID
 	}
 
 	return additions, err
+
+}
+
+func (o *orders) SearchOrderByBatchIsOpen(ctx context.Context, shopID uuid.UUID) ([]models.Order, error) {
+	var orders []models.Order
+	var batch modelsBusiness.Batch
+
+	err := o.db.NewSelect().
+		Model(&batch).
+		Where("shop_id = ? AND opened = TRUE", shopID).
+		Scan(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errcustom.ErrNotFound
+		}
+		slog.Error("SearchOrderByBatchIsOpen: failed to find open batch", "shopID", shopID, "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	err = o.db.NewSelect().
+		Model(&orders).Relation("ItemsOrders").Relation("ItemsOrders.Additions").
+		Where("batch_id = ?", batch.ID).
+		Scan(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errcustom.ErrNotFound
+		}
+		slog.Error("SearchOrderByBatchIsOpen: failed to find orders for open batch", "batchID", batch.ID, "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	return orders, nil
 
 }
