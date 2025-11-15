@@ -140,11 +140,12 @@ func (o *orders) SearchOrderByBatchIsOpen(ctx context.Context, shopID uuid.UUID)
 		Where("batch_id = ?", batch.ID).
 		Scan(ctx)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errcustom.ErrNotFound
-		}
 		slog.Error("SearchOrderByBatchIsOpen: failed to find orders for open batch", "batchID", batch.ID, "error", err)
 		return nil, errcustom.ErrUnexpectedError
+	}
+
+	if len(orders) == 0 {
+		return nil, errcustom.ErrNotFound
 	}
 
 	return orders, nil

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -39,14 +38,13 @@ func (s *appManagerOrder) Register(ctx context.Context, shopID uuid.UUID, conn *
 	s.connections[shopID] = conn
 	s.mu.Unlock()
 
-	go s.ping()
-
 	orders, err := s.svc.SearchOrderByBatchIsOpen(ctx, shopID)
 	if err != nil {
-		if errors.Is(err, errcustom.ErrNotFound) {
-			slog.Info("No hay órdenes abiertas para el local:", "shopID", shopID)
+		if !errors.Is(err, errcustom.ErrNotFound) {
+			slog.Error("Error al buscar órdenes abiertas para el local:", "shopID", shopID, "error", err)
+			return err
 		}
-		return err
+		slog.Info("No hay órdenes abiertas para el local:", "shopID", shopID)
 	}
 
 	for _, v := range orders {
@@ -54,14 +52,18 @@ func (s *appManagerOrder) Register(ctx context.Context, shopID uuid.UUID, conn *
 			slog.Error("Error al enviar orden abierta al local:", "shopID", shopID, "error", err)
 		}
 	}
+
+	go s.ping(conn)
+
 	return nil
 }
+
 func (s *appManagerOrder) Unregister(shopID uuid.UUID) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	delete(s.connections, shopID)
-	fmt.Println("Desconectado local:", shopID)
+	slog.Info("Conexión cerrada para el local:", "shopID", shopID)
 }
 
 func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
@@ -71,27 +73,35 @@ func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
 
 	for id, conn := range s.connections {
 		if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
-			fmt.Printf("Error enviando mensaje a %s: %v\n", id, err)
+			slog.Error("Error enviando mensaje al local:", "shopID", id, "error", err)
 			continue
 		}
-		fmt.Println("Orden enviada al local:", id)
+		slog.Info("Orden enviada al local:", "shopID", id, "orderID", order.ID)
 	}
 
 	defer s.mu.RUnlock()
 	return nil
 }
 
-func (s *appManagerOrder) ping() {
+func (s *appManagerOrder) ping(conn *websocket.Conn) {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
 
-	data, _ := json.Marshal("ping")
+	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return nil
+	})
 
-	for id, conn := range s.connections {
-		if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
-			fmt.Printf("Error enviando mensaje a %s: %v\n", id, err)
-			continue
+	for range ticker.C {
+		if err := conn.WriteControl(
+			websocket.PingMessage,
+			[]byte("ping"),
+			time.Now().Add(5*time.Second),
+		); err != nil {
+			slog.Error("Error enviando ping:", "error", err)
+			conn.Close()
+			return
 		}
-		fmt.Println("ping enviado al local:", id)
-		time.Sleep(1 * time.Minute)
-		s.ping()
 	}
 }
