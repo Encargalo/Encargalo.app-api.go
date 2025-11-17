@@ -22,20 +22,20 @@ type AppManagerOrder interface {
 }
 type appManagerOrder struct {
 	mu          sync.RWMutex
-	connections map[uuid.UUID]*websocket.Conn
+	connections map[uuid.UUID][]*websocket.Conn
 	svc         ports.OrdersApp
 }
 
 func NewManagerOrderApp(svc ports.OrdersApp) AppManagerOrder {
 	return &appManagerOrder{
-		connections: make(map[uuid.UUID]*websocket.Conn),
+		connections: make(map[uuid.UUID][]*websocket.Conn),
 		svc:         svc,
 	}
 }
 
 func (s *appManagerOrder) Register(ctx context.Context, shopID uuid.UUID, conn *websocket.Conn) error {
 	s.mu.Lock()
-	s.connections[shopID] = conn
+	s.connections[shopID] = append(s.connections[shopID], conn)
 	s.mu.Unlock()
 
 	orders, err := s.svc.SearchOrderByBatchIsOpen(ctx, shopID)
@@ -67,19 +67,28 @@ func (s *appManagerOrder) Unregister(shopID uuid.UUID) {
 }
 
 func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
-	s.mu.RLock()
-
-	data, _ := json.Marshal(order)
-
-	for id, conn := range s.connections {
-		if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
-			slog.Error("Error enviando mensaje al local:", "shopID", id, "error", err)
-			continue
-		}
-		slog.Info("Orden enviada al local:", "shopID", id, "orderID", order.ID)
+	data, err := json.Marshal(order)
+	if err != nil {
+		return err
 	}
 
-	defer s.mu.RUnlock()
+	s.mu.RLock()
+	conns, exists := s.connections[order.ShopID]
+	s.mu.RUnlock()
+
+	if !exists {
+		slog.Warn("No existen conexiones activas para el local", "shopID", order.ShopID)
+		return nil
+	}
+
+	for _, conn := range conns {
+		if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
+			slog.Error("Error enviando mensaje", "shopID", order.ShopID, "error", err)
+			continue
+		}
+	}
+
+	slog.Info("Orden enviada a todas las conexiones", "shopID", order.ShopID, "total", len(conns))
 	return nil
 }
 

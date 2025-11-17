@@ -18,6 +18,7 @@ type Order struct {
 	Latitude      float64   `bun:"latitude"`
 	Longitude     float64   `bun:"longitude"`
 	MethodPayment string    `bun:"method_payment"`
+	Status        string    `bun:"status"`
 	DeliveryFee   int       `bun:"delivery_fee"`
 	TotalPrice    int       `bun:"total_price"`
 
@@ -33,6 +34,7 @@ func (o *Order) BuildDtoToModel(dto dtos.CreateOrder, batchID uuid.UUID) {
 	o.Latitude = dto.Address.Latitude
 	o.Longitude = dto.Address.Longitude
 	o.MethodPayment = dto.MethodPayment
+	o.Status = "Pendiente"
 	o.DeliveryFee = 0
 	o.ItemsOrders = make([]ItemsOrder, len(dto.CreateItemsOrder))
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strings"
 
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/orders/domain/models"
@@ -87,8 +88,44 @@ func (o *orderApp) SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*mo
 	return o.repo.SearchOrdersByID(ctx, orderID)
 }
 
-func buildToDataProduceOrder(items models.Order) []models.DataProduceOrder {
+func (o *orderApp) SearchOrderByBatchIsOpen(ctx context.Context, shopID uuid.UUID) ([]models.Order, error) {
+	return o.repo.SearchOrderByBatchIsOpen(ctx, shopID)
+}
 
+func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string) (models.Order, error) {
+	order, err := o.SearchOrdersByID(ctx, orderID)
+	if err != nil {
+		return models.Order{}, err
+	}
+
+	status = strings.TrimSpace(status)
+	method := strings.TrimSpace(order.MethodPayment)
+
+	rules := map[string]map[string]string{
+		"Nequi": {
+			"Aceptado": "En Espera Del Comprobante De Pago",
+		},
+		"Efectivo": {
+			"Aceptado": "En Preparacion",
+		},
+	}
+
+	if methodRules, exists := rules[method]; exists {
+		if newStatus, ok := methodRules[status]; ok {
+			status = newStatus
+		}
+	}
+	if err := o.repo.UpdateOrderStatus(ctx, orderID, status); err != nil {
+		return models.Order{}, err
+	}
+
+	order.Status = status
+
+	return *order, nil
+
+}
+
+func buildToDataProduceOrder(items models.Order) []models.DataProduceOrder {
 	dataProduceOrder := []models.DataProduceOrder{}
 
 	for _, item := range items.ItemsOrders {
@@ -100,8 +137,4 @@ func buildToDataProduceOrder(items models.Order) []models.DataProduceOrder {
 	}
 
 	return dataProduceOrder
-}
-
-func (o *orderApp) SearchOrderByBatchIsOpen(ctx context.Context, shopID uuid.UUID) ([]models.Order, error) {
-	return o.repo.SearchOrderByBatchIsOpen(ctx, shopID)
 }

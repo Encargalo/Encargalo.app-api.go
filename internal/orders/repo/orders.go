@@ -151,3 +151,16 @@ func (o *orders) SearchOrderByBatchIsOpen(ctx context.Context, shopID uuid.UUID)
 	return orders, nil
 
 }
+
+func (o *orders) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string) error {
+	_, err := o.db.NewUpdate().Model(&models.Order{}).
+		Set("status = ?", status).
+		Where("id = ?", orderID).
+		Exec(ctx)
+	if err != nil {
+		slog.Error("UpdateOrderStatus: failed to update order status", "orderID", orderID, "error", err)
+		return err
+	}
+
+	return nil
+}
