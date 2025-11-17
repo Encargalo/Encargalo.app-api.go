@@ -115,6 +115,7 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 			status = newStatus
 		}
 	}
+
 	if err := o.repo.UpdateOrderStatus(ctx, orderID, status); err != nil {
 		return models.Order{}, err
 	}
