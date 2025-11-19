@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
@@ -140,13 +141,32 @@ func (o *orders) SearchOrderByBatchIsOpen(ctx context.Context, shopID uuid.UUID)
 		Where("batch_id = ?", batch.ID).
 		Scan(ctx)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errcustom.ErrNotFound
-		}
 		slog.Error("SearchOrderByBatchIsOpen: failed to find orders for open batch", "batchID", batch.ID, "error", err)
 		return nil, errcustom.ErrUnexpectedError
 	}
 
+	if len(orders) == 0 {
+		return nil, errcustom.ErrNotFound
+	}
+
 	return orders, nil
 
+}
+
+func (o *orders) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string) error {
+	q := o.db.NewUpdate().Model(&models.Order{}).
+		Set("status = ?", status).
+		Where("id = ?", orderID)
+
+	if status == "Cancelado" {
+		q = q.Set("canceled_at = ?", time.Now())
+	}
+
+	if _, err := q.Exec(ctx); err != nil {
+		slog.Error("UpdateOrderStatus: failed to update order status",
+			"orderID", orderID, "error", err)
+		return err
+	}
+
+	return nil
 }
