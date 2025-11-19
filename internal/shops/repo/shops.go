@@ -104,9 +104,6 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 
 	cacheTTL := 2 * time.Minute // 1*2*time.Minute → 2 min igual
 
-	// -------------------------------------
-	// 1. Intentar obtener del cache
-	// -------------------------------------
 	if cached, err := s.cache.Get(ctx, keyCache); err == nil && cached != "" {
 		var resp shopsDTO.ShopsResponse
 		if err := json.Unmarshal([]byte(cached), &resp); err == nil {
@@ -115,16 +112,12 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 		slog.Error("error al deserializar cache de negocios", "error", err)
 	}
 
-	// -------------------------------------
-	// 2. Preparar query
-	// -------------------------------------
 	var shops shops.Shops
 
 	q := s.db.NewSelect().
 		Model(&shops).
 		Where("license_status = ?", "active")
 
-	// Filtros opcionales
 	if criteria.ID != uuid.Nil {
 		q.Where("id = ?", criteria.ID)
 	}
@@ -132,7 +125,6 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 		q.Where("tag = ?", criteria.Tag)
 	}
 
-	// Distancia solo si está habilitada la limitación
 	if *config.Get().Limit.Status {
 		q.Where("latitude IS NOT NULL AND longitude IS NOT NULL").
 			Where(`
@@ -144,9 +136,6 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 	`, coords.Latitude, coords.Longitude, coords.Latitude)
 	}
 
-	// -------------------------------------
-	// 3. Ejecutar query
-	// -------------------------------------
 	if err := q.Scan(ctx); err != nil {
 		slog.Error("error al obtener los negocios", "error", err)
 		return shopsDTO.ShopsResponse{}, errcustom.ErrUnexpectedError
@@ -163,9 +152,6 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 
 	resp := shops.ToDomainDTO(result)
 
-	// -------------------------------------
-	// 4. Guardar en cache
-	// -------------------------------------
 	if err := s.cache.Set(ctx, keyCache, resp, cacheTTL); err != nil {
 		slog.Error("error al guardar negocios en cache", "error", err)
 	}
@@ -193,9 +179,6 @@ func calculateDistances(coords shopsDTO.Coords, shopsResult *shops.Shops) ([]ent
 
 	origins := fmt.Sprintf("%f,%f", coords.Latitude, coords.Longitude)
 
-	// Slices paralelos:
-	// - Uno solo guarda IDs
-	// - Otro solo las coordenadas
 	var shopIDs []uuid.UUID
 	var destinationsRaw []string
 
