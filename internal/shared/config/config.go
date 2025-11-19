@@ -27,6 +27,7 @@ type Config struct {
 	JWT         JWT         `env:"jwt"`
 	Slack       Slack       `env:"slack"`
 	Limit       Limit       `env:"limit"`
+	Google      Google      `env:"google"`
 }
 
 type Server struct {
@@ -65,6 +66,10 @@ type Slack struct {
 
 type Limit struct {
 	Status *bool `validate:"required" env:"status"`
+}
+
+type Google struct {
+	Matrix string `validate:"required" env:"matrix"`
 }
 
 func Environments() {

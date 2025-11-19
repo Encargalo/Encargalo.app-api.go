@@ -949,14 +949,23 @@ const docTemplate = `{
                 "banner": {
                     "type": "string"
                 },
+                "delivery_fee": {
+                    "type": "integer"
+                },
                 "home_phone": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
                 },
+                "latitude": {
+                    "type": "number"
+                },
                 "logo": {
                     "type": "string"
+                },
+                "longitude": {
+                    "type": "number"
                 },
                 "name": {
                     "type": "string"
@@ -969,6 +978,9 @@ const docTemplate = `{
                 },
                 "tag": {
                     "type": "string"
+                },
+                "time": {
+                    "type": "integer"
                 },
                 "type": {
                     "type": "string"

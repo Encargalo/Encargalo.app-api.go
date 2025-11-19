@@ -3,8 +3,13 @@ package repo
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"log/slog"
+	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"context"
@@ -14,6 +19,7 @@ import (
 	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	shopsDTO "Encargalo.app-api.go/internal/shops/domain/dtos"
+	"Encargalo.app-api.go/internal/shops/domain/entity"
 	"Encargalo.app-api.go/internal/shops/domain/models/shops"
 	ports "Encargalo.app-api.go/internal/shops/domain/ports"
 	"github.com/google/uuid"
@@ -38,66 +44,37 @@ func (s *shopsRepo) GetAllShops(ctx context.Context, coords shopsDTO.Coords) (sh
 	lat := strconv.FormatFloat(coords.Latitude, 'f', -1, 64)
 	lon := strconv.FormatFloat(coords.Longitude, 'f', -1, 64)
 	keyCache := shops_all + lat + lon
-	timeCache := 1 * 2 * time.Minute
+
+	cacheTTL := 2 * time.Minute
+
+	if cached, err := s.cache.Get(ctx, keyCache); err == nil && cached != "" {
+		var resp shopsDTO.ShopsResponse
+		if err := json.Unmarshal([]byte(cached), &resp); err == nil {
+			return resp, nil
+		}
+		slog.Error("error al deserializar negocios del cache", "error", err)
+	}
 
 	var shops shops.Shops
 
+	q := s.db.NewSelect().
+		Model(&shops).
+		Order("score DESC").
+		Where("license_status = ?", "active")
+
 	if *config.Get().Limit.Status {
-
-		shopCache, err := s.cache.Get(ctx, keyCache)
-		if err != nil {
-			slog.Error("error al obtener los negocios del cache", "error", err)
-		}
-
-		if shopCache != "" {
-			var shops shopsDTO.ShopsResponse
-			if err := json.Unmarshal([]byte(shopCache), &shops); err != nil {
-				slog.Error("error al deserializar los negocios del cache", "error", err)
-			}
-			return shops, nil
-		}
-
-		if err := s.db.NewSelect().Model(&shops).Order("score DESC").
-			Where("license_status = ?", "active").
+		q.Where("latitude IS NOT NULL AND longitude IS NOT NULL").
 			Where(`
-			6371 * acos(
-				cos(radians(?)) * cos(radians(latitude)) *
-				cos(radians(longitude) - radians(?)) +
-				sin(radians(?)) * sin(radians(latitude))
-			) <= 4.5
-		`, coords.Latitude, coords.Longitude, coords.Latitude).
-			Scan(ctx); err != nil {
-			slog.Error("error al obtener los negocios", "error", err)
-			return shopsDTO.ShopsResponse{}, errcustom.ErrUnexpectedError
-		}
-
-		if len(shops) == 0 {
-			return shopsDTO.ShopsResponse{}, errcustom.ErrNotFound
-		}
-
-		if err = s.cache.Set(ctx, keyCache, shops.ToDomainDTO(), timeCache); err != nil {
-			slog.Error("error al guardar los negocios en el cache", "error", err)
-		}
-
-		return shops.ToDomainDTO(), nil
+		6371 * acos(
+			cos(radians(?)) * cos(radians(latitude)) *
+			cos(radians(longitude) - radians(?)) +
+			sin(radians(?)) * sin(radians(latitude))
+		) <= coverage
+	`, coords.Latitude, coords.Longitude, coords.Latitude)
 	}
 
-	shopCache, err := s.cache.Get(ctx, keyCache)
-	if err != nil {
-		slog.Error("error al obtener los negocios del cache", "error", err)
-	}
-
-	if shopCache != "" {
-		var shops shopsDTO.ShopsResponse
-		if err := json.Unmarshal([]byte(shopCache), &shops); err != nil {
-			slog.Error("error al deserializar los negocios del cache", "error", err)
-		}
-		return shops, nil
-	}
-
-	if err := s.db.NewSelect().Model(&shops).Order("score DESC").
-		Where("license_status = ?", "active").Scan(ctx); err != nil {
-		slog.Error("error al obtener los negocios", "error", err)
+	if err := q.Scan(ctx); err != nil {
+		slog.Error("error al obtener negocios", "error", err)
 		return shopsDTO.ShopsResponse{}, errcustom.ErrUnexpectedError
 	}
 
@@ -105,11 +82,18 @@ func (s *shopsRepo) GetAllShops(ctx context.Context, coords shopsDTO.Coords) (sh
 		return shopsDTO.ShopsResponse{}, errcustom.ErrNotFound
 	}
 
-	if err = s.cache.Set(ctx, keyCache, shops.ToDomainDTO(), timeCache); err != nil {
-		slog.Error("error al guardar los negocios en el cache", "error", err)
+	result, err := calculateDistances(coords, &shops)
+	if err != nil {
+		slog.Error("error al calcular distancias", "error", err)
 	}
 
-	return shops.ToDomainDTO(), nil
+	resp := shops.ToDomainDTO(result)
+
+	if err := s.cache.Set(ctx, keyCache, resp, cacheTTL); err != nil {
+		slog.Error("error al guardar negocios en cache", "error", err)
+	}
+
+	return resp, nil
 }
 
 func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShopsByID, coords shopsDTO.Coords) (shopsDTO.ShopsResponse, error) {
@@ -117,86 +101,53 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 	lat := strconv.FormatFloat(coords.Latitude, 'f', -1, 64)
 	lon := strconv.FormatFloat(coords.Longitude, 'f', -1, 64)
 	keyCache := shops_all + criteria.Tag + lat + lon
-	timeCache := 1 * 2 * time.Minute
 
+	cacheTTL := 2 * time.Minute // 1*2*time.Minute → 2 min igual
+
+	// -------------------------------------
+	// 1. Intentar obtener del cache
+	// -------------------------------------
+	if cached, err := s.cache.Get(ctx, keyCache); err == nil && cached != "" {
+		var resp shopsDTO.ShopsResponse
+		if err := json.Unmarshal([]byte(cached), &resp); err == nil {
+			return resp, nil
+		}
+		slog.Error("error al deserializar cache de negocios", "error", err)
+	}
+
+	// -------------------------------------
+	// 2. Preparar query
+	// -------------------------------------
 	var shops shops.Shops
 
-	if *config.Get().Limit.Status {
-
-		shopCache, err := s.cache.Get(ctx, keyCache)
-		if err != nil {
-			slog.Error("error al obtener los negocios del cache", "error", err)
-		}
-
-		if shopCache != "" {
-			var shops shopsDTO.ShopsResponse
-			if err := json.Unmarshal([]byte(shopCache), &shops); err != nil {
-				slog.Error("error al deserializar los negocios del cache", "error", err)
-			}
-			return shops, nil
-		}
-
-		if err := s.db.NewSelect().
-			Model(&shops).
-			Where("license_status = ?", "active").
-			Where(`
-			6371 * acos(
-				cos(radians(?)) * cos(radians(latitude)) *
-				cos(radians(longitude) - radians(?)) +
-				sin(radians(?)) * sin(radians(latitude))
-			) <= 4.5
-		`, coords.Latitude, coords.Longitude, coords.Latitude).
-			WhereGroup("and", func(sq *bun.SelectQuery) *bun.SelectQuery {
-				if criteria.ID != uuid.Nil {
-					sq = sq.Where("id = ?", criteria.ID)
-				}
-				if criteria.Tag != "" {
-					sq = sq.Where("tag = ?", criteria.Tag)
-				}
-				return sq
-			}).
-			Scan(ctx); err != nil {
-			slog.Error("error al obtener los negocios", "error", err)
-			return shopsDTO.ShopsResponse{}, errcustom.ErrUnexpectedError
-		}
-
-		if len(shops) == 0 {
-			return shopsDTO.ShopsResponse{}, errcustom.ErrNotFound
-		}
-
-		if err = s.cache.Set(ctx, keyCache, shops.ToDomainDTO(), timeCache); err != nil {
-			slog.Error("error al guardar los negocios en el cache", "error", err)
-		}
-
-		return shops.ToDomainDTO(), nil
-	}
-
-	shopCache, err := s.cache.Get(ctx, keyCache)
-	if err != nil {
-		slog.Error("error al obtener los negocios del cache", "error", err)
-	}
-
-	if shopCache != "" {
-		var shops shopsDTO.ShopsResponse
-		if err := json.Unmarshal([]byte(shopCache), &shops); err != nil {
-			slog.Error("error al deserializar los negocios del cache", "error", err)
-		}
-		return shops, nil
-	}
-
-	if err := s.db.NewSelect().
+	q := s.db.NewSelect().
 		Model(&shops).
-		Where("license_status = ?", "active").
-		WhereGroup("and", func(sq *bun.SelectQuery) *bun.SelectQuery {
-			if criteria.ID != uuid.Nil {
-				sq = sq.Where("id = ?", criteria.ID)
-			}
-			if criteria.Tag != "" {
-				sq = sq.Where("tag = ?", criteria.Tag)
-			}
-			return sq
-		}).
-		Scan(ctx); err != nil {
+		Where("license_status = ?", "active")
+
+	// Filtros opcionales
+	if criteria.ID != uuid.Nil {
+		q.Where("id = ?", criteria.ID)
+	}
+	if criteria.Tag != "" {
+		q.Where("tag = ?", criteria.Tag)
+	}
+
+	// Distancia solo si está habilitada la limitación
+	if *config.Get().Limit.Status {
+		q.Where("latitude IS NOT NULL AND longitude IS NOT NULL").
+			Where(`
+		6371 * acos(
+			cos(radians(?)) * cos(radians(latitude)) *
+			cos(radians(longitude) - radians(?)) +
+			sin(radians(?)) * sin(radians(latitude))
+		) <= coverage
+	`, coords.Latitude, coords.Longitude, coords.Latitude)
+	}
+
+	// -------------------------------------
+	// 3. Ejecutar query
+	// -------------------------------------
+	if err := q.Scan(ctx); err != nil {
 		slog.Error("error al obtener los negocios", "error", err)
 		return shopsDTO.ShopsResponse{}, errcustom.ErrUnexpectedError
 	}
@@ -205,11 +156,21 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 		return shopsDTO.ShopsResponse{}, errcustom.ErrNotFound
 	}
 
-	if err = s.cache.Set(ctx, keyCache, shops.ToDomainDTO(), timeCache); err != nil {
-		slog.Error("error al guardar los negocios en el cache", "error", err)
+	result, err := calculateDistances(coords, &shops)
+	if err != nil {
+		slog.Error("error al calcular distancias", "error", err)
 	}
 
-	return shops.ToDomainDTO(), nil
+	resp := shops.ToDomainDTO(result)
+
+	// -------------------------------------
+	// 4. Guardar en cache
+	// -------------------------------------
+	if err := s.cache.Set(ctx, keyCache, resp, cacheTTL); err != nil {
+		slog.Error("error al guardar negocios en cache", "error", err)
+	}
+
+	return resp, nil
 }
 
 func (s *shopsRepo) SearchBatchByShopID(ctx context.Context, shopID uuid.UUID) (uuid.UUID, error) {
@@ -226,4 +187,107 @@ func (s *shopsRepo) SearchBatchByShopID(ctx context.Context, shopID uuid.UUID) (
 	}
 
 	return batchID, nil
+}
+
+func calculateDistances(coords shopsDTO.Coords, shopsResult *shops.Shops) ([]entity.ShopDistance, error) {
+
+	origins := fmt.Sprintf("%f,%f", coords.Latitude, coords.Longitude)
+
+	// Slices paralelos:
+	// - Uno solo guarda IDs
+	// - Otro solo las coordenadas
+	var shopIDs []uuid.UUID
+	var destinationsRaw []string
+
+	for _, shop := range *shopsResult {
+		if shop.Latitude != nil && shop.Longitude != nil {
+			shopIDs = append(shopIDs, shop.ID)
+			destinationsRaw = append(destinationsRaw, fmt.Sprintf("%f,%f", *shop.Latitude, *shop.Longitude))
+		}
+	}
+
+	if len(destinationsRaw) == 0 {
+		return nil, errors.New("no shops with valid coordinates")
+	}
+
+	if len(destinationsRaw) > 25 {
+		return nil, fmt.Errorf("too many destinations: %d (max 25)", len(destinationsRaw))
+	}
+
+	destinationsJoined := strings.Join(destinationsRaw, "|")
+
+	params := url.Values{}
+	params.Set("origins", origins)
+	params.Set("destinations", destinationsJoined)
+	params.Set("mode", "driving")
+	params.Set("key", config.Get().Google.Matrix)
+
+	fullURL := "https://maps.googleapis.com/maps/api/distancematrix/json?" + params.Encode()
+
+	resp, err := http.Get(fullURL)
+	if err != nil {
+		return nil, fmt.Errorf("error calling google api: %w", err)
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response: %w", err)
+	}
+
+	if len(bodyBytes) == 0 {
+		return nil, errors.New("empty response from google")
+	}
+
+	// Decodificar JSON
+	var data struct {
+		Status string `json:"status"`
+		Rows   []struct {
+			Elements []struct {
+				Distance struct {
+					Value float64 `json:"value"`
+				} `json:"distance"`
+				Duration struct {
+					Value int64 `json:"value"`
+				} `json:"duration"`
+				Status string `json:"status"`
+			} `json:"elements"`
+		} `json:"rows"`
+	}
+
+	if err := json.Unmarshal(bodyBytes, &data); err != nil {
+		return nil, fmt.Errorf("decode json error: %w; body=%s", err, string(bodyBytes))
+	}
+
+	if data.Status != "OK" {
+		return nil, fmt.Errorf("google api status=%s", data.Status)
+	}
+
+	if len(data.Rows) == 0 || len(data.Rows[0].Elements) == 0 {
+		return nil, errors.New("invalid google matrix response")
+	}
+
+	elements := data.Rows[0].Elements
+
+	// Crear result, usando los IDs paralelos
+	result := make([]entity.ShopDistance, 0, len(shopIDs))
+
+	for i := range shopIDs {
+		if i >= len(elements) {
+			break
+		}
+		elem := elements[i]
+
+		if elem.Status != "OK" {
+			continue
+		}
+
+		result = append(result, entity.ShopDistance{
+			ShopID:   shopIDs[i],
+			Distance: elem.Distance.Value,
+			Duration: elem.Duration.Value / 60,
+		})
+	}
+
+	return result, nil
 }
