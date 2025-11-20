@@ -35,7 +35,7 @@ func (c *cookie) CreateCookieSession(jwtSession string) *http.Cookie {
 
 func (c *cookie) DeleteCookieSession() *http.Cookie {
 	return &http.Cookie{
-		Name:     "cookieName",
+		Name:     cookieName,
 		Value:    "",
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,

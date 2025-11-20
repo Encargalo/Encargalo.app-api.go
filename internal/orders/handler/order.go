@@ -1,14 +1,14 @@
 package handler
 
 import (
-	"fmt"
 	"log/slog"
 	"net/http"
 
+	"Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/orders/app"
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
-	"github.com/google/uuid"
+	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/labstack/echo/v4"
 )
 
@@ -42,13 +42,18 @@ func (o *orderHandler) CreateOrder(c echo.Context) error {
 
 	var order dtos.CreateOrder
 
-	id, ok := ctx.Value("customer_id").(uuid.UUID)
+	session, ok := ctx.Value("session").(models.ActiveSession)
 	if !ok {
-		fmt.Println("Error al obtener el customer_id")
-		return echo.NewHTTPError(http.StatusInternalServerError, "unexpected error")
+		slog.Error("No se encontró el usuario en el contexto")
+		return errcustom.ErrUnexpectedError
 	}
 
-	order.CustomerID = id
+	if session.UserType != roleCustomer {
+		slog.Error("Usuario no autorizado para acceder a esta ruta")
+		return echo.NewHTTPError(http.StatusForbidden, "usuario no autorizado")
+	}
+
+	order.CustomerID = session.UserID
 
 	if err := c.Bind(&order); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())

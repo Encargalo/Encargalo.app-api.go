@@ -2,13 +2,20 @@ package handler
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 
+	"Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/customers/domain/dto"
 	"Encargalo.app-api.go/internal/customers/domain/ports"
+	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+)
+
+const (
+	roleCustomer = "customer"
 )
 
 type CustomersAddressHandler interface {
@@ -50,13 +57,18 @@ func (c *customersAddrssHandler) RegisterAddress(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	customer_id, err := uuid.Parse(strings.TrimSpace(fmt.Sprintln(ctx.Value("customer_id"))))
-	if err != nil {
-		fmt.Println("Error al obtener el customer_id")
-		return echo.NewHTTPError(http.StatusInternalServerError, "unexpected error")
+	session, ok := ctx.Value("session").(models.ActiveSession)
+	if !ok {
+		slog.Error("No se encontró el usuario en el contexto")
+		return errcustom.ErrUnexpectedError
 	}
 
-	if err := c.svc.RegisterAddress(ctx, customer_id, address); err != nil {
+	if session.UserType != roleCustomer {
+		slog.Error("Usuario no autorizado para acceder a esta ruta")
+		return echo.NewHTTPError(http.StatusForbidden, "usuario no autorizado")
+	}
+
+	if err := c.svc.RegisterAddress(ctx, session.UserID, address); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "unexpected error")
 	}
 
@@ -76,13 +88,18 @@ func (c *customersAddrssHandler) SearchAllAdrress(e echo.Context) error {
 
 	ctx := e.Request().Context()
 
-	customer_id, err := uuid.Parse(strings.TrimSpace(fmt.Sprintln(ctx.Value("customer_id"))))
-	if err != nil {
-		fmt.Println("Error al obtener el customer_id")
-		return echo.NewHTTPError(http.StatusInternalServerError, "unexpected error")
+	session, ok := ctx.Value("session").(models.ActiveSession)
+	if !ok {
+		slog.Error("No se encontró el usuario en el contexto")
+		return errcustom.ErrUnexpectedError
 	}
 
-	addresses, err := c.svc.SearchAllAddress(ctx, customer_id)
+	if session.UserType != roleCustomer {
+		slog.Error("Usuario no autorizado para acceder a esta ruta")
+		return echo.NewHTTPError(http.StatusForbidden, "usuario no autorizado")
+	}
+
+	addresses, err := c.svc.SearchAllAddress(ctx, session.UserID)
 	if err != nil {
 		switch err.Error() {
 		case "not found":
@@ -115,13 +132,18 @@ func (c *customersAddrssHandler) DeleteAddress(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "unexpected error")
 	}
 
-	customer_id, err := uuid.Parse(strings.TrimSpace(fmt.Sprintln(ctx.Value("customer_id"))))
-	if err != nil {
-		fmt.Println("Error al obtener el customer_id")
-		return echo.NewHTTPError(http.StatusInternalServerError, "unexpected error")
+	session, ok := ctx.Value("session").(models.ActiveSession)
+	if !ok {
+		slog.Error("No se encontró el usuario en el contexto")
+		return errcustom.ErrUnexpectedError
 	}
 
-	if err := c.svc.DeleteAddress(ctx, customer_id, address_id); err != nil {
+	if session.UserType != roleCustomer {
+		slog.Error("Usuario no autorizado para acceder a esta ruta")
+		return echo.NewHTTPError(http.StatusForbidden, "usuario no autorizado")
+	}
+
+	if err := c.svc.DeleteAddress(ctx, session.UserID, address_id); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 

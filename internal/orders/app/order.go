@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -88,8 +89,8 @@ func (o *orderApp) SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*mo
 	return o.repo.SearchOrdersByID(ctx, orderID)
 }
 
-func (o *orderApp) SearchOrderByBatchIsOpen(ctx context.Context, shopID uuid.UUID) ([]models.Order, error) {
-	return o.repo.SearchOrderByBatchIsOpen(ctx, shopID)
+func (o *orderApp) SearchActiveOrdersByCriteria(ctx context.Context, shopID uuid.UUID) ([]models.Order, error) {
+	return o.repo.SearchActiveOrdersByCriteria(ctx, shopID)
 }
 
 func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string) (models.Order, error) {
@@ -101,12 +102,26 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 	status = strings.TrimSpace(status)
 	method := strings.TrimSpace(order.MethodPayment)
 
+	allowedStatuses := map[string]bool{
+		"Accepted":                  true,
+		"Waiting For Payment Proof": true,
+		"In Preparation":            true,
+		"On The Way":                true,
+		"Completed":                 true,
+		"Cancelled":                 true,
+		"Rejected":                  true,
+	}
+
+	if !allowedStatuses[status] {
+		return models.Order{}, fmt.Errorf("invalid status: %s", status)
+	}
+
 	rules := map[string]map[string]string{
 		"Nequi": {
-			"Aceptado": "En Espera Del Comprobante De Pago",
+			"Accepted": "Waiting For Payment Proof",
 		},
-		"Efectivo": {
-			"Aceptado": "En Preparacion",
+		"Cash": {
+			"Accepted": "In Preparation",
 		},
 	}
 
@@ -121,9 +136,7 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 	}
 
 	order.Status = status
-
 	return *order, nil
-
 }
 
 func buildToDataProduceOrder(items models.Order) []models.DataProduceOrder {

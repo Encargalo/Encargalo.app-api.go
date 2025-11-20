@@ -3,17 +3,17 @@ package handler
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
-	"strings"
 
 	"Encargalo.app-api.go/internal/customers/domain/dto"
 	"Encargalo.app-api.go/internal/customers/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/cookie"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shared/jwt"
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
+	"Encargalo.app-api.go/internal/auth/domain/models"
 	portsAuth "Encargalo.app-api.go/internal/auth/domain/ports"
 )
 
@@ -97,14 +97,19 @@ func (c *customersHandler) SearchCustomer(e echo.Context) error {
 
 	ctx := e.Request().Context()
 
-	customer_id, err := uuid.Parse(strings.TrimSpace(fmt.Sprintln(ctx.Value("customer_id"))))
-	if err != nil {
-		fmt.Println("Error al obtener el customer_id")
-		return echo.NewHTTPError(http.StatusInternalServerError, "unexpected error")
+	session, ok := ctx.Value("session").(models.ActiveSession)
+	if !ok {
+		slog.Error("No se encontró el usuario en el contexto")
+		return errcustom.ErrUnexpectedError
+	}
+
+	if session.UserType != roleCustomer {
+		slog.Error("Usuario no autorizado para acceder a esta ruta")
+		return echo.NewHTTPError(http.StatusForbidden, "usuario no autorizado")
 	}
 
 	customerID := dto.SearchCustomerBy{
-		ID: customer_id,
+		ID: session.UserID,
 	}
 
 	custo, err := c.customerApp.SearchCustomerBy(ctx, customerID)
@@ -146,14 +151,18 @@ func (c *customersHandler) UpdateCustomer(e echo.Context) error {
 	if err := customer.Validate(); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
-
-	customer_id, err := uuid.Parse(strings.TrimSpace(fmt.Sprintln(ctx.Value("customer_id"))))
-	if err != nil {
-		fmt.Println("Error al obtener el customer_id")
-		return echo.NewHTTPError(http.StatusInternalServerError, "unexpected error")
+	session, ok := ctx.Value("session").(models.ActiveSession)
+	if !ok {
+		slog.Error("No se encontró el usuario en el contexto")
+		return errcustom.ErrUnexpectedError
 	}
 
-	if err := c.customerApp.UpdateCustomer(ctx, customer_id, customer); err != nil {
+	if session.UserType != roleCustomer {
+		slog.Error("Usuario no autorizado para acceder a esta ruta")
+		return echo.NewHTTPError(http.StatusForbidden, "usuario no autorizado")
+	}
+
+	if err := c.customerApp.UpdateCustomer(ctx, session.UserID, customer); err != nil {
 		switch err.Error() {
 		case "not found.":
 			return echo.NewHTTPError(http.StatusConflict, "customer not found")
@@ -194,13 +203,18 @@ func (c *customersHandler) UpdatePassword(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	customer_id, err := uuid.Parse(strings.TrimSpace(fmt.Sprintln(ctx.Value("customer_id"))))
-	if err != nil {
-		fmt.Println("Error al obtener el customer_id")
-		return echo.NewHTTPError(http.StatusInternalServerError, "unexpected error")
+	session, ok := ctx.Value("session").(models.ActiveSession)
+	if !ok {
+		slog.Error("No se encontró el usuario en el contexto")
+		return errcustom.ErrUnexpectedError
 	}
 
-	if err := c.customerApp.UpdatePassword(ctx, customer_id, pass); err != nil {
+	if session.UserType != roleCustomer {
+		slog.Error("Usuario no autorizado para acceder a esta ruta")
+		return echo.NewHTTPError(http.StatusForbidden, "usuario no autorizado")
+	}
+
+	if err := c.customerApp.UpdatePassword(ctx, session.ID, pass); err != nil {
 		switch err.Error() {
 		case "not found.":
 			return echo.NewHTTPError(http.StatusConflict, "customer not found")
