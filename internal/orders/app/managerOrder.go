@@ -16,40 +16,63 @@ import (
 )
 
 type AppManagerOrder interface {
-	Register(ctx context.Context, shopID uuid.UUID, conn *websocket.Conn) error
-	Unregister(shopID uuid.UUID)
+	Register(ctx context.Context, connectionID uuid.UUID, conn *websocket.Conn, isShop bool) error
+	Unregister(connectionID uuid.UUID, isShop bool)
 	BroadcastOrder(order models.Order) error
 }
 type appManagerOrder struct {
-	mu          sync.RWMutex
-	connections map[uuid.UUID][]*websocket.Conn
-	svc         ports.OrdersApp
+	mu                  sync.RWMutex
+	shopConnections     map[uuid.UUID][]*websocket.Conn
+	customerConnections map[uuid.UUID][]*websocket.Conn
+	svc                 ports.OrdersApp
 }
 
 func NewManagerOrderApp(svc ports.OrdersApp) AppManagerOrder {
 	return &appManagerOrder{
-		connections: make(map[uuid.UUID][]*websocket.Conn),
-		svc:         svc,
+		shopConnections:     make(map[uuid.UUID][]*websocket.Conn),
+		customerConnections: make(map[uuid.UUID][]*websocket.Conn),
+		svc:                 svc,
 	}
 }
 
-func (s *appManagerOrder) Register(ctx context.Context, shopID uuid.UUID, conn *websocket.Conn) error {
+func (s *appManagerOrder) Register(
+	ctx context.Context,
+	connectionID uuid.UUID, // ShopID o CustomerID
+	conn *websocket.Conn,
+	isShop bool,
+) error {
+
 	s.mu.Lock()
-	s.connections[shopID] = append(s.connections[shopID], conn)
+
+	if isShop {
+		s.shopConnections[connectionID] = append(s.shopConnections[connectionID], conn)
+	} else {
+		s.customerConnections[connectionID] = append(s.customerConnections[connectionID], conn)
+	}
+
 	s.mu.Unlock()
 
-	orders, err := s.svc.SearchOrderByBatchIsOpen(ctx, shopID)
+	orders, err := s.svc.SearchActiveOrdersByCriteria(ctx, connectionID)
 	if err != nil {
 		if !errors.Is(err, errcustom.ErrNotFound) {
-			slog.Error("Error al buscar órdenes abiertas para el local:", "shopID", shopID, "error", err)
+			slog.Error("Error buscando órdenes abiertas del shop",
+				"shopID", connectionID,
+				"error", err,
+			)
 			return err
 		}
-		slog.Info("No hay órdenes abiertas para el local:", "shopID", shopID)
+
+		slog.Info("No hay órdenes abiertas para este shop",
+			"shopID", connectionID,
+		)
 	}
 
 	for _, v := range orders {
 		if err := s.BroadcastOrder(v); err != nil {
-			slog.Error("Error al enviar orden abierta al local:", "shopID", shopID, "error", err)
+			slog.Error("Error enviando orden abierta al shop",
+				"shopID", connectionID,
+				"error", err,
+			)
 		}
 	}
 
@@ -58,12 +81,19 @@ func (s *appManagerOrder) Register(ctx context.Context, shopID uuid.UUID, conn *
 	return nil
 }
 
-func (s *appManagerOrder) Unregister(shopID uuid.UUID) {
+func (s *appManagerOrder) Unregister(connectionID uuid.UUID, isShop bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	delete(s.connections, shopID)
-	slog.Info("Conexión cerrada para el local:", "shopID", shopID)
+	if isShop {
+		delete(s.shopConnections, connectionID)
+		slog.Info("Conexiones cerradas para el local",
+			"shopID", connectionID)
+	} else {
+		delete(s.customerConnections, connectionID)
+		slog.Info("Conexiones cerradas para el cliente",
+			"customerID", connectionID)
+	}
 }
 
 func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
@@ -72,23 +102,39 @@ func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
 		return err
 	}
 
+	// 1️⃣ Buscar conexiones del Shop
 	s.mu.RLock()
-	conns, exists := s.connections[order.ShopID]
+	shopConns := s.shopConnections[order.ShopID]
+	customerConns := s.customerConnections[order.CustomerID]
 	s.mu.RUnlock()
 
-	if !exists {
-		slog.Warn("No existen conexiones activas para el local", "shopID", order.ShopID)
-		return nil
-	}
-
-	for _, conn := range conns {
-		if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
-			slog.Error("Error enviando mensaje", "shopID", order.ShopID, "error", err)
-			continue
+	// 2️⃣ Enviar a cada tipo de receptor
+	sendToConns := func(conns []*websocket.Conn, label string) {
+		for _, conn := range conns {
+			if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
+				slog.Error("Error enviando mensaje",
+					"to", label,
+					"id", order.ShopID,
+					"error", err,
+				)
+				continue
+			}
+		}
+		if len(conns) > 0 {
+			slog.Info("Mensaje enviado",
+				"to", label,
+				"id", order.ShopID,
+				"total", len(conns),
+			)
 		}
 	}
 
-	slog.Info("Orden enviada a todas las conexiones", "shopID", order.ShopID, "total", len(conns))
+	// 2.a → Enviar al negocio
+	sendToConns(shopConns, "shop")
+
+	// 2.b → Enviar al cliente
+	sendToConns(customerConns, "customer")
+
 	return nil
 }
 

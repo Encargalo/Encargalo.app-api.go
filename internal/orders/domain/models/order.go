@@ -34,7 +34,7 @@ func (o *Order) BuildDtoToModel(dto dtos.CreateOrder, batchID uuid.UUID) {
 	o.Latitude = dto.Address.Latitude
 	o.Longitude = dto.Address.Longitude
 	o.MethodPayment = dto.MethodPayment
-	o.Status = "Pendiente"
+	o.Status = "Pending"
 	o.DeliveryFee = 0
 	o.ItemsOrders = make([]ItemsOrder, len(dto.CreateItemsOrder))
 

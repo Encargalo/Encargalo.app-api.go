@@ -11,7 +11,6 @@ import (
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
-	modelsBusiness "Encargalo.app-api.go/internal/shops/domain/models"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 
@@ -120,28 +119,24 @@ func (o *orders) SearchAdditionsByID(ctx context.Context, additionID []uuid.UUID
 
 }
 
-func (o *orders) SearchOrderByBatchIsOpen(ctx context.Context, shopID uuid.UUID) ([]models.Order, error) {
+func (o *orders) SearchActiveOrdersByCriteria(ctx context.Context, criteria uuid.UUID) ([]models.Order, error) {
+
 	var orders []models.Order
-	var batch modelsBusiness.Batch
 
 	err := o.db.NewSelect().
-		Model(&batch).
-		Where("shop_id = ? AND opened = TRUE", shopID).
+		Model(&orders).
+		Relation("ItemsOrders").
+		Relation("ItemsOrders.Additions").
+		Where("status IN (?)", bun.In([]string{
+			"Pending",
+			"Waiting For Payment Proof",
+			"In Preparation",
+			"On The Way",
+		})).
+		Where("(shop_id = ? OR customer_id = ?)", criteria, criteria).
 		Scan(ctx)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errcustom.ErrNotFound
-		}
-		slog.Error("SearchOrderByBatchIsOpen: failed to find open batch", "shopID", shopID, "error", err)
-		return nil, errcustom.ErrUnexpectedError
-	}
 
-	err = o.db.NewSelect().
-		Model(&orders).Relation("ItemsOrders").Relation("ItemsOrders.Additions").
-		Where("batch_id = ?", batch.ID).
-		Scan(ctx)
 	if err != nil {
-		slog.Error("SearchOrderByBatchIsOpen: failed to find orders for open batch", "batchID", batch.ID, "error", err)
 		return nil, errcustom.ErrUnexpectedError
 	}
 
@@ -150,7 +145,6 @@ func (o *orders) SearchOrderByBatchIsOpen(ctx context.Context, shopID uuid.UUID)
 	}
 
 	return orders, nil
-
 }
 
 func (o *orders) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string) error {
