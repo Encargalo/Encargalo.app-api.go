@@ -822,6 +822,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "address",
+                "delivery_fee",
                 "id",
                 "items",
                 "method_payment",
@@ -830,6 +831,10 @@ const docTemplate = `{
             "properties": {
                 "address": {
                     "$ref": "#/definitions/dtos.Address"
+                },
+                "delivery_fee": {
+                    "type": "integer",
+                    "example": 5000
                 },
                 "id": {
                     "type": "string",

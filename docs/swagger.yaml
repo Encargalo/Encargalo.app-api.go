@@ -163,6 +163,9 @@ definitions:
     properties:
       address:
         $ref: '#/definitions/dtos.Address'
+      delivery_fee:
+        example: 5000
+        type: integer
       id:
         example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
         type: string
@@ -181,6 +184,7 @@ definitions:
         type: string
     required:
     - address
+    - delivery_fee
     - id
     - items
     - method_payment

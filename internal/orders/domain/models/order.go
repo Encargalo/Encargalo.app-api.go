@@ -35,7 +35,7 @@ func (o *Order) BuildDtoToModel(dto dtos.CreateOrder, batchID uuid.UUID) {
 	o.Longitude = dto.Address.Longitude
 	o.MethodPayment = dto.MethodPayment
 	o.Status = "Pending"
-	o.DeliveryFee = 0
+	o.DeliveryFee = dto.DeliveryFee
 	o.ItemsOrders = make([]ItemsOrder, len(dto.CreateItemsOrder))
 
 	for i := range dto.CreateItemsOrder {
