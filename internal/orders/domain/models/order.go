@@ -72,7 +72,7 @@ func (o *Order) SetPrices(items models.Items) {
 		}
 	}
 
-	o.TotalPrice = total
+	o.TotalPrice = total + o.DeliveryFee
 }
 
 func (o *Order) SetAdditionalsPrices(addittions []Addition) {
