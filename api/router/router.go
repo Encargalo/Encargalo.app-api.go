@@ -8,6 +8,8 @@ import (
 	"Encargalo.app-api.go/internal/shared/config"
 	echoSwagger "github.com/swaggo/echo-swagger"
 
+	_ "Encargalo.app-api.go/docs"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )

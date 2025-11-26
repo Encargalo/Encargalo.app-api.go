@@ -116,7 +116,7 @@ func (p *productsHandler) SearchFlavorsByItemID(e echo.Context) error {
 // @Failure      400  {string}  string  "shop_id es requerido o inválido"
 // @Failure      404  {string}  string  "Productos más vendidos no encontrados"
 // @Failure      500  {string}  string  "Error interno del servidor
-// @Router       /best-sellers [get]
+// @Router       /products/best-sellers [get]
 func (p *productsHandler) SearchBestSellersByShopID(e echo.Context) error {
 
 	ctx := e.Request().Context()
