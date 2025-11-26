@@ -64,7 +64,10 @@ func (o *orders) SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*mode
 
 	order := new(models.Order)
 
-	if err := o.db.NewSelect().Model(order).Where("id = ?", orderID).Scan(ctx); err != nil {
+	if err := o.db.NewSelect().Model(order).
+		Relation("ItemsOrders").
+		Relation("ItemsOrders.Additions").
+		Where("id = ?", orderID).Scan(ctx); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errors.New("order not found")
 		}
