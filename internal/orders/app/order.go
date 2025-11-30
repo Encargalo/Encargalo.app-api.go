@@ -15,6 +15,24 @@ import (
 	"github.com/google/uuid"
 )
 
+type OrderStatus string
+type PaymentMethod string
+
+const (
+	StatusAccepted            OrderStatus = "Accepted"
+	StatusWaitingPaymentProof OrderStatus = "Waiting For Payment Proof"
+	StatusInPreparation       OrderStatus = "In Preparation"
+	StatusOnTheWay            OrderStatus = "On The Way"
+	StatusCompleted           OrderStatus = "Completed"
+	StatusCancelled           OrderStatus = "Cancelled"
+	StatusRejected            OrderStatus = "Rejected"
+)
+
+const (
+	MethodNequi PaymentMethod = "Nequi"
+	MethodCash  PaymentMethod = "Efectivo"
+)
+
 type orderApp struct {
 	repo   ports.OrdersRepo
 	shops  shops.ShopsRepo
@@ -99,44 +117,45 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 		return models.Order{}, err
 	}
 
-	status = strings.TrimSpace(status)
-	method := strings.TrimSpace(order.MethodPayment)
+	newStatus := OrderStatus(strings.TrimSpace(status))
+	method := PaymentMethod(strings.TrimSpace(order.MethodPayment))
 
-	allowedStatuses := map[string]bool{
-		"Accepted":                  true,
-		"Waiting For Payment Proof": true,
-		"In Preparation":            true,
-		"On The Way":                true,
-		"Completed":                 true,
-		"Cancelled":                 true,
-		"Rejected":                  true,
+	var allowedStatuses = map[OrderStatus]bool{
+		StatusAccepted:            true,
+		StatusWaitingPaymentProof: true,
+		StatusInPreparation:       true,
+		StatusOnTheWay:            true,
+		StatusCompleted:           true,
+		StatusCancelled:           true,
+		StatusRejected:            true,
 	}
 
-	if !allowedStatuses[status] {
-		return models.Order{}, fmt.Errorf("invalid status: %s", status)
+	if !allowedStatuses[newStatus] {
+		return models.Order{}, fmt.Errorf("invalid status: %s", newStatus)
 	}
 
-	rules := map[string]map[string]string{
-		"Nequi": {
-			"Accepted": "Waiting For Payment Proof",
+	var transitionRules = map[PaymentMethod]map[OrderStatus]OrderStatus{
+		MethodNequi: {
+			StatusAccepted: StatusWaitingPaymentProof,
 		},
-		"Cash": {
-			"Accepted": "In Preparation",
+		MethodCash: {
+			StatusAccepted: StatusInPreparation,
 		},
 	}
 
-	if methodRules, exists := rules[method]; exists {
-		if newStatus, ok := methodRules[status]; ok {
-			status = newStatus
+	if methodRules, ok := transitionRules[method]; ok {
+		if autoStatus, ok := methodRules[newStatus]; ok {
+			newStatus = autoStatus
 		}
 	}
 
-	if err := o.repo.UpdateOrderStatus(ctx, orderID, status); err != nil {
+	if err := o.repo.UpdateOrderStatus(ctx, orderID, string(newStatus)); err != nil {
 		return models.Order{}, err
 	}
 
-	order.Status = status
+	order.Status = string(newStatus)
 	return *order, nil
+
 }
 
 func buildToDataProduceOrder(items models.Order) []models.DataProduceOrder {
