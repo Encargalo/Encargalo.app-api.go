@@ -862,9 +862,6 @@ const docTemplate = `{
             "properties": {
                 "addition_id": {
                     "type": "string"
-                },
-                "name": {
-                    "type": "string"
                 }
             }
         },

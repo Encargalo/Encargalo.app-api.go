@@ -64,6 +64,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 			}
 
 			orderModel.SetAdditionalsPrices(additions)
+			orderModel.SetAdditionalsName(additions)
 		}
 	}
 

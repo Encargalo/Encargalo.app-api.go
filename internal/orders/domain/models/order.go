@@ -89,6 +89,23 @@ func (o *Order) SetPrices(items models.Items) {
 	o.TotalPrice = total + o.DeliveryFee
 }
 
+func (o *Order) SetAdditionalsName(additions []Addition) {
+
+	nameMap := make(map[uuid.UUID]string, len(additions))
+	for _, addition := range additions {
+		nameMap[addition.ID] = addition.Name
+	}
+
+	for i := range o.ItemsOrders {
+		for j := range o.ItemsOrders[i].Additions {
+			if name, ok := nameMap[o.ItemsOrders[i].Additions[j].AdditionID]; ok {
+				o.ItemsOrders[i].Additions[j].Name = name
+			}
+		}
+	}
+
+}
+
 func (o *Order) SetAdditionalsPrices(addittions []Addition) {
 
 	priceMap := make(map[uuid.UUID]int, len(addittions))

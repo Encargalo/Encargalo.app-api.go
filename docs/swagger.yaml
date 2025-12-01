@@ -133,8 +133,6 @@ definitions:
     properties:
       addition_id:
         type: string
-      name:
-        type: string
     type: object
   dtos.CreateItemsOrder:
     properties:

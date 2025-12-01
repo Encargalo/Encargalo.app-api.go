@@ -70,6 +70,8 @@ func (o *orderHandler) CreateOrder(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusConflict, err.Error())
 		case "one or more items not found":
 			return echo.NewHTTPError(http.StatusUnprocessableEntity, err.Error())
+		case "one or more additions not found":
+			return echo.NewHTTPError(http.StatusUnprocessableEntity, err.Error())
 		default:
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}

@@ -21,6 +21,5 @@ type AdditionsOrder struct {
 func (ao *AdditionsOrder) BuildDtoToModel(dto dtos.CreateAdditionsOrders, orderItemID uuid.UUID, amount int) {
 	ao.OrderItemID = orderItemID
 	ao.AdditionID = dto.AdditionID
-	ao.Name = dto.Name
 	ao.Amount = amount
 }
