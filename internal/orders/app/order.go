@@ -86,23 +86,23 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		}
 	}
 
-	err = o.repo.CreateOrder(ctx, orderModel)
+	orderDB, err := o.repo.CreateOrder(ctx, orderModel)
 	if err != nil {
 		return &models.Order{}, err
 	}
 
-	if err := o.stream.Producer(ctx, buildToDataProduceOrder(*orderModel)); err != nil {
+	if err := o.stream.Producer(ctx, buildToDataProduceOrder(*orderDB)); err != nil {
 		slog.Error("error producing order to stream", "error", err)
 	}
 
 	eventOrderCreateModel := models.DataEventOrderCreated{}
-	eventOrderCreateModel.BuidlToModelEvent(*orderModel)
+	eventOrderCreateModel.BuidlToModelEvent(*orderDB)
 
 	if err := o.stream.EventOrderCreated(ctx, eventOrderCreateModel); err != nil {
 		slog.Error("error producing event order created to stream", "error", err)
 	}
 
-	return orderModel, nil
+	return orderDB, nil
 }
 
 func (o *orderApp) SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*models.Order, error) {
