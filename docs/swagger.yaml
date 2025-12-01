@@ -133,8 +133,6 @@ definitions:
     properties:
       addition_id:
         type: string
-      name:
-        type: string
     type: object
   dtos.CreateItemsOrder:
     properties:
@@ -150,14 +148,11 @@ definitions:
         type: object
       item_id:
         type: string
-      name:
-        type: string
       observation:
         type: string
     required:
     - amount
     - item_id
-    - name
     type: object
   dtos.CreateOrder:
     properties:

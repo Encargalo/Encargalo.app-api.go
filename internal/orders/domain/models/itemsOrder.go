@@ -28,7 +28,6 @@ func (io *ItemsOrder) BuildDtoToModel(dto dtos.CreateItemsOrder, orderID uuid.UU
 	io.ID = uuid.New()
 	io.OrderID = orderID
 	io.ItemID = dto.ItemID
-	io.Name = dto.Name
 	io.Amount = dto.Amount
 	io.Observation = dto.Observation
 	io.Flavors = convertertToJSONFlavors(dto.Flavors)

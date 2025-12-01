@@ -54,6 +54,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 	}
 
 	orderModel.SetPrices(items)
+	orderModel.SetItemName(items)
 
 	for _, v := range orderModel.ItemsOrders {
 		if v.Additions != nil {
@@ -63,6 +64,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 			}
 
 			orderModel.SetAdditionalsPrices(additions)
+			orderModel.SetAdditionalsName(additions)
 		}
 	}
 

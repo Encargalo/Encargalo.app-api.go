@@ -851,9 +851,6 @@
             "properties": {
                 "addition_id": {
                     "type": "string"
-                },
-                "name": {
-                    "type": "string"
                 }
             }
         },
@@ -861,8 +858,7 @@
             "type": "object",
             "required": [
                 "amount",
-                "item_id",
-                "name"
+                "item_id"
             ],
             "properties": {
                 "additions": {
@@ -881,9 +877,6 @@
                     }
                 },
                 "item_id": {
-                    "type": "string"
-                },
-                "name": {
                     "type": "string"
                 },
                 "observation": {
