@@ -56,6 +56,20 @@ func (o *Order) GetItemsID() []uuid.UUID {
 
 }
 
+func (o *Order) SetItemName(items models.Items) {
+
+	nameMap := make(map[uuid.UUID]string, len(items))
+	for _, item := range items {
+		nameMap[item.ID] = item.Name
+	}
+
+	for i := range o.ItemsOrders {
+		if name, ok := nameMap[o.ItemsOrders[i].ItemID]; ok {
+			o.ItemsOrders[i].Name = name
+		}
+	}
+}
+
 func (o *Order) SetPrices(items models.Items) {
 
 	priceMap := make(map[uuid.UUID]int, len(items))
