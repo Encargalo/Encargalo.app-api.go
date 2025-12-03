@@ -7,9 +7,10 @@ import (
 )
 
 type CreateItemsOrder struct {
-	ItemID      uuid.UUID `json:"item_id" validate:"required,uuid4"`
-	Amount      int       `json:"amount" validate:"required"`
-	Observation string    `json:"observation"`
+	ItemID      uuid.UUID      `json:"item_id" validate:"required,uuid4"`
+	Amount      int            `json:"amount" validate:"required"`
+	Observation string         `json:"observation"`
+	Flavors     map[string]int `json:"flavors"`
 
 	Additions []CreateAdditionsOrders `json:"additions"`
 }

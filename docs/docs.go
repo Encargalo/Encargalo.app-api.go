@@ -15,7 +15,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/sessions": {
+        "/auth/logout": {
             "delete": {
                 "security": [
                     {
@@ -27,10 +27,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Sessions"
+                    "Auth"
                 ],
-                "summary": "Cierra la sesión actual del cliente autenticado",
-                "deprecated": true,
+                "summary": "Cierra la sesión actual del cliente o empleado autenticado",
                 "responses": {
                     "200": {
                         "description": "session deleted success",
@@ -53,9 +52,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/best-sellers": {
-            "get": {
-                "description": "Esta función maneja la solicitud para obtener los productos mas vendidos por tienda de una tienda específica.",
+        "/auth/sign-in/customers": {
+            "post": {
+                "description": "Autentica a un cliente usando su número de teléfono y contraseña.\nSi las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.",
                 "consumes": [
                     "application/json"
                 ],
@@ -63,45 +62,113 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Products"
+                    "Auth"
                 ],
-                "summary": "Obtener los productos mas vendidos por tienda",
+                "summary": "Iniciar sesión como cliente",
                 "parameters": [
                     {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "ID de la tienda",
-                        "name": "shop_id",
-                        "in": "query",
-                        "required": true
+                        "description": "Datos de inicio de sesión",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.SignInRequest"
+                        }
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "201": {
+                        "description": "session created",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/dtos.ItemResponse"
-                            }
+                            "type": "string"
                         }
                     },
                     "400": {
-                        "description": "shop_id es requerido o inválido",
+                        "description": "Solicitud inválida (validación o JSON incorrecto)",
                         "schema": {
-                            "type": "string"
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     },
-                    "404": {
-                        "description": "Productos más vendidos no encontrados",
+                    "422": {
+                        "description": "Credenciales incorrectas",
                         "schema": {
-                            "type": "string"
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     },
                     "500": {
-                        "description": "Error interno del servidor",
+                        "description": "Error inesperado del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/sign-in/employee": {
+            "post": {
+                "description": "Autentica a un empleado usando su número de teléfono y contraseña.\nSi las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Iniciar sesión como empleado",
+                "parameters": [
+                    {
+                        "description": "Datos de inicio de sesión",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.SignInRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "session created",
                         "schema": {
                             "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Solicitud inválida (validación o JSON incorrecto)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Credenciales incorrectas",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error inesperado del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -411,43 +478,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/customers/sessions": {
-            "delete": {
-                "security": [
-                    {
-                        "SessionCookie": []
-                    }
-                ],
-                "description": "Elimina la sesión activa identificada por session_id en la cookie de autenticación",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Sessions"
-                ],
-                "summary": "Cierra la sesión actual del cliente autenticado",
-                "responses": {
-                    "200": {
-                        "description": "session deleted success",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "404": {
-                        "description": "not found",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "unexpected error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "/orders": {
             "post": {
                 "description": "Creates a new order with the provided details",
@@ -489,6 +519,60 @@ const docTemplate = `{
                         "description": "Unexpected internal server error",
                         "schema": {
                             "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/products/best-sellers": {
+            "get": {
+                "description": "Esta función maneja la solicitud para obtener los productos mas vendidos por tienda de una tienda específica.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Obtener los productos mas vendidos por tienda",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID de la tienda",
+                        "name": "shop_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dtos.ItemResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "shop_id es requerido o inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Productos más vendidos no encontrados",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 }
@@ -797,6 +881,12 @@ const docTemplate = `{
                 "amount": {
                     "type": "integer"
                 },
+                "flavors": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
                 "item_id": {
                     "type": "string"
                 },
@@ -809,6 +899,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "address",
+                "delivery_fee",
                 "id",
                 "items",
                 "method_payment",
@@ -817,6 +908,10 @@ const docTemplate = `{
             "properties": {
                 "address": {
                     "$ref": "#/definitions/dtos.Address"
+                },
+                "delivery_fee": {
+                    "type": "integer",
+                    "example": 5000
                 },
                 "id": {
                     "type": "string",
@@ -936,14 +1031,23 @@ const docTemplate = `{
                 "banner": {
                     "type": "string"
                 },
+                "delivery_fee": {
+                    "type": "integer"
+                },
                 "home_phone": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
                 },
+                "latitude": {
+                    "type": "number"
+                },
                 "logo": {
                     "type": "string"
+                },
+                "longitude": {
+                    "type": "number"
                 },
                 "name": {
                     "type": "string"
@@ -957,8 +1061,28 @@ const docTemplate = `{
                 "tag": {
                     "type": "string"
                 },
+                "time": {
+                    "type": "integer"
+                },
                 "type": {
                     "type": "string"
+                }
+            }
+        },
+        "request.SignInRequest": {
+            "type": "object",
+            "required": [
+                "password",
+                "phone_number"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string",
+                    "example": "claveSegura123"
+                },
+                "phone_number": {
+                    "type": "string",
+                    "example": "+573001112233"
                 }
             }
         }

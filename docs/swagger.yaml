@@ -142,6 +142,10 @@ definitions:
         type: array
       amount:
         type: integer
+      flavors:
+        additionalProperties:
+          type: integer
+        type: object
       item_id:
         type: string
       observation:
@@ -154,6 +158,9 @@ definitions:
     properties:
       address:
         $ref: '#/definitions/dtos.Address'
+      delivery_fee:
+        example: 5000
+        type: integer
       id:
         example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
         type: string
@@ -172,6 +179,7 @@ definitions:
         type: string
     required:
     - address
+    - delivery_fee
     - id
     - items
     - method_payment
@@ -245,12 +253,18 @@ definitions:
         type: string
       banner:
         type: string
+      delivery_fee:
+        type: integer
       home_phone:
         type: string
       id:
         type: string
+      latitude:
+        type: number
       logo:
         type: string
+      longitude:
+        type: number
       name:
         type: string
       opened:
@@ -259,15 +273,28 @@ definitions:
         type: number
       tag:
         type: string
+      time:
+        type: integer
       type:
         type: string
+    type: object
+  request.SignInRequest:
+    properties:
+      password:
+        example: claveSegura123
+        type: string
+      phone_number:
+        example: "+573001112233"
+        type: string
+    required:
+    - password
+    - phone_number
     type: object
 info:
   contact: {}
 paths:
-  /api/sessions:
+  /auth/logout:
     delete:
-      deprecated: true
       description: Elimina la sesión activa identificada por session_id en la cookie
         de autenticación
       produces:
@@ -287,46 +314,93 @@ paths:
             type: string
       security:
       - SessionCookie: []
-      summary: Cierra la sesión actual del cliente autenticado
+      summary: Cierra la sesión actual del cliente o empleado autenticado
       tags:
-      - Sessions
-  /best-sellers:
-    get:
+      - Auth
+  /auth/sign-in/customers:
+    post:
       consumes:
       - application/json
-      description: Esta función maneja la solicitud para obtener los productos mas
-        vendidos por tienda de una tienda específica.
+      description: |-
+        Autentica a un cliente usando su número de teléfono y contraseña.
+        Si las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.
       parameters:
-      - description: ID de la tienda
-        format: uuid
-        in: query
-        name: shop_id
+      - description: Datos de inicio de sesión
+        in: body
+        name: body
         required: true
-        type: string
+        schema:
+          $ref: '#/definitions/request.SignInRequest'
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
+        "201":
+          description: session created
           schema:
-            items:
-              $ref: '#/definitions/dtos.ItemResponse'
-            type: array
+            type: string
         "400":
-          description: shop_id es requerido o inválido
+          description: Solicitud inválida (validación o JSON incorrecto)
           schema:
-            type: string
-        "404":
-          description: Productos más vendidos no encontrados
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Credenciales incorrectas
           schema:
-            type: string
+            additionalProperties:
+              type: string
+            type: object
         "500":
-          description: Error interno del servidor
+          description: Error inesperado del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Iniciar sesión como cliente
+      tags:
+      - Auth
+  /auth/sign-in/employee:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Autentica a un empleado usando su número de teléfono y contraseña.
+        Si las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.
+      parameters:
+      - description: Datos de inicio de sesión
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.SignInRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: session created
           schema:
             type: string
-      summary: Obtener los productos mas vendidos por tienda
+        "400":
+          description: Solicitud inválida (validación o JSON incorrecto)
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Credenciales incorrectas
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error inesperado del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Iniciar sesión como empleado
       tags:
-      - Products
+      - Auth
   /customers:
     get:
       description: Retorna los datos del cliente identificado por el customer_id contenido
@@ -530,30 +604,6 @@ paths:
       summary: Actualiza la contraseña del cliente autenticado
       tags:
       - Customers
-  /customers/sessions:
-    delete:
-      description: Elimina la sesión activa identificada por session_id en la cookie
-        de autenticación
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: session deleted success
-          schema:
-            type: string
-        "404":
-          description: not found
-          schema:
-            type: string
-        "500":
-          description: unexpected error
-          schema:
-            type: string
-      security:
-      - SessionCookie: []
-      summary: Cierra la sesión actual del cliente autenticado
-      tags:
-      - Sessions
   /orders:
     post:
       consumes:
@@ -584,6 +634,43 @@ paths:
       summary: Create a new order
       tags:
       - Orders
+  /products/best-sellers:
+    get:
+      consumes:
+      - application/json
+      description: Esta función maneja la solicitud para obtener los productos mas
+        vendidos por tienda de una tienda específica.
+      parameters:
+      - description: ID de la tienda
+        format: uuid
+        in: query
+        name: shop_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dtos.ItemResponse'
+            type: array
+        "400":
+          description: shop_id es requerido o inválido
+          schema:
+            type: string
+        "404":
+          description: Productos más vendidos no encontrados
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      summary: Obtener los productos mas vendidos por tienda
+      tags:
+      - Products
   /shops:
     get:
       parameters:

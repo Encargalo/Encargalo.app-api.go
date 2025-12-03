@@ -2,7 +2,7 @@ package groups
 
 import (
 	"Encargalo.app-api.go/internal/orders/handler"
-	customerauth "Encargalo.app-api.go/internal/shared/middleware/customerAuth"
+	"Encargalo.app-api.go/internal/shared/middleware/auth"
 	"github.com/labstack/echo/v4"
 )
 
@@ -11,15 +11,17 @@ type OrdersGroup interface {
 }
 
 type ordersGroup struct {
-	middle        customerauth.AuthMiddleware
-	handlerOrders handler.OrderHandler
+	middle               auth.AuthMiddleware
+	handlerOrders        handler.OrderHandler
+	hanlderManagerOrders handler.ManagerOrder
 }
 
-func NewOrdersGroup(middle customerauth.AuthMiddleware, handlerOrders handler.OrderHandler) OrdersGroup {
-	return &ordersGroup{middle, handlerOrders}
+func NewOrdersGroup(middle auth.AuthMiddleware, handlerOrders handler.OrderHandler, hanlderManagerOrders handler.ManagerOrder) OrdersGroup {
+	return &ordersGroup{middle, handlerOrders, hanlderManagerOrders}
 }
 
 func (o *ordersGroup) Resource(g *echo.Echo) {
 	group := g.Group("/orders")
 	group.POST("", o.handlerOrders.CreateOrder, o.middle.Auth)
+	group.GET("/manager", o.hanlderManagerOrders.HandleWebSocket, o.middle.Auth)
 }

@@ -2,6 +2,7 @@ package models
 
 import (
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
+	"Encargalo.app-api.go/internal/products/domain/models"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
@@ -13,10 +14,12 @@ type Order struct {
 	ShopID        uuid.UUID `bun:"shop_id"`
 	CustomerID    uuid.UUID `bun:"customer_id"`
 	BatchID       uuid.UUID `bun:"batch_id,nullzero,type:uuid"`
+	Number        int       `bun:"number"`
 	Address       string    `bun:"address"`
 	Latitude      float64   `bun:"latitude"`
 	Longitude     float64   `bun:"longitude"`
 	MethodPayment string    `bun:"method_payment"`
+	Status        string    `bun:"status"`
 	DeliveryFee   int       `bun:"delivery_fee"`
 	TotalPrice    int       `bun:"total_price"`
 
@@ -32,7 +35,8 @@ func (o *Order) BuildDtoToModel(dto dtos.CreateOrder, batchID uuid.UUID) {
 	o.Latitude = dto.Address.Latitude
 	o.Longitude = dto.Address.Longitude
 	o.MethodPayment = dto.MethodPayment
-	o.DeliveryFee = 0
+	o.Status = "Pending"
+	o.DeliveryFee = dto.DeliveryFee
 	o.ItemsOrders = make([]ItemsOrder, len(dto.CreateItemsOrder))
 
 	for i := range dto.CreateItemsOrder {
@@ -53,7 +57,21 @@ func (o *Order) GetItemsID() []uuid.UUID {
 
 }
 
-func (o *Order) SetPrices(items []Items) {
+func (o *Order) SetItemName(items models.Items) {
+
+	nameMap := make(map[uuid.UUID]string, len(items))
+	for _, item := range items {
+		nameMap[item.ID] = item.Name
+	}
+
+	for i := range o.ItemsOrders {
+		if name, ok := nameMap[o.ItemsOrders[i].ItemID]; ok {
+			o.ItemsOrders[i].Name = name
+		}
+	}
+}
+
+func (o *Order) SetPrices(items models.Items) {
 
 	priceMap := make(map[uuid.UUID]int, len(items))
 	for _, item := range items {
@@ -69,7 +87,24 @@ func (o *Order) SetPrices(items []Items) {
 		}
 	}
 
-	o.TotalPrice = total
+	o.TotalPrice = total + o.DeliveryFee
+}
+
+func (o *Order) SetAdditionalsName(additions []Addition) {
+
+	nameMap := make(map[uuid.UUID]string, len(additions))
+	for _, addition := range additions {
+		nameMap[addition.ID] = addition.Name
+	}
+
+	for i := range o.ItemsOrders {
+		for j := range o.ItemsOrders[i].Additions {
+			if name, ok := nameMap[o.ItemsOrders[i].Additions[j].AdditionID]; ok {
+				o.ItemsOrders[i].Additions[j].Name = name
+			}
+		}
+	}
+
 }
 
 func (o *Order) SetAdditionalsPrices(addittions []Addition) {

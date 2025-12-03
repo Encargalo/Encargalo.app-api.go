@@ -2,7 +2,7 @@ package groups
 
 import (
 	"Encargalo.app-api.go/internal/customers/handler"
-	customerauth "Encargalo.app-api.go/internal/shared/middleware/customerAuth"
+	"Encargalo.app-api.go/internal/shared/middleware/auth"
 	requestinfo "Encargalo.app-api.go/internal/shared/middleware/requestInfo"
 	"github.com/labstack/echo/v4"
 )
@@ -13,14 +13,14 @@ type CustomersGroup interface {
 
 type customersGroup struct {
 	middle           requestinfo.Request
-	middleAuth       customerauth.AuthMiddleware
+	middleAuth       auth.AuthMiddleware
 	handlerAddress   handler.CustomersAddressHandler
 	handlerCustomers handler.CustomersHandler
 }
 
 func NewCustomersGroup(
 	middle requestinfo.Request,
-	middleAuth customerauth.AuthMiddleware,
+	middleAuth auth.AuthMiddleware,
 	handlerAddress handler.CustomersAddressHandler,
 	handlerCustomers handler.CustomersHandler,
 ) CustomersGroup {

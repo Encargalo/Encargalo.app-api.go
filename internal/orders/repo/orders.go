@@ -5,12 +5,16 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
+	"time"
 
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
+	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
+
+	items "Encargalo.app-api.go/internal/products/domain/models"
 )
 
 type orders struct {
@@ -21,50 +25,59 @@ func NewOrdersRepo(db *bun.DB) ports.OrdersRepo {
 	return &orders{db}
 }
 
-func (o *orders) CreateOrder(ctx context.Context, order *models.Order) error {
+func (o *orders) CreateOrder(ctx context.Context, order *models.Order) (*models.Order, error) {
+	err := o.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 
-	if err := o.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		lastNum, err := getLastOrderNumber(ctx, tx, order.BatchID)
+		if err != nil {
+			return err
+		}
+
+		order.Number = lastNum + 1
 
 		if _, err := tx.NewInsert().Model(order).Exec(ctx); err != nil {
-			fmt.Println("error al insertar order: %w", err)
+			slog.Error("CreateOrder: failed to insert order", "orderID", order.ID, "error", err)
 			return err
 		}
 
 		if _, err := tx.NewInsert().Model(&order.ItemsOrders).Exec(ctx); err != nil {
-			fmt.Println("error al insertar items_orders: %w", err)
+			slog.Error("CreateOrder: failed to insert items_orders", "orderID", order.ID, "error", err)
 			return err
 		}
 
 		for _, v := range order.ItemsOrders {
+			if len(v.Additions) == 0 {
+				continue
+			}
 
-			if len(v.Additions) != 0 {
-				if _, err := tx.NewInsert().Model(&v.Additions).Exec(ctx); err != nil {
-					fmt.Println("error al insertar el additions_order")
-					return err
-				}
+			if _, err := tx.NewInsert().Model(&v.Additions).Exec(ctx); err != nil {
+				slog.Error("CreateOrder: failed to insert items_orders_additions", "orderID", order.ID, "error", err)
+				return err
 			}
 		}
 
 		return nil
+	})
 
-	}); err != nil {
-
-		return err
-
+	if err != nil {
+		return nil, err
 	}
 
-	return nil
+	return order, nil
 }
 
 func (o *orders) SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*models.Order, error) {
 
 	order := new(models.Order)
 
-	if err := o.db.NewSelect().Model(order).Where("id = ?", orderID).Scan(ctx); err != nil {
+	if err := o.db.NewSelect().Model(order).Order("created_at ASC").
+		Relation("ItemsOrders").
+		Relation("ItemsOrders.Additions").
+		Where("id = ?", orderID).Scan(ctx); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errors.New("order not found")
 		}
-		log.Printf("SearchOrderByID: query failed for orderID=%s: %v", orderID, err)
+		slog.Error("SearchOrdersByID: failed to find order", "orderID", orderID, "error", err)
 		return nil, errors.New("unexpected error")
 	}
 
@@ -72,9 +85,9 @@ func (o *orders) SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*mode
 
 }
 
-func (o *orders) SearchItemsByID(ctx context.Context, ItemsID []uuid.UUID) ([]models.Items, error) {
+func (o *orders) SearchItemsByID(ctx context.Context, ItemsID []uuid.UUID) (items.Items, error) {
 
-	var items []models.Items
+	var items items.Items
 
 	err := o.db.NewSelect().Model(&items).Where("id in (?)", bun.In(ItemsID)).Scan(ctx, &items)
 	if err != nil {
@@ -113,4 +126,67 @@ func (o *orders) SearchAdditionsByID(ctx context.Context, additionID []uuid.UUID
 
 	return additions, err
 
+}
+
+func (o *orders) SearchActiveOrdersByCriteria(ctx context.Context, criteria uuid.UUID) ([]models.Order, error) {
+
+	var orders []models.Order
+
+	err := o.db.NewSelect().
+		Model(&orders).
+		Relation("ItemsOrders").
+		Relation("ItemsOrders.Additions").
+		Where("status IN (?)", bun.In([]string{
+			"Pending",
+			"Waiting For Payment Proof",
+			"In Preparation",
+			"On The Way",
+		})).
+		Where("(shop_id = ? OR customer_id = ?)", criteria, criteria).
+		Scan(ctx)
+
+	if err != nil {
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	if len(orders) == 0 {
+		return nil, errcustom.ErrNotFound
+	}
+
+	return orders, nil
+}
+
+func (o *orders) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string) error {
+	q := o.db.NewUpdate().Model(&models.Order{}).
+		Set("status = ?", status).
+		Where("id = ?", orderID)
+
+	if status == "Cancelado" {
+		q = q.Set("canceled_at = ?", time.Now())
+	}
+
+	if _, err := q.Exec(ctx); err != nil {
+		slog.Error("UpdateOrderStatus: failed to update order status",
+			"orderID", orderID, "error", err)
+		return err
+	}
+
+	return nil
+}
+
+func getLastOrderNumber(ctx context.Context, tx bun.Tx, batchID uuid.UUID) (int, error) {
+	var number int
+	err := tx.NewSelect().
+		Table("orders.orders").
+		Column("number").
+		Where("batch_id = ?", batchID).
+		OrderExpr("number DESC").
+		Limit(1).
+		Scan(ctx, &number)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, nil
+	}
+
+	return number, err
 }

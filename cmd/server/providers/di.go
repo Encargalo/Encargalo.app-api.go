@@ -12,7 +12,7 @@ import (
 	"Encargalo.app-api.go/internal/shared/adapters/slack"
 	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/jwt"
-	customerauth "Encargalo.app-api.go/internal/shared/middleware/customerAuth"
+	authMiddle "Encargalo.app-api.go/internal/shared/middleware/auth"
 	requestinfo "Encargalo.app-api.go/internal/shared/middleware/requestInfo"
 	"Encargalo.app-api.go/internal/shops/app"
 	"Encargalo.app-api.go/internal/shops/handler"
@@ -35,6 +35,9 @@ import (
 	appOrders "Encargalo.app-api.go/internal/orders/app"
 	handOrders "Encargalo.app-api.go/internal/orders/handler"
 	repoOrders "Encargalo.app-api.go/internal/orders/repo"
+
+	appEmployee "Encargalo.app-api.go/internal/employee/app"
+	repoEmployee "Encargalo.app-api.go/internal/employee/repo"
 )
 
 var Container *dig.Container
@@ -65,14 +68,14 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(groups.NewOrdersGroup)
 
 	_ = Container.Provide(requestinfo.NewRequestMiddleware)
-	_ = Container.Provide(customerauth.NewAuthMidlleware)
-
+	_ = Container.Provide(authMiddle.NewAuthMidlleware)
 	_ = Container.Provide(handAuth.NewAuthHandler)
 	_ = Container.Provide(handCustomer.NewCustomersHandler)
 	_ = Container.Provide(handler.NewShopsHandler)
 	_ = Container.Provide(handProducts.NewProducsHandler)
 	_ = Container.Provide(handCustomer.NewCustomersAddressHandler)
 	_ = Container.Provide(handOrders.NewOrderHandler)
+	_ = Container.Provide(handOrders.New)
 
 	_ = Container.Provide(appCustomer.NewCustomerApp)
 	_ = Container.Provide(appAuth.NewAuthApp)
@@ -80,6 +83,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(appProducts.NewProductsApp)
 	_ = Container.Provide(appCustomer.NewCustomersAddressApp)
 	_ = Container.Provide(appOrders.NewOrderApp)
+	_ = Container.Provide(appOrders.NewManagerOrderApp)
 
 	_ = Container.Provide(repoAuth.NewAuthRepo)
 	_ = Container.Provide(repo.NewShopsRepository)
@@ -88,6 +92,9 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(repoCustomer.NewCustomersAddressRepo)
 	_ = Container.Provide(repoOrders.NewOrdersRepo)
 	_ = Container.Provide(repoOrders.NewRepositoryProducerStream)
+
+	_ = Container.Provide(appEmployee.New)
+	_ = Container.Provide(repoEmployee.New)
 
 	_ = Container.Provide(bycript.NewHashPassword)
 	_ = Container.Provide(jwt.NewSessionUtils)

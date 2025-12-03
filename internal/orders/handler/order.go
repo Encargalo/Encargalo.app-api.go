@@ -1,12 +1,14 @@
 package handler
 
 import (
-	"fmt"
+	"log/slog"
 	"net/http"
 
+	"Encargalo.app-api.go/internal/auth/domain/models"
+	"Encargalo.app-api.go/internal/orders/app"
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
-	"github.com/google/uuid"
+	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/labstack/echo/v4"
 )
 
@@ -15,11 +17,12 @@ type OrderHandler interface {
 }
 
 type orderHandler struct {
-	svc ports.OrdersApp
+	svc  ports.OrdersApp
+	svc2 app.AppManagerOrder
 }
 
-func NewOrderHandler(svc ports.OrdersApp) OrderHandler {
-	return &orderHandler{svc}
+func NewOrderHandler(svc ports.OrdersApp, svc2 app.AppManagerOrder) OrderHandler {
+	return &orderHandler{svc, svc2}
 }
 
 // CreateOrder godoc
@@ -39,13 +42,18 @@ func (o *orderHandler) CreateOrder(c echo.Context) error {
 
 	var order dtos.CreateOrder
 
-	id, ok := ctx.Value("customer_id").(uuid.UUID)
+	session, ok := ctx.Value("session").(models.ActiveSession)
 	if !ok {
-		fmt.Println("Error al obtener el customer_id")
-		return echo.NewHTTPError(http.StatusInternalServerError, "unexpected error")
+		slog.Error("No se encontró el usuario en el contexto")
+		return errcustom.ErrUnexpectedError
 	}
 
-	order.CustomerID = id
+	if session.UserType != roleCustomer {
+		slog.Error("Usuario no autorizado para acceder a esta ruta")
+		return echo.NewHTTPError(http.StatusForbidden, "usuario no autorizado")
+	}
+
+	order.CustomerID = session.UserID
 
 	if err := c.Bind(&order); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
@@ -55,15 +63,22 @@ func (o *orderHandler) CreateOrder(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	if err := o.svc.CreateOrder(ctx, &order); err != nil {
+	orderModel, err := o.svc.CreateOrder(ctx, &order)
+	if err != nil {
 		switch err.Error() {
 		case "order already exists":
 			return echo.NewHTTPError(http.StatusConflict, err.Error())
 		case "one or more items not found":
 			return echo.NewHTTPError(http.StatusUnprocessableEntity, err.Error())
+		case "one or more additions not found":
+			return echo.NewHTTPError(http.StatusUnprocessableEntity, err.Error())
 		default:
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
+	}
+
+	if err = o.svc2.BroadcastOrder(*orderModel); err != nil {
+		slog.Error("error broadcasting order to websockets", "error", err)
 	}
 
 	return c.JSON(http.StatusCreated, "Order created successfully")

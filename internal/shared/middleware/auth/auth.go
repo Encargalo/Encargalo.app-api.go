@@ -1,4 +1,4 @@
-package customerauth
+package auth
 
 import (
 	"context"
@@ -12,13 +12,6 @@ import (
 	"Encargalo.app-api.go/internal/shared/jwt"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
-)
-
-type ctxKey string
-
-const (
-	ctxKeyCustomerID ctxKey = "customer_id"
-	ctxKeySessionID  ctxKey = "session_id"
 )
 
 type AuthMiddleware interface {
@@ -71,8 +64,7 @@ func (a *auth) Auth(next echo.HandlerFunc) echo.HandlerFunc {
 			return echo.NewHTTPError(http.StatusUnauthorized, "session expired")
 		}
 
-		ctx = context.WithValue(ctx, "customer_id", session.UserID)
-		ctx = context.WithValue(ctx, "session_id", sessionID)
+		ctx = context.WithValue(ctx, "session", *session)
 
 		c.SetRequest(req.WithContext(ctx))
 
