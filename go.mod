@@ -1,6 +1,6 @@
 module Encargalo.app-api.go
 
-go 1.24.0
+go 1.25
 
 require (
 	github.com/andresxlp/gosuite v1.0.0
@@ -11,10 +11,10 @@ require (
 	github.com/slack-go/slack v0.17.3
 	github.com/swaggo/echo-swagger v1.4.1
 	github.com/swaggo/swag v1.16.6
-	github.com/uptrace/bun v1.2.15
-	github.com/uptrace/bun/dialect/pgdialect v1.2.15
-	github.com/uptrace/bun/driver/pgdriver v1.2.15
-	github.com/uptrace/bun/extra/bundebug v1.2.15
+	github.com/uptrace/bun v1.2.16
+	github.com/uptrace/bun/dialect/pgdialect v1.2.16
+	github.com/uptrace/bun/driver/pgdriver v1.2.16
+	github.com/uptrace/bun/extra/bundebug v1.2.16
 	go.uber.org/dig v1.19.0
 )
 
@@ -39,8 +39,8 @@ require (
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
-	go.opentelemetry.io/otel v1.37.0 // indirect
-	go.opentelemetry.io/otel/trace v1.37.0 // indirect
+	go.opentelemetry.io/otel v1.38.0 // indirect
+	go.opentelemetry.io/otel/trace v1.38.0 // indirect
 	golang.org/x/sync v0.18.0 // indirect
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/go-playground/mold.v2 v2.2.0 // indirect
