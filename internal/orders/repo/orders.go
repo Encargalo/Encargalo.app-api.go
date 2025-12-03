@@ -25,9 +25,15 @@ func NewOrdersRepo(db *bun.DB) ports.OrdersRepo {
 	return &orders{db}
 }
 
-func (o *orders) CreateOrder(ctx context.Context, order *models.Order) error {
+func (o *orders) CreateOrder(ctx context.Context, order *models.Order) (*models.Order, error) {
+	err := o.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 
-	if err := o.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		lastNum, err := getLastOrderNumber(ctx, tx, order.BatchID)
+		if err != nil {
+			return err
+		}
+
+		order.Number = lastNum + 1
 
 		if _, err := tx.NewInsert().Model(order).Exec(ctx); err != nil {
 			slog.Error("CreateOrder: failed to insert order", "orderID", order.ID, "error", err)
@@ -40,31 +46,31 @@ func (o *orders) CreateOrder(ctx context.Context, order *models.Order) error {
 		}
 
 		for _, v := range order.ItemsOrders {
+			if len(v.Additions) == 0 {
+				continue
+			}
 
-			if len(v.Additions) != 0 {
-				if _, err := tx.NewInsert().Model(&v.Additions).Exec(ctx); err != nil {
-					slog.Error("CreateOrder: failed to insert items_orders_additions", "orderID", order.ID, "error", err)
-					return err
-				}
+			if _, err := tx.NewInsert().Model(&v.Additions).Exec(ctx); err != nil {
+				slog.Error("CreateOrder: failed to insert items_orders_additions", "orderID", order.ID, "error", err)
+				return err
 			}
 		}
 
 		return nil
+	})
 
-	}); err != nil {
-
-		return err
-
+	if err != nil {
+		return nil, err
 	}
 
-	return nil
+	return order, nil
 }
 
 func (o *orders) SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*models.Order, error) {
 
 	order := new(models.Order)
 
-	if err := o.db.NewSelect().Model(order).
+	if err := o.db.NewSelect().Model(order).Order("created_at ASC").
 		Relation("ItemsOrders").
 		Relation("ItemsOrders.Additions").
 		Where("id = ?", orderID).Scan(ctx); err != nil {
@@ -166,4 +172,21 @@ func (o *orders) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, statu
 	}
 
 	return nil
+}
+
+func getLastOrderNumber(ctx context.Context, tx bun.Tx, batchID uuid.UUID) (int, error) {
+	var number int
+	err := tx.NewSelect().
+		Table("orders.orders").
+		Column("number").
+		Where("batch_id = ?", batchID).
+		OrderExpr("number DESC").
+		Limit(1).
+		Scan(ctx, &number)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, nil
+	}
+
+	return number, err
 }

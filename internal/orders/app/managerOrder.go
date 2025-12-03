@@ -37,7 +37,7 @@ func NewManagerOrderApp(svc ports.OrdersApp) AppManagerOrder {
 
 func (s *appManagerOrder) Register(
 	ctx context.Context,
-	connectionID uuid.UUID, // ShopID o CustomerID
+	connectionID uuid.UUID,
 	conn *websocket.Conn,
 	isShop bool,
 ) error {
@@ -102,13 +102,11 @@ func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
 		return err
 	}
 
-	// 1️⃣ Buscar conexiones del Shop
 	s.mu.RLock()
 	shopConns := s.shopConnections[order.ShopID]
 	customerConns := s.customerConnections[order.CustomerID]
 	s.mu.RUnlock()
 
-	// 2️⃣ Enviar a cada tipo de receptor
 	sendToConns := func(conns []*websocket.Conn, label string) {
 		for _, conn := range conns {
 			if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
@@ -129,10 +127,8 @@ func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
 		}
 	}
 
-	// 2.a → Enviar al negocio
 	sendToConns(shopConns, "shop")
 
-	// 2.b → Enviar al cliente
 	sendToConns(customerConns, "customer")
 
 	return nil

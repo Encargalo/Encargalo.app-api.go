@@ -14,6 +14,7 @@ type Order struct {
 	ShopID        uuid.UUID `bun:"shop_id"`
 	CustomerID    uuid.UUID `bun:"customer_id"`
 	BatchID       uuid.UUID `bun:"batch_id,nullzero,type:uuid"`
+	Number        int       `bun:"number"`
 	Address       string    `bun:"address"`
 	Latitude      float64   `bun:"latitude"`
 	Longitude     float64   `bun:"longitude"`

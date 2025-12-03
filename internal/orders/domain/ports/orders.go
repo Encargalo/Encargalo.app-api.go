@@ -17,7 +17,7 @@ type OrdersApp interface {
 }
 
 type OrdersRepo interface {
-	CreateOrder(ctx context.Context, order *models.Order) error
+	CreateOrder(ctx context.Context, order *models.Order) (*models.Order, error)
 	SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*models.Order, error)
 	SearchItemsByID(ctx context.Context, ItemsID []uuid.UUID) (items.Items, error)
 	SearchAdditionsByID(ctx context.Context, additionID []uuid.UUID) ([]models.Addition, error)
