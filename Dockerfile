@@ -9,7 +9,7 @@ RUN go build -o app ./cmd/server
 RUN upx app
 
 #final stage
-FROM alpine:latest
+FROM alpine:3.21
 RUN apk update && apk --no-cache add ca-certificates
 WORKDIR /app
 COPY --from=builder /app .
