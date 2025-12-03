@@ -1,5 +1,5 @@
 #build stage
-FROM golang:1.24-alpine3.20 AS builder
+FROM golang:1.25.5-alpine3.22 AS builder
 RUN apk add --no-cache git upx
 WORKDIR /app
 COPY ["go.mod", "go.sum", "./"]
@@ -13,5 +13,5 @@ FROM alpine:latest
 RUN apk update && apk --no-cache add ca-certificates
 WORKDIR /app
 COPY --from=builder /app .
-EXPOSE 3002
+EXPOSE 3000
 ENTRYPOINT ["./app"]
