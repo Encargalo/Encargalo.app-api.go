@@ -7,7 +7,7 @@ require (
 	github.com/charmbracelet/log v0.4.2
 	github.com/gorilla/websocket v1.5.3
 	github.com/labstack/echo/v4 v4.13.4
-	github.com/shepherd-go/gosuite v1.0.2
+	github.com/shepherd-go/gosuite v1.0.3
 	github.com/slack-go/slack v0.17.3
 	github.com/swaggo/echo-swagger v1.4.1
 	github.com/swaggo/swag v1.16.6
