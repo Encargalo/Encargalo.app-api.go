@@ -4,7 +4,7 @@ import (
 	"log"
 	"sync"
 
-	"github.com/andresxlp/gosuite/config"
+	"github.com/shepherd-go/gosuite/config"
 )
 
 var (
