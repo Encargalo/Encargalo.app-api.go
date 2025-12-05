@@ -41,6 +41,6 @@ func (o *customersGroup) Resource(g *echo.Echo) {
 	group.PUT("/change-password", o.handlerCustomers.UpdatePassword, o.middle.GetRequestInfo, o.middleAuth.Auth)
 	group.POST("/address", o.handlerAddress.RegisterAddress, o.middle.GetRequestInfo, o.middleAuth.Auth)
 	group.GET("/address", o.handlerAddress.SearchAllAdrress, o.middle.GetRequestInfo, o.middleAuth.Auth)
-	group.DELETE("/address/:address", o.handlerAddress.DeleteAddress, o.middle.GetRequestInfo, o.middleAuth.Auth)
+	group.DELETE("/address", o.handlerAddress.DeleteAddress, o.middle.GetRequestInfo, o.middleAuth.Auth)
 
 }

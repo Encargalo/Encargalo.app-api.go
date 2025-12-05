@@ -28,6 +28,7 @@ type Config struct {
 	Slack       Slack       `env:"slack"`
 	Limit       Limit       `env:"limit"`
 	Google      Google      `env:"google"`
+	Mongo       Mongo       `env:"mongo"`
 }
 
 type Server struct {
@@ -70,6 +71,10 @@ type Limit struct {
 
 type Google struct {
 	Matrix string `validate:"required" env:"matrix"`
+}
+
+type Mongo struct {
+	Url string `validate:"required" env:"url"`
 }
 
 func Environments() {

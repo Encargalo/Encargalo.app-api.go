@@ -4,33 +4,29 @@ definitions:
       address:
         example: 'Calle 123 # 45-67'
         type: string
-      alias:
-        example: Casa principal
+      extra: {}
+      instructions:
+        example: Tocar el timbre azul
         type: string
-      coords:
-        $ref: '#/definitions/dto.Coords'
-      id:
+      label:
+        example: Oficina
         type: string
-      reference:
-        example: Frente al parque de los niños
-        type: string
-    required:
-    - address
-    - alias
-    - coords
-    - reference
-    type: object
-  dto.Coords:
-    properties:
       lat:
         example: 4.60971
         type: number
       long:
         example: -74.08175
         type: number
+      type:
+        example: Casa
+        type: string
     required:
+    - address
+    - extra
+    - label
     - lat
     - long
+    - type
     type: object
   dto.CustomerResponse:
     properties:
@@ -489,6 +485,31 @@ paths:
       tags:
       - Customers
   /customers/address:
+    delete:
+      description: Elimina la dirección especificada por su ID, siempre que pertenezca
+        al cliente autenticado
+      parameters:
+      - description: ID de la dirección (UUID)
+        in: path
+        name: address
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: address deleted success
+          schema:
+            type: string
+        "500":
+          description: unexpected error
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Elimina una dirección del cliente autenticado
+      tags:
+      - Customers Address
     get:
       description: Retorna un arreglo con todas las direcciones asociadas al cliente
         identificado en el token
@@ -539,32 +560,6 @@ paths:
           schema:
             type: string
       summary: Registra una nueva dirección para el cliente autenticado
-      tags:
-      - Customers Address
-  /customers/address/{address}:
-    delete:
-      description: Elimina la dirección especificada por su ID, siempre que pertenezca
-        al cliente autenticado
-      parameters:
-      - description: ID de la dirección (UUID)
-        in: path
-        name: address
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: address deleted success
-          schema:
-            type: string
-        "500":
-          description: unexpected error
-          schema:
-            type: string
-      security:
-      - SessionCookie: []
-      summary: Elimina una dirección del cliente autenticado
       tags:
       - Customers Address
   /customers/change-password:

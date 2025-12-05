@@ -379,9 +379,7 @@ const docTemplate = `{
                         }
                     }
                 }
-            }
-        },
-        "/customers/address/{address}": {
+            },
             "delete": {
                 "security": [
                     {
@@ -684,38 +682,26 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "address",
-                "alias",
-                "coords",
-                "reference"
+                "extra",
+                "label",
+                "lat",
+                "long",
+                "type"
             ],
             "properties": {
                 "address": {
                     "type": "string",
                     "example": "Calle 123 # 45-67"
                 },
-                "alias": {
+                "extra": {},
+                "instructions": {
                     "type": "string",
-                    "example": "Casa principal"
+                    "example": "Tocar el timbre azul"
                 },
-                "coords": {
-                    "$ref": "#/definitions/dto.Coords"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "reference": {
+                "label": {
                     "type": "string",
-                    "example": "Frente al parque de los niños"
-                }
-            }
-        },
-        "dto.Coords": {
-            "type": "object",
-            "required": [
-                "lat",
-                "long"
-            ],
-            "properties": {
+                    "example": "Oficina"
+                },
                 "lat": {
                     "type": "number",
                     "example": 4.60971
@@ -723,6 +709,10 @@ const docTemplate = `{
                 "long": {
                     "type": "number",
                     "example": -74.08175
+                },
+                "type": {
+                    "type": "string",
+                    "example": "Casa"
                 }
             }
         },

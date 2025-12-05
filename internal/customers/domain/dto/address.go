@@ -2,30 +2,109 @@ package dto
 
 import (
 	"context"
-
-	"github.com/google/uuid"
+	"encoding/json"
+	"errors"
+	"fmt"
 )
 
 type Addresses []Address
 
+var addressTypes = map[string]func() interface{}{
+	"Apartment":   func() interface{} { return &Apartment{} },
+	"Condominium": func() interface{} { return &Condominium{} },
+	"Home":        func() interface{} { return &Home{} },
+}
+
 type Address struct {
-	ID        uuid.UUID `json:"id"`
-	Alias     string    `json:"alias" validate:"required" example:"Casa principal"`
-	Address   string    `json:"address" validate:"required" example:"Calle 123 # 45-67"`
-	Reference string    `json:"reference" validate:"required" example:"Frente al parque de los niños"`
-	Cords     Coords    `json:"coords" validate:"required"`
+	Type         string      `json:"type" validate:"required" example:"Casa"`
+	Label        string      `json:"label" validate:"required" example:"Oficina"`
+	Address      string      `json:"address" validate:"required" example:"Calle 123 # 45-67"`
+	Latitude     float64     `json:"lat" validate:"required,latitude" example:"4.609710"`
+	Longitude    float64     `json:"long" validate:"required,longitude" example:"-74.081750"`
+	Instructions string      `json:"instructions" validate:"omitempty" example:"Tocar el timbre azul"`
+	Extra        interface{} `json:"extra" validate:"required"`
 }
 
-type Coords struct {
-	Latitude  float64 `json:"lat" validate:"required,latitude" example:"4.609710"`
-	Longitude float64 `json:"long" validate:"required,longitude" example:"-74.081750"`
+type Apartment struct {
+	Building  string `json:"building" example:"Edificio Central"`
+	Apartment string `json:"apartment" validate:"required" example:"Apto 101, Torre B"`
 }
 
-func (c *Address) Validate() error {
-	_ = conform.Struct(context.Background(), c)
-	return validate.Struct(c)
+type Condominium struct {
+	Name   string `json:"name" validate:"required" example:"Condominio Los Pinos"`
+	Number string `json:"number" validate:"required" example:"Casa 12, Sector A"`
 }
 
-func (c *Addresses) Add(address Address) {
+type Home struct {
+	Details string `json:"details" example:"Casa de dos pisos con jardin"`
+}
+
+func (a *Address) UnmarshalJSON(data []byte) error {
+
+	type Alias Address
+	aux := &struct {
+		Extra json.RawMessage `json:"extra"`
+		*Alias
+	}{
+		Alias: (*Alias)(a),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	if aux.Type == "" {
+		return errors.New("missing field: type")
+	}
+
+	constructor, ok := addressTypes[aux.Type]
+	if !ok {
+		return fmt.Errorf("unknown type: %s", aux.Type)
+	}
+
+	a.Extra = constructor()
+
+	if len(aux.Extra) > 0 {
+		if err := json.Unmarshal(aux.Extra, a.Extra); err != nil {
+			return fmt.Errorf("invalid extra data: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (a *Address) BuildExtra() {
+	constructor, ok := addressTypes[a.Type]
+	if !ok {
+		a.Extra = nil
+		return
+	}
+	a.Extra = constructor()
+}
+
+func (a *Address) Validate() error {
+	_ = conform.Struct(context.Background(), a)
+
+	if err := validate.Struct(a); err != nil {
+		return err
+	}
+
+	if a.Extra != nil {
+		if err := validate.Struct(a.Extra); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *Addresses) Add(address Address) error {
+	address.BuildExtra()
+
+	if err := address.Validate(); err != nil {
+		return err
+	}
+
 	*c = append(*c, address)
+	return nil
 }
