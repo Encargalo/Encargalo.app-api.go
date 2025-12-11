@@ -5,57 +5,35 @@ import (
 
 	"Encargalo.app-api.go/internal/customers/domain/dto"
 	"github.com/google/uuid"
-	"github.com/uptrace/bun"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type Addresses []Address
 
 type Address struct {
-	bun.BaseModel `bun:"table:customers.address"`
-
-	ID         uuid.UUID  `bun:"id,pk,type:uuid,default:uuid_generate_v4()"`
-	CustomerID uuid.UUID  `bun:"customer_id,type:uuid,notnull"`
-	Alias      string     `bun:"alias,notnull"`
-	Address    string     `bun:"address,notnull"`
-	Reference  string     `bun:"reference,notnull"`
-	Latitude   float64    `bun:"latitude,notnull"`
-	Longitude  float64    `bun:"longitude,notnull"`
-	CreatedAt  time.Time  `bun:"created_at,default:now()"`
-	UpdatedAt  time.Time  `bun:"updated_at,default:now()"`
-	DeletedAt  *time.Time `bun:"deleted_at,soft_delete"`
+	ID           primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
+	CustomerID   string             `bson:"customer_id" json:"customer_id"`
+	Label        string             `bson:"alias" json:"alias"`
+	Address      string             `bson:"address" json:"address"`
+	Latitude     float64            `bson:"latitude" json:"latitude"`
+	Longitude    float64            `bson:"longitude" json:"longitude"`
+	Type         string             `bson:"type" json:"type"`
+	Instructions string             `bson:"instructions,omitempty" json:"instructions,omitempty"`
+	Extra        interface{}        `bson:"extra,omitempty" json:"extra,omitempty"`
+	CreatedAt    time.Time          `bson:"created_at" json:"created_at"`
+	UpdatedAt    time.Time          `bson:"updated_at" json:"updated_at"`
 }
 
-func (a *Address) BuildToModel(customer_id uuid.UUID, address dto.Address) {
-
-	a.CustomerID = customer_id
-	a.Alias = address.Alias
-	a.Address = address.Address
-	a.Reference = address.Reference
-	a.Latitude = address.Cords.Latitude
-	a.Longitude = address.Cords.Longitude
-
-}
-
-func (a *Address) ToDomainDTO() dto.Address {
-	return dto.Address{
-		ID:        a.ID,
-		Alias:     a.Alias,
-		Address:   a.Address,
-		Reference: a.Reference,
-		Cords: dto.Coords{
-			Latitude:  a.Latitude,
-			Longitude: a.Longitude,
-		},
-	}
-}
-
-func (a *Addresses) ToDomainDTO() dto.Addresses {
-
-	var address dto.Addresses
-
-	for _, v := range *a {
-		address.Add(v.ToDomainDTO())
-	}
-
-	return address
+func (a *Address) BuildToModel(customerID uuid.UUID, dtoAddr dto.Address) {
+	a.ID = primitive.NewObjectID()
+	a.CustomerID = customerID.String()
+	a.Label = dtoAddr.Label
+	a.Address = dtoAddr.Address
+	a.Latitude = dtoAddr.Latitude
+	a.Longitude = dtoAddr.Longitude
+	a.Instructions = dtoAddr.Instructions
+	a.Type = dtoAddr.Type
+	a.Extra = dtoAddr.Extra
+	a.CreatedAt = time.Now()
+	a.UpdatedAt = time.Now()
 }

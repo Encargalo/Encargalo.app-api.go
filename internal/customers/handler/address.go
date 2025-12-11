@@ -1,16 +1,13 @@
 package handler
 
 import (
-	"fmt"
 	"log/slog"
 	"net/http"
-	"strings"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/customers/domain/dto"
 	"Encargalo.app-api.go/internal/customers/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
@@ -47,13 +44,15 @@ func (c *customersAddrssHandler) RegisterAddress(e echo.Context) error {
 
 	ctx := e.Request().Context()
 
-	address := dto.Address{}
+	var address dto.Address
 
 	if err := e.Bind(&address); err != nil {
+		slog.Error("Bind error:", "err", err)
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	if err := address.Validate(); err != nil {
+		slog.Error("Validation error:", "err", err)
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
@@ -69,6 +68,7 @@ func (c *customersAddrssHandler) RegisterAddress(e echo.Context) error {
 	}
 
 	if err := c.svc.RegisterAddress(ctx, session.UserID, address); err != nil {
+		slog.Error("Error registrando dirección:", "err", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "unexpected error")
 	}
 
@@ -121,15 +121,15 @@ func (c *customersAddrssHandler) SearchAllAdrress(e echo.Context) error {
 // @Success 200 {string} string "address deleted success"
 // @Failure 500 {string} string "unexpected error"
 // @Security SessionCookie
-// @Router /customers/address/{address} [delete]
+// @Router /customers/address [delete]
 func (c *customersAddrssHandler) DeleteAddress(e echo.Context) error {
 
 	ctx := e.Request().Context()
 
-	address_id, err := uuid.Parse(strings.TrimSpace(fmt.Sprintln(e.Param("address"))))
-	if err != nil {
-		fmt.Println("Error al obtener el address_id")
-		return echo.NewHTTPError(http.StatusInternalServerError, "unexpected error")
+	address_id := e.QueryParam("address_id")
+
+	if address_id == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "address id is required")
 	}
 
 	session, ok := ctx.Value("session").(models.ActiveSession)

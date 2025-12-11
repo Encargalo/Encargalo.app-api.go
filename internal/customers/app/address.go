@@ -25,11 +25,11 @@ func (c *customersAddressApp) RegisterAddress(ctx context.Context, customerID uu
 	return c.repo.RegisterAddress(ctx, addresModel)
 }
 
-func (c *customersAddressApp) SearchAllAddress(ctx context.Context, customer_id uuid.UUID) (dto.Addresses, error) {
+func (c *customersAddressApp) SearchAllAddress(ctx context.Context, customer_id uuid.UUID) (models.Addresses, error) {
 
 	return c.repo.SearchAllAddress(ctx, customer_id)
 }
 
-func (c *customersAddressApp) DeleteAddress(ctx context.Context, customer_id, address_id uuid.UUID) error {
+func (c *customersAddressApp) DeleteAddress(ctx context.Context, customer_id uuid.UUID, address_id string) error {
 	return c.repo.DeleteAddress(ctx, customer_id, address_id)
 }
