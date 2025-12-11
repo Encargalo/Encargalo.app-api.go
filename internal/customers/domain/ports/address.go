@@ -10,12 +10,12 @@ import (
 
 type CustomersAddressApp interface {
 	RegisterAddress(ctx context.Context, customerID uuid.UUID, address dto.Address) error
-	SearchAllAddress(ctx context.Context, customer_id uuid.UUID) (dto.Addresses, error)
-	DeleteAddress(ctx context.Context, customer_id, address_id uuid.UUID) error
+	SearchAllAddress(ctx context.Context, customer_id uuid.UUID) (models.Addresses, error)
+	DeleteAddress(ctx context.Context, customer_id uuid.UUID, address_id string) error
 }
 
 type CustomersAddressRepo interface {
 	RegisterAddress(ctx context.Context, address models.Address) error
-	SearchAllAddress(ctx context.Context, customer_id uuid.UUID) (dto.Addresses, error)
-	DeleteAddress(ctx context.Context, customer_id, address_id uuid.UUID) error
+	SearchAllAddress(ctx context.Context, customer_id uuid.UUID) (models.Addresses, error)
+	DeleteAddress(ctx context.Context, customer_id uuid.UUID, address_id string) error
 }
