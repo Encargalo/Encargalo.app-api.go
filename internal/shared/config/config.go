@@ -26,7 +26,7 @@ type Config struct {
 	RedisStream RedisStream `env:"redis_stream"`
 	JWT         JWT         `env:"jwt"`
 	Slack       Slack       `env:"slack"`
-	Limit       Limit       `env:"limit"`
+	Environment Environment `env:"environment"`
 	Google      Google      `env:"google"`
 	Mongo       Mongo       `env:"mongo"`
 }
@@ -65,8 +65,8 @@ type Slack struct {
 	Channel string `env:"channel"`
 }
 
-type Limit struct {
-	Status *bool `validate:"required" env:"status"`
+type Environment struct {
+	Current string `validate:"required" env:"current"`
 }
 
 type Google struct {
