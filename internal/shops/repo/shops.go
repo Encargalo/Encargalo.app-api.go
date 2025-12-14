@@ -62,7 +62,7 @@ func (s *shopsRepo) GetAllShops(ctx context.Context, coords shopsDTO.Coords) (sh
 		Order("score DESC").
 		Where("license_status = ?", "active")
 
-	if *config.Get().Limit.Status {
+	if config.Get().Environment.Current != "production" {
 		q.Where("latitude IS NOT NULL AND longitude IS NOT NULL").
 			Where(`
 		6371 * acos(
@@ -125,7 +125,7 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 		q.Where("tag = ?", criteria.Tag)
 	}
 
-	if *config.Get().Limit.Status {
+	if config.Get().Environment.Current != "production" {
 		q.Where("latitude IS NOT NULL AND longitude IS NOT NULL").
 			Where(`
 		6371 * acos(
