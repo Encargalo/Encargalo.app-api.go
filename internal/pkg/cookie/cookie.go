@@ -3,6 +3,8 @@ package cookie
 import (
 	"net/http"
 	"time"
+
+	"Encargalo.app-api.go/internal/shared/config"
 )
 
 const (
@@ -26,7 +28,7 @@ func (c *cookie) CreateCookieSession(jwtSession string) *http.Cookie {
 		Name:     cookieName,
 		Value:    jwtSession,
 		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: setSameSite(),
 		HttpOnly: true,
 		Path:     cookiePath,
 		Expires:  time.Now().Add(365 * 24 * time.Hour),
@@ -38,10 +40,17 @@ func (c *cookie) DeleteCookieSession() *http.Cookie {
 		Name:     cookieName,
 		Value:    "",
 		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: setSameSite(),
 		HttpOnly: true,
 		Path:     cookiePath,
 		Expires:  time.Unix(0, 0),
 		MaxAge:   -1,
 	}
+}
+
+func setSameSite() http.SameSite {
+	if config.Get().Environment.Current != "production" {
+		return http.SameSiteNoneMode
+	}
+	return http.SameSiteStrictMode
 }
