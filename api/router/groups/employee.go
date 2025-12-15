@@ -1,6 +1,7 @@
 package groups
 
 import (
+	handAuth "Encargalo.app-api.go/internal/auth/handler"
 	"Encargalo.app-api.go/internal/employee/handler"
 	"Encargalo.app-api.go/internal/shared/middleware/auth"
 	requestinfo "Encargalo.app-api.go/internal/shared/middleware/requestInfo"
@@ -13,16 +14,20 @@ type EmployeeGroup interface {
 
 type employeeGroup struct {
 	hand       handler.EmployyeHandler
+	handAuth   handAuth.Auth
 	middle     requestinfo.Request
 	middleAuth auth.AuthMiddleware
 }
 
-func NewEmployeeGroup(hand handler.EmployyeHandler, middle requestinfo.Request, middleAuth auth.AuthMiddleware) EmployeeGroup {
-	return &employeeGroup{hand, middle, middleAuth}
+func NewEmployeeGroup(hand handler.EmployyeHandler, handAuth handAuth.Auth, middle requestinfo.Request, middleAuth auth.AuthMiddleware) EmployeeGroup {
+	return &employeeGroup{hand, handAuth, middle, middleAuth}
 }
 
 func (e *employeeGroup) Resource(g *echo.Echo) {
 	group := g.Group("/employee")
+
+	group.POST("/sign-in", e.handAuth.SignInEmployee)
+	group.DELETE("/logout", e.handAuth.LogoutEmployee, e.middle.GetRequestInfo, e.middleAuth.Auth)
 
 	group.GET("", e.hand.SearchEmployee, e.middle.GetRequestInfo, e.middleAuth.Auth)
 }

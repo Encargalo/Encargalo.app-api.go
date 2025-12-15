@@ -19,7 +19,7 @@ type SessionType string
 
 const (
 	SessionTypeCustomer SessionType = "customer-session"
-	SessionTypeBusiness SessionType = "business-session"
+	SessionTypeBusiness SessionType = "employee-session"
 )
 
 // Definimos keys para el contexto para evitar colisiones de strings

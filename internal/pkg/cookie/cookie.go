@@ -11,7 +11,7 @@ type Role string
 
 const (
 	RoleCustomer Role = "customers"
-	RoleBusiness Role = "business"
+	RoleBusiness Role = "employee"
 )
 
 type CookieHandler interface {
@@ -32,8 +32,8 @@ func NewCookieFactory(role Role) CookieHandler {
 		}
 	case RoleBusiness:
 		return &cookie{
-			name: "business-session",
-			path: "/business",
+			name: "employee-session",
+			path: "/employee",
 		}
 	default:
 		return &cookie{
