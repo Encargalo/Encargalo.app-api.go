@@ -1,6 +1,7 @@
 package groups
 
 import (
+	handAuth "Encargalo.app-api.go/internal/auth/handler"
 	"Encargalo.app-api.go/internal/customers/handler"
 	"Encargalo.app-api.go/internal/shared/middleware/auth"
 	requestinfo "Encargalo.app-api.go/internal/shared/middleware/requestInfo"
@@ -16,6 +17,7 @@ type customersGroup struct {
 	middleAuth       auth.AuthMiddleware
 	handlerAddress   handler.CustomersAddressHandler
 	handlerCustomers handler.CustomersHandler
+	handAuth         handAuth.Auth
 }
 
 func NewCustomersGroup(
@@ -23,17 +25,22 @@ func NewCustomersGroup(
 	middleAuth auth.AuthMiddleware,
 	handlerAddress handler.CustomersAddressHandler,
 	handlerCustomers handler.CustomersHandler,
+	handAuth handAuth.Auth,
 ) CustomersGroup {
 	return &customersGroup{
 		middle,
 		middleAuth,
 		handlerAddress,
-		handlerCustomers}
+		handlerCustomers,
+		handAuth}
 }
 
 func (o *customersGroup) Resource(g *echo.Echo) {
 
 	group := g.Group("/customers")
+
+	group.POST("/sign-in", o.handAuth.SignInCustomer)
+	group.DELETE("/logout", o.handAuth.LogoutCustomer, o.middle.GetRequestInfo, o.middleAuth.Auth)
 
 	group.POST("", o.handlerCustomers.RegisterCustomer, o.middle.GetRequestInfo)
 	group.GET("", o.handlerCustomers.SearchCustomer, o.middle.GetRequestInfo, o.middleAuth.Auth)

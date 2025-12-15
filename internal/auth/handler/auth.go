@@ -16,8 +16,8 @@ import (
 
 type Auth interface {
 	SignInCustomer(e echo.Context) error
+	LogoutCustomer(e echo.Context) error
 	SignInEmployee(e echo.Context) error
-	Logout(e echo.Context) error
 }
 
 type auth struct {
@@ -71,7 +71,7 @@ func (a *auth) SignInCustomer(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
 	}
 
-	cookie := cookie.NewCookieFactory("customer")
+	cookie := cookie.NewCookieFactory("customers")
 
 	e.SetCookie(cookie.CreateCookieSession(jwtSession))
 
@@ -136,7 +136,7 @@ func (a *auth) SignInEmployee(e echo.Context) error {
 // @Failure 500 {string} string "unexpected error"
 // @Security SessionCookie
 // @Router /auth/logout [delete]
-func (s *auth) Logout(e echo.Context) error {
+func (s *auth) LogoutCustomer(e echo.Context) error {
 
 	ctx := e.Request().Context()
 
@@ -150,16 +150,8 @@ func (s *auth) Logout(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
 	}
 
-	switch session.UserType {
-	case "customer":
-		cookie := cookie.NewCookieFactory("customer")
-		e.SetCookie(cookie.DeleteCookieSession())
-	case "Order Manager":
-		cookie := cookie.NewCookieFactory("business")
-		e.SetCookie(cookie.DeleteCookieSession())
-	default:
-		return echo.NewHTTPError(http.StatusInternalServerError, "unexpected error")
-	}
+	cookie := cookie.NewCookieFactory("customer")
+	e.SetCookie(cookie.DeleteCookieSession())
 
 	return e.JSON(http.StatusOK, "session deleted success")
 }

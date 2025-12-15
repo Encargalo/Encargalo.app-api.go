@@ -10,7 +10,7 @@ import (
 type Role string
 
 const (
-	RoleCustomer Role = "customer"
+	RoleCustomer Role = "customers"
 	RoleBusiness Role = "business"
 )
 
@@ -28,7 +28,7 @@ func NewCookieFactory(role Role) CookieHandler {
 	case RoleCustomer:
 		return &cookie{
 			name: "customer-session",
-			path: "/customer",
+			path: "/customers",
 		}
 	case RoleBusiness:
 		return &cookie{
