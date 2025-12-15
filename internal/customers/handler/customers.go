@@ -28,11 +28,10 @@ type customersHandler struct {
 	customerApp ports.CustomersApp
 	auth        portsAuth.AuthApp
 	jwt         jwt.Sessions
-	cookie      cookie.Cookie
 }
 
-func NewCustomersHandler(customerApp ports.CustomersApp, auth portsAuth.AuthApp, jwt jwt.Sessions, cookie cookie.Cookie) CustomersHandler {
-	return &customersHandler{customerApp, auth, jwt, cookie}
+func NewCustomersHandler(customerApp ports.CustomersApp, auth portsAuth.AuthApp, jwt jwt.Sessions) CustomersHandler {
+	return &customersHandler{customerApp, auth, jwt}
 }
 
 // RegisterCustomer godoc
@@ -77,9 +76,9 @@ func (c *customersHandler) RegisterCustomer(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
 	}
 
-	cookie := c.cookie.CreateCookieSession(jwtSession)
+	cookie := cookie.NewCookieFactory("customer")
 
-	e.SetCookie(cookie)
+	e.SetCookie(cookie.CreateCookieSession(jwtSession))
 
 	return e.JSON(http.StatusCreated, "customer successfully registered")
 }
