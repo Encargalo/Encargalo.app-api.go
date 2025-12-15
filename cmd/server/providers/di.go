@@ -5,7 +5,6 @@ import (
 	"Encargalo.app-api.go/api/router/groups"
 	"Encargalo.app-api.go/internal/pkg/bycript"
 	"Encargalo.app-api.go/internal/pkg/cache"
-	"Encargalo.app-api.go/internal/pkg/cookie"
 	"Encargalo.app-api.go/internal/pkg/logs"
 	"Encargalo.app-api.go/internal/shared/adapters/mongo"
 	"Encargalo.app-api.go/internal/shared/adapters/postgres"
@@ -64,7 +63,6 @@ func BuildContainer() *dig.Container {
 
 	_ = Container.Provide(router.New)
 
-	_ = Container.Provide(groups.NewAuthGroup)
 	_ = Container.Provide(groups.NewShopsGroup)
 	_ = Container.Provide(groups.NewProductsGroup)
 	_ = Container.Provide(groups.NewCustomersGroup)
@@ -103,7 +101,6 @@ func BuildContainer() *dig.Container {
 
 	_ = Container.Provide(bycript.NewHashPassword)
 	_ = Container.Provide(jwt.NewSessionUtils)
-	_ = Container.Provide(cookie.NewCookie)
 	_ = Container.Provide(slack.NewConnectionSlack)
 	_ = Container.Provide(logs.NewLogs)
 
