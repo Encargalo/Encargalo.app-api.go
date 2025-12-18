@@ -22,14 +22,6 @@ const (
 	SessionTypeBusiness SessionType = "employee-session"
 )
 
-// Definimos keys para el contexto para evitar colisiones de strings
-type contextKey string
-
-const (
-	ContextKeySession     contextKey = "session"
-	ContextKeySessionType contextKey = "session_type"
-)
-
 type AuthMiddleware interface {
 	Auth(next echo.HandlerFunc) echo.HandlerFunc
 }
@@ -50,16 +42,13 @@ func (a *auth) Auth(next echo.HandlerFunc) echo.HandlerFunc {
 
 		// 2. Lógica de detección de Cookie
 		var tokenString string
-		var currentSessionType SessionType
 
 		// Intentamos buscar primero la cookie de cliente
 		if cookie, err := c.Cookie(string(SessionTypeCustomer)); err == nil {
 			tokenString = cookie.Value
-			currentSessionType = SessionTypeCustomer
 		} else if cookie, err := c.Cookie(string(SessionTypeBusiness)); err == nil {
 			// Si no está la de cliente, buscamos la de negocio
 			tokenString = cookie.Value
-			currentSessionType = SessionTypeBusiness
 		} else {
 			// Si no está ninguna de las dos
 			return echo.NewHTTPError(http.StatusUnauthorized, "missing or invalid session cookie")
@@ -93,10 +82,7 @@ func (a *auth) Auth(next echo.HandlerFunc) echo.HandlerFunc {
 			return echo.NewHTTPError(http.StatusUnauthorized, "session expired")
 		}
 
-		// 4. Guardamos en el contexto LA SESIÓN y EL TIPO DE SESIÓN
-		// Usamos tipos personalizados para las keys por buenas prácticas
 		ctx = context.WithValue(ctx, "session", *session)
-		ctx = context.WithValue(ctx, ContextKeySessionType, currentSessionType)
 
 		c.SetRequest(req.WithContext(ctx))
 
