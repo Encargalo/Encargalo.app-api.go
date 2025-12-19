@@ -4,17 +4,19 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/employee/domain/ports"
 	portsOrder "Encargalo.app-api.go/internal/orders/domain/ports"
+	"Encargalo.app-api.go/internal/shared/errcustom"
 
 	"Encargalo.app-api.go/internal/orders/app"
-	modelsOrder "Encargalo.app-api.go/internal/orders/domain/models"
-	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
+
+	modelsUpdateOrders "Encargalo.app-api.go/internal/orders/domain/models"
 )
 
 const (
@@ -43,6 +45,7 @@ var upgrader = websocket.Upgrader{
 func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 	ctx := c.Request().Context()
 
+	// 1. Obtener sesión y validar autenticación
 	session, ok := ctx.Value("session").(models.ActiveSession)
 	if !ok {
 		slog.Error("No se encontró el usuario en el contexto")
@@ -54,10 +57,11 @@ func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, "usuario no autorizado")
 	}
 
+	// 2. Determinar ID de conexión y Rol
 	var conectionID uuid.UUID
 	isShop := session.UserType == roleEmployee
 
-	if session.UserType == roleEmployee {
+	if isShop {
 		employee, err := h.svc2.SearchEmployeeByID(ctx, session.UserID)
 		if err != nil {
 			slog.Error("Error al buscar empleado:", slog.String("error", err.Error()))
@@ -68,48 +72,71 @@ func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 		conectionID = session.UserID
 	}
 
+	// 3. Upgrade HTTP a WebSocket
 	conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
 		slog.Error("Error al actualizar conexión websocket:", slog.String("error", err.Error()))
 		return err
 	}
 
-	// Asegurar cierre del WebSocket
+	// 4. Defer para limpieza: Se ejecuta cuando se rompe el bucle for
 	defer func() {
+		// IMPORTANTE: Pasamos 'conn' para borrar SOLO esta conexión específica y no todas las del usuario
+		h.svc.Unregister(conectionID, conn, isShop)
 		conn.Close()
-		h.svc.Unregister(conectionID, isShop)
-		slog.Info("WebSocket desconectado y limpiado", "shopID", conectionID)
+		slog.Info("WebSocket desconectado y limpiado", "ID", conectionID)
 	}()
 
+	// 5. Registrar conexión en el servicio (Esto inicia el WritePump/Ping en el servicio)
 	if err := h.svc.Register(ctx, conectionID, conn, isShop); err != nil {
 		slog.Error("Error registrando conexión:", slog.String("error", err.Error()))
 		conn.WriteMessage(websocket.TextMessage, []byte("error al registrar conexión"))
 		return nil
 	}
 
+	// -----------------------------------------------------------------------
+	// CONFIGURACIÓN CRÍTICA PARA EVITAR DESCONEXIONES (Read Pump Config)
+	// -----------------------------------------------------------------------
+
+	// Limite de tamaño para evitar ataques de memoria
+	conn.SetReadLimit(4096)
+
+	// Establecemos el primer deadline de lectura
+	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+
+	// Handler para PONG: Cuando el navegador responde al Ping del servidor,
+	// extendemos el deadline 60 segundos más.
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return nil
+	})
+
+	// Mensaje inicial de éxito
 	conn.WriteMessage(websocket.TextMessage, []byte("registrado correctamente"))
 
+	// 6. Bucle de Lectura (Read Loop)
 	for {
 		msgType, msg, err := conn.ReadMessage()
 		if err != nil {
-
 			if websocket.IsCloseError(err,
 				websocket.CloseNormalClosure,
 				websocket.CloseGoingAway,
 				websocket.CloseAbnormalClosure,
 			) {
-				slog.Warn("Cliente cerró la conexión websocket", "", conectionID)
+				slog.Warn("Cliente cerró la conexión websocket", "ID", conectionID)
 			} else {
 				slog.Error("Error leyendo mensaje websocket:", slog.String("error", err.Error()))
 			}
-
-			return nil // se ejecutará el defer limpiando todo
+			// Al salir del bucle (break o return), se ejecuta el defer y limpia la conexión
+			return nil
 		}
 
 		// Parsear mensaje base
 		var base map[string]any
 		if err := json.Unmarshal(msg, &base); err != nil {
-			conn.WriteMessage(msgType, []byte("Error: formato inválido"))
+			slog.Error("Error parseando JSON base", "error", err)
+			// No desconectamos, solo avisamos y seguimos escuchando
+			conn.WriteMessage(msgType, []byte("Error: formato JSON inválido"))
 			continue
 		}
 
@@ -118,13 +145,14 @@ func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 		switch msgTypeStr {
 
 		case "update_status":
-			var payload modelsOrder.UpdateStatusOrder
+			var payload modelsUpdateOrders.UpdateStatusOrder
 			if err := json.Unmarshal(msg, &payload); err != nil {
-				slog.Error("Error parseando update_status:", "error", err.Error())
+				slog.Error("Error parseando payload update_status:", "error", err.Error())
 				conn.WriteMessage(msgType, []byte("Error: formato inválido en update_status"))
 				continue
 			}
 
+			// Lógica de negocio
 			order, err := h.svcOrder.UpdateOrderStatus(ctx, payload.OrderID, payload.NewStatus)
 			if err != nil {
 				slog.Error("Error actualizando estado de orden:", "error", err.Error())
@@ -132,15 +160,15 @@ func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 				continue
 			}
 
+			// Confirmación al emisor
 			conn.WriteMessage(msgType, []byte("Estado de orden actualizado correctamente"))
 
+			// Broadcast a todos los interesados (tienda y cliente)
 			h.svc.BroadcastOrder(order)
 
-			continue
-
 		default:
-			conn.WriteMessage(msgType, []byte("Error: tipo de evento no reconocido"))
-			continue
+			// Log opcional para debug, pero evita saturar
+			// slog.Debug("Mensaje recibido tipo desconocido", "type", msgTypeStr)
 		}
 	}
 }
