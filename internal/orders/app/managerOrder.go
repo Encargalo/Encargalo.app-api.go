@@ -3,12 +3,14 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"sync"
 	"time"
 
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
+	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
@@ -44,6 +46,29 @@ func (s *appManagerOrder) Register(ctx context.Context, connectionID uuid.UUID, 
 	s.mu.Unlock()
 
 	// ... (Tu lógica de BroadcastOrder y búsqueda de órdenes se mantiene igual) ...
+	orders, err := s.svc.SearchActiveOrdersByCriteria(ctx, connectionID)
+	if err != nil {
+		if !errors.Is(err, errcustom.ErrNotFound) {
+			slog.Error("Error buscando órdenes abiertas del shop",
+				"shopID", connectionID,
+				"error", err,
+			)
+			return err
+		}
+
+		slog.Info("No hay órdenes abiertas para este shop",
+			"shopID", connectionID,
+		)
+	}
+
+	for _, v := range orders {
+		if err := s.BroadcastOrder(v); err != nil {
+			slog.Error("Error enviando orden abierta al shop",
+				"shopID", connectionID,
+				"error", err,
+			)
+		}
+	}
 
 	// SOLUCIÓN 1: Iniciamos el Ping (solo escritura)
 	go s.writePump(conn)
