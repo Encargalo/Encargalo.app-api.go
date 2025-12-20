@@ -13,6 +13,8 @@ type Order struct {
 	ID            uuid.UUID `bun:"id,pk,type:uuid"`
 	ShopID        uuid.UUID `bun:"shop_id"`
 	CustomerID    uuid.UUID `bun:"customer_id"`
+	CustomerName  string    `bun:"customer_name"`
+	PhoneCustomer string    `bun:"phone_customer"`
 	BatchID       uuid.UUID `bun:"batch_id,nullzero,type:uuid"`
 	Number        int       `bun:"number"`
 	Address       string    `bun:"address"`
