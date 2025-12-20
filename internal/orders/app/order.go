@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"strings"
 
+	"Encargalo.app-api.go/internal/customers/domain/dto"
+	portsCustomers "Encargalo.app-api.go/internal/customers/domain/ports"
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
@@ -36,11 +38,12 @@ const (
 type orderApp struct {
 	repo   ports.OrdersRepo
 	shops  shops.ShopsRepo
+	custo  portsCustomers.CustomersRepo
 	stream ports.RedisStream
 }
 
-func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, stream ports.RedisStream) ports.OrdersApp {
-	return &orderApp{repo, shops, stream}
+func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.CustomersRepo, stream ports.RedisStream) ports.OrdersApp {
+	return &orderApp{repo, shops, custo, stream}
 }
 
 func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*models.Order, error) {
@@ -65,6 +68,14 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 
 	orderModel := new(models.Order)
 	orderModel.BuildDtoToModel(*order, batchID)
+
+	customer, err := o.custo.SearchCustomerBy(ctx, dto.SearchCustomerBy{ID: order.CustomerID})
+	if err != nil {
+		return &models.Order{}, err
+	}
+
+	orderModel.CustomerName = customer.Name + customer.SurName
+	orderModel.PhoneCustomer = customer.Phone
 
 	items, err := o.repo.SearchItemsByID(ctx, orderModel.GetItemsID())
 	if err != nil {
