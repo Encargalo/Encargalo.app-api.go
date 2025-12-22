@@ -2,10 +2,13 @@ package postgres
 
 import (
 	"database/sql"
+	"embed"
 	"fmt"
 	"log"
 
 	"Encargalo.app-api.go/internal/shared/config"
+
+	"github.com/pressly/goose/v3"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/driver/pgdriver"
@@ -42,10 +45,26 @@ func NewPostgresConnection(config config.Config) *bun.DB {
 	}
 
 	db := bun.NewDB(sqldb, pgdialect.New())
-	db.AddQueryHook(bundebug.NewQueryHook(
+	db.WithQueryHook(bundebug.NewQueryHook(
 		bundebug.WithVerbose(true),
 	))
 
+	migrate(sqldb)
+
 	return db
 
+}
+
+//go:embed migrations/*.sql
+var embedMigrations embed.FS
+
+func migrate(instance *sql.DB) {
+	goose.SetBaseFS(embedMigrations)
+	if err := goose.SetDialect("postgres"); err != nil {
+		log.Fatalf("Error setting dialect: %v", err)
+	}
+
+	if err := goose.Up(instance, "migrations"); err != nil {
+		log.Fatalf("Failed to apply migrations: %v", err)
+	}
 }
