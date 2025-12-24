@@ -53,21 +53,31 @@ func (c *customersRepo) RegisterCustomer(ctx context.Context, customer *models.A
 
 func (c *customersRepo) SearchCustomerBy(ctx context.Context, criteria dto.SearchCustomerBy) (*models.Accounts, error) {
 
+	if criteria.ID == uuid.Nil && criteria.Phone == "" {
+		return nil, errcustom.ErrNotFound
+	}
+
 	account := new(models.Accounts)
 
-	err := c.db.NewSelect().
-		Model(account).
-		WhereGroup("or", func(sq *bun.SelectQuery) *bun.SelectQuery {
+	query := c.db.NewSelect().Model(account)
+
+	query.WhereGroup("AND", func(sq *bun.SelectQuery) *bun.SelectQuery {
+
+		if criteria.ID != uuid.Nil {
+			sq.Where("id = ?", criteria.ID)
+		}
+
+		if criteria.Phone != "" {
 			if criteria.ID != uuid.Nil {
-				sq = sq.Where("id = ?", criteria.ID)
+				sq.WhereOr("phone = ?", criteria.Phone)
+			} else {
+				sq.Where("phone = ?", criteria.Phone)
 			}
-			if criteria.Phone != "" {
-				sq = sq.Where("phone = ?", criteria.Phone)
-			}
-			return sq
-		}).
-		Where("deleted_at IS NULL").
-		Scan(ctx)
+		}
+		return sq
+	})
+
+	err := query.Where("deleted_at IS NULL").Scan(ctx)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -78,7 +88,6 @@ func (c *customersRepo) SearchCustomerBy(ctx context.Context, criteria dto.Searc
 	}
 
 	return account, nil
-
 }
 
 func (c *customersRepo) SearchCustomerByPhoneAndNotIDEquals(ctx context.Context, customer_id uuid.UUID, phone string) (*models.Accounts, error) {
