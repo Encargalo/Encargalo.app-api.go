@@ -8,6 +8,7 @@ import (
 	"Encargalo.app-api.go/internal/customers/domain/models"
 	"Encargalo.app-api.go/internal/customers/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/bycript"
+	"Encargalo.app-api.go/internal/shared/errcustom"
 
 	"github.com/google/uuid"
 )
@@ -67,7 +68,7 @@ func (c *customersApp) UpdateCustomer(ctx context.Context, customer_id uuid.UUID
 
 	cust, err := c.repo.SearchCustomerByPhoneAndNotIDEquals(ctx, customer_id, customer.Phone)
 	if err != nil {
-		if err.Error() != "not found." {
+		if err != errcustom.ErrNotFound {
 			return err
 		}
 	}
