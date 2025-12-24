@@ -213,9 +213,9 @@ func (c *customersHandler) UpdatePassword(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, "usuario no autorizado")
 	}
 
-	if err := c.customerApp.UpdatePassword(ctx, session.ID, pass); err != nil {
-		switch err.Error() {
-		case "not found.":
+	if err := c.customerApp.UpdatePassword(ctx, session.UserID, pass); err != nil {
+		switch err {
+		case errcustom.ErrNotFound:
 			return echo.NewHTTPError(http.StatusConflict, "customer not found")
 		default:
 			return echo.NewHTTPError(http.StatusInternalServerError, "unexpected error")
