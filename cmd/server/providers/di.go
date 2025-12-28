@@ -64,6 +64,7 @@ func BuildContainer() *dig.Container {
 
 	_ = Container.Provide(router.New)
 
+	_ = Container.Provide(groups.NewAuthGroup)
 	_ = Container.Provide(groups.NewShopsGroup)
 	_ = Container.Provide(groups.NewProductsGroup)
 	_ = Container.Provide(groups.NewCustomersGroup)

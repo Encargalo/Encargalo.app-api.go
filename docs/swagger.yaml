@@ -602,6 +602,221 @@ paths:
       summary: Actualiza la contraseña del cliente autenticado
       tags:
       - Customers
+  /customers/logout:
+    delete:
+      deprecated: true
+      description: Elimina la sesión activa identificada por session_id en la cookie
+        de autenticación
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: session deleted success
+          schema:
+            type: string
+        "404":
+          description: not found
+          schema:
+            type: string
+        "500":
+          description: unexpected error
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Cierra la sesión actual del cliente o empleado autenticado
+      tags:
+      - Auth
+  /customers/orders:
+    post:
+      consumes:
+      - application/json
+      deprecated: true
+      description: Creates a new order with the provided details
+      parameters:
+      - description: Order payload
+        in: body
+        name: order
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.CreateOrder'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Order created successfully
+          schema:
+            type: string
+        "400":
+          description: Invalid request body or validation failed
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Unexpected internal server error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Create a new order
+      tags:
+      - Orders
+  /customers/orders/manager:
+    get:
+      consumes:
+      - application/json
+      deprecated: true
+      produces:
+      - application/json
+      - text/plain
+      responses:
+        "401":
+          description: Sesión no encontrada o inválida
+          schema:
+            type: string
+        "403":
+          description: Acceso denegado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      summary: WebSocket de gestión de órdenes
+      tags:
+      - Orders WebSocket
+  /custromers/sign-in:
+    post:
+      consumes:
+      - application/json
+      deprecated: true
+      description: |-
+        Autentica a un cliente usando su número de teléfono y contraseña.
+        Si las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.
+      parameters:
+      - description: Datos de inicio de sesión
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.SignInRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: session created
+          schema:
+            type: string
+        "400":
+          description: Solicitud inválida (validación o JSON incorrecto)
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Credenciales incorrectas
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error inesperado del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Iniciar sesión como cliente
+      tags:
+      - Auth
+  /employee/logout:
+    delete:
+      deprecated: true
+      description: Elimina la sesión activa identificada por session_id en la cookie
+        de autenticación
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: session deleted success
+          schema:
+            type: string
+        "404":
+          description: not found
+          schema:
+            type: string
+        "500":
+          description: unexpected error
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Cierra la sesión actual del cliente o empleado autenticado
+      tags:
+      - Auth
+  /employee/orders/manager:
+    get:
+      consumes:
+      - application/json
+      deprecated: true
+      produces:
+      - application/json
+      - text/plain
+      responses:
+        "401":
+          description: Sesión no encontrada o inválida
+          schema:
+            type: string
+        "403":
+          description: Acceso denegado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      summary: WebSocket de gestión de órdenes
+      tags:
+      - Orders WebSocket
+  /employee/sign-in:
+    post:
+      consumes:
+      - application/json
+      deprecated: true
+      description: |-
+        Autentica a un empleado usando su número de teléfono y contraseña.
+        Si las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.
+      parameters:
+      - description: Datos de inicio de sesión
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.SignInRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: session created
+          schema:
+            type: string
+        "400":
+          description: Solicitud inválida (validación o JSON incorrecto)
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Credenciales incorrectas
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error inesperado del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Iniciar sesión como empleado
+      tags:
+      - Auth
   /orders:
     post:
       consumes:
@@ -632,6 +847,29 @@ paths:
       summary: Create a new order
       tags:
       - Orders
+  /orders/manager:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      - text/plain
+      responses:
+        "401":
+          description: Sesión no encontrada o inválida
+          schema:
+            type: string
+        "403":
+          description: Acceso denegado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      summary: WebSocket de gestión de órdenes
+      tags:
+      - Orders WebSocket
   /products/best-sellers:
     get:
       consumes:

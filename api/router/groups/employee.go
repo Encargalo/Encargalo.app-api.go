@@ -28,7 +28,7 @@ func (e *employeeGroup) Resource(g *echo.Echo) {
 	group := g.Group("/employee")
 
 	group.POST("/sign-in", e.handAuth.SignInEmployee)
-	group.DELETE("/logout", e.handAuth.LogoutEmployee, e.middle.GetRequestInfo, e.middleAuth.Auth)
+	group.DELETE("/logout", e.handAuth.Logout, e.middle.GetRequestInfo, e.middleAuth.Auth)
 
 	group.GET("", e.hand.SearchEmployee, e.middle.GetRequestInfo, e.middleAuth.Auth, e.middleAuth.Require(models.OrderManager))
 }

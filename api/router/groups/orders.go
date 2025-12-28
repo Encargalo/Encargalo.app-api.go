@@ -26,4 +26,8 @@ func (o *ordersGroup) Resource(g *echo.Echo) {
 
 	group.POST("", o.handlerOrders.CreateOrder, o.middle.Auth, o.middle.Require(models.Customer))
 	group.GET("/manager", o.hanlderManagerOrders.HandleWebSocket, o.middle.Auth, o.middle.Require(models.Customer, models.OrderManager))
+
+	g.POST("/customers/orders", o.handlerOrders.CreateOrder, o.middle.Auth, o.middle.Require(models.Customer))
+	g.GET("/customers/orders/manager", o.hanlderManagerOrders.HandleWebSocket, o.middle.Auth, o.middle.Require(models.Customer))
+	g.GET("/employee/orders/manager", o.hanlderManagerOrders.HandleWebSocket, o.middle.Auth, o.middle.Require(models.OrderManager))
 }

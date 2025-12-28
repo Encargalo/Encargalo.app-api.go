@@ -41,7 +41,7 @@ func (o *customersGroup) Resource(g *echo.Echo) {
 	group := g.Group("/customers")
 
 	group.POST("/sign-in", o.handAuth.SignInCustomer)
-	group.DELETE("/logout", o.handAuth.LogoutCustomer, o.middle.GetRequestInfo, o.middleAuth.Auth)
+	group.DELETE("/logout", o.handAuth.Logout, o.middle.GetRequestInfo, o.middleAuth.Auth)
 	group.POST("", o.handlerCustomers.RegisterCustomer, o.middle.GetRequestInfo)
 
 	group.GET("", o.handlerCustomers.SearchCustomer, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer))
