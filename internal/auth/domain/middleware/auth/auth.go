@@ -2,27 +2,21 @@ package auth
 
 import (
 	"context"
-	"errors"
 	"net/http"
-	"strings"
 	"time"
 
+	"Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/auth/domain/ports"
-	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shared/jwt"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
-type SessionType string
-
-const (
-	SessionTypeCustomer SessionType = "customer-session"
-	SessionTypeBusiness SessionType = "employee-session"
-)
+const ctxSessionKey = "session"
 
 type AuthMiddleware interface {
 	Auth(next echo.HandlerFunc) echo.HandlerFunc
+	Require(allowed ...models.Role) echo.MiddlewareFunc
 }
 
 type auth struct {
@@ -41,47 +35,28 @@ func (a *auth) Auth(next echo.HandlerFunc) echo.HandlerFunc {
 
 		var tokenString string
 
-		// Intentamos buscar primero la cookie de cliente
-		// if cookie, err := c.Cookie(string(SessionTypeCustomer)); err == nil {
-		// 	tokenString = cookie.Value
-		// } else if cookie, err := c.Cookie(string(SessionTypeBusiness)); err == nil {
-		// 	// Si no está la de cliente, buscamos la de negocio
-		// 	tokenString = cookie.Value
-		// } else {
-		// 	// Si no está ninguna de las dos
-		// 	return echo.NewHTTPError(http.StatusUnauthorized, "missing or invalid session cookie")
-		// }
-
-		// 1. Buscamos el token en la cabecera Authorization
 		if cookie, err := c.Cookie("encargalo-session"); err == nil {
 			tokenString = cookie.Value
-		} else {
-			// Si no está ninguna de las dos
-			return echo.NewHTTPError(http.StatusUnauthorized, "missing or invalid session cookie")
 		}
 
-		// 3. Validamos el token obtenido (sea cual sea el origen)
 		claims, err := a.jwt.ValidateToken(tokenString)
 		if err != nil {
-			return echo.NewHTTPError(http.StatusUnauthorized, "invalid or expired token")
+			return echo.NewHTTPError(http.StatusUnauthorized, "invalid token")
 		}
 
 		rawID, ok := claims["session_id"].(string)
-		if !ok || strings.TrimSpace(rawID) == "" {
-			return echo.NewHTTPError(http.StatusUnauthorized, "invalid session_id in token")
+		if !ok {
+			return echo.NewHTTPError(http.StatusUnauthorized, "invalid session_id")
 		}
 
-		sessionID, err := uuid.Parse(strings.TrimSpace(rawID))
+		sessionID, err := uuid.Parse(rawID)
 		if err != nil {
-			return echo.NewHTTPError(http.StatusUnauthorized, "malformed session_id")
+			return echo.NewHTTPError(http.StatusUnauthorized, "invalid session_id")
 		}
 
 		session, err := a.svc.SearchSessions(ctx, sessionID)
 		if err != nil {
-			if errors.Is(err, errcustom.ErrNotFound) {
-				return echo.NewHTTPError(http.StatusUnauthorized, "session not found")
-			}
-			return echo.NewHTTPError(http.StatusInternalServerError, "error verifying session")
+			return echo.NewHTTPError(http.StatusUnauthorized, "session not found")
 		}
 
 		if time.Now().After(session.ExpiresAt) {
@@ -89,9 +64,30 @@ func (a *auth) Auth(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		ctx = context.WithValue(ctx, "session", *session)
-
 		c.SetRequest(req.WithContext(ctx))
 
 		return next(c)
+	}
+}
+
+func (a *auth) Require(allowed ...models.Role) echo.MiddlewareFunc {
+	allowedMap := make(map[models.Role]struct{}, len(allowed))
+	for _, t := range allowed {
+		allowedMap[t] = struct{}{}
+	}
+
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			session, ok := c.Request().Context().Value("session").(models.ActiveSession)
+			if !ok {
+				return echo.NewHTTPError(http.StatusUnauthorized, "session not found in context")
+			}
+
+			if _, ok := allowedMap[models.Role(session.UserType)]; !ok {
+				return echo.NewHTTPError(http.StatusForbidden, "access denied")
+			}
+
+			return next(c)
+		}
 	}
 }

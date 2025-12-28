@@ -48,11 +48,6 @@ func (o *orderHandler) CreateOrder(c echo.Context) error {
 		return errcustom.ErrUnexpectedError
 	}
 
-	if session.UserType != roleCustomer {
-		slog.Error("Usuario no autorizado para acceder a esta ruta")
-		return echo.NewHTTPError(http.StatusForbidden, "usuario no autorizado")
-	}
-
 	order.CustomerID = session.UserID
 
 	if err := c.Bind(&order); err != nil {

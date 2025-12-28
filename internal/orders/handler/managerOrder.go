@@ -19,11 +19,6 @@ import (
 	modelsUpdateOrders "Encargalo.app-api.go/internal/orders/domain/models"
 )
 
-const (
-	roleEmployee = "Order Manager"
-	roleCustomer = "customer"
-)
-
 type ManagerOrder interface {
 	HandleWebSocket(c echo.Context) error
 }
@@ -55,12 +50,8 @@ func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 		return errcustom.ErrUnexpectedError
 	}
 
-	if session.UserType != roleEmployee && session.UserType != roleCustomer {
-		return echo.NewHTTPError(http.StatusForbidden, "usuario no autorizado")
-	}
-
 	var connectionID uuid.UUID
-	isShop := session.UserType == roleEmployee
+	isShop := session.UserType == models.OrderManager
 
 	if isShop {
 		employee, err := h.svc2.SearchEmployeeByID(ctx, session.UserID)
