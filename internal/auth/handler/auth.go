@@ -16,18 +16,18 @@ import (
 
 type Auth interface {
 	SignInCustomer(e echo.Context) error
-	LogoutCustomer(e echo.Context) error
 	SignInEmployee(e echo.Context) error
-	LogoutEmployee(e echo.Context) error
+	Logout(e echo.Context) error
 }
 
 type auth struct {
-	svc ports.AuthApp
-	jwt jwt.Sessions
+	svc    ports.AuthApp
+	jwt    jwt.Sessions
+	cookie cookie.CookieHandler
 }
 
-func NewAuthHandler(svc ports.AuthApp, jwt jwt.Sessions) Auth {
-	return &auth{svc, jwt}
+func NewAuthHandler(svc ports.AuthApp, jwt jwt.Sessions, cookie cookie.CookieHandler) Auth {
+	return &auth{svc, jwt, cookie}
 }
 
 // SignInCustomer godoc
@@ -43,6 +43,7 @@ func NewAuthHandler(svc ports.AuthApp, jwt jwt.Sessions) Auth {
 // @Failure      422    {object}  map[string]string  "Credenciales incorrectas"
 // @Failure      500    {object}  map[string]string  "Error inesperado del servidor"
 // @Router       /auth/sign-in/customers [post]
+// @DeprecatedRouter /custromers/sign-in [post]
 func (a *auth) SignInCustomer(e echo.Context) error {
 
 	ctx := e.Request().Context()
@@ -72,9 +73,7 @@ func (a *auth) SignInCustomer(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
 	}
 
-	cookie := cookie.NewCookieFactory("customers")
-
-	e.SetCookie(cookie.CreateCookieSession(jwtSession))
+	e.SetCookie(a.cookie.CreateCookieSession(jwtSession))
 
 	return e.JSON(http.StatusCreated, "session created")
 }
@@ -92,6 +91,7 @@ func (a *auth) SignInCustomer(e echo.Context) error {
 // @Failure      422    {object}  map[string]string  "Credenciales incorrectas"
 // @Failure      500    {object}  map[string]string  "Error inesperado del servidor"
 // @Router       /auth/sign-in/employee [post]
+// @DeprecatedRouter /employee/sign-in [post]
 func (a *auth) SignInEmployee(e echo.Context) error {
 
 	ctx := e.Request().Context()
@@ -119,9 +119,7 @@ func (a *auth) SignInEmployee(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
 	}
 
-	cookie := cookie.NewCookieFactory("employee")
-
-	e.SetCookie(cookie.CreateCookieSession(jwtSession))
+	e.SetCookie(a.cookie.CreateCookieSession(jwtSession))
 
 	return e.JSON(http.StatusCreated, "session created")
 
@@ -137,7 +135,9 @@ func (a *auth) SignInEmployee(e echo.Context) error {
 // @Failure 500 {string} string "unexpected error"
 // @Security SessionCookie
 // @Router /auth/logout [delete]
-func (s *auth) LogoutCustomer(e echo.Context) error {
+// @DeprecatedRouter /customers/logout [delete]
+// @DeprecatedRouter /employee/logout [delete]
+func (s *auth) Logout(e echo.Context) error {
 
 	ctx := e.Request().Context()
 
@@ -151,38 +151,7 @@ func (s *auth) LogoutCustomer(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
 	}
 
-	cookie := cookie.NewCookieFactory("customers")
-	e.SetCookie(cookie.DeleteCookieSession())
-
-	return e.JSON(http.StatusOK, "session deleted success")
-}
-
-// DeleteSession godoc
-// @Summary Cierra la sesión actual del cliente o empleado autenticado
-// @Description Elimina la sesión activa identificada por session_id en la cookie de autenticación
-// @Tags Auth
-// @Produce json
-// @Success 200 {string} string "session deleted success"
-// @Failure 404 {string} string "not found"
-// @Failure 500 {string} string "unexpected error"
-// @Security SessionCookie
-// @Router /auth/logout [delete]
-func (s *auth) LogoutEmployee(e echo.Context) error {
-
-	ctx := e.Request().Context()
-
-	session, ok := ctx.Value("session").(models.ActiveSession)
-	if !ok {
-		slog.Error("No se encontró el usuario en el contexto")
-		return errcustom.ErrUnexpectedError
-	}
-
-	if err := s.svc.DeleteSession(ctx, session.ID); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
-	}
-
-	cookie := cookie.NewCookieFactory("employee")
-	e.SetCookie(cookie.DeleteCookieSession())
+	e.SetCookie(s.cookie.DeleteCookieSession())
 
 	return e.JSON(http.StatusOK, "session deleted success")
 }

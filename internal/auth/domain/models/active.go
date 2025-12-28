@@ -12,7 +12,7 @@ type ActiveSession struct {
 
 	ID        uuid.UUID `bun:"id,pk,type:uuid,default:uuid_generate_v4()"`
 	UserID    uuid.UUID `bun:"user_id,type:uuid,notnull"`
-	UserType  string    `bun:"user_type,notnull"`
+	UserType  Role      `bun:"user_type,notnull"`
 	IPAddress string    `bun:"ip_address,notnull"`
 	UserAgent string    `bun:"user_agent,notnull"`
 	CreatedAt time.Time `bun:"created_at,default:now()"`
@@ -22,7 +22,7 @@ type ActiveSession struct {
 func (a *ActiveSession) BuildActiveSessionModel(userID uuid.UUID, userType, ipUser, userAgent string) {
 	a.ID = uuid.New()
 	a.UserID = userID
-	a.UserType = userType
+	a.UserType = Role(userType)
 	a.IPAddress = ipUser
 	a.UserAgent = userAgent
 	a.CreatedAt = time.Now()

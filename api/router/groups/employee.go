@@ -1,10 +1,11 @@
 package groups
 
 import (
+	"Encargalo.app-api.go/internal/auth/domain/middleware/auth"
+	requestinfo "Encargalo.app-api.go/internal/auth/domain/middleware/requestInfo"
+	"Encargalo.app-api.go/internal/auth/domain/models"
 	handAuth "Encargalo.app-api.go/internal/auth/handler"
 	"Encargalo.app-api.go/internal/employee/handler"
-	"Encargalo.app-api.go/internal/shared/middleware/auth"
-	requestinfo "Encargalo.app-api.go/internal/shared/middleware/requestInfo"
 	"github.com/labstack/echo/v4"
 )
 
@@ -27,7 +28,7 @@ func (e *employeeGroup) Resource(g *echo.Echo) {
 	group := g.Group("/employee")
 
 	group.POST("/sign-in", e.handAuth.SignInEmployee)
-	group.DELETE("/logout", e.handAuth.LogoutEmployee, e.middle.GetRequestInfo, e.middleAuth.Auth)
+	group.DELETE("/logout", e.handAuth.Logout, e.middle.GetRequestInfo, e.middleAuth.Auth)
 
-	group.GET("", e.hand.SearchEmployee, e.middle.GetRequestInfo, e.middleAuth.Auth)
+	group.GET("", e.hand.SearchEmployee, e.middle.GetRequestInfo, e.middleAuth.Auth, e.middleAuth.Require(models.OrderManager))
 }

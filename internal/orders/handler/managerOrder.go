@@ -19,11 +19,6 @@ import (
 	modelsUpdateOrders "Encargalo.app-api.go/internal/orders/domain/models"
 )
 
-const (
-	roleEmployee = "Order Manager"
-	roleCustomer = "customer"
-)
-
 type ManagerOrder interface {
 	HandleWebSocket(c echo.Context) error
 }
@@ -46,6 +41,48 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
+// HandleWebSocket godoc
+//
+// @Summary WebSocket de gestión de órdenes
+// @Description
+// Establece una conexión WebSocket para la gestión en tiempo real de órdenes.
+//
+// ### Autenticación
+// Requiere una sesión válida inyectada en el contexto (middleware de auth).
+//
+// ### Comportamiento
+// - Si el usuario es **OrderManager**, la conexión se asocia al `shop_id` del empleado.
+// - Si es otro tipo de usuario, se asocia directamente al `user_id`.
+// - Al conectarse, el servidor envía:
+// ```json
+// { "type": "connected" }
+// ```
+//
+// ### Mensajes entrantes soportados
+// **update_status**
+// ```json
+//
+//	{
+//	  "type": "update_status",
+//	  "order_id": "uuid",
+//	  "new_status": "string"
+//	}
+//
+// ```
+//
+// ### Mensajes salientes
+// - Eventos de órdenes actualizadas (broadcast).
+//
+// @Tags Orders WebSocket
+// @Accept json
+// @Produce json
+// @Produce plain
+// @Failure 401 {string}  "Sesión no encontrada o inválida"
+// @Failure 403 {string}  "Acceso denegado"
+// @Failure 500 {string}  "Error interno del servidor"
+// @Router /orders/manager [get]
+// @DeprecatedRouter /customers/orders/manager [get]
+// @DeprecatedRouter /employee/orders/manager [get]
 func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 	ctx := c.Request().Context()
 
@@ -55,12 +92,8 @@ func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 		return errcustom.ErrUnexpectedError
 	}
 
-	if session.UserType != roleEmployee && session.UserType != roleCustomer {
-		return echo.NewHTTPError(http.StatusForbidden, "usuario no autorizado")
-	}
-
 	var connectionID uuid.UUID
-	isShop := session.UserType == roleEmployee
+	isShop := session.UserType == models.OrderManager
 
 	if isShop {
 		employee, err := h.svc2.SearchEmployeeByID(ctx, session.UserID)

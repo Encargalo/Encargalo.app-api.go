@@ -18,51 +18,50 @@ type CookieHandler interface {
 	CreateCookieSession(jwtSession string) *http.Cookie
 	DeleteCookieSession() *http.Cookie
 }
+
 type cookie struct {
-	name string
-	path string
 }
 
-func NewCookieFactory(role Role) CookieHandler {
-	switch role {
-	case RoleCustomer:
-		return &cookie{
-			name: "customer-session",
-			path: "/customers",
-		}
-	case RoleBusiness:
-		return &cookie{
-			name: "employee-session",
-			path: "/employee",
-		}
-	default:
-		return &cookie{
-			name: "unknown-session",
-			path: "/",
-		}
-	}
+func NewCookieFactory() CookieHandler {
+	// switch role {
+	// case RoleCustomer:
+	// 	return &cookie{
+	// 		name: "customer-session",
+	// 		path: "/customers",
+	// 	}
+	// case RoleBusiness:
+	// 	return &cookie{
+	// 		name: "employee-session",
+	// 		path: "/employee",
+	// 	}
+	// default:
+	// 	return &cookie{
+	// 		name: "unknown-session",
+	// 		path: "/",
+	// 	}
+	return &cookie{}
 }
 
 func (c *cookie) CreateCookieSession(jwtSession string) *http.Cookie {
 	return &http.Cookie{
-		Name:     c.name, // Usamos la configuración inyectada por la Factory
+		Name:     "encargalo-session",
 		Value:    jwtSession,
 		Secure:   true,
 		SameSite: setSameSite(),
 		HttpOnly: true,
-		Path:     c.path, // Usamos la configuración inyectada por la Factory
+		Path:     "/",
 		Expires:  time.Now().Add(365 * 24 * time.Hour),
 	}
 }
 
 func (c *cookie) DeleteCookieSession() *http.Cookie {
 	return &http.Cookie{
-		Name:     c.name, // Importante: Para borrar una cookie, el Nombre y Path deben coincidir
+		Name:     "encargalo-session",
 		Value:    "",
 		Secure:   true,
 		SameSite: setSameSite(),
 		HttpOnly: true,
-		Path:     c.path, // Usamos la configuración inyectada por la Factory
+		Path:     "/",
 		Expires:  time.Unix(0, 0),
 		MaxAge:   -1,
 	}

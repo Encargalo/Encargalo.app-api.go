@@ -7,6 +7,7 @@ require (
 	github.com/charmbracelet/log v0.4.2
 	github.com/gorilla/websocket v1.5.3
 	github.com/labstack/echo/v4 v4.13.4
+	github.com/pressly/goose/v3 v3.26.0
 	github.com/shepherd-go/gosuite v1.0.3
 	github.com/slack-go/slack v0.17.3
 	github.com/swaggo/echo-swagger v1.4.1
@@ -49,7 +50,6 @@ require (
 	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect
-	github.com/pressly/goose/v3 v3.26.0 // indirect
 	github.com/puzpuzpuz/xsync/v3 v3.5.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
