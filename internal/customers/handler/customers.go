@@ -102,11 +102,6 @@ func (c *customersHandler) SearchCustomer(e echo.Context) error {
 		return errcustom.ErrUnexpectedError
 	}
 
-	if session.UserType != roleCustomer {
-		slog.Error("Usuario no autorizado para acceder a esta ruta")
-		return echo.NewHTTPError(http.StatusForbidden, "usuario no autorizado")
-	}
-
 	customerID := dto.SearchCustomerBy{
 		ID: session.UserID,
 	}
@@ -156,11 +151,6 @@ func (c *customersHandler) UpdateCustomer(e echo.Context) error {
 		return errcustom.ErrUnexpectedError
 	}
 
-	if session.UserType != roleCustomer {
-		slog.Error("Usuario no autorizado para acceder a esta ruta")
-		return echo.NewHTTPError(http.StatusForbidden, "usuario no autorizado")
-	}
-
 	if err := c.customerApp.UpdateCustomer(ctx, session.UserID, customer); err != nil {
 		switch err.Error() {
 		case "not found.":
@@ -206,11 +196,6 @@ func (c *customersHandler) UpdatePassword(e echo.Context) error {
 	if !ok {
 		slog.Error("No se encontró el usuario en el contexto")
 		return errcustom.ErrUnexpectedError
-	}
-
-	if session.UserType != roleCustomer {
-		slog.Error("Usuario no autorizado para acceder a esta ruta")
-		return echo.NewHTTPError(http.StatusForbidden, "usuario no autorizado")
 	}
 
 	if err := c.customerApp.UpdatePassword(ctx, session.UserID, pass); err != nil {
