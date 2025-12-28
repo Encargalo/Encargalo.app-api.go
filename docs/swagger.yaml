@@ -45,6 +45,9 @@ definitions:
       phone:
         example: "+573001112233"
         type: string
+      role:
+        example: customer
+        type: string
       sur_name:
         example: Ramírez
         type: string

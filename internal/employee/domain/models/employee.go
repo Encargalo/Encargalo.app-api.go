@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	"Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/employee/domain/dto"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
@@ -42,7 +43,7 @@ func (e *Account) ToDomainDTO() dto.EmployeeResponse {
 		Name:   e.Name,
 		Email:  e.Email,
 		Phone:  e.Phone,
-		Role:   e.Role,
+		Role:   string(models.OrderManager),
 		Shop:   e.Shop.ToDomainDTO(),
 	}
 }

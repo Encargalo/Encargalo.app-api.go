@@ -22,12 +22,13 @@ type Auth interface {
 }
 
 type auth struct {
-	svc ports.AuthApp
-	jwt jwt.Sessions
+	svc    ports.AuthApp
+	jwt    jwt.Sessions
+	cookie cookie.CookieHandler
 }
 
-func NewAuthHandler(svc ports.AuthApp, jwt jwt.Sessions) Auth {
-	return &auth{svc, jwt}
+func NewAuthHandler(svc ports.AuthApp, jwt jwt.Sessions, cookie cookie.CookieHandler) Auth {
+	return &auth{svc, jwt, cookie}
 }
 
 // SignInCustomer godoc
@@ -72,9 +73,7 @@ func (a *auth) SignInCustomer(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
 	}
 
-	cookie := cookie.NewCookieFactory("customers")
-
-	e.SetCookie(cookie.CreateCookieSession(jwtSession))
+	e.SetCookie(a.cookie.CreateCookieSession(jwtSession))
 
 	return e.JSON(http.StatusCreated, "session created")
 }
@@ -119,9 +118,7 @@ func (a *auth) SignInEmployee(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
 	}
 
-	cookie := cookie.NewCookieFactory("employee")
-
-	e.SetCookie(cookie.CreateCookieSession(jwtSession))
+	e.SetCookie(a.cookie.CreateCookieSession(jwtSession))
 
 	return e.JSON(http.StatusCreated, "session created")
 
@@ -151,8 +148,7 @@ func (s *auth) LogoutCustomer(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
 	}
 
-	cookie := cookie.NewCookieFactory("customers")
-	e.SetCookie(cookie.DeleteCookieSession())
+	e.SetCookie(s.cookie.DeleteCookieSession())
 
 	return e.JSON(http.StatusOK, "session deleted success")
 }
@@ -181,8 +177,7 @@ func (s *auth) LogoutEmployee(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
 	}
 
-	cookie := cookie.NewCookieFactory("employee")
-	e.SetCookie(cookie.DeleteCookieSession())
+	e.SetCookie(s.cookie.DeleteCookieSession())
 
 	return e.JSON(http.StatusOK, "session deleted success")
 }

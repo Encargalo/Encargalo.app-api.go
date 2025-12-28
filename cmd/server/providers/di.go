@@ -3,8 +3,11 @@ package providers
 import (
 	"Encargalo.app-api.go/api/router"
 	"Encargalo.app-api.go/api/router/groups"
+	authMiddle "Encargalo.app-api.go/internal/auth/domain/middleware/auth"
+	requestinfo "Encargalo.app-api.go/internal/auth/domain/middleware/requestInfo"
 	"Encargalo.app-api.go/internal/pkg/bycript"
 	"Encargalo.app-api.go/internal/pkg/cache"
+	"Encargalo.app-api.go/internal/pkg/cookie"
 	"Encargalo.app-api.go/internal/pkg/logs"
 	"Encargalo.app-api.go/internal/shared/adapters/mongo"
 	"Encargalo.app-api.go/internal/shared/adapters/postgres"
@@ -12,8 +15,6 @@ import (
 	"Encargalo.app-api.go/internal/shared/adapters/slack"
 	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/jwt"
-	authMiddle "Encargalo.app-api.go/internal/shared/middleware/auth"
-	requestinfo "Encargalo.app-api.go/internal/shared/middleware/requestInfo"
 	"Encargalo.app-api.go/internal/shops/app"
 	"Encargalo.app-api.go/internal/shops/handler"
 	"Encargalo.app-api.go/internal/shops/repo"
@@ -103,6 +104,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(jwt.NewSessionUtils)
 	_ = Container.Provide(slack.NewConnectionSlack)
 	_ = Container.Provide(logs.NewLogs)
+	_ = Container.Provide(cookie.NewCookieFactory)
 
 	return Container
 

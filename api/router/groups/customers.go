@@ -1,10 +1,10 @@
 package groups
 
 import (
+	"Encargalo.app-api.go/internal/auth/domain/middleware/auth"
+	requestinfo "Encargalo.app-api.go/internal/auth/domain/middleware/requestInfo"
 	handAuth "Encargalo.app-api.go/internal/auth/handler"
 	"Encargalo.app-api.go/internal/customers/handler"
-	"Encargalo.app-api.go/internal/shared/middleware/auth"
-	requestinfo "Encargalo.app-api.go/internal/shared/middleware/requestInfo"
 	"github.com/labstack/echo/v4"
 )
 

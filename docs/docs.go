@@ -739,6 +739,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "+573001112233"
                 },
+                "role": {
+                    "type": "string",
+                    "example": "customer"
+                },
                 "sur_name": {
                     "type": "string",
                     "example": "Ramírez"

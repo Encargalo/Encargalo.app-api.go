@@ -1,8 +1,8 @@
 package groups
 
 import (
+	"Encargalo.app-api.go/internal/auth/domain/middleware/auth"
 	"Encargalo.app-api.go/internal/orders/handler"
-	"Encargalo.app-api.go/internal/shared/middleware/auth"
 	"github.com/labstack/echo/v4"
 )
 

@@ -14,7 +14,6 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// 1. Definimos el "Enum" para los tipos de sesión
 type SessionType string
 
 const (
@@ -40,14 +39,21 @@ func (a *auth) Auth(next echo.HandlerFunc) echo.HandlerFunc {
 		req := c.Request()
 		ctx := req.Context()
 
-		// 2. Lógica de detección de Cookie
 		var tokenString string
 
 		// Intentamos buscar primero la cookie de cliente
-		if cookie, err := c.Cookie(string(SessionTypeCustomer)); err == nil {
-			tokenString = cookie.Value
-		} else if cookie, err := c.Cookie(string(SessionTypeBusiness)); err == nil {
-			// Si no está la de cliente, buscamos la de negocio
+		// if cookie, err := c.Cookie(string(SessionTypeCustomer)); err == nil {
+		// 	tokenString = cookie.Value
+		// } else if cookie, err := c.Cookie(string(SessionTypeBusiness)); err == nil {
+		// 	// Si no está la de cliente, buscamos la de negocio
+		// 	tokenString = cookie.Value
+		// } else {
+		// 	// Si no está ninguna de las dos
+		// 	return echo.NewHTTPError(http.StatusUnauthorized, "missing or invalid session cookie")
+		// }
+
+		// 1. Buscamos el token en la cabecera Authorization
+		if cookie, err := c.Cookie("encargalo-session"); err == nil {
 			tokenString = cookie.Value
 		} else {
 			// Si no está ninguna de las dos

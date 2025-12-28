@@ -9,6 +9,7 @@ import (
 	"Encargalo.app-api.go/internal/customers/domain/dto"
 	"Encargalo.app-api.go/internal/customers/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/cookie"
+
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shared/jwt"
 	"github.com/labstack/echo/v4"
@@ -28,10 +29,11 @@ type customersHandler struct {
 	customerApp ports.CustomersApp
 	auth        portsAuth.AuthApp
 	jwt         jwt.Sessions
+	cookie      cookie.CookieHandler
 }
 
-func NewCustomersHandler(customerApp ports.CustomersApp, auth portsAuth.AuthApp, jwt jwt.Sessions) CustomersHandler {
-	return &customersHandler{customerApp, auth, jwt}
+func NewCustomersHandler(customerApp ports.CustomersApp, auth portsAuth.AuthApp, jwt jwt.Sessions, cookie cookie.CookieHandler) CustomersHandler {
+	return &customersHandler{customerApp, auth, jwt, cookie}
 }
 
 // RegisterCustomer godoc
@@ -76,9 +78,7 @@ func (c *customersHandler) RegisterCustomer(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
 	}
 
-	cookie := cookie.NewCookieFactory("customer")
-
-	e.SetCookie(cookie.CreateCookieSession(jwtSession))
+	e.SetCookie(c.cookie.CreateCookieSession(jwtSession))
 
 	return e.JSON(http.StatusCreated, "customer successfully registered")
 }
