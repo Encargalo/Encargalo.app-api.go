@@ -38,8 +38,10 @@ func (p *productsApp) RegisterItem(ctx context.Context, item dtos.RegisterItem) 
 		return errcustom.ErrConvertingImage
 	}
 
+	publicID := strings.ReplaceAll(resp.PublicID, "\\", "/")
+
 	itemModel := models.Item{}
-	itemModel.BuildToModel(item, resp.SecureURL, resp.PublicID, sha256Hash(imageBytes))
+	itemModel.BuildToModel(item, resp.SecureURL, publicID, sha256Hash(imageBytes))
 
 	if err := p.repo.RegisterItem(ctx, &itemModel); err != nil {
 		return err

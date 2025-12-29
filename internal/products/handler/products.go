@@ -38,7 +38,7 @@ func NewProducsHandler(svc ports.ProductsApp, emplService emplService.EmployeeAp
 // @Produce json
 // @Security Cookie
 // @Param item body dtos.RegisterItem true "Datos del producto a registrar"
-// @Success 200 {string} string "product registered successfully"
+// @Success 201 {string} string "product registered successfully"
 // @Failure 400 {string} string "JSON inválido o mal formado"
 // @Failure 401 {string} string "No autorizado"
 // @Failure 422 {string} string "No se encontró la cuenta del empleado"
@@ -78,7 +78,7 @@ func (p *productsHandler) RegisterItems(e echo.Context) error {
 		}
 	}
 
-	return e.JSON(http.StatusOK, "product registered successfully")
+	return e.JSON(http.StatusCreated, "product registered successfully")
 }
 
 func (p *productsHandler) SearchProductsByShopID(e echo.Context) error {
