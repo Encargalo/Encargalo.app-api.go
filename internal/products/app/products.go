@@ -2,6 +2,10 @@ package app
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
+	"strings"
 
 	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
 	"Encargalo.app-api.go/internal/products/domain/dtos"
@@ -23,15 +27,15 @@ func NewProductsApp(repo ports.ProductsRepo, uploadimage uploadimage.UploadImage
 
 func (p *productsApp) RegisterItem(ctx context.Context, item dtos.RegisterItem) error {
 
-	url, err := p.uploadimage.UploadImage(ctx, item.Image)
+	resp, err := p.uploadimage.UploadImage(ctx, item.Image)
 	if err != nil {
 		return err
 	}
 
-	item.Image = url
+	imageBytes, _ := base64ToBytes(item.Image)
 
 	itemModel := models.Item{}
-	itemModel.BuildToModel(item)
+	itemModel.BuildToModel(item, resp.SecureURL, resp.PublicID, sha256Hash(imageBytes))
 
 	if err := p.repo.RegisterItem(ctx, &itemModel); err != nil {
 		return err
@@ -57,4 +61,16 @@ func (p *productsApp) SearchBestSellersByShopID(ctx context.Context, shopID uuid
 
 func (p *productsApp) AddSoldItem(ctx context.Context, item models.DataProduceOrder) error {
 	return p.repo.AddSoldItem(ctx, item)
+}
+
+func base64ToBytes(b64 string) ([]byte, error) {
+	if strings.Contains(b64, ",") {
+		b64 = strings.Split(b64, ",")[1]
+	}
+	return base64.StdEncoding.DecodeString(b64)
+}
+
+func sha256Hash(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
 }

@@ -10,7 +10,7 @@ import (
 )
 
 type UploadImage interface {
-	UploadImage(ctx context.Context, imageB64 string) (string, error)
+	UploadImage(ctx context.Context, imageB64 string) (*uploader.UploadResult, error)
 }
 
 type uploadImage struct {
@@ -21,12 +21,12 @@ func NewUploadImage(cld *cloudinary.Cloudinary) UploadImage {
 	return &uploadImage{cld}
 }
 
-func (repo uploadImage) UploadImage(ctx context.Context, imageB64 string) (string, error) {
+func (repo uploadImage) UploadImage(ctx context.Context, imageB64 string) (*uploader.UploadResult, error) {
 	folder := config.Get().Cloudinary.Folder
 	resp, err := repo.cld.Upload.Upload(ctx, imageB64, uploader.UploadParams{Folder: folder})
 	if err != nil {
 		slog.Error("error uploading image", "error", err)
-		return "", err
+		return nil, err
 	}
-	return resp.URL, nil
+	return resp, nil
 }
