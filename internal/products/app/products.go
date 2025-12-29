@@ -12,6 +12,7 @@ import (
 	productsDto "Encargalo.app-api.go/internal/products/domain/dtos"
 	"Encargalo.app-api.go/internal/products/domain/models"
 	"Encargalo.app-api.go/internal/products/domain/ports"
+	"Encargalo.app-api.go/internal/shared/errcustom"
 
 	"github.com/google/uuid"
 )
@@ -29,10 +30,13 @@ func (p *productsApp) RegisterItem(ctx context.Context, item dtos.RegisterItem) 
 
 	resp, err := p.uploadimage.UploadImage(ctx, item.Image)
 	if err != nil {
-		return err
+		return errcustom.ErrUploadingImage
 	}
 
-	imageBytes, _ := base64ToBytes(item.Image)
+	imageBytes, err := base64ToBytes(item.Image)
+	if err != nil {
+		return errcustom.ErrConvertingImage
+	}
 
 	itemModel := models.Item{}
 	itemModel.BuildToModel(item, resp.SecureURL, resp.PublicID, sha256Hash(imageBytes))

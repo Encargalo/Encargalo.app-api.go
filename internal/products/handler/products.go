@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
@@ -66,7 +67,15 @@ func (p *productsHandler) RegisterItems(e echo.Context) error {
 	item.ShopID = empl.ShopID
 
 	if err := p.svc.RegisterItem(ctx, item); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
+		switch {
+		case errors.Is(err, errcustom.ErrUploadingImage):
+			return echo.NewHTTPError(http.StatusUnprocessableEntity, errcustom.ErrUploadingImage.Error())
+
+		case errors.Is(err, errcustom.ErrConvertingImage):
+			return echo.NewHTTPError(http.StatusUnprocessableEntity, errcustom.ErrConvertingImage.Error())
+		default:
+			return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
+		}
 	}
 
 	return e.JSON(http.StatusOK, "product registered successfully")
