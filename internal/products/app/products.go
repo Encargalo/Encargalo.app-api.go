@@ -3,6 +3,8 @@ package app
 import (
 	"context"
 
+	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
+	"Encargalo.app-api.go/internal/products/domain/dtos"
 	productsDto "Encargalo.app-api.go/internal/products/domain/dtos"
 	"Encargalo.app-api.go/internal/products/domain/models"
 	"Encargalo.app-api.go/internal/products/domain/ports"
@@ -11,11 +13,31 @@ import (
 )
 
 type productsApp struct {
-	repo ports.ProductsRepo
+	repo        ports.ProductsRepo
+	uploadimage uploadimage.UploadImage
 }
 
-func NewProductsApp(repo ports.ProductsRepo) ports.ProductsApp {
-	return &productsApp{repo}
+func NewProductsApp(repo ports.ProductsRepo, uploadimage uploadimage.UploadImage) ports.ProductsApp {
+	return &productsApp{repo, uploadimage}
+}
+
+func (p *productsApp) RegisterItem(ctx context.Context, item dtos.RegisterItem) error {
+
+	url, err := p.uploadimage.UploadImage(ctx, item.Image)
+	if err != nil {
+		return err
+	}
+
+	item.Image = url
+
+	itemModel := models.Item{}
+	itemModel.BuildToModel(item)
+
+	if err := p.repo.RegisterItem(ctx, &itemModel); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (p *productsApp) SearchProductsByShopID(ctx context.Context, shopID uuid.UUID) (productsDto.CategoriesResponse, error) {

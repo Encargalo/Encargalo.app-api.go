@@ -30,6 +30,15 @@ func NewProductsRepo(db *bun.DB, cache cache.Cache) ports.ProductsRepo {
 	return &productsRepo{db, cache}
 }
 
+func (p *productsRepo) RegisterItem(ctx context.Context, item *models.Item) error {
+	_, err := p.db.NewInsert().Model(item).Exec(ctx)
+	if err != nil {
+		slog.Error("Error al registrar producto", "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+	return err
+}
+
 func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.UUID) (dtos.CategoriesResponse, error) {
 
 	var prods dtos.CategoriesResponse

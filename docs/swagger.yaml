@@ -246,6 +246,35 @@ definitions:
         example: multi_select
         type: string
     type: object
+  dtos.RegisterItem:
+    properties:
+      category_id:
+        example: b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2
+        type: string
+      description:
+        example: Pizza mediana con jamón, piña y queso mozzarella sobre una base de
+          salsa napolitana.
+        type: string
+      has_flavors:
+        example: true
+        type: boolean
+      image:
+        example: data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEBLAEsAAD/4QC8RXhpZgAASUkqAAgAAAAGABIBAwABAAAAAQAAABoBBQABAAAAVgAAABsBBQABAAAAXgAAACgBAwABAAAAAgAAABMCAwABAAAA
+        type: string
+      name:
+        example: Pizza Hawaiana Mediana
+        type: string
+      price:
+        example: 32000
+        type: integer
+    required:
+    - category_id
+    - description
+    - has_flavors
+    - image
+    - name
+    - price
+    type: object
   dtos.ShopResponse:
     properties:
       address:
@@ -870,6 +899,46 @@ paths:
       summary: WebSocket de gestión de órdenes
       tags:
       - Orders WebSocket
+  /products:
+    post:
+      consumes:
+      - application/json
+      description: Registra un nuevo producto en la tienda asociada al empleado autenticado.
+      parameters:
+      - description: Datos del producto a registrar
+        in: body
+        name: item
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.RegisterItem'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: product registered successfully
+          schema:
+            type: string
+        "400":
+          description: JSON inválido o mal formado
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "422":
+          description: No se encontró la cuenta del empleado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - Cookie: []
+      summary: Registrar un nuevo producto
+      tags:
+      - Products
   /products/best-sellers:
     get:
       consumes:

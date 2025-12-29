@@ -876,6 +876,69 @@ const docTemplate = `{
                 }
             }
         },
+        "/products": {
+            "post": {
+                "security": [
+                    {
+                        "Cookie": []
+                    }
+                ],
+                "description": "Registra un nuevo producto en la tienda asociada al empleado autenticado.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Registrar un nuevo producto",
+                "parameters": [
+                    {
+                        "description": "Datos del producto a registrar",
+                        "name": "item",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dtos.RegisterItem"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "product registered successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "JSON inválido o mal formado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "No se encontró la cuenta del empleado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/products/best-sellers": {
             "get": {
                 "description": "Esta función maneja la solicitud para obtener los productos mas vendidos por tienda de una tienda específica.",
@@ -1367,6 +1430,43 @@ const docTemplate = `{
                 "selector_type": {
                     "type": "string",
                     "example": "multi_select"
+                }
+            }
+        },
+        "dtos.RegisterItem": {
+            "type": "object",
+            "required": [
+                "category_id",
+                "description",
+                "has_flavors",
+                "image",
+                "name",
+                "price"
+            ],
+            "properties": {
+                "category_id": {
+                    "type": "string",
+                    "example": "b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Pizza mediana con jamón, piña y queso mozzarella sobre una base de salsa napolitana."
+                },
+                "has_flavors": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "image": {
+                    "type": "string",
+                    "example": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEBLAEsAAD/4QC8RXhpZgAASUkqAAgAAAAGABIBAwABAAAAAQAAABoBBQABAAAAVgAAABsBBQABAAAAXgAAACgBAwABAAAAAgAAABMCAwABAAAA"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Pizza Hawaiana Mediana"
+                },
+                "price": {
+                    "type": "integer",
+                    "example": 32000
                 }
             }
         },

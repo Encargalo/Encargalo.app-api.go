@@ -29,6 +29,7 @@ type Config struct {
 	Environment Environment `env:"environment"`
 	Google      Google      `env:"google"`
 	Mongo       Mongo       `env:"mongo"`
+	Cloudinary  Cloudinary  `env:"cloudinary"`
 }
 
 type Server struct {
@@ -75,6 +76,10 @@ type Google struct {
 
 type Mongo struct {
 	Url string `validate:"required" env:"url"`
+}
+type Cloudinary struct {
+	URL    string `validate:"required" env:"url"`
+	Folder string `validate:"required" env:"folder"`
 }
 
 func Environments() {

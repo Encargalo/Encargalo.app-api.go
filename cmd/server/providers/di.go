@@ -9,6 +9,7 @@ import (
 	"Encargalo.app-api.go/internal/pkg/cache"
 	"Encargalo.app-api.go/internal/pkg/cookie"
 	"Encargalo.app-api.go/internal/pkg/logs"
+	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
 	"Encargalo.app-api.go/internal/shared/adapters/mongo"
 	"Encargalo.app-api.go/internal/shared/adapters/postgres"
 	"Encargalo.app-api.go/internal/shared/adapters/redis"
@@ -18,6 +19,7 @@ import (
 	"Encargalo.app-api.go/internal/shops/app"
 	"Encargalo.app-api.go/internal/shops/handler"
 	"Encargalo.app-api.go/internal/shops/repo"
+	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/dig"
 
@@ -54,6 +56,15 @@ func BuildContainer() *dig.Container {
 
 	_ = Container.Provide(func() *echo.Echo {
 		return echo.New()
+	})
+
+	_ = Container.Provide(func() *cloudinary.Cloudinary {
+		cld, err := cloudinary.New()
+		if err != nil {
+			panic(err)
+		}
+
+		return cld
 	})
 
 	_ = Container.Provide(postgres.NewPostgresConnection)
@@ -106,6 +117,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(slack.NewConnectionSlack)
 	_ = Container.Provide(logs.NewLogs)
 	_ = Container.Provide(cookie.NewCookieFactory)
+	_ = Container.Provide(uploadimage.NewUploadImage)
 
 	return Container
 
