@@ -127,7 +127,14 @@ func (p *productsHandler) UpdateItem(e echo.Context) error {
 	}
 
 	if err := p.svc.UpdateItem(ctx, item, itemID, session.UserID); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err)
+		switch {
+		case errors.Is(err, errcustom.ErrNotFound):
+			return echo.NewHTTPError(http.StatusNotFound, "item not found")
+		case errors.Is(err, errcustom.ErrUnautorized):
+			return echo.NewHTTPError(http.StatusUnauthorized, "no tienes permiso para actualizar este item")
+		default:
+			return echo.NewHTTPError(http.StatusInternalServerError, "error interno del servidor")
+		}
 	}
 	return e.JSON(http.StatusOK, "item update success")
 }
