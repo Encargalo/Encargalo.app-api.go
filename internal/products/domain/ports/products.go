@@ -22,7 +22,7 @@ type ProductsApp interface {
 
 type ProductsRepo interface {
 	RegisterItem(context.Context, *models.Item) error
-	UpdateItem(context.Context, *models.UpdateItem) error
+	UpdateItem(ctx context.Context, item *models.UpdateItem, shopID uuid.UUID) error
 	SearchItemByID(context.Context, uuid.UUID) (*models.Item, error)
 	SearchProductsByShopID(ctx context.Context, shopID uuid.UUID) (productsDto.CategoriesResponse, error)
 	SearchAdditionsByShopID(ctx context.Context, categoryID uuid.UUID) (productsDto.AdditionsResponse, error)

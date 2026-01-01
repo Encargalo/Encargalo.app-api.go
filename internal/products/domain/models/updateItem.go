@@ -13,8 +13,7 @@ type UpdateItem struct {
 	Name        string    `bun:"name,notnull"`
 	Price       int       `bun:"price,notnull"`
 	Description string    `bun:"description"`
-	IsAvailable bool      `bun:"is_available,notnull"`
-	HasFlavors  bool      `bun:"has_flavors,notnull"`
+	HasFlavors  *bool     `bun:"has_flavors,notnull"`
 }
 
 func (u *UpdateItem) BuildToModel(item dtos.UpdateItem, itemID uuid.UUID) {
@@ -22,5 +21,5 @@ func (u *UpdateItem) BuildToModel(item dtos.UpdateItem, itemID uuid.UUID) {
 	u.Name = item.Name
 	u.Price = item.Price
 	u.Description = item.Description
-	u.HasFlavors = *item.HasFlavors
+	u.HasFlavors = item.HasFlavors
 }

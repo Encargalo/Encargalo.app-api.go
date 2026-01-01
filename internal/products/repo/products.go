@@ -36,15 +36,25 @@ func (p *productsRepo) RegisterItem(ctx context.Context, item *models.Item) erro
 		slog.Error("Error al registrar producto", "error", err)
 		return errcustom.ErrUnexpectedError
 	}
+
+	if err := p.cache.Clear(ctx, prefix_shop_cashe+item.ShopID.String()); err != nil {
+		slog.Error("error al limpiar el cache", "error", err)
+	}
+
 	return err
 }
 
-func (p *productsRepo) UpdateItem(ctx context.Context, item *models.UpdateItem) error {
+func (p *productsRepo) UpdateItem(ctx context.Context, item *models.UpdateItem, shopID uuid.UUID) error {
 	_, err := p.db.NewUpdate().Model(item).WherePK().Exec(ctx)
 	if err != nil {
 		slog.Error("Error al actualizar", "error", err)
 		return errcustom.ErrUnexpectedError
 	}
+
+	if err := p.cache.Clear(ctx, prefix_shop_cashe+shopID.String()); err != nil {
+		slog.Error("error al limpiar el cache", "error", err)
+	}
+
 	return err
 }
 
@@ -107,7 +117,7 @@ func (p *productsRepo) SearchAdditionsByShopID(ctx context.Context, categoryID u
 
 	err := p.db.NewSelect().
 		Model(&categoryAdditions).
-		Relation("Addition").
+		Relation("Addition").Order("price ASC").
 		Where("category_id = ?", categoryID).
 		Scan(ctx)
 

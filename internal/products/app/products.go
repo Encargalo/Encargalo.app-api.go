@@ -75,7 +75,7 @@ func (p *productsApp) UpdateItem(ctx context.Context, item dtos.UpdateItem, item
 	var ItemUpdateModel models.UpdateItem
 	ItemUpdateModel.BuildToModel(item, itemModel.ID)
 
-	if err := p.repo.UpdateItem(ctx, &ItemUpdateModel); err != nil {
+	if err := p.repo.UpdateItem(ctx, &ItemUpdateModel, itemModel.ShopID); err != nil {
 		return err
 	}
 
