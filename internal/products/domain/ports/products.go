@@ -12,6 +12,7 @@ import (
 
 type ProductsApp interface {
 	RegisterItem(ctx context.Context, item dtos.RegisterItem) error
+	UpdateItem(ctx context.Context, item dtos.UpdateItem, itemID, userID uuid.UUID) error
 	SearchProductsByShopID(ctx context.Context, shopID uuid.UUID) (productsDto.CategoriesResponse, error)
 	SearchAdditionsByShopID(ctx context.Context, categoryID uuid.UUID) (productsDto.AdditionsResponse, error)
 	SearchFlavorsByItemID(ctx context.Context, itemID uuid.UUID) (productsDto.FlavorsResponse, error)
@@ -21,6 +22,8 @@ type ProductsApp interface {
 
 type ProductsRepo interface {
 	RegisterItem(context.Context, *models.Item) error
+	UpdateItem(context.Context, *models.UpdateItem) error
+	SearchItemByID(context.Context, uuid.UUID) (*models.Item, error)
 	SearchProductsByShopID(ctx context.Context, shopID uuid.UUID) (productsDto.CategoriesResponse, error)
 	SearchAdditionsByShopID(ctx context.Context, categoryID uuid.UUID) (productsDto.AdditionsResponse, error)
 	SearchFlavorsByItemID(ctx context.Context, itemID uuid.UUID) (productsDto.FlavorsResponse, error)

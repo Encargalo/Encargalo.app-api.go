@@ -306,6 +306,27 @@ definitions:
       type:
         type: string
     type: object
+  dtos.UpdateItem:
+    properties:
+      description:
+        example: Pizza mediana con jamón, piña y queso mozzarella sobre una base de
+          salsa napolitana.
+        type: string
+      has_flavors:
+        example: true
+        type: boolean
+      name:
+        example: Pizza Hawaiana Mediana
+        type: string
+      price:
+        example: 32000
+        type: integer
+    required:
+    - description
+    - has_flavors
+    - name
+    - price
+    type: object
   request.SignInRequest:
     properties:
       password:
@@ -846,6 +867,53 @@ paths:
       summary: Iniciar sesión como empleado
       tags:
       - Auth
+  /items/{item_id}:
+    put:
+      consumes:
+      - application/json
+      description: Actualiza la información de un producto existente.
+      parameters:
+      - description: ID del item
+        in: path
+        name: item_id
+        required: true
+        type: string
+      - description: Datos del item a actualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.UpdateItem'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: item update success
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Actualizar un item
+      tags:
+      - Products
   /orders:
     post:
       consumes:
@@ -914,7 +982,7 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
+        "201":
           description: product registered successfully
           schema:
             type: string

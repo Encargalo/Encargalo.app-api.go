@@ -15,6 +15,7 @@ import (
 
 type ProductsHandler interface {
 	RegisterItems(e echo.Context) error
+	UpdateItem(e echo.Context) error
 	SearchProductsByShopID(e echo.Context) error
 	SearchAdditionsByShopID(e echo.Context) error
 	SearchFlavorsByItemID(e echo.Context) error
@@ -59,6 +60,10 @@ func (p *productsHandler) RegisterItems(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
+	if err := item.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
 	empl, err := p.emplService.SearchEmployeeByID(ctx, session.UserID)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusUnprocessableEntity, "No se encontró la cuenta que quiere registrar el item")
@@ -79,6 +84,52 @@ func (p *productsHandler) RegisterItems(e echo.Context) error {
 	}
 
 	return e.JSON(http.StatusCreated, "product registered successfully")
+}
+
+// UpdateItem godoc
+// @Summary      Actualizar un item
+// @Description  Actualiza la información de un producto existente.
+// @Tags         Products
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        item_id  path      string              true  "ID del item"
+// @Param        body     body      dtos.UpdateItem     true  "Datos del item a actualizar"
+// @Success      200      {string}  string              "item update success"
+// @Failure      400      {object}  map[string]string   "Bad Request"
+// @Failure      401      {object}  map[string]string   "Unauthorized"
+// @Failure      500      {object}  map[string]string   "Internal Server Error"
+// @Router       /items/{item_id} [put]
+func (p *productsHandler) UpdateItem(e echo.Context) error {
+
+	ctx := e.Request().Context()
+
+	session, ok := ctx.Value("session").(models.ActiveSession)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
+	}
+
+	itemIDParam := e.Param("item_id")
+
+	itemID, err := uuid.Parse(itemIDParam)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "item_id inválido")
+	}
+
+	var item dtos.UpdateItem
+
+	if err := e.Bind(&item); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := item.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := p.svc.UpdateItem(ctx, item, itemID, session.UserID); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err)
+	}
+	return e.JSON(http.StatusOK, "item update success")
 }
 
 func (p *productsHandler) SearchProductsByShopID(e echo.Context) error {

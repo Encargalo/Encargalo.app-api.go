@@ -795,6 +795,79 @@ const docTemplate = `{
                 }
             }
         },
+        "/items/{item_id}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Actualiza la información de un producto existente.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Actualizar un item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID del item",
+                        "name": "item_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos del item a actualizar",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dtos.UpdateItem"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "item update success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/orders": {
             "post": {
                 "description": "Creates a new order with the provided details",
@@ -906,7 +979,7 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "product registered successfully",
                         "schema": {
                             "type": "string"
@@ -1514,6 +1587,33 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "string"
+                }
+            }
+        },
+        "dtos.UpdateItem": {
+            "type": "object",
+            "required": [
+                "description",
+                "has_flavors",
+                "name",
+                "price"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "Pizza mediana con jamón, piña y queso mozzarella sobre una base de salsa napolitana."
+                },
+                "has_flavors": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Pizza Hawaiana Mediana"
+                },
+                "price": {
+                    "type": "integer",
+                    "example": 32000
                 }
             }
         },

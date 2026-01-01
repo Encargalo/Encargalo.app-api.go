@@ -25,6 +25,7 @@ func (r *productsGroup) Resource(g *echo.Echo) {
 	group := g.Group("/products")
 
 	group.POST("", r.handlerProducts.RegisterItems, r.middleAuth.Auth, r.middleAuth.Require(models.OrderManager))
+	group.PUT("/:item_id", r.handlerProducts.UpdateItem, r.middleAuth.Auth, r.middleAuth.Require(models.OrderManager))
 	group.GET("", r.handlerProducts.SearchProductsByShopID)
 	group.GET("/best-sellers", r.handlerProducts.SearchBestSellersByShopID)
 	group.GET("/additions", r.handlerProducts.SearchAdditionsByShopID)

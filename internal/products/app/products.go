@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"strings"
 
+	emplService "Encargalo.app-api.go/internal/employee/domain/ports"
 	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
 	"Encargalo.app-api.go/internal/products/domain/dtos"
 	productsDto "Encargalo.app-api.go/internal/products/domain/dtos"
@@ -20,10 +21,11 @@ import (
 type productsApp struct {
 	repo        ports.ProductsRepo
 	uploadimage uploadimage.UploadImage
+	emplService emplService.EmployeeApp
 }
 
-func NewProductsApp(repo ports.ProductsRepo, uploadimage uploadimage.UploadImage) ports.ProductsApp {
-	return &productsApp{repo, uploadimage}
+func NewProductsApp(repo ports.ProductsRepo, uploadimage uploadimage.UploadImage, emplService emplService.EmployeeApp) ports.ProductsApp {
+	return &productsApp{repo, uploadimage, emplService}
 }
 
 func (p *productsApp) RegisterItem(ctx context.Context, item dtos.RegisterItem) error {
@@ -44,6 +46,36 @@ func (p *productsApp) RegisterItem(ctx context.Context, item dtos.RegisterItem) 
 	itemModel.BuildToModel(item, resp.SecureURL, publicID, sha256Hash(imageBytes))
 
 	if err := p.repo.RegisterItem(ctx, &itemModel); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *productsApp) UpdateItem(ctx context.Context, item dtos.UpdateItem, itemID, userID uuid.UUID) error {
+
+	itemModel, err := p.repo.SearchItemByID(ctx, itemID)
+	if err != nil {
+		return err
+	}
+
+	if itemModel == nil {
+		return errcustom.ErrNotFound
+	}
+
+	empl, err := p.emplService.SearchEmployeeByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	if itemModel.ShopID != empl.ShopID {
+		return errcustom.ErrUnautorized
+	}
+
+	var ItemUpdateModel models.UpdateItem
+	ItemUpdateModel.BuildToModel(item, itemModel.ID)
+
+	if err := p.repo.UpdateItem(ctx, &ItemUpdateModel); err != nil {
 		return err
 	}
 

@@ -7,6 +7,7 @@ var (
 	ErrUnexpectedError     = errors.New("unexpected error")
 	ErrIncorrectAccessData = errors.New("incorrect access data")
 	ErrPhoneAlreadyExist   = errors.New("phone al ready exist")
+	ErrUnautorized         = errors.New("unautorized")
 )
 
 var (
