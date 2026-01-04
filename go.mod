@@ -3,6 +3,7 @@ module Encargalo.app-api.go
 go 1.25
 
 require (
+	github.com/AndresXLP/ravenTree v1.1.0
 	github.com/andresxlp/redsumer v1.1.5
 	github.com/charmbracelet/log v0.4.2
 	github.com/cloudinary/cloudinary-go/v2 v2.14.0
