@@ -20,15 +20,18 @@ func Get() *Config {
 }
 
 type Config struct {
-	Server      Server      `env:"server"`
-	Postgres    Postgres    `env:"postgres"`
-	Redis       Redis       `env:"redis"`
-	RedisStream RedisStream `env:"redis_stream"`
-	JWT         JWT         `env:"jwt"`
-	Slack       Slack       `env:"slack"`
-	Environment Environment `env:"environment"`
-	Google      Google      `env:"google"`
-	Mongo       Mongo       `env:"mongo"`
+	Server        Server        `env:"server"`
+	Postgres      Postgres      `env:"postgres"`
+	Redis         Redis         `env:"redis"`
+	RedisStream   RedisStream   `env:"redis_stream"`
+	JWT           JWT           `env:"jwt"`
+	Slack         Slack         `env:"slack"`
+	Environment   Environment   `env:"environment"`
+	Google        Google        `env:"google"`
+	Mongo         Mongo         `env:"mongo"`
+	Cloudinary    Cloudinary    `env:"cloudinary"`
+	Discord       Discord       `env:"discord"`
+	CreditManager CreditManager `env:"credit_manager"`
 }
 
 type Server struct {
@@ -75,6 +78,20 @@ type Google struct {
 
 type Mongo struct {
 	Url string `validate:"required" env:"url"`
+}
+type Cloudinary struct {
+	URL    string `validate:"required" env:"url"`
+	Folder string `validate:"required" env:"folder"`
+}
+
+type CreditManager struct {
+	Url   string `validate:"required" env:"url"`
+	Token string `validate:"required" env:"token"`
+}
+
+type Discord struct {
+	Url  string `validate:"required" env:"url"`
+	Path string `validate:"required" env:"path"`
 }
 
 func Environments() {

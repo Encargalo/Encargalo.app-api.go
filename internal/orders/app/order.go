@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -12,6 +13,7 @@ import (
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
+	"Encargalo.app-api.go/internal/pkg/http"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	shops "Encargalo.app-api.go/internal/shops/domain/ports"
 	"github.com/google/uuid"
@@ -36,14 +38,15 @@ const (
 )
 
 type orderApp struct {
-	repo   ports.OrdersRepo
-	shops  shops.ShopsRepo
-	custo  portsCustomers.CustomersRepo
-	stream ports.RedisStream
+	repo      ports.OrdersRepo
+	shops     shops.ShopsRepo
+	custo     portsCustomers.CustomersRepo
+	stream    ports.RedisStream
+	ravenTree http.Http
 }
 
-func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.CustomersRepo, stream ports.RedisStream) ports.OrdersApp {
-	return &orderApp{repo, shops, custo, stream}
+func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.CustomersRepo, stream ports.RedisStream, ravenTree http.Http) ports.OrdersApp {
+	return &orderApp{repo, shops, custo, stream, ravenTree}
 }
 
 func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*models.Order, error) {
@@ -166,6 +169,12 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 		return models.Order{}, err
 	}
 
+	if newStatus == StatusOnTheWay {
+		resul, _ := calculateLoanAmount(*order)
+
+		o.ravenTree.RavenTree(ctx, "/", "POST", resul)
+	}
+
 	order.Status = string(newStatus)
 	return *order, nil
 
@@ -183,4 +192,18 @@ func buildToDataProduceOrder(items models.Order) []models.DataProduceOrder {
 	}
 
 	return dataProduceOrder
+}
+
+func calculateLoanAmount(order models.Order) ([]byte, error) {
+
+	amount := float64(order.TotalPrice-order.DeliveryFee) * 0.10
+
+	data := models.CreditManager{
+		ShopID:  order.ShopID,
+		OrderID: order.ID,
+		Amount:  amount,
+	}
+
+	return json.Marshal(data)
+
 }

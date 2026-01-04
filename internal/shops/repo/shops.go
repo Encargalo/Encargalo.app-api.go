@@ -82,12 +82,27 @@ func (s *shopsRepo) GetAllShops(ctx context.Context, coords shopsDTO.Coords) (sh
 		return shopsDTO.ShopsResponse{}, errcustom.ErrNotFound
 	}
 
-	result, err := calculateDistances(coords, &shops)
-	if err != nil {
-		slog.Error("error al calcular distancias", "error", err)
-	}
+	var resp shopsDTO.ShopsResponse
 
-	resp := shops.ToDomainDTO(result)
+	if config.Get().Environment.Current == "production" {
+		result, err := calculateDistances(coords, &shops)
+		if err != nil {
+			slog.Error("error al calcular distancias", "error", err)
+		}
+
+		resp = shops.ToDomainDTO(result)
+	} else {
+
+		dataDistance := make([]entity.ShopDistance, len(shops))
+
+		for i, v := range shops {
+			dataDistance[i].ShopID = v.ID
+			dataDistance[i].Distance = 0
+			dataDistance[i].Duration = 0
+		}
+
+		resp = shops.ToDomainDTO(dataDistance)
+	}
 
 	if err := s.cache.Set(ctx, keyCache, resp, cacheTTL); err != nil {
 		slog.Error("error al guardar negocios en cache", "error", err)
@@ -145,12 +160,27 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 		return shopsDTO.ShopsResponse{}, errcustom.ErrNotFound
 	}
 
-	result, err := calculateDistances(coords, &shops)
-	if err != nil {
-		slog.Error("error al calcular distancias", "error", err)
-	}
+	var resp shopsDTO.ShopsResponse
 
-	resp := shops.ToDomainDTO(result)
+	if config.Get().Environment.Current == "production" {
+		result, err := calculateDistances(coords, &shops)
+		if err != nil {
+			slog.Error("error al calcular distancias", "error", err)
+		}
+
+		resp = shops.ToDomainDTO(result)
+	} else {
+
+		dataDistance := make([]entity.ShopDistance, len(shops))
+
+		for i, v := range shops {
+			dataDistance[i].ShopID = v.ID
+			dataDistance[i].Distance = 0
+			dataDistance[i].Duration = 0
+		}
+
+		resp = shops.ToDomainDTO(dataDistance)
+	}
 
 	if err := s.cache.Set(ctx, keyCache, resp, cacheTTL); err != nil {
 		slog.Error("error al guardar negocios en cache", "error", err)

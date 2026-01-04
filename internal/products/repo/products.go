@@ -30,6 +30,49 @@ func NewProductsRepo(db *bun.DB, cache cache.Cache) ports.ProductsRepo {
 	return &productsRepo{db, cache}
 }
 
+func (p *productsRepo) RegisterItem(ctx context.Context, item *models.Item) error {
+	_, err := p.db.NewInsert().Model(item).Exec(ctx)
+	if err != nil {
+		slog.Error("Error al registrar producto", "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+
+	if err := p.cache.Clear(ctx, prefix_shop_cashe+item.ShopID.String()); err != nil {
+		slog.Error("error al limpiar el cache", "error", err)
+	}
+
+	return err
+}
+
+func (p *productsRepo) UpdateItem(ctx context.Context, item *models.UpdateItem, shopID uuid.UUID) error {
+	_, err := p.db.NewUpdate().Model(item).WherePK().Exec(ctx)
+	if err != nil {
+		slog.Error("Error al actualizar", "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+
+	if err := p.cache.Clear(ctx, prefix_shop_cashe+shopID.String()); err != nil {
+		slog.Error("error al limpiar el cache", "error", err)
+	}
+
+	return err
+}
+
+func (p *productsRepo) SearchItemByID(ctx context.Context, id uuid.UUID) (*models.Item, error) {
+
+	var item models.Item
+
+	if err := p.db.NewSelect().
+		Model(&item).
+		Where("id = ?", id).
+		Scan(ctx); err != nil {
+		slog.Error("error al obtener el producto", "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	return &item, nil
+}
+
 func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.UUID) (dtos.CategoriesResponse, error) {
 
 	var prods dtos.CategoriesResponse
@@ -74,7 +117,7 @@ func (p *productsRepo) SearchAdditionsByShopID(ctx context.Context, categoryID u
 
 	err := p.db.NewSelect().
 		Model(&categoryAdditions).
-		Relation("Addition").
+		Relation("Addition").Order("price ASC").
 		Where("category_id = ?", categoryID).
 		Scan(ctx)
 
