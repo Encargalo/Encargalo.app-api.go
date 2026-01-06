@@ -8,7 +8,6 @@ import (
 	"Encargalo.app-api.go/internal/pkg/bycript"
 	"Encargalo.app-api.go/internal/pkg/cache"
 	"Encargalo.app-api.go/internal/pkg/cookie"
-	"Encargalo.app-api.go/internal/pkg/http"
 	"Encargalo.app-api.go/internal/pkg/logs"
 	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
 	"Encargalo.app-api.go/internal/shared/adapters/mongo"
@@ -119,7 +118,6 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(logs.NewLogs)
 	_ = Container.Provide(cookie.NewCookieFactory)
 	_ = Container.Provide(uploadimage.NewUploadImage)
-	_ = Container.Provide(http.NewHttp)
 
 	return Container
 

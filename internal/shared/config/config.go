@@ -85,8 +85,8 @@ type Cloudinary struct {
 }
 
 type CreditManager struct {
-	Url   string `validate:"required" env:"url"`
-	Token string `validate:"required" env:"token"`
+	Url         string `validate:"required" env:"url"`
+	SIGNING_KEY string `validate:"required" env:"signing_key"`
 }
 
 type Discord struct {

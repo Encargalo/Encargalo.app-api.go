@@ -2,20 +2,28 @@ package app
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"log/slog"
+	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"Encargalo.app-api.go/internal/customers/domain/dto"
 	portsCustomers "Encargalo.app-api.go/internal/customers/domain/ports"
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
-	"Encargalo.app-api.go/internal/pkg/http"
+	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	shops "Encargalo.app-api.go/internal/shops/domain/ports"
+	"github.com/AndresXLP/ravenTree"
 	"github.com/google/uuid"
 )
 
@@ -38,15 +46,14 @@ const (
 )
 
 type orderApp struct {
-	repo      ports.OrdersRepo
-	shops     shops.ShopsRepo
-	custo     portsCustomers.CustomersRepo
-	stream    ports.RedisStream
-	ravenTree http.Http
+	repo   ports.OrdersRepo
+	shops  shops.ShopsRepo
+	custo  portsCustomers.CustomersRepo
+	stream ports.RedisStream
 }
 
-func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.CustomersRepo, stream ports.RedisStream, ravenTree http.Http) ports.OrdersApp {
-	return &orderApp{repo, shops, custo, stream, ravenTree}
+func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.CustomersRepo, stream ports.RedisStream) ports.OrdersApp {
+	return &orderApp{repo, shops, custo, stream}
 }
 
 func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*models.Order, error) {
@@ -170,9 +177,7 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 	}
 
 	if newStatus == StatusOnTheWay {
-		resul, _ := calculateLoanAmount(*order)
-
-		o.ravenTree.RavenTree(ctx, "/", "POST", resul)
+		go sendCreditDiscount(ctx, order)
 	}
 
 	order.Status = string(newStatus)
@@ -194,16 +199,59 @@ func buildToDataProduceOrder(items models.Order) []models.DataProduceOrder {
 	return dataProduceOrder
 }
 
-func calculateLoanAmount(order models.Order) ([]byte, error) {
+func sendCreditDiscount(ctx context.Context, order *models.Order) {
+
+	config := config.Get().CreditManager
+
+	serviceName := "billing-service"
+	requestID := uuid.New().String()
+	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+
+	body := calculateLoanAmount(*order)
+
+	payload := serviceName + requestID + timestamp + string(body)
+
+	h := hmac.New(sha256.New, []byte(config.SIGNING_KEY))
+	h.Write([]byte(payload))
+	signature := hex.EncodeToString(h.Sum(nil))
+
+	tree := ravenTree.NewRavensTree()
+	options := &ravenTree.Options{
+		Headers: map[string]string{
+			"X-Service-Name": serviceName,
+			"X-Request-ID":   requestID,
+			"X-Timestamp":    timestamp,
+			"X-Signature":    signature,
+		},
+		Host:       config.Url,
+		Path:       fmt.Sprintf("/credits/wallet/%s/deduct-commission", order.ShopID),
+		Method:     http.MethodPost,
+		Body:       body,
+		Timeout:    5 * time.Second,
+		RetryCount: 3,
+	}
+
+	resp, err := tree.SendRaven(ctx, options)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(options)
+	fmt.Println(resp.ParseBodyToString())
+
+}
+
+func calculateLoanAmount(order models.Order) []byte {
 
 	amount := float64(order.TotalPrice-order.DeliveryFee) * 0.10
 
 	data := models.CreditManager{
-		ShopID:  order.ShopID,
-		OrderID: order.ID,
 		Amount:  amount,
+		OrderID: order.ID,
 	}
 
-	return json.Marshal(data)
+	resul, _ := json.Marshal(data)
+
+	return resul
 
 }
