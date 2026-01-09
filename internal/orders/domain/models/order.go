@@ -15,8 +15,6 @@ type Order struct {
 	ID            uuid.UUID       `bun:"id,pk,type:uuid" json:"id"`
 	ShopID        uuid.UUID       `bun:"shop_id" json:"shop_id"`
 	CustomerID    uuid.UUID       `bun:"customer_id" json:"customer_id"`
-	CustomerName  string          `bun:"customer_name" json:"customer_name"`
-	PhoneCustomer string          `bun:"phone_customer" json:"phone_customer"`
 	BatchID       uuid.UUID       `bun:"batch_id,nullzero,type:uuid" json:"batch_id,omitempty"`
 	Number        int             `bun:"number" json:"number"`
 	Address       string          `bun:"address" json:"address"`

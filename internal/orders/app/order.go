@@ -82,9 +82,6 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		return &models.Order{}, err
 	}
 
-	orderModel.CustomerName = customer.Name + customer.SurName
-	orderModel.PhoneCustomer = customer.Phone
-
 	items, err := o.repo.SearchItemsByID(ctx, orderModel.GetItemsID())
 	if err != nil {
 		return &models.Order{}, err
@@ -106,7 +103,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 	}
 
 	DetailsModel := new(models.Details)
-	DetailsModel.BuildDetails(orderModel, shop)
+	DetailsModel.BuildDetails(orderModel, shop, customer)
 
 	detailsData, err := json.Marshal(DetailsModel)
 	if err != nil {

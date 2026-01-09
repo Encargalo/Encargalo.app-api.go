@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 
+	"Encargalo.app-api.go/internal/customers/domain/models"
 	"github.com/google/uuid"
 )
 
@@ -12,11 +13,11 @@ type Details struct {
 	ItemsDetails    []itemsDetails  `json:"items"`
 }
 
-func (d *Details) BuildDetails(order *Order, shop *ShopOrder) {
+func (d *Details) BuildDetails(order *Order, shop *ShopOrder, customer *models.Accounts) {
 
-	d.CustomerDetails.ID = order.CustomerID
-	d.CustomerDetails.Name = order.CustomerName
-	d.CustomerDetails.Phone = order.PhoneCustomer
+	d.CustomerDetails.ID = customer.ID
+	d.CustomerDetails.Name = customer.Name
+	d.CustomerDetails.Phone = customer.Phone
 
 	d.ShopDetails.ID = shop.ID
 	d.ShopDetails.Name = shop.Name
