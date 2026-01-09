@@ -85,6 +85,19 @@ func (o *orders) SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*mode
 
 }
 
+func (o *orders) SearchShopByID(ctx context.Context, shopID uuid.UUID) (*models.ShopOrder, error) {
+	shop := new(models.ShopOrder)
+	if err := o.db.NewSelect().Model(shop).Where("id = ?", shopID).Scan(ctx); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errors.New("shop not found")
+		}
+		slog.Error("SearchShopByID: failed to find shop", "shopID", shopID, "error", err)
+		return nil, errors.New("unexpected error")
+	}
+
+	return shop, nil
+}
+
 func (o *orders) SearchItemsByID(ctx context.Context, ItemsID []uuid.UUID) (items.Items, error) {
 
 	var items items.Items
@@ -134,8 +147,6 @@ func (o *orders) SearchActiveOrdersByCriteria(ctx context.Context, criteria uuid
 
 	err := o.db.NewSelect().
 		Model(&orders).
-		Relation("ItemsOrders").
-		Relation("ItemsOrders.Additions").
 		Where("status IN (?)", bun.In([]string{
 			"Pending",
 			"Waiting For Payment Proof",
