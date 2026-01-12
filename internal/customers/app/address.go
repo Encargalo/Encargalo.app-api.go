@@ -26,7 +26,6 @@ func (c *customersAddressApp) RegisterAddress(ctx context.Context, customerID uu
 }
 
 func (c *customersAddressApp) SearchAllAddress(ctx context.Context, customer_id uuid.UUID) (models.Addresses, error) {
-
 	return c.repo.SearchAllAddress(ctx, customer_id)
 }
 

@@ -87,12 +87,7 @@ func (c *customersAddrssHandler) SearchAllAdrress(e echo.Context) error {
 
 	addresses, err := c.svc.SearchAllAddress(ctx, session.UserID)
 	if err != nil {
-		switch err.Error() {
-		case "not found":
-			return echo.NewHTTPError(http.StatusNotFound, "not found")
-		default:
-			return echo.NewHTTPError(http.StatusInternalServerError, "unexpected error")
-		}
+		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
 	}
 
 	return e.JSON(http.StatusOK, addresses)

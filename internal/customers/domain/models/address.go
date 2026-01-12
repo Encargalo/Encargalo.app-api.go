@@ -1,39 +1,54 @@
 package models
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"Encargalo.app-api.go/internal/customers/domain/dto"
 	"github.com/google/uuid"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"github.com/uptrace/bun"
 )
 
 type Addresses []Address
 
 type Address struct {
-	ID           primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
-	CustomerID   string             `bson:"customer_id" json:"customer_id"`
-	Label        string             `bson:"alias" json:"alias"`
-	Address      string             `bson:"address" json:"address"`
-	Latitude     float64            `bson:"latitude" json:"latitude"`
-	Longitude    float64            `bson:"longitude" json:"longitude"`
-	Type         string             `bson:"type" json:"type"`
-	Instructions string             `bson:"instructions,omitempty" json:"instructions,omitempty"`
-	Extra        interface{}        `bson:"extra,omitempty" json:"extra,omitempty"`
-	CreatedAt    time.Time          `bson:"created_at" json:"created_at"`
-	UpdatedAt    time.Time          `bson:"updated_at" json:"updated_at"`
+	bun.BaseModel `bun:"table:customers.address"`
+
+	ID           uuid.UUID       `bun:"id,pk,type:uuid,default:gen_random_uuid()" json:"id"`
+	CustomerID   uuid.UUID       `bun:"customer_id,type:uuid,notnull" json:"customer_id"`
+	Label        string          `bun:"alias,notnull" json:"alias"`
+	Address      string          `bun:"address,notnull" json:"address"`
+	Latitude     float64         `bun:"latitude,notnull" json:"latitude"`
+	Longitude    float64         `bun:"longitude,notnull" json:"longitude"`
+	Type         string          `bun:"type,notnull" json:"type"`
+	Instructions *string         `bun:"instructions,nullzero" json:"instructions,omitempty"`
+	Extra        json.RawMessage `bun:"extra,type:jsonb,nullzero" json:"extra,omitempty"`
+	CreatedAt    time.Time       `bun:"created_at,notnull,default:now()" json:"created_at"`
+	UpdatedAt    time.Time       `bun:"updated_at,notnull,default:now()" json:"updated_at"`
 }
 
-func (a *Address) BuildToModel(customerID uuid.UUID, dtoAddr dto.Address) {
-	a.ID = primitive.NewObjectID()
-	a.CustomerID = customerID.String()
+func (a *Address) BuildToModel(customerID uuid.UUID, dtoAddr dto.Address) error {
+	a.CustomerID = customerID
 	a.Label = dtoAddr.Label
 	a.Address = dtoAddr.Address
 	a.Latitude = dtoAddr.Latitude
 	a.Longitude = dtoAddr.Longitude
-	a.Instructions = dtoAddr.Instructions
 	a.Type = dtoAddr.Type
-	a.Extra = dtoAddr.Extra
 	a.CreatedAt = time.Now()
 	a.UpdatedAt = time.Now()
+
+	if dtoAddr.Instructions != "" {
+		a.Instructions = &dtoAddr.Instructions
+	}
+
+	if dtoAddr.Extra != nil {
+		b, err := json.Marshal(dtoAddr.Extra)
+		if err != nil {
+			return fmt.Errorf("marshal extra: %w", err)
+		}
+		a.Extra = json.RawMessage(b)
+	}
+
+	return nil
 }
