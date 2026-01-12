@@ -9,16 +9,14 @@ import (
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type customersAddressRepo struct {
-	db    *bun.DB
-	mongo *mongo.Client
+	db *bun.DB
 }
 
-func NewCustomersAddressRepo(db *bun.DB, mongo *mongo.Client) ports.CustomersAddressRepo {
-	return &customersAddressRepo{db, mongo}
+func NewCustomersAddressRepo(db *bun.DB) ports.CustomersAddressRepo {
+	return &customersAddressRepo{db}
 }
 
 func (c *customersAddressRepo) RegisterAddress(ctx context.Context, address models.Address) error {
