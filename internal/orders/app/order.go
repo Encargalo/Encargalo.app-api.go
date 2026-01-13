@@ -75,6 +75,11 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		}
 	}
 
+	shop, err := o.repo.SearchShopByID(ctx, order.ShopID)
+	if err != nil {
+		return &models.Order{}, err
+	}
+
 	orderModel := new(models.Order)
 	orderModel.BuildDtoToModel(*order, batchID)
 
@@ -82,9 +87,6 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 	if err != nil {
 		return &models.Order{}, err
 	}
-
-	orderModel.CustomerName = customer.Name + customer.SurName
-	orderModel.PhoneCustomer = customer.Phone
 
 	items, err := o.repo.SearchItemsByID(ctx, orderModel.GetItemsID())
 	if err != nil {
@@ -105,6 +107,16 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 			orderModel.SetAdditionalsName(additions)
 		}
 	}
+
+	DetailsModel := new(models.Details)
+	DetailsModel.BuildDetails(orderModel, shop, customer)
+
+	detailsData, err := json.Marshal(DetailsModel)
+	if err != nil {
+		return &models.Order{}, err
+	}
+
+	orderModel.Details = detailsData
 
 	orderDB, err := o.repo.CreateOrder(ctx, orderModel)
 	if err != nil {

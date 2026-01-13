@@ -20,6 +20,7 @@ type OrdersRepo interface {
 	CreateOrder(ctx context.Context, order *models.Order) (*models.Order, error)
 	SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*models.Order, error)
 	SearchItemsByID(ctx context.Context, ItemsID []uuid.UUID) (items.Items, error)
+	SearchShopByID(ctx context.Context, shopID uuid.UUID) (*models.ShopOrder, error)
 	SearchAdditionsByID(ctx context.Context, additionID []uuid.UUID) ([]models.Addition, error)
 	SearchActiveOrdersByCriteria(ctx context.Context, criteria uuid.UUID) ([]models.Order, error)
 	UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string) error
