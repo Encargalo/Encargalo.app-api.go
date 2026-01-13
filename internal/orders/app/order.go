@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -177,7 +176,7 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 	}
 
 	if newStatus == StatusOnTheWay {
-		go sendCreditDiscount(ctx, order)
+		sendCreditDiscount(ctx, order)
 	}
 
 	order.Status = string(newStatus)
@@ -209,7 +208,9 @@ func sendCreditDiscount(ctx context.Context, order *models.Order) {
 
 	body := calculateLoanAmount(*order)
 
-	payload := serviceName + requestID + timestamp + string(body)
+	bodyAux, _ := json.Marshal(body)
+
+	payload := serviceName + requestID + timestamp + string(bodyAux)
 
 	h := hmac.New(sha256.New, []byte(config.SIGNING_KEY))
 	h.Write([]byte(payload))
@@ -223,25 +224,20 @@ func sendCreditDiscount(ctx context.Context, order *models.Order) {
 			"X-Timestamp":    timestamp,
 			"X-Signature":    signature,
 		},
-		Host:       config.Url,
-		Path:       fmt.Sprintf("/credits/wallet/%s/deduct-commission", order.ShopID),
-		Method:     http.MethodPost,
-		Body:       body,
-		Timeout:    5 * time.Second,
-		RetryCount: 3,
+		Host:   config.Url,
+		Path:   fmt.Sprintf("/credits/wallet/%s/deduct-commission", order.ShopID),
+		Method: http.MethodPost,
+		Body:   body,
 	}
 
 	resp, err := tree.SendRaven(ctx, options)
-	if err != nil {
-		log.Fatal(err)
-	}
 
-	fmt.Println(options)
-	fmt.Println(resp.ParseBodyToString())
+	fmt.Println(err)
+	fmt.Println(resp.StatusCode)
 
 }
 
-func calculateLoanAmount(order models.Order) []byte {
+func calculateLoanAmount(order models.Order) models.CreditManager {
 
 	amount := float64(order.TotalPrice-order.DeliveryFee) * 0.10
 
@@ -250,8 +246,6 @@ func calculateLoanAmount(order models.Order) []byte {
 		OrderID: order.ID,
 	}
 
-	resul, _ := json.Marshal(data)
-
-	return resul
+	return data
 
 }
