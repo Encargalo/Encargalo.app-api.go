@@ -2,8 +2,8 @@ package repo
 
 import (
 	"context"
+	"reflect"
 
-	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/json"
 	"github.com/andresxlp/redsumer/pkg/producer"
@@ -17,25 +17,23 @@ func NewRepositoryProducerStream(producer *producer.Producer) ports.RedisStream 
 	return &redisRepository{producer}
 }
 
-func (stream *redisRepository) Producer(ctx context.Context, items []models.DataProduceOrder) error {
+func (stream *redisRepository) PublisherEvent(ctx context.Context, data interface{}) error {
 
-	for _, v := range items {
-		message, err := json.StructToMap(v)
-		if err != nil {
-			return err
-		}
+	if stream.isSlice(data) {
 
-		if err = stream.producer.Produce(ctx, message); err != nil {
-			return err
+		for _, v := range data.([]interface{}) {
+			message, err := json.StructToMap(v)
+			if err != nil {
+				return err
+			}
+
+			if err = stream.producer.Produce(ctx, message); err != nil {
+				return err
+			}
 		}
 	}
 
-	return nil
-}
-
-func (stream *redisRepository) EventOrderCreated(ctx context.Context, event models.DataEventOrderCreated) error {
-
-	message, err := json.StructToMap(event)
+	message, err := json.StructToMap(data)
 	if err != nil {
 		return err
 	}
@@ -45,4 +43,9 @@ func (stream *redisRepository) EventOrderCreated(ctx context.Context, event mode
 	}
 
 	return nil
+}
+
+func (stream *redisRepository) isSlice(i interface{}) bool {
+	v := reflect.ValueOf(i)
+	return v.Kind() == reflect.Slice
 }

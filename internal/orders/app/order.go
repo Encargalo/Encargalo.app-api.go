@@ -123,14 +123,14 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		return &models.Order{}, err
 	}
 
-	if err := o.stream.Producer(ctx, buildToDataProduceOrder(*orderDB)); err != nil {
+	if err := o.stream.PublisherEvent(ctx, buildToDataProduceOrder(*orderDB)); err != nil {
 		slog.Error("error producing order to stream", "error", err)
 	}
 
 	eventOrderCreateModel := models.DataEventOrderCreated{}
 	eventOrderCreateModel.BuidlToModelEvent(*orderDB)
 
-	if err := o.stream.EventOrderCreated(ctx, eventOrderCreateModel); err != nil {
+	if err := o.stream.PublisherEvent(ctx, eventOrderCreateModel); err != nil {
 		slog.Error("error producing event order created to stream", "error", err)
 	}
 
@@ -188,7 +188,7 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 	}
 
 	if newStatus == StatusOnTheWay {
-		sendCreditDiscount(ctx, order)
+		o.sendCreditDiscount(ctx, order)
 	}
 
 	order.Status = string(newStatus)
@@ -210,7 +210,7 @@ func buildToDataProduceOrder(items models.Order) []models.DataProduceOrder {
 	return dataProduceOrder
 }
 
-func sendCreditDiscount(ctx context.Context, order *models.Order) {
+func (o *orderApp) sendCreditDiscount(ctx context.Context, order *models.Order) {
 
 	config := config.Get().CreditManager
 
@@ -224,7 +224,7 @@ func sendCreditDiscount(ctx context.Context, order *models.Order) {
 
 	payload := serviceName + requestID + timestamp + string(bodyAux)
 
-	h := hmac.New(sha256.New, []byte(config.SIGNING_KEY))
+	h := hmac.New(sha256.New, []byte(config.SigningKey))
 	h.Write([]byte(payload))
 	signature := hex.EncodeToString(h.Sum(nil))
 
@@ -242,11 +242,20 @@ func sendCreditDiscount(ctx context.Context, order *models.Order) {
 		Body:   body,
 	}
 
-	resp, err := tree.SendRaven(ctx, options)
+	resp, _ := tree.SendRaven(ctx, options)
 
-	fmt.Println(err)
-	fmt.Println(resp.StatusCode)
+	if resp.Status != "202" {
+		var dataEventFail models.EventFailCreditDiscount
+		dataEventFail.BuildFailCreditDiscount(resp.Status, resp.ParseBodyToString(), body.OrderID.String(), body.Amount)
 
+		if err := o.stream.PublisherEvent(ctx, dataEventFail); err != nil {
+			slog.Error("error producing event fail credits discounts to stream", "error", err)
+		}
+		slog.Info("event publisher successfully")
+		return
+	}
+
+	slog.Info("credit discount sent successfully")
 }
 
 func calculateLoanAmount(order models.Order) models.CreditManager {
