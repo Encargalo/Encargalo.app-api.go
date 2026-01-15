@@ -28,7 +28,6 @@ type Config struct {
 	Slack         Slack         `env:"slack"`
 	Environment   Environment   `env:"environment"`
 	Google        Google        `env:"google"`
-	Mongo         Mongo         `env:"mongo"`
 	Cloudinary    Cloudinary    `env:"cloudinary"`
 	Discord       Discord       `env:"discord"`
 	CreditManager CreditManager `env:"credit_manager"`
@@ -76,9 +75,6 @@ type Google struct {
 	Matrix string `validate:"required" env:"matrix"`
 }
 
-type Mongo struct {
-	Url string `validate:"required" env:"url"`
-}
 type Cloudinary struct {
 	URL    string `validate:"required" env:"url"`
 	Folder string `validate:"required" env:"folder"`
