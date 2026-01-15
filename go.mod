@@ -3,10 +3,13 @@ module Encargalo.app-api.go
 go 1.25
 
 require (
+	github.com/AndresXLP/ravenTree v1.1.0
 	github.com/andresxlp/redsumer v1.1.5
 	github.com/charmbracelet/log v0.4.2
+	github.com/cloudinary/cloudinary-go/v2 v2.14.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/labstack/echo/v4 v4.13.4
+	github.com/pressly/goose/v3 v3.26.0
 	github.com/shepherd-go/gosuite v1.0.3
 	github.com/slack-go/slack v0.17.3
 	github.com/swaggo/echo-swagger v1.4.1
@@ -15,7 +18,6 @@ require (
 	github.com/uptrace/bun/dialect/pgdialect v1.2.16
 	github.com/uptrace/bun/driver/pgdriver v1.2.16
 	github.com/uptrace/bun/extra/bundebug v1.2.16
-	go.mongodb.org/mongo-driver v1.17.6
 	go.uber.org/dig v1.19.0
 )
 
@@ -30,6 +32,7 @@ require (
 	github.com/clipperhouse/displaywidth v0.6.1 // indirect
 	github.com/clipperhouse/stringish v0.1.1 // indirect
 	github.com/clipperhouse/uax29/v2 v2.3.0 // indirect
+	github.com/creasty/defaults v1.7.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/go-logfmt/logfmt v0.6.1 // indirect
@@ -41,25 +44,22 @@ require (
 	github.com/go-openapi/swag/typeutils v0.25.4 // indirect
 	github.com/go-openapi/swag/yamlutils v0.25.4 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
-	github.com/golang/snappy v1.0.0 // indirect
+	github.com/gorilla/schema v1.4.1 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
-	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
 	github.com/mattn/go-runewidth v0.0.19 // indirect
-	github.com/montanaflynn/stats v0.7.1 // indirect
+	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/puzpuzpuz/xsync/v3 v3.5.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
+	github.com/sethvargo/go-retry v0.3.0 // indirect
 	github.com/tmthrgd/go-hex v0.0.0-20190904060850-447a3041c3bc // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
-	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
-	github.com/xdg-go/scram v1.1.2 // indirect
-	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
-	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	go.opentelemetry.io/otel v1.38.0 // indirect
 	go.opentelemetry.io/otel/trace v1.38.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/sync v0.18.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect

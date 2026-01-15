@@ -78,4 +78,5 @@ type CustomerResponse struct {
 	Phone        string    `json:"phone" example:"+573001112233"`
 	Email        string    `json:"email" example:"carlos.ramirez@example.com"`
 	BirthdayDate string    `json:"birthday_date" example:"1990-05-20"`
+	Role         string    `json:"role" example:"customer"`
 }

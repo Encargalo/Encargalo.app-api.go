@@ -1,8 +1,9 @@
 package groups
 
 import (
-	"Encargalo.app-api.go/internal/auth/handler"
-	"Encargalo.app-api.go/internal/shared/middleware/auth"
+	"Encargalo.app-api.go/internal/auth/domain/middleware/auth"
+	"Encargalo.app-api.go/internal/auth/domain/models"
+	handAuth "Encargalo.app-api.go/internal/auth/handler"
 	"github.com/labstack/echo/v4"
 )
 
@@ -11,18 +12,18 @@ type AuthGroup interface {
 }
 
 type authGroup struct {
-	authHand   handler.Auth
 	middleAuth auth.AuthMiddleware
+	handAuth   handAuth.Auth
 }
 
-func NewAuthGroup(authHand handler.Auth, middleAuth auth.AuthMiddleware) AuthGroup {
-	return &authGroup{authHand, middleAuth}
+func NewAuthGroup(middleAuth auth.AuthMiddleware, handAuth handAuth.Auth) AuthGroup {
+	return &authGroup{middleAuth, handAuth}
 }
 
 func (a *authGroup) Resource(g *echo.Echo) {
 	group := g.Group("/auth")
 
-	group.POST("/sign-in/customers", a.authHand.SignInCustomer)
-	group.POST("/sign-in/employee", a.authHand.SignInEmployee)
-	group.DELETE("/logout", a.authHand.Logout, a.middleAuth.Auth)
+	group.POST("/sign-in/customers", a.handAuth.SignInCustomer)
+	group.POST("/sign-in/employees", a.handAuth.SignInEmployee)
+	group.DELETE("/logout", a.handAuth.Logout, a.middleAuth.Auth, a.middleAuth.Require(models.Customer, models.OrderManager))
 }

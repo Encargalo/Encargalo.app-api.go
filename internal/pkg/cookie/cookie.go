@@ -3,45 +3,73 @@ package cookie
 import (
 	"net/http"
 	"time"
+
+	"Encargalo.app-api.go/internal/shared/config"
 )
+
+type Role string
 
 const (
-	cookieName = "encargalo_session"
-	cookiePath = "/"
+	RoleCustomer Role = "customers"
+	RoleBusiness Role = "employee"
 )
 
-type Cookie interface {
+type CookieHandler interface {
 	CreateCookieSession(jwtSession string) *http.Cookie
 	DeleteCookieSession() *http.Cookie
 }
 
-type cookie struct{}
+type cookie struct {
+}
 
-func NewCookie() Cookie {
+func NewCookieFactory() CookieHandler {
+	// switch role {
+	// case RoleCustomer:
+	// 	return &cookie{
+	// 		name: "customer-session",
+	// 		path: "/customers",
+	// 	}
+	// case RoleBusiness:
+	// 	return &cookie{
+	// 		name: "employee-session",
+	// 		path: "/employee",
+	// 	}
+	// default:
+	// 	return &cookie{
+	// 		name: "unknown-session",
+	// 		path: "/",
+	// 	}
 	return &cookie{}
 }
 
 func (c *cookie) CreateCookieSession(jwtSession string) *http.Cookie {
 	return &http.Cookie{
-		Name:     cookieName,
+		Name:     "encargalo-session",
 		Value:    jwtSession,
 		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: setSameSite(),
 		HttpOnly: true,
-		Path:     cookiePath,
+		Path:     "/",
 		Expires:  time.Now().Add(365 * 24 * time.Hour),
 	}
 }
 
 func (c *cookie) DeleteCookieSession() *http.Cookie {
 	return &http.Cookie{
-		Name:     cookieName,
+		Name:     "encargalo-session",
 		Value:    "",
 		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: setSameSite(),
 		HttpOnly: true,
-		Path:     cookiePath,
+		Path:     "/",
 		Expires:  time.Unix(0, 0),
 		MaxAge:   -1,
 	}
+}
+
+func setSameSite() http.SameSite {
+	if config.Get().Environment.Current != "production" {
+		return http.SameSiteNoneMode
+	}
+	return http.SameSiteStrictMode
 }

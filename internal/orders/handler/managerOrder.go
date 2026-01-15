@@ -4,22 +4,19 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/employee/domain/ports"
 	portsOrder "Encargalo.app-api.go/internal/orders/domain/ports"
+	"Encargalo.app-api.go/internal/shared/errcustom"
 
 	"Encargalo.app-api.go/internal/orders/app"
-	modelsOrder "Encargalo.app-api.go/internal/orders/domain/models"
-	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
-)
 
-const (
-	roleEmployee = "Order Manager"
-	roleCustomer = "customer"
+	modelsUpdateOrders "Encargalo.app-api.go/internal/orders/domain/models"
 )
 
 type ManagerOrder interface {
@@ -32,7 +29,11 @@ type managerOrder struct {
 	svcOrder portsOrder.OrdersApp
 }
 
-func New(svc app.AppManagerOrder, svc2 ports.EmployeeApp, svcOrder portsOrder.OrdersApp) ManagerOrder {
+func New(
+	svc app.AppManagerOrder,
+	svc2 ports.EmployeeApp,
+	svcOrder portsOrder.OrdersApp,
+) ManagerOrder {
 	return &managerOrder{svc, svc2, svcOrder}
 }
 
@@ -40,107 +41,145 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
+// HandleWebSocket godoc
+//
+// @Summary WebSocket de gestión de órdenes
+// @Description
+// Establece una conexión WebSocket para la gestión en tiempo real de órdenes.
+//
+// ### Autenticación
+// Requiere una sesión válida inyectada en el contexto (middleware de auth).
+//
+// ### Comportamiento
+// - Si el usuario es **OrderManager**, la conexión se asocia al `shop_id` del empleado.
+// - Si es otro tipo de usuario, se asocia directamente al `user_id`.
+// - Al conectarse, el servidor envía:
+// ```json
+// { "type": "connected" }
+// ```
+//
+// ### Mensajes entrantes soportados
+// **update_status**
+// ```json
+//
+//	{
+//	  "type": "update_status",
+//	  "order_id": "uuid",
+//	  "new_status": "string"
+//	}
+//
+// ```
+//
+// ### Mensajes salientes
+// - Eventos de órdenes actualizadas (broadcast).
+//
+// @Tags Orders WebSocket
+// @Accept json
+// @Produce json
+// @Produce plain
+// @Failure 401 {string}  "Sesión no encontrada o inválida"
+// @Failure 403 {string}  "Acceso denegado"
+// @Failure 500 {string}  "Error interno del servidor"
+// @Router /orders/manager [get]
+// @DeprecatedRouter /customers/orders/manager [get]
+// @DeprecatedRouter /employee/orders/manager [get]
 func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 	ctx := c.Request().Context()
 
 	session, ok := ctx.Value("session").(models.ActiveSession)
 	if !ok {
-		slog.Error("No se encontró el usuario en el contexto")
+		slog.Error("No se encontró la sesión en el contexto")
 		return errcustom.ErrUnexpectedError
 	}
 
-	if session.UserType != roleEmployee && session.UserType != roleCustomer {
-		slog.Error("Usuario no autorizado para acceder a esta ruta")
-		return echo.NewHTTPError(http.StatusForbidden, "usuario no autorizado")
-	}
+	var connectionID uuid.UUID
+	isShop := session.UserType == models.OrderManager
 
-	var conectionID uuid.UUID
-	isShop := session.UserType == roleEmployee
-
-	if session.UserType == roleEmployee {
+	if isShop {
 		employee, err := h.svc2.SearchEmployeeByID(ctx, session.UserID)
 		if err != nil {
-			slog.Error("Error al buscar empleado:", slog.String("error", err.Error()))
+			slog.Error("Error buscando empleado", "error", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
 		}
-		conectionID = employee.ShopID
+		connectionID = employee.ShopID
 	} else {
-		conectionID = session.UserID
+		connectionID = session.UserID
 	}
 
 	conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
-		slog.Error("Error al actualizar conexión websocket:", slog.String("error", err.Error()))
+		slog.Error("Error upgrading websocket", "error", err)
 		return err
 	}
 
-	// Asegurar cierre del WebSocket
-	defer func() {
+	client, err := h.svc.Register(ctx, connectionID, conn, isShop)
+	if err != nil {
 		conn.Close()
-		h.svc.Unregister(conectionID, isShop)
-		slog.Info("WebSocket desconectado y limpiado", "shopID", conectionID)
-	}()
-
-	if err := h.svc.Register(ctx, conectionID, conn, isShop); err != nil {
-		slog.Error("Error registrando conexión:", slog.String("error", err.Error()))
-		conn.WriteMessage(websocket.TextMessage, []byte("error al registrar conexión"))
-		return nil
+		return err
 	}
 
-	conn.WriteMessage(websocket.TextMessage, []byte("registrado correctamente"))
+	defer func() {
+		h.svc.Unregister(connectionID, client, isShop)
+		conn.Close()
+	}()
+
+	conn.SetReadLimit(4096)
+	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return nil
+	})
+
+	client.Send([]byte(`{"type":"connected"}`))
 
 	for {
-		msgType, msg, err := conn.ReadMessage()
+		_, msg, err := conn.ReadMessage()
 		if err != nil {
-
-			if websocket.IsCloseError(err,
+			if websocket.IsCloseError(
+				err,
 				websocket.CloseNormalClosure,
 				websocket.CloseGoingAway,
 				websocket.CloseAbnormalClosure,
 			) {
-				slog.Warn("Cliente cerró la conexión websocket", "", conectionID)
+				slog.Info("WebSocket cerrado por el cliente", "id", connectionID)
 			} else {
-				slog.Error("Error leyendo mensaje websocket:", slog.String("error", err.Error()))
+				slog.Error("Error leyendo websocket", "error", err)
 			}
-
-			return nil // se ejecutará el defer limpiando todo
+			return nil
 		}
 
-		// Parsear mensaje base
-		var base map[string]any
+		var base struct {
+			Type string `json:"type"`
+		}
+
 		if err := json.Unmarshal(msg, &base); err != nil {
-			conn.WriteMessage(msgType, []byte("Error: formato inválido"))
+			slog.Warn("Mensaje inválido", "error", err)
 			continue
 		}
 
-		msgTypeStr, _ := base["type"].(string)
-
-		switch msgTypeStr {
+		switch base.Type {
 
 		case "update_status":
-			var payload modelsOrder.UpdateStatusOrder
+			var payload modelsUpdateOrders.UpdateStatusOrder
 			if err := json.Unmarshal(msg, &payload); err != nil {
-				slog.Error("Error parseando update_status:", "error", err.Error())
-				conn.WriteMessage(msgType, []byte("Error: formato inválido en update_status"))
+				slog.Warn("Payload inválido update_status", "error", err)
 				continue
 			}
 
-			order, err := h.svcOrder.UpdateOrderStatus(ctx, payload.OrderID, payload.NewStatus)
+			order, err := h.svcOrder.UpdateOrderStatus(
+				ctx,
+				payload.OrderID,
+				payload.NewStatus,
+			)
 			if err != nil {
-				slog.Error("Error actualizando estado de orden:", "error", err.Error())
-				conn.WriteMessage(msgType, []byte("Error: error al actualizar estado de orden"))
+				slog.Error("Error actualizando orden", "error", err)
 				continue
 			}
-
-			conn.WriteMessage(msgType, []byte("Estado de orden actualizado correctamente"))
 
 			h.svc.BroadcastOrder(order)
 
-			continue
-
 		default:
-			conn.WriteMessage(msgType, []byte("Error: tipo de evento no reconocido"))
-			continue
 		}
 	}
 }

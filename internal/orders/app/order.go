@@ -2,16 +2,27 @@ package app
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
+	"Encargalo.app-api.go/internal/customers/domain/dto"
+	portsCustomers "Encargalo.app-api.go/internal/customers/domain/ports"
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
+	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	shops "Encargalo.app-api.go/internal/shops/domain/ports"
+	"github.com/AndresXLP/ravenTree"
 	"github.com/google/uuid"
 )
 
@@ -36,11 +47,12 @@ const (
 type orderApp struct {
 	repo   ports.OrdersRepo
 	shops  shops.ShopsRepo
+	custo  portsCustomers.CustomersRepo
 	stream ports.RedisStream
 }
 
-func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, stream ports.RedisStream) ports.OrdersApp {
-	return &orderApp{repo, shops, stream}
+func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.CustomersRepo, stream ports.RedisStream) ports.OrdersApp {
+	return &orderApp{repo, shops, custo, stream}
 }
 
 func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*models.Order, error) {
@@ -63,8 +75,18 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		}
 	}
 
+	shop, err := o.repo.SearchShopByID(ctx, order.ShopID)
+	if err != nil {
+		return &models.Order{}, err
+	}
+
 	orderModel := new(models.Order)
 	orderModel.BuildDtoToModel(*order, batchID)
+
+	customer, err := o.custo.SearchCustomerBy(ctx, dto.SearchCustomerBy{ID: order.CustomerID})
+	if err != nil {
+		return &models.Order{}, err
+	}
 
 	items, err := o.repo.SearchItemsByID(ctx, orderModel.GetItemsID())
 	if err != nil {
@@ -86,19 +108,29 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		}
 	}
 
+	DetailsModel := new(models.Details)
+	DetailsModel.BuildDetails(orderModel, shop, customer)
+
+	detailsData, err := json.Marshal(DetailsModel)
+	if err != nil {
+		return &models.Order{}, err
+	}
+
+	orderModel.Details = detailsData
+
 	orderDB, err := o.repo.CreateOrder(ctx, orderModel)
 	if err != nil {
 		return &models.Order{}, err
 	}
 
-	if err := o.stream.Producer(ctx, buildToDataProduceOrder(*orderDB)); err != nil {
+	if err := o.stream.PublisherEvent(ctx, buildToDataProduceOrder(*orderDB)); err != nil {
 		slog.Error("error producing order to stream", "error", err)
 	}
 
 	eventOrderCreateModel := models.DataEventOrderCreated{}
 	eventOrderCreateModel.BuidlToModelEvent(*orderDB)
 
-	if err := o.stream.EventOrderCreated(ctx, eventOrderCreateModel); err != nil {
+	if err := o.stream.PublisherEvent(ctx, eventOrderCreateModel); err != nil {
 		slog.Error("error producing event order created to stream", "error", err)
 	}
 
@@ -155,6 +187,10 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 		return models.Order{}, err
 	}
 
+	if newStatus == StatusOnTheWay {
+		o.sendCreditDiscount(ctx, order)
+	}
+
 	order.Status = string(newStatus)
 	return *order, nil
 
@@ -172,4 +208,65 @@ func buildToDataProduceOrder(items models.Order) []models.DataProduceOrder {
 	}
 
 	return dataProduceOrder
+}
+
+func (o *orderApp) sendCreditDiscount(ctx context.Context, order *models.Order) {
+
+	config := config.Get().CreditManager
+
+	serviceName := "billing-service"
+	requestID := uuid.New().String()
+	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+
+	body := calculateLoanAmount(*order)
+
+	bodyAux, _ := json.Marshal(body)
+
+	payload := serviceName + requestID + timestamp + string(bodyAux)
+
+	h := hmac.New(sha256.New, []byte(config.SigningKey))
+	h.Write([]byte(payload))
+	signature := hex.EncodeToString(h.Sum(nil))
+
+	tree := ravenTree.NewRavensTree()
+	options := &ravenTree.Options{
+		Headers: map[string]string{
+			"X-Service-Name": serviceName,
+			"X-Request-ID":   requestID,
+			"X-Timestamp":    timestamp,
+			"X-Signature":    signature,
+		},
+		Host:   config.Url,
+		Path:   fmt.Sprintf("/credits/wallet/%s/deduct-commission", order.ShopID),
+		Method: http.MethodPost,
+		Body:   body,
+	}
+
+	resp, _ := tree.SendRaven(ctx, options)
+
+	if resp.Status != "202" {
+		var dataEventFail models.EventFailCreditDiscount
+		dataEventFail.BuildFailCreditDiscount(resp.Status, resp.ParseBodyToString(), body.OrderID.String(), body.Amount)
+
+		if err := o.stream.PublisherEvent(ctx, dataEventFail); err != nil {
+			slog.Error("error producing event fail credits discounts to stream", "error", err)
+		}
+		slog.Info("event publisher successfully")
+		return
+	}
+
+	slog.Info("credit discount sent successfully")
+}
+
+func calculateLoanAmount(order models.Order) models.CreditManager {
+
+	amount := float64(order.TotalPrice-order.DeliveryFee) * 0.10
+
+	data := models.CreditManager{
+		Amount:  amount,
+		OrderID: order.ID,
+	}
+
+	return data
+
 }

@@ -3,21 +3,22 @@ package providers
 import (
 	"Encargalo.app-api.go/api/router"
 	"Encargalo.app-api.go/api/router/groups"
+	authMiddle "Encargalo.app-api.go/internal/auth/domain/middleware/auth"
+	requestinfo "Encargalo.app-api.go/internal/auth/domain/middleware/requestInfo"
 	"Encargalo.app-api.go/internal/pkg/bycript"
 	"Encargalo.app-api.go/internal/pkg/cache"
 	"Encargalo.app-api.go/internal/pkg/cookie"
 	"Encargalo.app-api.go/internal/pkg/logs"
-	"Encargalo.app-api.go/internal/shared/adapters/mongo"
+	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
 	"Encargalo.app-api.go/internal/shared/adapters/postgres"
 	"Encargalo.app-api.go/internal/shared/adapters/redis"
 	"Encargalo.app-api.go/internal/shared/adapters/slack"
 	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/jwt"
-	authMiddle "Encargalo.app-api.go/internal/shared/middleware/auth"
-	requestinfo "Encargalo.app-api.go/internal/shared/middleware/requestInfo"
 	"Encargalo.app-api.go/internal/shops/app"
 	"Encargalo.app-api.go/internal/shops/handler"
 	"Encargalo.app-api.go/internal/shops/repo"
+	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/dig"
 
@@ -38,6 +39,7 @@ import (
 	repoOrders "Encargalo.app-api.go/internal/orders/repo"
 
 	appEmployee "Encargalo.app-api.go/internal/employee/app"
+	handEmployee "Encargalo.app-api.go/internal/employee/handler"
 	repoEmployee "Encargalo.app-api.go/internal/employee/repo"
 )
 
@@ -55,8 +57,16 @@ func BuildContainer() *dig.Container {
 		return echo.New()
 	})
 
+	_ = Container.Provide(func() *cloudinary.Cloudinary {
+		cld, err := cloudinary.New()
+		if err != nil {
+			panic(err)
+		}
+
+		return cld
+	})
+
 	_ = Container.Provide(postgres.NewPostgresConnection)
-	_ = Container.Provide(mongo.NewMongoConnection)
 	_ = Container.Provide(redis.NewRedisConnection)
 	_ = Container.Provide(redis.NewProducerRedisStreamConnection)
 	_ = Container.Provide(cache.NewCache)
@@ -68,6 +78,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(groups.NewProductsGroup)
 	_ = Container.Provide(groups.NewCustomersGroup)
 	_ = Container.Provide(groups.NewOrdersGroup)
+	_ = Container.Provide(groups.NewEmployeeGroup)
 
 	_ = Container.Provide(requestinfo.NewRequestMiddleware)
 	_ = Container.Provide(authMiddle.NewAuthMidlleware)
@@ -95,14 +106,16 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(repoOrders.NewOrdersRepo)
 	_ = Container.Provide(repoOrders.NewRepositoryProducerStream)
 
+	_ = Container.Provide(handEmployee.NewEmployyeHandler)
 	_ = Container.Provide(appEmployee.New)
 	_ = Container.Provide(repoEmployee.New)
 
 	_ = Container.Provide(bycript.NewHashPassword)
 	_ = Container.Provide(jwt.NewSessionUtils)
-	_ = Container.Provide(cookie.NewCookie)
 	_ = Container.Provide(slack.NewConnectionSlack)
 	_ = Container.Provide(logs.NewLogs)
+	_ = Container.Provide(cookie.NewCookieFactory)
+	_ = Container.Provide(uploadimage.NewUploadImage)
 
 	return Container
 

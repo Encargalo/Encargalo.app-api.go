@@ -45,6 +45,9 @@ definitions:
       phone:
         example: "+573001112233"
         type: string
+      role:
+        example: customer
+        type: string
       sur_name:
         example: Ramírez
         type: string
@@ -243,6 +246,35 @@ definitions:
         example: multi_select
         type: string
     type: object
+  dtos.RegisterItem:
+    properties:
+      category_id:
+        example: b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2
+        type: string
+      description:
+        example: Pizza mediana con jamón, piña y queso mozzarella sobre una base de
+          salsa napolitana.
+        type: string
+      has_flavors:
+        example: true
+        type: boolean
+      image:
+        example: data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEBLAEsAAD/4QC8RXhpZgAASUkqAAgAAAAGABIBAwABAAAAAQAAABoBBQABAAAAVgAAABsBBQABAAAAXgAAACgBAwABAAAAAgAAABMCAwABAAAA
+        type: string
+      name:
+        example: Pizza Hawaiana Mediana
+        type: string
+      price:
+        example: 32000
+        type: integer
+    required:
+    - category_id
+    - description
+    - has_flavors
+    - image
+    - name
+    - price
+    type: object
   dtos.ShopResponse:
     properties:
       address:
@@ -273,6 +305,27 @@ definitions:
         type: integer
       type:
         type: string
+    type: object
+  dtos.UpdateItem:
+    properties:
+      description:
+        example: Pizza mediana con jamón, piña y queso mozzarella sobre una base de
+          salsa napolitana.
+        type: string
+      has_flavors:
+        example: true
+        type: boolean
+      name:
+        example: Pizza Hawaiana Mediana
+        type: string
+      price:
+        example: 32000
+        type: integer
+    required:
+    - description
+    - has_flavors
+    - name
+    - price
     type: object
   request.SignInRequest:
     properties:
@@ -599,6 +652,268 @@ paths:
       summary: Actualiza la contraseña del cliente autenticado
       tags:
       - Customers
+  /customers/logout:
+    delete:
+      deprecated: true
+      description: Elimina la sesión activa identificada por session_id en la cookie
+        de autenticación
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: session deleted success
+          schema:
+            type: string
+        "404":
+          description: not found
+          schema:
+            type: string
+        "500":
+          description: unexpected error
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Cierra la sesión actual del cliente o empleado autenticado
+      tags:
+      - Auth
+  /customers/orders:
+    post:
+      consumes:
+      - application/json
+      deprecated: true
+      description: Creates a new order with the provided details
+      parameters:
+      - description: Order payload
+        in: body
+        name: order
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.CreateOrder'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Order created successfully
+          schema:
+            type: string
+        "400":
+          description: Invalid request body or validation failed
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Unexpected internal server error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Create a new order
+      tags:
+      - Orders
+  /customers/orders/manager:
+    get:
+      consumes:
+      - application/json
+      deprecated: true
+      produces:
+      - application/json
+      - text/plain
+      responses:
+        "401":
+          description: Sesión no encontrada o inválida
+          schema:
+            type: string
+        "403":
+          description: Acceso denegado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      summary: WebSocket de gestión de órdenes
+      tags:
+      - Orders WebSocket
+  /custromers/sign-in:
+    post:
+      consumes:
+      - application/json
+      deprecated: true
+      description: |-
+        Autentica a un cliente usando su número de teléfono y contraseña.
+        Si las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.
+      parameters:
+      - description: Datos de inicio de sesión
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.SignInRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: session created
+          schema:
+            type: string
+        "400":
+          description: Solicitud inválida (validación o JSON incorrecto)
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Credenciales incorrectas
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error inesperado del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Iniciar sesión como cliente
+      tags:
+      - Auth
+  /employee/logout:
+    delete:
+      deprecated: true
+      description: Elimina la sesión activa identificada por session_id en la cookie
+        de autenticación
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: session deleted success
+          schema:
+            type: string
+        "404":
+          description: not found
+          schema:
+            type: string
+        "500":
+          description: unexpected error
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Cierra la sesión actual del cliente o empleado autenticado
+      tags:
+      - Auth
+  /employee/orders/manager:
+    get:
+      consumes:
+      - application/json
+      deprecated: true
+      produces:
+      - application/json
+      - text/plain
+      responses:
+        "401":
+          description: Sesión no encontrada o inválida
+          schema:
+            type: string
+        "403":
+          description: Acceso denegado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      summary: WebSocket de gestión de órdenes
+      tags:
+      - Orders WebSocket
+  /employee/sign-in:
+    post:
+      consumes:
+      - application/json
+      deprecated: true
+      description: |-
+        Autentica a un empleado usando su número de teléfono y contraseña.
+        Si las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.
+      parameters:
+      - description: Datos de inicio de sesión
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.SignInRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: session created
+          schema:
+            type: string
+        "400":
+          description: Solicitud inválida (validación o JSON incorrecto)
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Credenciales incorrectas
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error inesperado del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Iniciar sesión como empleado
+      tags:
+      - Auth
+  /items/{item_id}:
+    put:
+      consumes:
+      - application/json
+      description: Actualiza la información de un producto existente.
+      parameters:
+      - description: ID del item
+        in: path
+        name: item_id
+        required: true
+        type: string
+      - description: Datos del item a actualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.UpdateItem'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: item update success
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Actualizar un item
+      tags:
+      - Products
   /orders:
     post:
       consumes:
@@ -629,6 +944,69 @@ paths:
       summary: Create a new order
       tags:
       - Orders
+  /orders/manager:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      - text/plain
+      responses:
+        "401":
+          description: Sesión no encontrada o inválida
+          schema:
+            type: string
+        "403":
+          description: Acceso denegado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      summary: WebSocket de gestión de órdenes
+      tags:
+      - Orders WebSocket
+  /products:
+    post:
+      consumes:
+      - application/json
+      description: Registra un nuevo producto en la tienda asociada al empleado autenticado.
+      parameters:
+      - description: Datos del producto a registrar
+        in: body
+        name: item
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.RegisterItem'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: product registered successfully
+          schema:
+            type: string
+        "400":
+          description: JSON inválido o mal formado
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "422":
+          description: No se encontró la cuenta del empleado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - Cookie: []
+      summary: Registrar un nuevo producto
+      tags:
+      - Products
   /products/best-sellers:
     get:
       consumes:

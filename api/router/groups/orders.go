@@ -1,8 +1,9 @@
 package groups
 
 import (
+	"Encargalo.app-api.go/internal/auth/domain/middleware/auth"
+	"Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/orders/handler"
-	"Encargalo.app-api.go/internal/shared/middleware/auth"
 	"github.com/labstack/echo/v4"
 )
 
@@ -22,6 +23,11 @@ func NewOrdersGroup(middle auth.AuthMiddleware, handlerOrders handler.OrderHandl
 
 func (o *ordersGroup) Resource(g *echo.Echo) {
 	group := g.Group("/orders")
-	group.POST("", o.handlerOrders.CreateOrder, o.middle.Auth)
-	group.GET("/manager", o.hanlderManagerOrders.HandleWebSocket, o.middle.Auth)
+
+	group.POST("", o.handlerOrders.CreateOrder, o.middle.Auth, o.middle.Require(models.Customer))
+	group.GET("/manager", o.hanlderManagerOrders.HandleWebSocket, o.middle.Auth, o.middle.Require(models.Customer, models.OrderManager))
+
+	g.POST("/customers/orders", o.handlerOrders.CreateOrder, o.middle.Auth, o.middle.Require(models.Customer))
+	g.GET("/customers/orders/manager", o.hanlderManagerOrders.HandleWebSocket, o.middle.Auth, o.middle.Require(models.Customer))
+	g.GET("/employee/orders/manager", o.hanlderManagerOrders.HandleWebSocket, o.middle.Auth, o.middle.Require(models.OrderManager))
 }

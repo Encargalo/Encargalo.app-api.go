@@ -3,7 +3,9 @@ package repo
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 
+	"Encargalo.app-api.go/internal/employee/domain/dto"
 	"Encargalo.app-api.go/internal/employee/domain/models"
 	"Encargalo.app-api.go/internal/employee/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
@@ -33,14 +35,20 @@ func (e *employeeRepo) SearchEmployeeByPhone(ctx context.Context, phone string) 
 	return account, nil
 }
 
-func (e *employeeRepo) SearchEmployeeByID(ctx context.Context, employeeID uuid.UUID) (models.Account, error) {
+func (e *employeeRepo) SearchEmployeeByID(ctx context.Context, employeeID uuid.UUID) (dto.EmployeeResponse, error) {
 	var account models.Account
-	err := e.db.NewSelect().Model(&account).Where("id = ?", employeeID).Scan(ctx)
+	err := e.db.NewSelect().
+		Model(&account).
+		Relation("Shop").
+		Where("?TableAlias.id = ?", employeeID).
+		Scan(ctx)
+
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return models.Account{}, errcustom.ErrNotFound
+			return dto.EmployeeResponse{}, errcustom.ErrNotFound
 		}
-		return models.Account{}, errcustom.ErrUnexpectedError
+		slog.Error("Error searching employee by ID", "error", err, "employeeID", employeeID)
+		return dto.EmployeeResponse{}, errcustom.ErrUnexpectedError
 	}
-	return account, nil
+	return account.ToDomainDTO(), nil
 }

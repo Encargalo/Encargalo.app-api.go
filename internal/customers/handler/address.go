@@ -11,10 +11,6 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-const (
-	roleCustomer = "customer"
-)
-
 type CustomersAddressHandler interface {
 	RegisterAddress(e echo.Context) error
 	SearchAllAdrress(e echo.Context) error
@@ -62,11 +58,6 @@ func (c *customersAddrssHandler) RegisterAddress(e echo.Context) error {
 		return errcustom.ErrUnexpectedError
 	}
 
-	if session.UserType != roleCustomer {
-		slog.Error("Usuario no autorizado para acceder a esta ruta")
-		return echo.NewHTTPError(http.StatusForbidden, "usuario no autorizado")
-	}
-
 	if err := c.svc.RegisterAddress(ctx, session.UserID, address); err != nil {
 		slog.Error("Error registrando dirección:", "err", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "unexpected error")
@@ -94,19 +85,9 @@ func (c *customersAddrssHandler) SearchAllAdrress(e echo.Context) error {
 		return errcustom.ErrUnexpectedError
 	}
 
-	if session.UserType != roleCustomer {
-		slog.Error("Usuario no autorizado para acceder a esta ruta")
-		return echo.NewHTTPError(http.StatusForbidden, "usuario no autorizado")
-	}
-
 	addresses, err := c.svc.SearchAllAddress(ctx, session.UserID)
 	if err != nil {
-		switch err.Error() {
-		case "not found":
-			return echo.NewHTTPError(http.StatusNotFound, "not found")
-		default:
-			return echo.NewHTTPError(http.StatusInternalServerError, "unexpected error")
-		}
+		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
 	}
 
 	return e.JSON(http.StatusOK, addresses)
@@ -136,11 +117,6 @@ func (c *customersAddrssHandler) DeleteAddress(e echo.Context) error {
 	if !ok {
 		slog.Error("No se encontró el usuario en el contexto")
 		return errcustom.ErrUnexpectedError
-	}
-
-	if session.UserType != roleCustomer {
-		slog.Error("Usuario no autorizado para acceder a esta ruta")
-		return echo.NewHTTPError(http.StatusForbidden, "usuario no autorizado")
 	}
 
 	if err := c.svc.DeleteAddress(ctx, session.UserID, address_id); err != nil {

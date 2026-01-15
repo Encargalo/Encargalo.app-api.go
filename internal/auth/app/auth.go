@@ -16,10 +16,6 @@ import (
 	"github.com/google/uuid"
 )
 
-const (
-	typeCustomer = "customer"
-)
-
 type appAuth struct {
 	svc         portsCusto.CustomersApp
 	svcEmployee portsEmployee.EmployeeApp
@@ -52,7 +48,7 @@ func (a *appAuth) SignInCustomer(ctx context.Context, phone, password string) (u
 	}
 
 	var session models.ActiveSession
-	session.BuildActiveSessionModel(custo.ID, typeCustomer, "", "")
+	session.BuildActiveSessionModel(custo.ID, string(models.Customer), "", "")
 
 	if err := a.repo.SaveSession(ctx, &session); err != nil {
 		return uuid.Nil, err

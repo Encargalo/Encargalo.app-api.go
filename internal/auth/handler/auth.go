@@ -23,10 +23,10 @@ type Auth interface {
 type auth struct {
 	svc    ports.AuthApp
 	jwt    jwt.Sessions
-	cookie cookie.Cookie
+	cookie cookie.CookieHandler
 }
 
-func NewAuthHandler(svc ports.AuthApp, jwt jwt.Sessions, cookie cookie.Cookie) Auth {
+func NewAuthHandler(svc ports.AuthApp, jwt jwt.Sessions, cookie cookie.CookieHandler) Auth {
 	return &auth{svc, jwt, cookie}
 }
 
@@ -43,6 +43,7 @@ func NewAuthHandler(svc ports.AuthApp, jwt jwt.Sessions, cookie cookie.Cookie) A
 // @Failure      422    {object}  map[string]string  "Credenciales incorrectas"
 // @Failure      500    {object}  map[string]string  "Error inesperado del servidor"
 // @Router       /auth/sign-in/customers [post]
+// @DeprecatedRouter /custromers/sign-in [post]
 func (a *auth) SignInCustomer(e echo.Context) error {
 
 	ctx := e.Request().Context()
@@ -72,9 +73,7 @@ func (a *auth) SignInCustomer(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
 	}
 
-	cookie := a.cookie.CreateCookieSession(jwtSession)
-
-	e.SetCookie(cookie)
+	e.SetCookie(a.cookie.CreateCookieSession(jwtSession))
 
 	return e.JSON(http.StatusCreated, "session created")
 }
@@ -92,6 +91,7 @@ func (a *auth) SignInCustomer(e echo.Context) error {
 // @Failure      422    {object}  map[string]string  "Credenciales incorrectas"
 // @Failure      500    {object}  map[string]string  "Error inesperado del servidor"
 // @Router       /auth/sign-in/employee [post]
+// @DeprecatedRouter /employee/sign-in [post]
 func (a *auth) SignInEmployee(e echo.Context) error {
 
 	ctx := e.Request().Context()
@@ -119,9 +119,7 @@ func (a *auth) SignInEmployee(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
 	}
 
-	cookie := a.cookie.CreateCookieSession(jwtSession)
-
-	e.SetCookie(cookie)
+	e.SetCookie(a.cookie.CreateCookieSession(jwtSession))
 
 	return e.JSON(http.StatusCreated, "session created")
 
@@ -137,6 +135,8 @@ func (a *auth) SignInEmployee(e echo.Context) error {
 // @Failure 500 {string} string "unexpected error"
 // @Security SessionCookie
 // @Router /auth/logout [delete]
+// @DeprecatedRouter /customers/logout [delete]
+// @DeprecatedRouter /employee/logout [delete]
 func (s *auth) Logout(e echo.Context) error {
 
 	ctx := e.Request().Context()
@@ -151,9 +151,7 @@ func (s *auth) Logout(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
 	}
 
-	cookie := s.cookie.DeleteCookieSession()
-
-	e.SetCookie(cookie)
+	e.SetCookie(s.cookie.DeleteCookieSession())
 
 	return e.JSON(http.StatusOK, "session deleted success")
 }

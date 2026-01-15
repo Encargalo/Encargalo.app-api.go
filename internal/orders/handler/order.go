@@ -36,6 +36,7 @@ func NewOrderHandler(svc ports.OrdersApp, svc2 app.AppManagerOrder) OrderHandler
 // @Failure      400  {object}  dtos.ErrorResponse "Invalid request body or validation failed"
 // @Failure      500  {object}  dtos.ErrorResponse "Unexpected internal server error"
 // @Router       /orders [post]
+// @DeprecatedRouter /customers/orders [post]
 func (o *orderHandler) CreateOrder(c echo.Context) error {
 
 	ctx := c.Request().Context()
@@ -46,11 +47,6 @@ func (o *orderHandler) CreateOrder(c echo.Context) error {
 	if !ok {
 		slog.Error("No se encontró el usuario en el contexto")
 		return errcustom.ErrUnexpectedError
-	}
-
-	if session.UserType != roleCustomer {
-		slog.Error("Usuario no autorizado para acceder a esta ruta")
-		return echo.NewHTTPError(http.StatusForbidden, "usuario no autorizado")
 	}
 
 	order.CustomerID = session.UserID

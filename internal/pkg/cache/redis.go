@@ -12,6 +12,7 @@ import (
 type Cache interface {
 	Get(ctx context.Context, key string) (string, error)
 	Set(ctx context.Context, key string, val interface{}, time time.Duration) error
+	Clear(ctx context.Context, key string) error
 }
 
 type cache struct {
@@ -36,4 +37,8 @@ func (c *cache) Set(ctx context.Context, key string, val interface{}, time time.
 	}
 
 	return c.redis.Set(ctx, key, result, time).Err()
+}
+
+func (c *cache) Clear(ctx context.Context, key string) error {
+	return c.redis.Del(ctx, key).Err()
 }

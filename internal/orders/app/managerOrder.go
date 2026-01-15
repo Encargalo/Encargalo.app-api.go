@@ -16,21 +16,28 @@ import (
 )
 
 type AppManagerOrder interface {
-	Register(ctx context.Context, connectionID uuid.UUID, conn *websocket.Conn, isShop bool) error
-	Unregister(connectionID uuid.UUID, isShop bool)
+	Register(ctx context.Context, connectionID uuid.UUID, conn *websocket.Conn, isShop bool) (*WSClient, error)
+	Unregister(connectionID uuid.UUID, client *WSClient, isShop bool)
 	BroadcastOrder(order models.Order) error
 }
+
+type WSClient struct {
+	conn  *websocket.Conn
+	send  chan []byte
+	ready chan struct{}
+}
+
 type appManagerOrder struct {
 	mu                  sync.RWMutex
-	shopConnections     map[uuid.UUID][]*websocket.Conn
-	customerConnections map[uuid.UUID][]*websocket.Conn
+	shopConnections     map[uuid.UUID][]*WSClient
+	customerConnections map[uuid.UUID][]*WSClient
 	svc                 ports.OrdersApp
 }
 
 func NewManagerOrderApp(svc ports.OrdersApp) AppManagerOrder {
 	return &appManagerOrder{
-		shopConnections:     make(map[uuid.UUID][]*websocket.Conn),
-		customerConnections: make(map[uuid.UUID][]*websocket.Conn),
+		shopConnections:     make(map[uuid.UUID][]*WSClient),
+		customerConnections: make(map[uuid.UUID][]*WSClient),
 		svc:                 svc,
 	}
 }
@@ -40,60 +47,70 @@ func (s *appManagerOrder) Register(
 	connectionID uuid.UUID,
 	conn *websocket.Conn,
 	isShop bool,
-) error {
+) (*WSClient, error) {
+
+	client := &WSClient{
+		conn:  conn,
+		send:  make(chan []byte, 256),
+		ready: make(chan struct{}),
+	}
 
 	s.mu.Lock()
-
 	if isShop {
-		s.shopConnections[connectionID] = append(s.shopConnections[connectionID], conn)
+		s.shopConnections[connectionID] = append(s.shopConnections[connectionID], client)
 	} else {
-		s.customerConnections[connectionID] = append(s.customerConnections[connectionID], conn)
+		s.customerConnections[connectionID] = append(s.customerConnections[connectionID], client)
 	}
-
 	s.mu.Unlock()
 
+	go s.writePump(client)
+
 	orders, err := s.svc.SearchActiveOrdersByCriteria(ctx, connectionID)
-	if err != nil {
-		if !errors.Is(err, errcustom.ErrNotFound) {
-			slog.Error("Error buscando órdenes abiertas del shop",
-				"shopID", connectionID,
-				"error", err,
-			)
-			return err
-		}
-
-		slog.Info("No hay órdenes abiertas para este shop",
-			"shopID", connectionID,
-		)
+	if err != nil && !errors.Is(err, errcustom.ErrNotFound) {
+		return nil, err
 	}
 
-	for _, v := range orders {
-		if err := s.BroadcastOrder(v); err != nil {
-			slog.Error("Error enviando orden abierta al shop",
-				"shopID", connectionID,
-				"error", err,
-			)
-		}
+	for _, order := range orders {
+		data, _ := json.Marshal(order)
+		client.send <- data
 	}
 
-	go s.ping(conn)
+	close(client.ready)
 
-	return nil
+	return client, nil
 }
 
-func (s *appManagerOrder) Unregister(connectionID uuid.UUID, isShop bool) {
+func (s *appManagerOrder) Unregister(
+	connectionID uuid.UUID,
+	client *WSClient,
+	isShop bool,
+) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	var connections map[uuid.UUID][]*WSClient
 	if isShop {
-		delete(s.shopConnections, connectionID)
-		slog.Info("Conexiones cerradas para el local",
-			"shopID", connectionID)
+		connections = s.shopConnections
 	} else {
-		delete(s.customerConnections, connectionID)
-		slog.Info("Conexiones cerradas para el cliente",
-			"customerID", connectionID)
+		connections = s.customerConnections
 	}
+
+	if list, ok := connections[connectionID]; ok {
+		filtered := list[:0]
+		for _, c := range list {
+			if c != client {
+				filtered = append(filtered, c)
+			}
+		}
+
+		if len(filtered) == 0 {
+			delete(connections, connectionID)
+		} else {
+			connections[connectionID] = filtered
+		}
+	}
+
+	close(client.send)
 }
 
 func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
@@ -103,56 +120,62 @@ func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
 	}
 
 	s.mu.RLock()
-	shopConns := s.shopConnections[order.ShopID]
-	customerConns := s.customerConnections[order.CustomerID]
+	shopClients := s.shopConnections[order.ShopID]
+	customerClients := s.customerConnections[order.CustomerID]
 	s.mu.RUnlock()
 
-	sendToConns := func(conns []*websocket.Conn, label string) {
-		for _, conn := range conns {
-			if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
-				slog.Error("Error enviando mensaje",
-					"to", label,
-					"id", order.ShopID,
-					"error", err,
-				)
-				continue
+	send := func(clients []*WSClient) {
+		for _, c := range clients {
+			select {
+			case <-c.ready:
+				select {
+				case c.send <- data:
+				default:
+					slog.Warn("Cliente lento, mensaje descartado")
+				}
+			default:
 			}
-		}
-		if len(conns) > 0 {
-			slog.Info("Mensaje enviado",
-				"to", label,
-				"id", order.ShopID,
-				"total", len(conns),
-			)
 		}
 	}
 
-	sendToConns(shopConns, "shop")
-
-	sendToConns(customerConns, "customer")
+	send(shopClients)
+	send(customerClients)
 
 	return nil
 }
 
-func (s *appManagerOrder) ping(conn *websocket.Conn) {
+func (s *appManagerOrder) writePump(c *WSClient) {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
-	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-	conn.SetPongHandler(func(string) error {
-		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-		return nil
-	})
+	for {
+		select {
+		case msg, ok := <-c.send:
+			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if !ok {
+				c.conn.WriteMessage(websocket.CloseMessage, nil)
+				return
+			}
+			if err := c.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+				return
+			}
 
-	for range ticker.C {
-		if err := conn.WriteControl(
-			websocket.PingMessage,
-			[]byte("ping"),
-			time.Now().Add(5*time.Second),
-		); err != nil {
-			slog.Error("Error enviando ping:", "error", err)
-			conn.Close()
-			return
+		case <-ticker.C:
+			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
 		}
+	}
+}
+
+func (c *WSClient) Send(msg []byte) {
+	select {
+	case <-c.ready:
+		select {
+		case c.send <- msg:
+		default:
+		}
+	default:
 	}
 }

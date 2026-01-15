@@ -1,6 +1,8 @@
 package models
 
 import (
+	"encoding/json"
+
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/products/domain/models"
 	"github.com/google/uuid"
@@ -10,20 +12,21 @@ import (
 type Order struct {
 	bun.BaseModel `bun:"table:orders.orders"`
 
-	ID            uuid.UUID `bun:"id,pk,type:uuid"`
-	ShopID        uuid.UUID `bun:"shop_id"`
-	CustomerID    uuid.UUID `bun:"customer_id"`
-	BatchID       uuid.UUID `bun:"batch_id,nullzero,type:uuid"`
-	Number        int       `bun:"number"`
-	Address       string    `bun:"address"`
-	Latitude      float64   `bun:"latitude"`
-	Longitude     float64   `bun:"longitude"`
-	MethodPayment string    `bun:"method_payment"`
-	Status        string    `bun:"status"`
-	DeliveryFee   int       `bun:"delivery_fee"`
-	TotalPrice    int       `bun:"total_price"`
+	ID            uuid.UUID       `bun:"id,pk,type:uuid" json:"id"`
+	ShopID        uuid.UUID       `bun:"shop_id" json:"shop_id"`
+	CustomerID    uuid.UUID       `bun:"customer_id" json:"customer_id"`
+	BatchID       uuid.UUID       `bun:"batch_id,nullzero,type:uuid" json:"batch_id,omitempty"`
+	Number        int             `bun:"number" json:"number"`
+	Address       string          `bun:"address" json:"address"`
+	Latitude      float64         `bun:"latitude" json:"latitude"`
+	Longitude     float64         `bun:"longitude" json:"longitude"`
+	MethodPayment string          `bun:"method_payment" json:"method_payment"`
+	Status        string          `bun:"status" json:"status"`
+	DeliveryFee   int             `bun:"delivery_fee" json:"delivery_fee"`
+	TotalPrice    int             `bun:"total_price" json:"total_price"`
+	Details       json.RawMessage `bun:"details,type:jsonb" json:"details"`
 
-	ItemsOrders []ItemsOrder `bun:"rel:has-many,join:id=order_id"`
+	ItemsOrders []ItemsOrder `bun:"rel:has-many,join:id=order_id" json:"-"`
 }
 
 func (o *Order) BuildDtoToModel(dto dtos.CreateOrder, batchID uuid.UUID) {

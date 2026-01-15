@@ -9,6 +9,7 @@ import (
 	"Encargalo.app-api.go/internal/customers/domain/dto"
 	"Encargalo.app-api.go/internal/customers/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/cookie"
+
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shared/jwt"
 	"github.com/labstack/echo/v4"
@@ -28,10 +29,10 @@ type customersHandler struct {
 	customerApp ports.CustomersApp
 	auth        portsAuth.AuthApp
 	jwt         jwt.Sessions
-	cookie      cookie.Cookie
+	cookie      cookie.CookieHandler
 }
 
-func NewCustomersHandler(customerApp ports.CustomersApp, auth portsAuth.AuthApp, jwt jwt.Sessions, cookie cookie.Cookie) CustomersHandler {
+func NewCustomersHandler(customerApp ports.CustomersApp, auth portsAuth.AuthApp, jwt jwt.Sessions, cookie cookie.CookieHandler) CustomersHandler {
 	return &customersHandler{customerApp, auth, jwt, cookie}
 }
 
@@ -77,9 +78,7 @@ func (c *customersHandler) RegisterCustomer(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
 	}
 
-	cookie := c.cookie.CreateCookieSession(jwtSession)
-
-	e.SetCookie(cookie)
+	e.SetCookie(c.cookie.CreateCookieSession(jwtSession))
 
 	return e.JSON(http.StatusCreated, "customer successfully registered")
 }
@@ -101,11 +100,6 @@ func (c *customersHandler) SearchCustomer(e echo.Context) error {
 	if !ok {
 		slog.Error("No se encontró el usuario en el contexto")
 		return errcustom.ErrUnexpectedError
-	}
-
-	if session.UserType != roleCustomer {
-		slog.Error("Usuario no autorizado para acceder a esta ruta")
-		return echo.NewHTTPError(http.StatusForbidden, "usuario no autorizado")
 	}
 
 	customerID := dto.SearchCustomerBy{
@@ -157,11 +151,6 @@ func (c *customersHandler) UpdateCustomer(e echo.Context) error {
 		return errcustom.ErrUnexpectedError
 	}
 
-	if session.UserType != roleCustomer {
-		slog.Error("Usuario no autorizado para acceder a esta ruta")
-		return echo.NewHTTPError(http.StatusForbidden, "usuario no autorizado")
-	}
-
 	if err := c.customerApp.UpdateCustomer(ctx, session.UserID, customer); err != nil {
 		switch err.Error() {
 		case "not found.":
@@ -209,14 +198,9 @@ func (c *customersHandler) UpdatePassword(e echo.Context) error {
 		return errcustom.ErrUnexpectedError
 	}
 
-	if session.UserType != roleCustomer {
-		slog.Error("Usuario no autorizado para acceder a esta ruta")
-		return echo.NewHTTPError(http.StatusForbidden, "usuario no autorizado")
-	}
-
-	if err := c.customerApp.UpdatePassword(ctx, session.ID, pass); err != nil {
-		switch err.Error() {
-		case "not found.":
+	if err := c.customerApp.UpdatePassword(ctx, session.UserID, pass); err != nil {
+		switch err {
+		case errcustom.ErrNotFound:
 			return echo.NewHTTPError(http.StatusConflict, "customer not found")
 		default:
 			return echo.NewHTTPError(http.StatusInternalServerError, "unexpected error")
