@@ -12,8 +12,6 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-const ctxSessionKey = "session"
-
 type AuthMiddleware interface {
 	Auth(next echo.HandlerFunc) echo.HandlerFunc
 	Require(allowed ...models.Role) echo.MiddlewareFunc
