@@ -25,7 +25,7 @@ func (e *employyeHandler) SearchEmployee(c echo.Context) error {
 
 	ctx := c.Request().Context()
 
-	session, ok := ctx.Value("session").(models.ActiveSession)
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
 	if !ok {
 		slog.Error("No session found in context")
 		return echo.NewHTTPError(http.StatusInternalServerError)

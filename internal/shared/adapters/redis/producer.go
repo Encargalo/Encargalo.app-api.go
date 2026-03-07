@@ -14,7 +14,7 @@ func NewProducerRedisStreamConnection(config config.Config) *producer.Producer {
 	redisArgs := client.RedisArgs{
 		RedisHost:  configRedis.Host,
 		RedisPort:  configRedis.Port,
-		Db:         0,
+		Db:         1,
 		ClientName: configRedis.User,
 		Password:   configRedis.Password,
 	}

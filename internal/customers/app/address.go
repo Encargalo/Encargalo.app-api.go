@@ -20,7 +20,9 @@ func NewCustomersAddressApp(repo ports.CustomersAddressRepo) ports.CustomersAddr
 func (c *customersAddressApp) RegisterAddress(ctx context.Context, customerID uuid.UUID, address dto.Address) error {
 
 	addresModel := models.Address{}
-	addresModel.BuildToModel(customerID, address)
+	if err := addresModel.BuildToModel(customerID, address); err != nil {
+		return err
+	}
 
 	return c.repo.RegisterAddress(ctx, addresModel)
 }

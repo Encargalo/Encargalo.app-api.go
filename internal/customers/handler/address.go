@@ -52,7 +52,7 @@ func (c *customersAddrssHandler) RegisterAddress(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	session, ok := ctx.Value("session").(models.ActiveSession)
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
 	if !ok {
 		slog.Error("No se encontró el usuario en el contexto")
 		return errcustom.ErrUnexpectedError
@@ -79,7 +79,7 @@ func (c *customersAddrssHandler) SearchAllAdrress(e echo.Context) error {
 
 	ctx := e.Request().Context()
 
-	session, ok := ctx.Value("session").(models.ActiveSession)
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
 	if !ok {
 		slog.Error("No se encontró el usuario en el contexto")
 		return errcustom.ErrUnexpectedError
@@ -113,7 +113,7 @@ func (c *customersAddrssHandler) DeleteAddress(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "address id is required")
 	}
 
-	session, ok := ctx.Value("session").(models.ActiveSession)
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
 	if !ok {
 		slog.Error("No se encontró el usuario en el contexto")
 		return errcustom.ErrUnexpectedError
