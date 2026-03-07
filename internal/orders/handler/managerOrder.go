@@ -81,8 +81,6 @@ var upgrader = websocket.Upgrader{
 // @Failure 403 {string}  "Acceso denegado"
 // @Failure 500 {string}  "Error interno del servidor"
 // @Router /orders/manager [get]
-// @DeprecatedRouter /customers/orders/manager [get]
-// @DeprecatedRouter /employee/orders/manager [get]
 func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 	ctx := c.Request().Context()
 

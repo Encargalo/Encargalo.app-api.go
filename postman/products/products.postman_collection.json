@@ -1,0 +1,151 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-0040-4000-8000-000000000000",
+    "name": "Encargalo - Products",
+    "description": "Endpoints de productos. POST y PUT requieren cookie `encargalo-session` con rol Order Manager. Los GET son públicos.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Register Item",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"category_id\": \"b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2\",\n  \"name\": \"Pizza Hawaiana Mediana\",\n  \"price\": 32000,\n  \"image\": \"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ...\",\n  \"description\": \"Pizza mediana con jamón, piña y queso mozzarella sobre una base de salsa napolitana.\",\n  \"has_flavors\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/products",
+          "host": ["{{base_url}}"],
+          "path": ["products"]
+        },
+        "description": "Registra un nuevo producto en la tienda del empleado autenticado. `shop_id` se obtiene automáticamente del empleado. Requiere cookie `encargalo-session`. Rol: Order Manager."
+      }
+    },
+    {
+      "name": "Update Item",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Pizza Hawaiana Grande\",\n  \"price\": 45000,\n  \"description\": \"Pizza grande con jamón, piña y queso mozzarella sobre una base de salsa napolitana.\",\n  \"has_flavors\": false\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/products/00000000-0000-0000-0000-000000000000",
+          "host": ["{{base_url}}"],
+          "path": ["products", "00000000-0000-0000-0000-000000000000"]
+        },
+        "description": "Actualiza un producto existente por su item_id (UUID en el path). Requiere cookie `encargalo-session`. Rol: Order Manager."
+      }
+    },
+    {
+      "name": "Get Products by Shop",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/products?shop_id=00000000-0000-0000-0000-000000000000",
+          "host": ["{{base_url}}"],
+          "path": ["products"],
+          "query": [
+            {
+              "key": "shop_id",
+              "value": "00000000-0000-0000-0000-000000000000",
+              "description": "UUID de la tienda"
+            }
+          ]
+        },
+        "description": "Retorna todos los productos agrupados por categoría de una tienda. Público."
+      }
+    },
+    {
+      "name": "Get Best Sellers by Shop",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/products/best-sellers?shop_id=00000000-0000-0000-0000-000000000000",
+          "host": ["{{base_url}}"],
+          "path": ["products", "best-sellers"],
+          "query": [
+            {
+              "key": "shop_id",
+              "value": "00000000-0000-0000-0000-000000000000",
+              "description": "UUID de la tienda"
+            }
+          ]
+        },
+        "description": "Retorna los productos más vendidos de una tienda. Público."
+      }
+    },
+    {
+      "name": "Get Additions by Category",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/products/additions?category_id=00000000-0000-0000-0000-000000000000",
+          "host": ["{{base_url}}"],
+          "path": ["products", "additions"],
+          "query": [
+            {
+              "key": "category_id",
+              "value": "00000000-0000-0000-0000-000000000000",
+              "description": "UUID de la categoría"
+            }
+          ]
+        },
+        "description": "Retorna los adiciones disponibles de una categoría. Público."
+      }
+    },
+    {
+      "name": "Get Flavors by Item",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/products/flavors?item_id=00000000-0000-0000-0000-000000000000",
+          "host": ["{{base_url}}"],
+          "path": ["products", "flavors"],
+          "query": [
+            {
+              "key": "item_id",
+              "value": "00000000-0000-0000-0000-000000000000",
+              "description": "UUID del item"
+            }
+          ]
+        },
+        "description": "Retorna los sabores disponibles de un producto. Público."
+      }
+    }
+  ]
+}

@@ -36,7 +36,6 @@ func NewOrderHandler(svc ports.OrdersApp, svc2 app.AppManagerOrder) OrderHandler
 // @Failure      400  {object}  dtos.ErrorResponse "Invalid request body or validation failed"
 // @Failure      500  {object}  dtos.ErrorResponse "Unexpected internal server error"
 // @Router       /orders [post]
-// @DeprecatedRouter /customers/orders [post]
 func (o *orderHandler) CreateOrder(c echo.Context) error {
 
 	ctx := c.Request().Context()

@@ -4,7 +4,6 @@ import (
 	"Encargalo.app-api.go/internal/auth/domain/middleware/auth"
 	requestinfo "Encargalo.app-api.go/internal/auth/domain/middleware/requestInfo"
 	"Encargalo.app-api.go/internal/auth/domain/models"
-	handAuth "Encargalo.app-api.go/internal/auth/handler"
 	"Encargalo.app-api.go/internal/customers/handler"
 	"github.com/labstack/echo/v4"
 )
@@ -18,7 +17,6 @@ type customersGroup struct {
 	middleAuth       auth.AuthMiddleware
 	handlerAddress   handler.CustomersAddressHandler
 	handlerCustomers handler.CustomersHandler
-	handAuth         handAuth.Auth
 }
 
 func NewCustomersGroup(
@@ -26,22 +24,19 @@ func NewCustomersGroup(
 	middleAuth auth.AuthMiddleware,
 	handlerAddress handler.CustomersAddressHandler,
 	handlerCustomers handler.CustomersHandler,
-	handAuth handAuth.Auth,
 ) CustomersGroup {
 	return &customersGroup{
 		middle,
 		middleAuth,
 		handlerAddress,
 		handlerCustomers,
-		handAuth}
+	}
 }
 
 func (o *customersGroup) Resource(g *echo.Echo) {
 
 	group := g.Group("/customers")
 
-	group.POST("/sign-in", o.handAuth.SignInCustomer)
-	group.DELETE("/logout", o.handAuth.Logout, o.middle.GetRequestInfo, o.middleAuth.Auth)
 	group.POST("", o.handlerCustomers.RegisterCustomer, o.middle.GetRequestInfo)
 
 	group.GET("", o.handlerCustomers.SearchCustomer, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer, models.CustomerMinuscula))
