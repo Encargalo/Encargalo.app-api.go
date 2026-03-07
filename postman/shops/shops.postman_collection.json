@@ -1,0 +1,114 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-0030-4000-8000-000000000000",
+    "name": "Encargalo - Shops",
+    "description": "Endpoints de tiendas. No requieren autenticación.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Get All Shops",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/shops/all?lat=4.678034&lon=-74.0496399",
+          "host": ["{{base_url}}"],
+          "path": ["shops", "all"],
+          "query": [
+            {
+              "key": "lat",
+              "value": "4.678034",
+              "description": "Latitud del usuario"
+            },
+            {
+              "key": "lon",
+              "value": "-74.0496399",
+              "description": "Longitud del usuario"
+            }
+          ]
+        },
+        "description": "Retorna todas las tiendas disponibles ordenadas por distancia al usuario."
+      }
+    },
+    {
+      "name": "Get Shop by ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/shops?id=00000000-0000-0000-0000-000000000000&lat=4.678034&lon=-74.0496399",
+          "host": ["{{base_url}}"],
+          "path": ["shops"],
+          "query": [
+            {
+              "key": "id",
+              "value": "00000000-0000-0000-0000-000000000000",
+              "description": "UUID de la tienda"
+            },
+            {
+              "key": "tag",
+              "value": "",
+              "description": "Tag de la tienda (alternativo al id)",
+              "disabled": true
+            },
+            {
+              "key": "lat",
+              "value": "4.678034",
+              "description": "Latitud del usuario"
+            },
+            {
+              "key": "lon",
+              "value": "-74.0496399",
+              "description": "Longitud del usuario"
+            }
+          ]
+        },
+        "description": "Retorna una tienda con todos sus productos. Se puede buscar por `id` (UUID) o por `tag` (ej: dmo). Ambos parámetros lat y lon son requeridos."
+      }
+    },
+    {
+      "name": "Get Shop by Tag",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/shops?tag=dmo&lat=4.678034&lon=-74.0496399",
+          "host": ["{{base_url}}"],
+          "path": ["shops"],
+          "query": [
+            {
+              "key": "id",
+              "value": "",
+              "description": "UUID de la tienda (alternativo al tag)",
+              "disabled": true
+            },
+            {
+              "key": "tag",
+              "value": "dmo",
+              "description": "Tag de la tienda"
+            },
+            {
+              "key": "lat",
+              "value": "4.678034",
+              "description": "Latitud del usuario"
+            },
+            {
+              "key": "lon",
+              "value": "-74.0496399",
+              "description": "Longitud del usuario"
+            }
+          ]
+        },
+        "description": "Retorna una tienda con todos sus productos buscando por tag."
+      }
+    }
+  ]
+}

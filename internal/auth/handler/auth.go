@@ -43,7 +43,6 @@ func NewAuthHandler(svc ports.AuthApp, jwt jwt.Sessions, cookie cookie.CookieHan
 // @Failure      422    {object}  map[string]string  "Credenciales incorrectas"
 // @Failure      500    {object}  map[string]string  "Error inesperado del servidor"
 // @Router       /auth/sign-in/customers [post]
-// @DeprecatedRouter /custromers/sign-in [post]
 func (a *auth) SignInCustomer(e echo.Context) error {
 
 	ctx := e.Request().Context()
@@ -91,7 +90,6 @@ func (a *auth) SignInCustomer(e echo.Context) error {
 // @Failure      422    {object}  map[string]string  "Credenciales incorrectas"
 // @Failure      500    {object}  map[string]string  "Error inesperado del servidor"
 // @Router       /auth/sign-in/employee [post]
-// @DeprecatedRouter /employee/sign-in [post]
 func (a *auth) SignInEmployee(e echo.Context) error {
 
 	ctx := e.Request().Context()
@@ -135,8 +133,6 @@ func (a *auth) SignInEmployee(e echo.Context) error {
 // @Failure 500 {string} string "unexpected error"
 // @Security SessionCookie
 // @Router /auth/logout [delete]
-// @DeprecatedRouter /customers/logout [delete]
-// @DeprecatedRouter /employee/logout [delete]
 func (s *auth) Logout(e echo.Context) error {
 
 	ctx := e.Request().Context()
