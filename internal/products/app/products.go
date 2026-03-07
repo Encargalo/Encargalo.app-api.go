@@ -10,7 +10,6 @@ import (
 	emplService "Encargalo.app-api.go/internal/employee/domain/ports"
 	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
 	"Encargalo.app-api.go/internal/products/domain/dtos"
-	productsDto "Encargalo.app-api.go/internal/products/domain/dtos"
 	"Encargalo.app-api.go/internal/products/domain/models"
 	"Encargalo.app-api.go/internal/products/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
@@ -82,18 +81,18 @@ func (p *productsApp) UpdateItem(ctx context.Context, item dtos.UpdateItem, item
 	return nil
 }
 
-func (p *productsApp) SearchProductsByShopID(ctx context.Context, shopID uuid.UUID) (productsDto.CategoriesResponse, error) {
+func (p *productsApp) SearchProductsByShopID(ctx context.Context, shopID uuid.UUID) (dtos.CategoriesResponse, error) {
 	return p.repo.SearchProductsByShopID(ctx, shopID)
 }
 
-func (p *productsApp) SearchAdditionsByShopID(ctx context.Context, categoryID uuid.UUID) (productsDto.AdditionsResponse, error) {
+func (p *productsApp) SearchAdditionsByShopID(ctx context.Context, categoryID uuid.UUID) (dtos.AdditionsResponse, error) {
 	return p.repo.SearchAdditionsByShopID(ctx, categoryID)
 }
 
-func (p *productsApp) SearchFlavorsByItemID(ctx context.Context, itemID uuid.UUID) (productsDto.FlavorsResponse, error) {
+func (p *productsApp) SearchFlavorsByItemID(ctx context.Context, itemID uuid.UUID) (dtos.FlavorsResponse, error) {
 	return p.repo.SearchFlavorsByItemID(ctx, itemID)
 }
-func (p *productsApp) SearchBestSellersByShopID(ctx context.Context, shopID uuid.UUID) (productsDto.ItemsResponse, error) {
+func (p *productsApp) SearchBestSellersByShopID(ctx context.Context, shopID uuid.UUID) (dtos.ItemsResponse, error) {
 	return p.repo.SearchBestSellersByShopID(ctx, shopID)
 }
 

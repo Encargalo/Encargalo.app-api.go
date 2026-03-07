@@ -241,7 +241,7 @@ func calculateDistances(coords shopsDTO.Coords, shopsResult *shops.Shops) ([]ent
 	if err != nil {
 		return nil, fmt.Errorf("error calling google api: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {

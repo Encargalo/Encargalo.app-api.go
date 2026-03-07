@@ -22,7 +22,6 @@ func (p *password) HashPassword(pass *string) {
 
 func (p *password) CheckPasswordHash(hash []byte, pass string) bool {
 	if err := bcrypt.CompareHashAndPassword(hash, []byte(pass)); err == nil {
-		hash = nil
 		return true
 	}
 	return false

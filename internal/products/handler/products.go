@@ -49,7 +49,7 @@ func (p *productsHandler) RegisterItems(e echo.Context) error {
 
 	ctx := e.Request().Context()
 
-	session, ok := ctx.Value("session").(models.ActiveSession)
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
 	if !ok {
 		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
 	}
@@ -104,7 +104,7 @@ func (p *productsHandler) UpdateItem(e echo.Context) error {
 
 	ctx := e.Request().Context()
 
-	session, ok := ctx.Value("session").(models.ActiveSession)
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
 	if !ok {
 		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
 	}

@@ -141,7 +141,7 @@ func (s *auth) Logout(e echo.Context) error {
 
 	ctx := e.Request().Context()
 
-	session, ok := ctx.Value("session").(models.ActiveSession)
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
 	if !ok {
 		slog.Error("No se encontró el usuario en el contexto")
 		return errcustom.ErrUnexpectedError
