@@ -8,13 +8,13 @@ import (
 	"github.com/google/uuid"
 )
 
-type CustomersAddressApp interface {
+type UsersAddressApp interface {
 	RegisterAddress(ctx context.Context, customerID uuid.UUID, address dto.Address) error
 	SearchAllAddress(ctx context.Context, customer_id uuid.UUID) (models.Addresses, error)
 	DeleteAddress(ctx context.Context, customer_id uuid.UUID, address_id string) error
 }
 
-type CustomersAddressRepo interface {
+type UsersAddressRepo interface {
 	RegisterAddress(ctx context.Context, address models.Address) error
 	SearchAllAddress(ctx context.Context, customer_id uuid.UUID) (models.Addresses, error)
 	DeleteAddress(ctx context.Context, customer_id uuid.UUID, address_id string) error

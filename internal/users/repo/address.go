@@ -15,7 +15,7 @@ type customersAddressRepo struct {
 	db *bun.DB
 }
 
-func NewCustomersAddressRepo(db *bun.DB) ports.CustomersAddressRepo {
+func NewUsersAddressRepo(db *bun.DB) ports.UsersAddressRepo {
 	return &customersAddressRepo{db}
 }
 

@@ -42,7 +42,7 @@ func NewAuthHandler(svc ports.AuthApp, jwt jwt.Sessions, cookie cookie.CookieHan
 // @Failure      400    {object}  map[string]string  "Solicitud inválida (validación o JSON incorrecto)"
 // @Failure      422    {object}  map[string]string  "Credenciales incorrectas"
 // @Failure      500    {object}  map[string]string  "Error inesperado del servidor"
-// @Router       /auth/sign-in/customers [post]
+// @Router       /auth/sign-in/users [post]
 func (a *auth) SignInCustomer(e echo.Context) error {
 
 	ctx := e.Request().Context()

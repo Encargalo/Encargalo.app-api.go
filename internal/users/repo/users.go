@@ -20,7 +20,7 @@ type customersRepo struct {
 	slackLogs logs.Logs
 }
 
-func NewCustomersRepo(db *bun.DB, slackLogs logs.Logs) ports.CustomersRepo {
+func NewUsersRepo(db *bun.DB, slackLogs logs.Logs) ports.UsersRepo {
 	return &customersRepo{db, slackLogs}
 }
 

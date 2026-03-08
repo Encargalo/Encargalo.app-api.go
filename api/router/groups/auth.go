@@ -23,7 +23,7 @@ func NewAuthGroup(middleAuth auth.AuthMiddleware, handAuth handAuth.Auth) AuthGr
 func (a *authGroup) Resource(g *echo.Echo) {
 	group := g.Group("/auth")
 
-	group.POST("/sign-in/customers", a.handAuth.SignInCustomer)
+	group.POST("/sign-in/users", a.handAuth.SignInCustomer)
 	group.POST("/sign-in/employees", a.handAuth.SignInEmployee)
 	group.DELETE("/logout", a.handAuth.Logout, a.middleAuth.Auth, a.middleAuth.Require(models.Customer, models.OrderManager))
 }

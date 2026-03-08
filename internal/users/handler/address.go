@@ -11,31 +11,31 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type CustomersAddressHandler interface {
+type UsersAddressHandler interface {
 	RegisterAddress(e echo.Context) error
 	SearchAllAdrress(e echo.Context) error
 	DeleteAddress(e echo.Context) error
 }
 
 type customersAddrssHandler struct {
-	svc ports.CustomersAddressApp
+	svc ports.UsersAddressApp
 }
 
-func NewCustomersAddressHandler(svc ports.CustomersAddressApp) CustomersAddressHandler {
+func NewUsersAddressHandler(svc ports.UsersAddressApp) UsersAddressHandler {
 	return &customersAddrssHandler{svc}
 }
 
 // RegisterAddress godoc
 // @Summary Registra una nueva dirección para el cliente autenticado
 // @Description Registra una dirección asociada al customer_id obtenido del contexto
-// @Tags Customers Address
+// @Tags Users Address
 // @Accept json
 // @Produce json
 // @Param address body dto.Address true "Datos de la dirección"
 // @Success 201 {string} string "address registred"
 // @Failure 400 {string} string "error de validación o parseo"
 // @Failure 500 {string} string "unexpected error"
-// @Router /customers/address [post]
+// @Router /users/address [post]
 func (c *customersAddrssHandler) RegisterAddress(e echo.Context) error {
 
 	ctx := e.Request().Context()
@@ -69,12 +69,12 @@ func (c *customersAddrssHandler) RegisterAddress(e echo.Context) error {
 // SearchAllAdrress godoc
 // @Summary Obtiene todas las direcciones del cliente autenticado
 // @Description Retorna un arreglo con todas las direcciones asociadas al cliente identificado en el token
-// @Tags Customers Address
+// @Tags Users Address
 // @Produce json
 // @Success 200 {array} dto.Address "Lista de direcciones"
 // @Failure 404 {string} string "not found"
 // @Failure 500 {string} string "unexpected error"
-// @Router /customers/address [get]
+// @Router /users/address [get]
 func (c *customersAddrssHandler) SearchAllAdrress(e echo.Context) error {
 
 	ctx := e.Request().Context()
@@ -96,13 +96,13 @@ func (c *customersAddrssHandler) SearchAllAdrress(e echo.Context) error {
 // DeleteAddress godoc
 // @Summary Elimina una dirección del cliente autenticado
 // @Description Elimina la dirección especificada por su ID, siempre que pertenezca al cliente autenticado
-// @Tags Customers Address
+// @Tags Users Address
 // @Param address path string true "ID de la dirección (UUID)"
 // @Produce json
 // @Success 200 {string} string "address deleted success"
 // @Failure 500 {string} string "unexpected error"
 // @Security SessionCookie
-// @Router /customers/address [delete]
+// @Router /users/address [delete]
 func (c *customersAddrssHandler) DeleteAddress(e echo.Context) error {
 
 	ctx := e.Request().Context()

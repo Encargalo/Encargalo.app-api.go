@@ -47,11 +47,11 @@ const (
 type orderApp struct {
 	repo   ports.OrdersRepo
 	shops  shops.ShopsRepo
-	custo  portsCustomers.CustomersRepo
+	custo  portsCustomers.UsersRepo
 	stream ports.RedisStream
 }
 
-func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.CustomersRepo, stream ports.RedisStream) ports.OrdersApp {
+func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.UsersRepo, stream ports.RedisStream) ports.OrdersApp {
 	return &orderApp{repo, shops, custo, stream}
 }
 

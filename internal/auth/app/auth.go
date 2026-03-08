@@ -17,14 +17,14 @@ import (
 )
 
 type appAuth struct {
-	svc         portsCusto.CustomersApp
+	svc         portsCusto.UsersApp
 	svcEmployee portsEmployee.EmployeeApp
 	bycript     bycript.Password
 	repo        ports.AuthRepo
 	slackLogs   logs.Logs
 }
 
-func NewAuthApp(svc portsCusto.CustomersApp, svcEmployee portsEmployee.EmployeeApp, bycript bycript.Password, repo ports.AuthRepo, slackLogs logs.Logs) ports.AuthApp {
+func NewAuthApp(svc portsCusto.UsersApp, svcEmployee portsEmployee.EmployeeApp, bycript bycript.Password, repo ports.AuthRepo, slackLogs logs.Logs) ports.AuthApp {
 	return &appAuth{svc, svcEmployee, bycript, repo, slackLogs}
 }
 

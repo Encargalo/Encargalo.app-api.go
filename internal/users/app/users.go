@@ -14,11 +14,11 @@ import (
 )
 
 type customersApp struct {
-	repo ports.CustomersRepo
+	repo ports.UsersRepo
 	pass bycript.Password
 }
 
-func NewCustomerApp(repo ports.CustomersRepo, pass bycript.Password) ports.CustomersApp {
+func NewUserApp(repo ports.UsersRepo, pass bycript.Password) ports.UsersApp {
 	return &customersApp{
 		repo,
 		pass,

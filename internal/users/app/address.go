@@ -10,10 +10,10 @@ import (
 )
 
 type customersAddressApp struct {
-	repo ports.CustomersAddressRepo
+	repo ports.UsersAddressRepo
 }
 
-func NewCustomersAddressApp(repo ports.CustomersAddressRepo) ports.CustomersAddressApp {
+func NewUsersAddressApp(repo ports.UsersAddressRepo) ports.UsersAddressApp {
 	return &customersAddressApp{repo}
 }
 
