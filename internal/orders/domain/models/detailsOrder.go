@@ -3,7 +3,7 @@ package models
 import (
 	"encoding/json"
 
-	"Encargalo.app-api.go/internal/customers/domain/models"
+	"Encargalo.app-api.go/internal/users/domain/models"
 	"github.com/google/uuid"
 )
 
@@ -13,7 +13,7 @@ type Details struct {
 	ItemsDetails    []itemsDetails  `json:"items"`
 }
 
-func (d *Details) BuildDetails(order *Order, shop *ShopOrder, customer *models.Accounts) {
+func (d *Details) BuildDetails(order *Order, shop *ShopOrder, customer *models.Account) {
 
 	d.CustomerDetails.ID = customer.ID
 	d.CustomerDetails.Name = customer.Name

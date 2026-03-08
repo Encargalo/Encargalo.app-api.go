@@ -7,8 +7,8 @@ import (
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/auth/domain/ports"
-	"Encargalo.app-api.go/internal/customers/domain/dto"
-	portsCusto "Encargalo.app-api.go/internal/customers/domain/ports"
+	"Encargalo.app-api.go/internal/users/domain/dto"
+	portsCusto "Encargalo.app-api.go/internal/users/domain/ports"
 	portsEmployee "Encargalo.app-api.go/internal/employee/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/bycript"
 	"Encargalo.app-api.go/internal/pkg/logs"
@@ -48,7 +48,7 @@ func (a *appAuth) SignInCustomer(ctx context.Context, phone, password string) (u
 	}
 
 	var session models.ActiveSession
-	session.BuildActiveSessionModel(custo.ID, string(models.Customer), "", "")
+	session.BuildActiveSessionModel(custo.ID, string(models.Customer), "", "", nil)
 
 	if err := a.repo.SaveSession(ctx, &session); err != nil {
 		return uuid.Nil, err
@@ -72,7 +72,7 @@ func (a *appAuth) SignInEmployee(ctx context.Context, phone, password string) (u
 	}
 
 	var session models.ActiveSession
-	session.BuildActiveSessionModel(empl.ID, empl.Role, "", "")
+	session.BuildActiveSessionModel(empl.ID, empl.Role, "", "", &empl.ShopID)
 
 	if err := a.repo.SaveSession(ctx, &session); err != nil {
 		return uuid.Nil, err

@@ -4,8 +4,8 @@ import (
 	"context"
 	"log/slog"
 
-	"Encargalo.app-api.go/internal/customers/domain/models"
-	"Encargalo.app-api.go/internal/customers/domain/ports"
+	"Encargalo.app-api.go/internal/users/domain/models"
+	"Encargalo.app-api.go/internal/users/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"

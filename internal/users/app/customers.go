@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"Encargalo.app-api.go/internal/customers/domain/dto"
-	"Encargalo.app-api.go/internal/customers/domain/models"
-	"Encargalo.app-api.go/internal/customers/domain/ports"
+	"Encargalo.app-api.go/internal/users/domain/dto"
+	"Encargalo.app-api.go/internal/users/domain/models"
+	"Encargalo.app-api.go/internal/users/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/bycript"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 
@@ -40,7 +40,7 @@ func (c *customersApp) RegisterCustomer(ctx context.Context, customer dto.Regist
 
 	c.pass.HashPassword(&customer.Password)
 
-	customerModel := models.Accounts{}
+	customerModel := models.Account{}
 	customerModel.BuildCustomerRegisterModel(customer)
 
 	err = c.repo.RegisterCustomer(ctx, &customerModel)
@@ -51,7 +51,7 @@ func (c *customersApp) RegisterCustomer(ctx context.Context, customer dto.Regist
 	return nil
 }
 
-func (c *customersApp) SearchCustomerBy(ctx context.Context, criteria dto.SearchCustomerBy) (*models.Accounts, error) {
+func (c *customersApp) SearchCustomerBy(ctx context.Context, criteria dto.SearchCustomerBy) (*models.Account, error) {
 	return c.repo.SearchCustomerBy(ctx, criteria)
 }
 
@@ -77,7 +77,7 @@ func (c *customersApp) UpdateCustomer(ctx context.Context, customer_id uuid.UUID
 		return errors.New("phone al ready exist")
 	}
 
-	customerModel := models.Accounts{}
+	customerModel := models.Account{}
 	customerModel.BuildCustomerUpdateModel(customer)
 
 	return c.repo.UpdateCustomer(ctx, customer_id, &customerModel)
@@ -98,7 +98,7 @@ func (c *customersApp) UpdatePassword(ctx context.Context, customer_id uuid.UUID
 		return errors.New("not found")
 	}
 
-	customerModel := models.Accounts{}
+	customerModel := models.Account{}
 	customerModel.BuildCustomerUpdatePasswordModel(pass)
 
 	c.pass.HashPassword(&customerModel.Password)

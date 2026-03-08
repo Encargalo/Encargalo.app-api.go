@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
-	"Encargalo.app-api.go/internal/customers/domain/dto"
-	"Encargalo.app-api.go/internal/customers/domain/ports"
+	"Encargalo.app-api.go/internal/users/domain/dto"
+	"Encargalo.app-api.go/internal/users/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/labstack/echo/v4"
 )

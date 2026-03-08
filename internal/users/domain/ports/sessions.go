@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	"Encargalo.app-api.go/internal/customers/domain/dto"
+	"Encargalo.app-api.go/internal/users/domain/dto"
 	"github.com/google/uuid"
 )
 

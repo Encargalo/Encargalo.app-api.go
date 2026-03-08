@@ -4,7 +4,7 @@ import (
 	"Encargalo.app-api.go/internal/auth/domain/middleware/auth"
 	requestinfo "Encargalo.app-api.go/internal/auth/domain/middleware/requestInfo"
 	"Encargalo.app-api.go/internal/auth/domain/models"
-	"Encargalo.app-api.go/internal/customers/handler"
+	"Encargalo.app-api.go/internal/users/handler"
 	"github.com/labstack/echo/v4"
 )
 

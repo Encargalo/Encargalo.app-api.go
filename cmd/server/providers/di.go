@@ -30,9 +30,9 @@ import (
 	handProducts "Encargalo.app-api.go/internal/products/handler"
 	repoProducts "Encargalo.app-api.go/internal/products/repo"
 
-	appCustomer "Encargalo.app-api.go/internal/customers/app"
-	handCustomer "Encargalo.app-api.go/internal/customers/handler"
-	repoCustomer "Encargalo.app-api.go/internal/customers/repo"
+	appCustomer "Encargalo.app-api.go/internal/users/app"
+	handCustomer "Encargalo.app-api.go/internal/users/handler"
+	repoCustomer "Encargalo.app-api.go/internal/users/repo"
 
 	appOrders "Encargalo.app-api.go/internal/orders/app"
 	handOrders "Encargalo.app-api.go/internal/orders/handler"

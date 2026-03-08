@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"Encargalo.app-api.go/internal/customers/domain/dto"
-	portsCustomers "Encargalo.app-api.go/internal/customers/domain/ports"
+	"Encargalo.app-api.go/internal/users/domain/dto"
+	portsCustomers "Encargalo.app-api.go/internal/users/domain/ports"
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"Encargalo.app-api.go/internal/customers/domain/dto"
+	"Encargalo.app-api.go/internal/users/domain/dto"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
@@ -13,7 +13,7 @@ import (
 type Addresses []Address
 
 type Address struct {
-	bun.BaseModel `bun:"table:customers.address"`
+	bun.BaseModel `bun:"table:users.address"`
 
 	ID           uuid.UUID       `bun:"id,pk,type:uuid,default:gen_random_uuid()" json:"id"`
 	CustomerID   uuid.UUID       `bun:"customer_id,type:uuid,notnull" json:"customer_id"`

@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"Encargalo.app-api.go/internal/customers/domain/dto"
-	"Encargalo.app-api.go/internal/customers/domain/ports"
+	"Encargalo.app-api.go/internal/users/domain/dto"
+	"Encargalo.app-api.go/internal/users/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/cookie"
 
 	"Encargalo.app-api.go/internal/shared/errcustom"

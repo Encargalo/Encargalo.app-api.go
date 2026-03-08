@@ -3,9 +3,9 @@ package app
 import (
 	"context"
 
-	"Encargalo.app-api.go/internal/customers/domain/dto"
-	"Encargalo.app-api.go/internal/customers/domain/models"
-	"Encargalo.app-api.go/internal/customers/domain/ports"
+	"Encargalo.app-api.go/internal/users/domain/dto"
+	"Encargalo.app-api.go/internal/users/domain/models"
+	"Encargalo.app-api.go/internal/users/domain/ports"
 	"github.com/google/uuid"
 )
 

@@ -6,9 +6,9 @@ import (
 	"errors"
 	"log/slog"
 
-	"Encargalo.app-api.go/internal/customers/domain/dto"
-	"Encargalo.app-api.go/internal/customers/domain/models"
-	"Encargalo.app-api.go/internal/customers/domain/ports"
+	"Encargalo.app-api.go/internal/users/domain/dto"
+	"Encargalo.app-api.go/internal/users/domain/models"
+	"Encargalo.app-api.go/internal/users/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/logs"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
@@ -24,7 +24,7 @@ func NewCustomersRepo(db *bun.DB, slackLogs logs.Logs) ports.CustomersRepo {
 	return &customersRepo{db, slackLogs}
 }
 
-func (c *customersRepo) RegisterCustomer(ctx context.Context, customer *models.Accounts) error {
+func (c *customersRepo) RegisterCustomer(ctx context.Context, customer *models.Account) error {
 
 	if err := c.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 
@@ -43,6 +43,15 @@ func (c *customersRepo) RegisterCustomer(ctx context.Context, customer *models.A
 			return errcustom.ErrUnexpectedError
 		}
 
+		if _, err := tx.NewRaw(`
+			INSERT INTO users.user_roles (user_id, role_id)
+			SELECT ?, id FROM users.roles WHERE name = 'Customer'
+		`, customer.ID).Exec(ctx); err != nil {
+			slog.Error("error al asignar rol Customer", "error", err)
+			c.slackLogs.Slack(err)
+			return errcustom.ErrUnexpectedError
+		}
+
 		return nil
 	}); err != nil {
 		return err
@@ -51,13 +60,13 @@ func (c *customersRepo) RegisterCustomer(ctx context.Context, customer *models.A
 	return nil
 }
 
-func (c *customersRepo) SearchCustomerBy(ctx context.Context, criteria dto.SearchCustomerBy) (*models.Accounts, error) {
+func (c *customersRepo) SearchCustomerBy(ctx context.Context, criteria dto.SearchCustomerBy) (*models.Account, error) {
 
 	if criteria.ID == uuid.Nil && criteria.Phone == "" {
 		return nil, errcustom.ErrNotFound
 	}
 
-	account := new(models.Accounts)
+	account := new(models.Account)
 
 	query := c.db.NewSelect().Model(account)
 
@@ -90,9 +99,9 @@ func (c *customersRepo) SearchCustomerBy(ctx context.Context, criteria dto.Searc
 	return account, nil
 }
 
-func (c *customersRepo) SearchCustomerByPhoneAndNotIDEquals(ctx context.Context, customer_id uuid.UUID, phone string) (*models.Accounts, error) {
+func (c *customersRepo) SearchCustomerByPhoneAndNotIDEquals(ctx context.Context, customer_id uuid.UUID, phone string) (*models.Account, error) {
 
-	account := new(models.Accounts)
+	account := new(models.Account)
 
 	err := c.db.NewSelect().
 		Model(account).
@@ -111,7 +120,7 @@ func (c *customersRepo) SearchCustomerByPhoneAndNotIDEquals(ctx context.Context,
 
 }
 
-func (c *customersRepo) UpdateCustomer(ctx context.Context, customer_id uuid.UUID, customer *models.Accounts) error {
+func (c *customersRepo) UpdateCustomer(ctx context.Context, customer_id uuid.UUID, customer *models.Account) error {
 
 	if _, err := c.db.NewUpdate().Model(customer).OmitZero().Where("id = ?", customer_id).Exec(ctx); err != nil {
 		slog.Error("error al modificar la información del cliente", "error", err)
@@ -121,7 +130,7 @@ func (c *customersRepo) UpdateCustomer(ctx context.Context, customer_id uuid.UUI
 	return nil
 }
 
-func (c *customersRepo) UpdatePassword(ctx context.Context, customer_id uuid.UUID, customer *models.Accounts) error {
+func (c *customersRepo) UpdatePassword(ctx context.Context, customer_id uuid.UUID, customer *models.Account) error {
 
 	if _, err := c.db.NewUpdate().Model(customer).OmitZero().Where("id = ?", customer_id).Exec(ctx); err != nil {
 		slog.Error("error al modificar la contraseña del customer", "error", err)

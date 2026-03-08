@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"Encargalo.app-api.go/internal/employee/domain/dto"
-	"Encargalo.app-api.go/internal/employee/domain/models"
 	"Encargalo.app-api.go/internal/employee/domain/ports"
+	usersModels "Encargalo.app-api.go/internal/users/domain/models"
 	"github.com/google/uuid"
 )
 
@@ -19,7 +19,7 @@ func New(repo ports.EmployeeRepo) ports.EmployeeApp {
 	}
 }
 
-func (e *employeeApp) SearchEmployeeByPhone(ctx context.Context, phone string) (models.Account, error) {
+func (e *employeeApp) SearchEmployeeByPhone(ctx context.Context, phone string) (usersModels.Account, error) {
 	return e.repo.SearchEmployeeByPhone(ctx, phone)
 }
 

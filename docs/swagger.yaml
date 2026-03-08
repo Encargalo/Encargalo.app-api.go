@@ -408,7 +408,7 @@ paths:
       summary: Iniciar sesión como cliente
       tags:
       - Auth
-  /auth/sign-in/employee:
+  /auth/sign-in/employees:
     post:
       consumes:
       - application/json

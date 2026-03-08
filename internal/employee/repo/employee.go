@@ -9,6 +9,7 @@ import (
 	"Encargalo.app-api.go/internal/employee/domain/models"
 	"Encargalo.app-api.go/internal/employee/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	usersModels "Encargalo.app-api.go/internal/users/domain/models"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
@@ -21,27 +22,63 @@ func New(db *bun.DB) ports.EmployeeRepo {
 	return &employeeRepo{db}
 }
 
-func (e *employeeRepo) SearchEmployeeByPhone(ctx context.Context, phone string) (models.Account, error) {
+type accountWithRole struct {
+	usersModels.Account
+	ShopID   uuid.UUID `bun:"shop_id"`
+	RoleName string    `bun:"role_name"`
+}
 
-	var account models.Account
-	err := e.db.NewSelect().Model(&account).Where("phone = ?", phone).Scan(ctx)
+func safeDerefString(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+func (e *employeeRepo) SearchEmployeeByPhone(ctx context.Context, phone string) (usersModels.Account, error) {
+	var result accountWithRole
+
+	err := e.db.NewSelect().
+		TableExpr("users.accounts AS ua").
+		ColumnExpr("ua.*").
+		ColumnExpr("ur.shop_id AS shop_id").
+		ColumnExpr("r.name AS role_name").
+		Join("JOIN users.user_roles ur ON ur.user_id = ua.id").
+		Join("JOIN users.roles r ON r.id = ur.role_id").
+		Where("ua.phone = ?", phone).
+		Where("r.name IN (?)", bun.In([]string{"Order Manager", "Owner"})).
+		Where("ua.deleted_at IS NULL").
+		Where("ur.enabled = TRUE").
+		Scan(ctx, &result)
+
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return models.Account{}, errcustom.ErrNotFound
+			return usersModels.Account{}, errcustom.ErrNotFound
 		}
-		return models.Account{}, errcustom.ErrUnexpectedError
+		return usersModels.Account{}, errcustom.ErrUnexpectedError
 	}
 
-	return account, nil
+	result.Account.ShopID = result.ShopID
+	result.Role = result.RoleName
+
+	return result.Account, nil
 }
 
 func (e *employeeRepo) SearchEmployeeByID(ctx context.Context, employeeID uuid.UUID) (dto.EmployeeResponse, error) {
-	var account models.Account
+	var result accountWithRole
+
 	err := e.db.NewSelect().
-		Model(&account).
-		Relation("Shop").
-		Where("?TableAlias.id = ?", employeeID).
-		Scan(ctx)
+		TableExpr("users.accounts AS ua").
+		ColumnExpr("ua.*").
+		ColumnExpr("ur.shop_id AS shop_id").
+		ColumnExpr("r.name AS role_name").
+		Join("JOIN users.user_roles ur ON ur.user_id = ua.id").
+		Join("JOIN users.roles r ON r.id = ur.role_id").
+		Where("ua.id = ?", employeeID).
+		Where("r.name IN (?)", bun.In([]string{"Order Manager", "Owner"})).
+		Where("ua.deleted_at IS NULL").
+		Where("ur.enabled = TRUE").
+		Scan(ctx, &result)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -50,5 +87,25 @@ func (e *employeeRepo) SearchEmployeeByID(ctx context.Context, employeeID uuid.U
 		slog.Error("Error searching employee by ID", "error", err, "employeeID", employeeID)
 		return dto.EmployeeResponse{}, errcustom.ErrUnexpectedError
 	}
-	return account.ToDomainDTO(), nil
+
+	result.Account.ShopID = result.ShopID
+	result.Role = result.RoleName
+
+	var shop models.EmployeeShop
+	if err := e.db.NewSelect().
+		Model(&shop).
+		Where("id = ?", result.ShopID).
+		Scan(ctx); err != nil && err != sql.ErrNoRows {
+		slog.Error("Error searching shop for employee", "error", err)
+	}
+
+	return dto.EmployeeResponse{
+		ID:     result.ID,
+		ShopID: result.Account.ShopID,
+		Name:   result.Name,
+		Email:  safeDerefString(result.Email),
+		Phone:  result.Phone,
+		Role:   result.Role,
+		Shop:   shop.ToDomainDTO(),
+	}, nil
 }

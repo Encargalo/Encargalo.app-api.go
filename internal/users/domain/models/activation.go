@@ -10,7 +10,7 @@ import (
 )
 
 type ActivateAccount struct {
-	bun.BaseModel `bun:"table:customers.activate_account"`
+	bun.BaseModel `bun:"table:users.activate_account"`
 
 	ID             uuid.UUID  `bun:"id,pk,type:uuid,default:uuid_generate_v4()"`
 	CustomerID     uuid.UUID  `bun:"customer_id,type:uuid"`

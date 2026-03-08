@@ -113,7 +113,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/sign-in/employee": {
+        "/auth/sign-in/employees": {
             "post": {
                 "description": "Autentica a un empleado usando su número de teléfono y contraseña.\nSi las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.",
                 "consumes": [
