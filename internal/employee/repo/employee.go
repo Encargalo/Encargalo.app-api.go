@@ -35,35 +35,6 @@ func safeDerefString(s *string) string {
 	return *s
 }
 
-func (e *employeeRepo) SearchEmployeeByPhone(ctx context.Context, phone string) (usersModels.Account, error) {
-	var result accountWithRole
-
-	err := e.db.NewSelect().
-		TableExpr("users.accounts AS ua").
-		ColumnExpr("ua.*").
-		ColumnExpr("ur.shop_id AS shop_id").
-		ColumnExpr("r.name AS role_name").
-		Join("JOIN users.user_roles ur ON ur.user_id = ua.id").
-		Join("JOIN users.roles r ON r.id = ur.role_id").
-		Where("ua.phone = ?", phone).
-		Where("r.name IN (?)", bun.In([]string{"Order Manager", "Owner"})).
-		Where("ua.deleted_at IS NULL").
-		Where("ur.enabled = TRUE").
-		Scan(ctx, &result)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return usersModels.Account{}, errcustom.ErrNotFound
-		}
-		return usersModels.Account{}, errcustom.ErrUnexpectedError
-	}
-
-	result.Account.ShopID = result.ShopID
-	result.Role = result.RoleName
-
-	return result.Account, nil
-}
-
 func (e *employeeRepo) SearchEmployeeByID(ctx context.Context, employeeID uuid.UUID) (dto.EmployeeResponse, error) {
 	var result accountWithRole
 

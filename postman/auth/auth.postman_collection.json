@@ -33,9 +33,9 @@
           }
         },
         "url": {
-          "raw": "{{base_url}}/auth/sign-in/customers",
+          "raw": "{{base_url}}/auth/sign-in/users",
           "host": ["{{base_url}}"],
-          "path": ["auth", "sign-in", "customers"]
+          "path": ["auth", "sign-in", "users"]
         },
         "description": "Autentica un cliente con teléfono y contraseña. Retorna una cookie `encargalo-session` con el JWT de sesión."
       }

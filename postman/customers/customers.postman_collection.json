@@ -1,8 +1,8 @@
 {
   "info": {
     "_postman_id": "a1b2c3d4-0020-4000-8000-000000000000",
-    "name": "Encargalo - Customers",
-    "description": "Endpoints de clientes. Los endpoints protegidos requieren cookie `encargalo-session` con rol Customer o customer.",
+    "name": "Encargalo - Users",
+    "description": "Endpoints de usuarios. Los endpoints protegidos requieren cookie `encargalo-session` con rol Customer o customer.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -14,7 +14,7 @@
   ],
   "item": [
     {
-      "name": "Register Customer",
+      "name": "Register User",
       "request": {
         "method": "POST",
         "header": [
@@ -33,28 +33,28 @@
           }
         },
         "url": {
-          "raw": "{{base_url}}/customers",
+          "raw": "{{base_url}}/users",
           "host": ["{{base_url}}"],
-          "path": ["customers"]
+          "path": ["users"]
         },
-        "description": "Registra un nuevo cliente. No requiere autenticación. Tras el registro crea la sesión automáticamente y retorna cookie `encargalo-session`."
+        "description": "Registra un nuevo usuario. No requiere autenticación. Tras el registro crea la sesión automáticamente y retorna cookie `encargalo-session`."
       }
     },
     {
-      "name": "Get Customer",
+      "name": "Get User",
       "request": {
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{base_url}}/customers",
+          "raw": "{{base_url}}/users",
           "host": ["{{base_url}}"],
-          "path": ["customers"]
+          "path": ["users"]
         },
-        "description": "Retorna los datos del cliente autenticado. Requiere cookie `encargalo-session`. Roles: Customer, customer."
+        "description": "Retorna los datos del usuario autenticado. Requiere cookie `encargalo-session`. Roles: Customer, customer."
       }
     },
     {
-      "name": "Update Customer",
+      "name": "Update User",
       "request": {
         "method": "PUT",
         "header": [
@@ -73,11 +73,11 @@
           }
         },
         "url": {
-          "raw": "{{base_url}}/customers",
+          "raw": "{{base_url}}/users",
           "host": ["{{base_url}}"],
-          "path": ["customers"]
+          "path": ["users"]
         },
-        "description": "Actualiza los datos del cliente autenticado. Requiere cookie `encargalo-session`. Roles: Customer, customer."
+        "description": "Actualiza los datos del usuario autenticado. Requiere cookie `encargalo-session`. Roles: Customer, customer."
       }
     },
     {
@@ -100,11 +100,11 @@
           }
         },
         "url": {
-          "raw": "{{base_url}}/customers/change-password",
+          "raw": "{{base_url}}/users/change-password",
           "host": ["{{base_url}}"],
-          "path": ["customers", "change-password"]
+          "path": ["users", "change-password"]
         },
-        "description": "Actualiza la contraseña del cliente autenticado. Requiere cookie `encargalo-session`. Roles: Customer, customer."
+        "description": "Actualiza la contraseña del usuario autenticado. Requiere cookie `encargalo-session`. Roles: Customer, customer."
       }
     },
     {
@@ -130,9 +130,9 @@
               }
             },
             "url": {
-              "raw": "{{base_url}}/customers/address",
+              "raw": "{{base_url}}/users/address",
               "host": ["{{base_url}}"],
-              "path": ["customers", "address"]
+              "path": ["users", "address"]
             },
             "description": "Registra una dirección tipo Casa. Requiere cookie `encargalo-session`. Roles: Customer, customer."
           }
@@ -157,9 +157,9 @@
               }
             },
             "url": {
-              "raw": "{{base_url}}/customers/address",
+              "raw": "{{base_url}}/users/address",
               "host": ["{{base_url}}"],
-              "path": ["customers", "address"]
+              "path": ["users", "address"]
             },
             "description": "Registra una dirección tipo Apartamento. Requiere cookie `encargalo-session`. Roles: Customer, customer."
           }
@@ -184,9 +184,9 @@
               }
             },
             "url": {
-              "raw": "{{base_url}}/customers/address",
+              "raw": "{{base_url}}/users/address",
               "host": ["{{base_url}}"],
-              "path": ["customers", "address"]
+              "path": ["users", "address"]
             },
             "description": "Registra una dirección tipo Condominio. Requiere cookie `encargalo-session`. Roles: Customer, customer."
           }
@@ -197,11 +197,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/customers/address",
+              "raw": "{{base_url}}/users/address",
               "host": ["{{base_url}}"],
-              "path": ["customers", "address"]
+              "path": ["users", "address"]
             },
-            "description": "Retorna todas las direcciones del cliente autenticado. Requiere cookie `encargalo-session`. Roles: Customer, customer."
+            "description": "Retorna todas las direcciones del usuario autenticado. Requiere cookie `encargalo-session`. Roles: Customer, customer."
           }
         },
         {
@@ -210,9 +210,9 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/customers/address?address_id=00000000-0000-0000-0000-000000000000",
+              "raw": "{{base_url}}/users/address?address_id=00000000-0000-0000-0000-000000000000",
               "host": ["{{base_url}}"],
-              "path": ["customers", "address"],
+              "path": ["users", "address"],
               "query": [
                 {
                   "key": "address_id",

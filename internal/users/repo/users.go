@@ -15,6 +15,12 @@ import (
 	"github.com/uptrace/bun"
 )
 
+type accountWithRole struct {
+	models.Account
+	ShopID   uuid.UUID `bun:"shop_id"`
+	RoleName string    `bun:"role_name"`
+}
+
 type customersRepo struct {
 	db        *bun.DB
 	slackLogs logs.Logs
@@ -139,4 +145,35 @@ func (c *customersRepo) UpdatePassword(ctx context.Context, customer_id uuid.UUI
 	}
 
 	return nil
+}
+
+func (c *customersRepo) SearchAccountByPhone(ctx context.Context, phone string, roles []string) (*models.Account, error) {
+
+	var result accountWithRole
+
+	err := c.db.NewSelect().
+		TableExpr("users.accounts AS ua").
+		ColumnExpr("ua.*").
+		ColumnExpr("ur.shop_id AS shop_id").
+		ColumnExpr("r.name AS role_name").
+		Join("JOIN users.user_roles ur ON ur.user_id = ua.id").
+		Join("JOIN users.roles r ON r.id = ur.role_id").
+		Where("ua.phone = ?", phone).
+		Where("r.name IN (?)", bun.In(roles)).
+		Where("ua.deleted_at IS NULL").
+		Where("ur.enabled = TRUE").
+		Scan(ctx, &result)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errcustom.ErrNotFound
+		}
+		c.slackLogs.Slack(err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	result.Account.ShopID = result.ShopID
+	result.Role = result.RoleName
+
+	return &result.Account, nil
 }
