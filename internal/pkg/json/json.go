@@ -6,7 +6,7 @@ import (
 	"reflect"
 )
 
-func StructToMap(st interface{}) (map[string]interface{}, error) {
+func StructToMap(st any) (map[string]any, error) {
 	if vc := reflect.ValueOf(st); vc.Kind() != reflect.Struct {
 		return nil, fmt.Errorf("the parameter received is of type '%v', it should be a 'struct'", vc.Kind())
 	}
@@ -16,7 +16,7 @@ func StructToMap(st interface{}) (map[string]interface{}, error) {
 		return nil, err
 	}
 
-	var toMap map[string]interface{}
+	var toMap map[string]any
 	if err = json.Unmarshal(jsonRaw, &toMap); err != nil {
 		return nil, err
 	}

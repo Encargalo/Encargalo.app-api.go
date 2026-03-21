@@ -9,20 +9,20 @@ import (
 
 type Addresses []Address
 
-var addressTypes = map[string]func() interface{}{
-	"Apartment":   func() interface{} { return &Apartment{} },
-	"Condominium": func() interface{} { return &Condominium{} },
-	"Home":        func() interface{} { return &Home{} },
+var addressTypes = map[string]func() any{
+	"Apartment":   func() any { return &Apartment{} },
+	"Condominium": func() any { return &Condominium{} },
+	"Home":        func() any { return &Home{} },
 }
 
 type Address struct {
-	Type         string      `json:"type" validate:"required" example:"Casa"`
-	Label        string      `json:"label" validate:"required" example:"Oficina"`
-	Address      string      `json:"address" validate:"required" example:"Calle 123 # 45-67"`
-	Latitude     float64     `json:"lat" validate:"required,latitude" example:"4.609710"`
-	Longitude    float64     `json:"long" validate:"required,longitude" example:"-74.081750"`
-	Instructions string      `json:"instructions" validate:"omitempty" example:"Tocar el timbre azul"`
-	Extra        interface{} `json:"extra" validate:"required"`
+	Type         string  `json:"type" validate:"required" example:"Casa"`
+	Label        string  `json:"label" validate:"required" example:"Oficina"`
+	Address      string  `json:"address" validate:"required" example:"Calle 123 # 45-67"`
+	Latitude     float64 `json:"lat" validate:"required,latitude" example:"4.609710"`
+	Longitude    float64 `json:"long" validate:"required,longitude" example:"-74.081750"`
+	Instructions string  `json:"instructions" validate:"omitempty" example:"Tocar el timbre azul"`
+	Extra        any     `json:"extra" validate:"required"`
 }
 
 type Apartment struct {

@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 
+	"Encargalo.app-api.go/internal/pkg/bycript"
+	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/users/domain/dto"
 	"Encargalo.app-api.go/internal/users/domain/models"
 	"Encargalo.app-api.go/internal/users/domain/ports"
-	"Encargalo.app-api.go/internal/pkg/bycript"
-	"Encargalo.app-api.go/internal/shared/errcustom"
 
 	"github.com/google/uuid"
 )
@@ -29,13 +29,13 @@ func (c *customersApp) RegisterCustomer(ctx context.Context, customer dto.Regist
 
 	custo, err := c.SearchCustomerBy(ctx, dto.SearchCustomerBy{Phone: customer.Phone})
 	if err != nil {
-		if err == errors.New("not found") {
+		if err == errcustom.ErrNotFound {
 			return err
 		}
 	}
 
 	if custo != nil {
-		return errors.New("phone al ready exist")
+		return errcustom.ErrPhoneAlreadyExist
 	}
 
 	c.pass.HashPassword(&customer.Password)
