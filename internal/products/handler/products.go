@@ -1,14 +1,12 @@
 package handler
 
 import (
-	"errors"
 	"net/http"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
 	emplService "Encargalo.app-api.go/internal/employee/domain/ports"
 	"Encargalo.app-api.go/internal/products/domain/dtos"
 	"Encargalo.app-api.go/internal/products/domain/ports"
-	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
@@ -72,15 +70,7 @@ func (p *productsHandler) RegisterItems(e echo.Context) error {
 	item.ShopID = empl.ShopID
 
 	if err := p.svc.RegisterItem(ctx, item); err != nil {
-		switch {
-		case errors.Is(err, errcustom.ErrUploadingImage):
-			return echo.NewHTTPError(http.StatusUnprocessableEntity, errcustom.ErrUploadingImage.Error())
-
-		case errors.Is(err, errcustom.ErrConvertingImage):
-			return echo.NewHTTPError(http.StatusUnprocessableEntity, errcustom.ErrConvertingImage.Error())
-		default:
-			return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
-		}
+		return err
 	}
 
 	return e.JSON(http.StatusCreated, "product registered successfully")
@@ -127,15 +117,9 @@ func (p *productsHandler) UpdateItem(e echo.Context) error {
 	}
 
 	if err := p.svc.UpdateItem(ctx, item, itemID, session.UserID); err != nil {
-		switch {
-		case errors.Is(err, errcustom.ErrNotFound):
-			return echo.NewHTTPError(http.StatusNotFound, "item not found")
-		case errors.Is(err, errcustom.ErrUnautorized):
-			return echo.NewHTTPError(http.StatusUnauthorized, "no tienes permiso para actualizar este item")
-		default:
-			return echo.NewHTTPError(http.StatusInternalServerError, "error interno del servidor")
-		}
+		return err
 	}
+
 	return e.JSON(http.StatusOK, "item update success")
 }
 
@@ -155,12 +139,7 @@ func (p *productsHandler) SearchProductsByShopID(e echo.Context) error {
 
 	items, err := p.svc.SearchProductsByShopID(ctx, shopID)
 	if err != nil {
-		switch err.Error() {
-		case "products not found":
-			return echo.NewHTTPError(http.StatusNotFound, err.Error())
-		default:
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-		}
+		return err
 	}
 
 	return e.JSON(http.StatusOK, items)
@@ -182,12 +161,7 @@ func (p *productsHandler) SearchAdditionsByShopID(e echo.Context) error {
 
 	additions, err := p.svc.SearchAdditionsByShopID(ctx, categoryID)
 	if err != nil {
-		switch err.Error() {
-		case "additions not found":
-			return echo.NewHTTPError(http.StatusNotFound, err.Error())
-		default:
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-		}
+		return err
 	}
 
 	return e.JSON(http.StatusOK, additions)
@@ -209,16 +183,10 @@ func (p *productsHandler) SearchFlavorsByItemID(e echo.Context) error {
 
 	flavors, err := p.svc.SearchFlavorsByItemID(ctx, itemID)
 	if err != nil {
-		switch err.Error() {
-		case "flavors not found":
-			return echo.NewHTTPError(http.StatusNotFound, err.Error())
-		default:
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-		}
+		return err
 	}
 
 	return e.JSON(http.StatusOK, flavors)
-
 }
 
 // SearchBestSellersByShopID godoc
@@ -249,12 +217,7 @@ func (p *productsHandler) SearchBestSellersByShopID(e echo.Context) error {
 
 	topSeller, err := p.svc.SearchBestSellersByShopID(ctx, shopID)
 	if err != nil {
-		switch err.Error() {
-		case "best sellers not found":
-			return echo.NewHTTPError(http.StatusNotFound, err.Error())
-		default:
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-		}
+		return err
 	}
 
 	return e.JSON(http.StatusOK, topSeller)

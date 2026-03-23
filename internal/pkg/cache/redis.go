@@ -11,7 +11,7 @@ import (
 
 type Cache interface {
 	Get(ctx context.Context, key string) (string, error)
-	Set(ctx context.Context, key string, val interface{}, time time.Duration) error
+	Set(ctx context.Context, key string, val any, time time.Duration) error
 	Clear(ctx context.Context, key string) error
 }
 
@@ -29,7 +29,7 @@ func (c *cache) Get(ctx context.Context, key string) (string, error) {
 	return c.redis.Get(ctx, key).Result()
 }
 
-func (c *cache) Set(ctx context.Context, key string, val interface{}, time time.Duration) error {
+func (c *cache) Set(ctx context.Context, key string, val any, time time.Duration) error {
 
 	result, err := json.Marshal(val)
 	if err != nil {

@@ -22,3 +22,11 @@ packages:
   Encargalo.app-api.go/internal/auth/domain/ports:
     config:
       dir: "internal/mocks/auth/domain/ports"
+
+  Encargalo.app-api.go/internal/users/handler:
+    config:
+      dir: "internal/mocks/users/handler"
+
+  Encargalo.app-api.go/internal/users/domain/ports:
+    config:
+      dir: "internal/mocks/users/domain/ports"

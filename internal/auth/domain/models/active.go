@@ -4,25 +4,24 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/uptrace/bun"
 )
 
 type ActiveSession struct {
-	bun.BaseModel `bun:"table:sessions.active"`
-
-	ID        uuid.UUID `bun:"id,pk,type:uuid,default:uuid_generate_v4()"`
-	UserID    uuid.UUID `bun:"user_id,type:uuid,notnull"`
-	UserType  Role      `bun:"user_type,notnull"`
-	IPAddress string    `bun:"ip_address,notnull"`
-	UserAgent string    `bun:"user_agent,notnull"`
-	CreatedAt time.Time `bun:"created_at,default:now()"`
-	ExpiresAt time.Time `bun:"expires_at,notnull"`
+	ID        uuid.UUID  `json:"id"`
+	UserID    uuid.UUID  `json:"user_id"`
+	UserType  Role       `json:"user_type"`
+	ShopID    *uuid.UUID `json:"shop_id,omitempty"`
+	IPAddress string     `json:"ip_address"`
+	UserAgent string     `json:"user_agent"`
+	CreatedAt time.Time  `json:"created_at"`
+	ExpiresAt time.Time  `json:"expires_at"`
 }
 
-func (a *ActiveSession) BuildActiveSessionModel(userID uuid.UUID, userType, ipUser, userAgent string) {
+func (a *ActiveSession) BuildActiveSessionModel(userID uuid.UUID, userType, ipUser, userAgent string, shopID *uuid.UUID) {
 	a.ID = uuid.New()
 	a.UserID = userID
 	a.UserType = Role(userType)
+	a.ShopID = shopID
 	a.IPAddress = ipUser
 	a.UserAgent = userAgent
 	a.CreatedAt = time.Now()

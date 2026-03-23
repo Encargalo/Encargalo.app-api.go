@@ -50,7 +50,7 @@ Shared infrastructure lives in `internal/shared/`:
 - `adapters/redis/` — Redis cache client + stream producer
 - `adapters/slack/` — Slack notifications
 - `jwt/` — JWT sign/validate
-- `errcustom/` — sentinel errors (`ErrNotFound`, `ErrUnautorized`, etc.)
+- `errcustom/` — sentinel errors (`ErrNotFound`, `ErrUnautorized`, `ErrUnexpectedError`, etc.)
 
 Shared utilities in `internal/pkg/`: `bycript`, `cache`, `cookie`, `json`, `logs`, `uploadImage`.
 
@@ -65,15 +65,30 @@ Routes are registered in [api/router/router.go](api/router/router.go) by delegat
 ## Auth & Middleware
 
 - Auth uses a cookie named `encargalo-session` containing a JWT.
-- `AuthMiddleware.Auth` validates the token and loads the session into context (`ctx.Value("session")`).
+- `AuthMiddleware.Auth` validates the token and loads the session into context.
+- Retrieve the session in handlers with: `ctx.Value(models.SessionKey).(models.ActiveSession)` — use the typed key, not the raw string.
 - Role-based access uses `Auth.Require(models.RoleXxx)` as a middleware chained after `Auth`.
-- Roles are defined in [internal/auth/domain/models/role.go](internal/auth/domain/models/role.go).
+- Roles are defined in [internal/auth/domain/models/role.go](internal/auth/domain/models/role.go): `Customer`, `CustomerMinuscula`, `OrderManager`, `Owner`.
+
+## Handler Patterns
+
+Handlers follow this pattern:
+- Bind/validate request → call app layer → map errors to HTTP status codes using `echo.NewHTTPError`.
+- Return `errcustom` sentinel errors (e.g. `errcustom.ErrUnexpectedError`) directly from Echo handlers to let the framework handle them.
+- Swagger docs are generated from godoc comments on each handler method using `swag` annotations.
 
 ## Orders & Event Streaming
 
 When an order is created or its status transitions to `On The Way`, events are published to a Redis Stream (`ports.RedisStream.PublisherEvent`). The stream integration is in [internal/orders/repo/redis_stream.go](internal/orders/repo/redis_stream.go).
 
 A credit commission (10% of `totalPrice - deliveryFee`) is sent via HTTP to the `CreditManager` external service when an order reaches `On The Way` status.
+
+### WebSocket — Order Manager
+
+`GET /orders/manager` upgrades to a WebSocket connection (gorilla/websocket). On connect the server sends `{"type":"connected"}`. Supported inbound message types:
+- `update_status`: `{"type":"update_status","order_id":"<uuid>","new_status":"<string>"}` — updates the order and broadcasts it to all connected clients.
+
+`OrderManager` role connections are keyed by `shop_id`; all other roles are keyed by `user_id`.
 
 ## Testing
 

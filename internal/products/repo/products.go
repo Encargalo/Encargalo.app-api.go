@@ -123,11 +123,11 @@ func (p *productsRepo) SearchAdditionsByShopID(ctx context.Context, categoryID u
 
 	if err != nil {
 		fmt.Println(err.Error())
-		return nil, fmt.Errorf("unexpected error")
+		return nil, errcustom.ErrUnexpectedError
 	}
 
 	if len(categoryAdditions) == 0 {
-		return nil, fmt.Errorf("additions not found")
+		return nil, errcustom.ErrNotFound
 	}
 
 	var additions models.Additions
@@ -151,11 +151,11 @@ func (p *productsRepo) SearchFlavorsByItemID(ctx context.Context, itemID uuid.UU
 		Where("if.item_id = ?", itemID).
 		Scan(ctx, &flavors); err != nil {
 		fmt.Println(err.Error())
-		return nil, fmt.Errorf("unexpected error")
+		return nil, errcustom.ErrUnexpectedError
 	}
 
 	if len(flavors) == 0 {
-		return nil, fmt.Errorf("flavors not found")
+		return nil, errcustom.ErrNotFound
 	}
 
 	return flavors.ToDomainDTO(), nil

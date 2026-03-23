@@ -75,10 +75,10 @@ func (o *orders) SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*mode
 		Relation("ItemsOrders.Additions").
 		Where("id = ?", orderID).Scan(ctx); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errors.New("order not found")
+			return nil, errcustom.ErrNotFound
 		}
 		slog.Error("SearchOrdersByID: failed to find order", "orderID", orderID, "error", err)
-		return nil, errors.New("unexpected error")
+		return nil, errcustom.ErrUnexpectedError
 	}
 
 	return order, nil
@@ -89,10 +89,10 @@ func (o *orders) SearchShopByID(ctx context.Context, shopID uuid.UUID) (*models.
 	shop := new(models.ShopOrder)
 	if err := o.db.NewSelect().Model(shop).Where("id = ?", shopID).Scan(ctx); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errors.New("shop not found")
+			return nil, errcustom.ErrNotFound
 		}
 		slog.Error("SearchShopByID: failed to find shop", "shopID", shopID, "error", err)
-		return nil, errors.New("unexpected error")
+		return nil, errcustom.ErrUnexpectedError
 	}
 
 	return shop, nil
@@ -113,7 +113,7 @@ func (o *orders) SearchItemsByID(ctx context.Context, ItemsID []uuid.UUID) (item
 	}
 
 	if len(items) != len(uniqueIDs) {
-		return nil, fmt.Errorf("one or more items not found")
+		return nil, errcustom.ErrItemsNotFound
 	}
 
 	return items, nil
@@ -134,7 +134,7 @@ func (o *orders) SearchAdditionsByID(ctx context.Context, additionID []uuid.UUID
 	}
 
 	if len(additions) != len(uniqueIDs) {
-		return nil, fmt.Errorf("one or more additions not found")
+		return nil, errcustom.ErrItemsNotFound
 	}
 
 	return additions, err

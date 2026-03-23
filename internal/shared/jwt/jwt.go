@@ -44,7 +44,7 @@ func (s *sessions) CreateSession(sessionID uuid.UUID) (string, error) {
 
 func (s *sessions) ValidateToken(value string) (jwt.MapClaims, error) {
 
-	token, err := jwt.Parse(value, func(t *jwt.Token) (interface{}, error) {
+	token, err := jwt.Parse(value, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}

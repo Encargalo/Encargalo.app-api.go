@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"Encargalo.app-api.go/internal/customers/domain/dto"
-	portsCustomers "Encargalo.app-api.go/internal/customers/domain/ports"
+	"Encargalo.app-api.go/internal/users/domain/dto"
+	portsCustomers "Encargalo.app-api.go/internal/users/domain/ports"
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
@@ -47,11 +47,11 @@ const (
 type orderApp struct {
 	repo   ports.OrdersRepo
 	shops  shops.ShopsRepo
-	custo  portsCustomers.CustomersRepo
+	custo  portsCustomers.UsersRepo
 	stream ports.RedisStream
 }
 
-func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.CustomersRepo, stream ports.RedisStream) ports.OrdersApp {
+func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.UsersRepo, stream ports.RedisStream) ports.OrdersApp {
 	return &orderApp{repo, shops, custo, stream}
 }
 
@@ -59,11 +59,11 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 
 	ord, err := o.SearchOrdersByID(ctx, order.ID)
 	if ord != nil {
-		return &models.Order{}, errors.New("order already exists")
+		return &models.Order{}, errcustom.ErrOrderAlreadyExists
 	}
 
 	if err != nil {
-		if err.Error() != "order not found" {
+		if !errors.Is(err, errcustom.ErrNotFound) {
 			return &models.Order{}, err
 		}
 	}
@@ -71,7 +71,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 	batchID, err := o.shops.SearchBatchByShopID(ctx, order.ShopID)
 	if err != nil {
 		if errors.Is(err, errcustom.ErrNotFound) {
-			return &models.Order{}, errors.New("batch not open")
+			return &models.Order{}, errcustom.ErrBatchNotOpen
 		}
 	}
 

@@ -5,5 +5,5 @@ import (
 )
 
 type RedisStream interface {
-	PublisherEvent(ctx context.Context, data interface{}) error
+	PublisherEvent(ctx context.Context, data any) error
 }
