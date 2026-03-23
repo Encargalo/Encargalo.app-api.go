@@ -72,7 +72,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/request.SignInRequest"
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_auth_handler_request.SignInRequest"
                         }
                     }
                 ],
@@ -133,7 +133,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/request.SignInRequest"
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_auth_handler_request.SignInRequest"
                         }
                     }
                 ],
@@ -194,7 +194,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dtos.CreateOrder"
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.CreateOrder"
                         }
                     }
                 ],
@@ -208,25 +208,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request body or validation failed",
                         "schema": {
-                            "$ref": "#/definitions/dtos.ErrorResponse"
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Order already exists",
                         "schema": {
-                            "$ref": "#/definitions/dtos.ErrorResponse"
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
                     },
                     "422": {
                         "description": "One or more items/additions not found",
                         "schema": {
-                            "$ref": "#/definitions/dtos.ErrorResponse"
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Unexpected internal server error",
                         "schema": {
-                            "$ref": "#/definitions/dtos.ErrorResponse"
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
                     }
                 }
@@ -269,7 +269,7 @@ const docTemplate = `{
         },
         "/products": {
             "get": {
-                "description": "Retorna todos los productos agrupados por categoría de una tienda. Solo incluye productos disponibles, ordenados por precio ascendente.",
+                "description": "Retorna productos agrupados por categoría de una tienda, con paginación. Solo incluye productos disponibles, ordenados por precio ascendente.",
                 "produces": [
                     "application/json"
                 ],
@@ -285,16 +285,25 @@ const docTemplate = `{
                         "name": "shop_id",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Número de página (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Categorías por página (default: 10)",
+                        "name": "limit",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/dtos.CategoryResponse"
-                            }
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_CategoriesResponse"
                         }
                     },
                     "400": {
@@ -341,7 +350,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dtos.RegisterItem"
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.RegisterItem"
                         }
                     }
                 ],
@@ -397,16 +406,25 @@ const docTemplate = `{
                         "name": "category_id",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Número de página (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Resultados por página (default: 20)",
+                        "name": "limit",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/dtos.AdditionResponse"
-                            }
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_AdditionsResponse"
                         }
                     },
                     "400": {
@@ -451,16 +469,25 @@ const docTemplate = `{
                         "name": "shop_id",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Número de página (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Resultados por página (default: 5)",
+                        "name": "limit",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/dtos.ItemResponse"
-                            }
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_ItemsResponse"
                         }
                     },
                     "400": {
@@ -502,16 +529,25 @@ const docTemplate = `{
                         "name": "item_id",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Número de página (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Resultados por página (default: 20)",
+                        "name": "limit",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/dtos.FlavorResponse"
-                            }
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_FlavorsResponse"
                         }
                     },
                     "400": {
@@ -553,16 +589,25 @@ const docTemplate = `{
                         "name": "category_id",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Número de página (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Resultados por página (default: 20)",
+                        "name": "limit",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/dtos.FlavorResponse"
-                            }
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_FlavorsResponse"
                         }
                     },
                     "400": {
@@ -619,7 +664,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dtos.UpdateItem"
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.UpdateItem"
                         }
                     }
                 ],
@@ -700,7 +745,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/dtos.ShopResponse"
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopResponse"
                             }
                         }
                     },
@@ -744,7 +789,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/dtos.ShopResponse"
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopResponse"
                             }
                         }
                     },
@@ -771,7 +816,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Datos del cliente",
                         "schema": {
-                            "$ref": "#/definitions/dto.CustomerResponse"
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.CustomerResponse"
                         }
                     },
                     "404": {
@@ -812,7 +857,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.UpdateCustomer"
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.UpdateCustomer"
                         }
                     }
                 ],
@@ -865,7 +910,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.RegisterCustomer"
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.RegisterCustomer"
                         }
                     }
                 ],
@@ -913,7 +958,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/dto.Address"
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.Address"
                             }
                         }
                     },
@@ -950,7 +995,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.Address"
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.Address"
                         }
                     }
                 ],
@@ -1039,7 +1084,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.UpdatePassword"
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.UpdatePassword"
                         }
                     }
                 ],
@@ -1073,172 +1118,24 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "dto.Address": {
+        "Encargalo_app-api_go_internal_auth_handler_request.SignInRequest": {
             "type": "object",
             "required": [
-                "address",
-                "extra",
-                "label",
-                "lat",
-                "long",
-                "type"
-            ],
-            "properties": {
-                "address": {
-                    "type": "string",
-                    "example": "Calle 123 # 45-67"
-                },
-                "extra": {},
-                "instructions": {
-                    "type": "string",
-                    "example": "Tocar el timbre azul"
-                },
-                "label": {
-                    "type": "string",
-                    "example": "Oficina"
-                },
-                "lat": {
-                    "type": "number",
-                    "example": 4.60971
-                },
-                "long": {
-                    "type": "number",
-                    "example": -74.08175
-                },
-                "type": {
-                    "type": "string",
-                    "example": "Casa"
-                }
-            }
-        },
-        "dto.CustomerResponse": {
-            "type": "object",
-            "properties": {
-                "birthday_date": {
-                    "type": "string",
-                    "example": "1990-05-20"
-                },
-                "email": {
-                    "type": "string",
-                    "example": "carlos.ramirez@example.com"
-                },
-                "id": {
-                    "type": "string",
-                    "example": "123e4567-e89b-12d3-a456-426614174000"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "Carlos"
-                },
-                "phone": {
-                    "type": "string",
-                    "example": "+573001112233"
-                },
-                "role": {
-                    "type": "string",
-                    "example": "customer"
-                },
-                "sur_name": {
-                    "type": "string",
-                    "example": "Ramírez"
-                }
-            }
-        },
-        "dto.RegisterCustomer": {
-            "type": "object",
-            "required": [
-                "birthday_date",
-                "name",
                 "password",
-                "phone",
-                "sur_name"
-            ],
-            "properties": {
-                "birthday_date": {
-                    "type": "string",
-                    "example": "1990-05-20"
-                },
-                "email": {
-                    "type": "string",
-                    "example": "carlos.ramirez@example.com"
-                },
-                "name": {
-                    "type": "string",
-                    "minLength": 3,
-                    "example": "Carlos"
-                },
-                "password": {
-                    "type": "string",
-                    "minLength": 8,
-                    "example": "claveSegura123"
-                },
-                "phone": {
-                    "type": "string",
-                    "example": "+573001112233"
-                },
-                "sur_name": {
-                    "type": "string",
-                    "minLength": 3,
-                    "example": "Ramírez"
-                }
-            }
-        },
-        "dto.UpdateCustomer": {
-            "type": "object",
-            "required": [
-                "name",
-                "phone",
-                "sur_name"
-            ],
-            "properties": {
-                "email": {
-                    "type": "string",
-                    "example": "carlos.ramirez@example.com"
-                },
-                "name": {
-                    "type": "string",
-                    "minLength": 3,
-                    "example": "Carlos"
-                },
-                "phone": {
-                    "type": "string",
-                    "example": "+573001112233"
-                },
-                "sur_name": {
-                    "type": "string",
-                    "minLength": 3,
-                    "example": "Ramírez"
-                }
-            }
-        },
-        "dto.UpdatePassword": {
-            "type": "object",
-            "required": [
-                "password"
+                "phone_number"
             ],
             "properties": {
                 "password": {
                     "type": "string",
-                    "minLength": 8,
                     "example": "claveSegura123"
+                },
+                "phone_number": {
+                    "type": "string",
+                    "example": "+573001112233"
                 }
             }
         },
-        "dtos.AdditionResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "price": {
-                    "type": "integer"
-                }
-            }
-        },
-        "dtos.Address": {
+        "Encargalo_app-api_go_internal_orders_domain_dtos.Address": {
             "type": "object",
             "required": [
                 "address",
@@ -1260,27 +1157,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.CategoryResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/dtos.ItemResponse"
-                    }
-                },
-                "name": {
-                    "type": "string"
-                },
-                "shop_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "dtos.CreateAdditionsOrders": {
+        "Encargalo_app-api_go_internal_orders_domain_dtos.CreateAdditionsOrders": {
             "type": "object",
             "properties": {
                 "addition_id": {
@@ -1288,7 +1165,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.CreateItemsOrder": {
+        "Encargalo_app-api_go_internal_orders_domain_dtos.CreateItemsOrder": {
             "type": "object",
             "required": [
                 "amount",
@@ -1298,7 +1175,7 @@ const docTemplate = `{
                 "additions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/dtos.CreateAdditionsOrders"
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.CreateAdditionsOrders"
                     }
                 },
                 "amount": {
@@ -1318,7 +1195,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.CreateOrder": {
+        "Encargalo_app-api_go_internal_orders_domain_dtos.CreateOrder": {
             "type": "object",
             "required": [
                 "address",
@@ -1330,7 +1207,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "address": {
-                    "$ref": "#/definitions/dtos.Address"
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.Address"
                 },
                 "delivery_fee": {
                     "type": "integer",
@@ -1343,7 +1220,7 @@ const docTemplate = `{
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/dtos.CreateItemsOrder"
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.CreateItemsOrder"
                     }
                 },
                 "method_payment": {
@@ -1360,7 +1237,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.ErrorResponse": {
+        "Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse": {
             "type": "object",
             "properties": {
                 "code": {
@@ -1373,7 +1250,114 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.FlavorResponse": {
+        "Encargalo_app-api_go_internal_pkg_pagination.Meta": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "total_pages": {
+                    "type": "integer"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_AdditionsResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Meta"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_CategoriesResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategoryResponse"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Meta"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_FlavorsResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Meta"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_ItemsResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Meta"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "integer"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.CategoryResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "shop_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse": {
             "type": "object",
             "properties": {
                 "id": {
@@ -1384,7 +1368,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.ItemResponse": {
+        "Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse": {
             "type": "object",
             "properties": {
                 "category_id": {
@@ -1418,7 +1402,7 @@ const docTemplate = `{
                 "rules": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/dtos.ItemRule"
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemRule"
                     }
                 },
                 "score": {
@@ -1431,7 +1415,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.ItemRule": {
+        "Encargalo_app-api_go_internal_products_domain_dtos.ItemRule": {
             "type": "object",
             "properties": {
                 "id": {
@@ -1456,7 +1440,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.RegisterItem": {
+        "Encargalo_app-api_go_internal_products_domain_dtos.RegisterItem": {
             "type": "object",
             "required": [
                 "category_id",
@@ -1497,7 +1481,42 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.ShopResponse": {
+        "Encargalo_app-api_go_internal_products_domain_dtos.UpdateItem": {
+            "type": "object",
+            "required": [
+                "description",
+                "name",
+                "price"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "Pizza mediana con jamón, piña y queso mozzarella sobre una base de salsa napolitana."
+                },
+                "flavor_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "[\"a1b2c3d4-e5f6-7890-abcd-ef1234567890\"]"
+                    ]
+                },
+                "image": {
+                    "type": "string",
+                    "example": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ..."
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Pizza Hawaiana Mediana"
+                },
+                "price": {
+                    "type": "integer",
+                    "example": 32000
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.ShopResponse": {
             "type": "object",
             "properties": {
                 "address": {
@@ -1544,55 +1563,154 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.UpdateItem": {
+        "Encargalo_app-api_go_internal_users_domain_dto.Address": {
             "type": "object",
             "required": [
-                "description",
-                "name",
-                "price"
+                "address",
+                "extra",
+                "label",
+                "lat",
+                "long",
+                "type"
             ],
             "properties": {
-                "description": {
+                "address": {
                     "type": "string",
-                    "example": "Pizza mediana con jamón, piña y queso mozzarella sobre una base de salsa napolitana."
+                    "example": "Calle 123 # 45-67"
                 },
-                "flavor_ids": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "[\"a1b2c3d4-e5f6-7890-abcd-ef1234567890\"]"
-                    ]
-                },
-                "image": {
+                "extra": {},
+                "instructions": {
                     "type": "string",
-                    "example": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ..."
+                    "example": "Tocar el timbre azul"
                 },
-                "name": {
+                "label": {
                     "type": "string",
-                    "example": "Pizza Hawaiana Mediana"
+                    "example": "Oficina"
                 },
-                "price": {
-                    "type": "integer",
-                    "example": 32000
+                "lat": {
+                    "type": "number",
+                    "example": 4.60971
+                },
+                "long": {
+                    "type": "number",
+                    "example": -74.08175
+                },
+                "type": {
+                    "type": "string",
+                    "example": "Casa"
                 }
             }
         },
-        "request.SignInRequest": {
+        "Encargalo_app-api_go_internal_users_domain_dto.CustomerResponse": {
+            "type": "object",
+            "properties": {
+                "birthday_date": {
+                    "type": "string",
+                    "example": "1990-05-20"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "carlos.ramirez@example.com"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "123e4567-e89b-12d3-a456-426614174000"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Carlos"
+                },
+                "phone": {
+                    "type": "string",
+                    "example": "+573001112233"
+                },
+                "role": {
+                    "type": "string",
+                    "example": "customer"
+                },
+                "sur_name": {
+                    "type": "string",
+                    "example": "Ramírez"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_users_domain_dto.RegisterCustomer": {
             "type": "object",
             "required": [
+                "birthday_date",
+                "name",
                 "password",
-                "phone_number"
+                "phone",
+                "sur_name"
+            ],
+            "properties": {
+                "birthday_date": {
+                    "type": "string",
+                    "example": "1990-05-20"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "carlos.ramirez@example.com"
+                },
+                "name": {
+                    "type": "string",
+                    "minLength": 3,
+                    "example": "Carlos"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "example": "claveSegura123"
+                },
+                "phone": {
+                    "type": "string",
+                    "example": "+573001112233"
+                },
+                "sur_name": {
+                    "type": "string",
+                    "minLength": 3,
+                    "example": "Ramírez"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_users_domain_dto.UpdateCustomer": {
+            "type": "object",
+            "required": [
+                "name",
+                "phone",
+                "sur_name"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "carlos.ramirez@example.com"
+                },
+                "name": {
+                    "type": "string",
+                    "minLength": 3,
+                    "example": "Carlos"
+                },
+                "phone": {
+                    "type": "string",
+                    "example": "+573001112233"
+                },
+                "sur_name": {
+                    "type": "string",
+                    "minLength": 3,
+                    "example": "Ramírez"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_users_domain_dto.UpdatePassword": {
+            "type": "object",
+            "required": [
+                "password"
             ],
             "properties": {
                 "password": {
                     "type": "string",
+                    "minLength": 8,
                     "example": "claveSegura123"
-                },
-                "phone_number": {
-                    "type": "string",
-                    "example": "+573001112233"
                 }
             }
         }
