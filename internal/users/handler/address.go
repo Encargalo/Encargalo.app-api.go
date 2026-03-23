@@ -60,7 +60,7 @@ func (c *customersAddrssHandler) RegisterAddress(e echo.Context) error {
 
 	if err := c.svc.RegisterAddress(ctx, session.UserID, address); err != nil {
 		slog.Error("Error registrando dirección:", "err", err)
-		return err
+		return errcustom.ToHTTPError(err)
 	}
 
 	return e.JSON(http.StatusCreated, "address registred")
@@ -87,7 +87,7 @@ func (c *customersAddrssHandler) SearchAllAdrress(e echo.Context) error {
 
 	addresses, err := c.svc.SearchAllAddress(ctx, session.UserID)
 	if err != nil {
-		return err
+		return errcustom.ToHTTPError(err)
 	}
 
 	return e.JSON(http.StatusOK, addresses)
@@ -120,7 +120,7 @@ func (c *customersAddrssHandler) DeleteAddress(e echo.Context) error {
 	}
 
 	if err := c.svc.DeleteAddress(ctx, session.UserID, address_id); err != nil {
-		return err
+		return errcustom.ToHTTPError(err)
 	}
 
 	return e.JSON(http.StatusOK, "address deleted success")

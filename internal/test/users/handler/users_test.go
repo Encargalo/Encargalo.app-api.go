@@ -291,7 +291,7 @@ func TestUpdateCustomer_NotFound(t *testing.T) {
 	err := h.UpdateCustomer(tc.Ctx)
 
 	assert.Error(t, err)
-	assert.Equal(t, http.StatusInternalServerError, httpCode(err))
+	assert.Equal(t, http.StatusNotFound, httpCode(err))
 }
 
 // --- UpdatePassword ---
@@ -362,7 +362,7 @@ func TestUpdatePassword_NotFound(t *testing.T) {
 	err := h.UpdatePassword(tc.Ctx)
 
 	assert.Error(t, err)
-	assert.Equal(t, http.StatusConflict, httpCode(err))
+	assert.Equal(t, http.StatusNotFound, httpCode(err))
 }
 
 func TestUpdatePassword_UnexpectedError(t *testing.T) {

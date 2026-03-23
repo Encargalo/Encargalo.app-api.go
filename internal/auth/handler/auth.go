@@ -58,12 +58,12 @@ func (a *auth) SignInCustomer(e echo.Context) error {
 
 	sessionID, err := a.svc.SignInCustomer(ctx, signIn.Phone, signIn.Password)
 	if err != nil {
-		return err
+		return errcustom.ToHTTPError(err)
 	}
 
 	jwtSession, err := a.jwt.CreateSession(sessionID)
 	if err != nil {
-		return errcustom.ErrUnexpectedError
+		return errcustom.ToHTTPError(errcustom.ErrUnexpectedError)
 	}
 
 	e.SetCookie(a.cookie.CreateCookieSession(jwtSession))
@@ -100,12 +100,12 @@ func (a *auth) SignInEmployee(e echo.Context) error {
 
 	sessionID, err := a.svc.SignInEmployee(ctx, signIn.Phone, signIn.Password)
 	if err != nil {
-		return err
+		return errcustom.ToHTTPError(err)
 	}
 
 	jwtSession, err := a.jwt.CreateSession(sessionID)
 	if err != nil {
-		return errcustom.ErrUnexpectedError
+		return errcustom.ToHTTPError(errcustom.ErrUnexpectedError)
 	}
 
 	e.SetCookie(a.cookie.CreateCookieSession(jwtSession))
@@ -134,7 +134,7 @@ func (s *auth) Logout(e echo.Context) error {
 	}
 
 	if err := s.svc.DeleteSession(ctx, session.ID); err != nil {
-		return err
+		return errcustom.ToHTTPError(err)
 	}
 
 	e.SetCookie(s.cookie.DeleteCookieSession())

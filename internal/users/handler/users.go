@@ -61,7 +61,7 @@ func (c *customersHandler) RegisterCustomer(e echo.Context) error {
 	}
 
 	if err := c.customerApp.RegisterCustomer(ctx, customer); err != nil {
-		return err
+		return errcustom.ToHTTPError(err)
 	}
 
 	sessionId, err := c.auth.SignInCustomer(ctx, customer.Phone, customer.Password)
@@ -104,7 +104,7 @@ func (c *customersHandler) SearchCustomer(e echo.Context) error {
 
 	custo, err := c.customerApp.SearchCustomerBy(ctx, customerID)
 	if err != nil {
-		return err
+		return errcustom.ToHTTPError(err)
 	}
 
 	return e.JSON(http.StatusOK, custo.ToDomainDTO())
@@ -145,7 +145,7 @@ func (c *customersHandler) UpdateCustomer(e echo.Context) error {
 	}
 
 	if err := c.customerApp.UpdateCustomer(ctx, session.UserID, customer); err != nil {
-		return err
+		return errcustom.ToHTTPError(err)
 	}
 
 	return e.JSON(http.StatusOK, "customer updated success")
@@ -185,7 +185,7 @@ func (c *customersHandler) UpdatePassword(e echo.Context) error {
 	}
 
 	if err := c.customerApp.UpdatePassword(ctx, session.UserID, pass); err != nil {
-		return err
+		return errcustom.ToHTTPError(err)
 	}
 
 	return e.JSON(http.StatusOK, "password updated success")

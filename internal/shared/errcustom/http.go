@@ -20,6 +20,15 @@ var statusMap = map[error]int{
 	ErrBatchNotOpen:        http.StatusUnprocessableEntity,
 }
 
+func ToHTTPError(err error) error {
+	for sentinel, code := range statusMap {
+		if errors.Is(err, sentinel) {
+			return echo.NewHTTPError(code, err.Error())
+		}
+	}
+	return echo.NewHTTPError(http.StatusInternalServerError, ErrUnexpectedError.Error())
+}
+
 func HTTPErrorHandler(err error, c echo.Context) {
 	if he, ok := errors.AsType[*echo.HTTPError](err); ok {
 		c.JSON(he.Code, he.Message) //nolint:errcheck
