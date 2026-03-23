@@ -3,7 +3,7 @@ name: Release Please
 on:
   pull_request:
     types: [closed]
-    branches: ["develop"]
+    branches: ["develop", "main"]
 
 permissions:
   contents: write
