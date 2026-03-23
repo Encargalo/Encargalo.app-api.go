@@ -77,6 +77,15 @@ Handlers follow this pattern:
 - Return `errcustom` sentinel errors (e.g. `errcustom.ErrUnexpectedError`) directly from Echo handlers to let the framework handle them.
 - Swagger docs are generated from godoc comments on each handler method using `swag` annotations.
 
+## Documentation Requirements
+
+Every time a handler is created or modified, you **must** update the following — only for what was added or changed:
+
+1. **Swagger comments** on the handler method: keep `@Summary`, `@Description`, `@Param`, `@Success`, and `@Failure` annotations accurate and up to date.
+2. **Postman collection** under `postman/<domain>/<domain>.postman_collection.json`: add or update the corresponding request (method, URL, body, query params, description).
+
+Do **not** regenerate or rewrite documentation for endpoints that were not touched.
+
 ## Orders & Event Streaming
 
 When an order is created or its status transitions to `On The Way`, events are published to a Redis Stream (`ports.RedisStream.PublisherEvent`). The stream integration is in [internal/orders/repo/redis_stream.go](internal/orders/repo/redis_stream.go).

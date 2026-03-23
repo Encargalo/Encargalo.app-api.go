@@ -25,7 +25,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"category_id\": \"b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2\",\n  \"name\": \"Pizza Hawaiana Mediana\",\n  \"price\": 32000,\n  \"image\": \"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ...\",\n  \"description\": \"Pizza mediana con jamón, piña y queso mozzarella sobre una base de salsa napolitana.\",\n  \"has_flavors\": true\n}",
+          "raw": "{\n  \"category_id\": \"b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2\",\n  \"name\": \"Pizza Hawaiana Mediana\",\n  \"price\": 32000,\n  \"image\": \"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ...\",\n  \"description\": \"Pizza mediana con jamón, piña y queso mozzarella sobre una base de salsa napolitana.\",\n  \"flavor_ids\": [\n    \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"b2c3d4e5-f6a7-8901-bcde-f12345678901\"\n  ]\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -37,7 +37,7 @@
           "host": ["{{base_url}}"],
           "path": ["products"]
         },
-        "description": "Registra un nuevo producto en la tienda del empleado autenticado. `shop_id` se obtiene automáticamente del empleado. Requiere cookie `encargalo-session`. Rol: Order Manager."
+        "description": "Registra un nuevo producto en la tienda del empleado autenticado. `shop_id` se obtiene automáticamente del empleado. Si se envía `flavor_ids`, el producto se marcará automáticamente como con sabores. Requiere cookie `encargalo-session`. Rol: Order Manager."
       }
     },
     {
@@ -52,7 +52,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"name\": \"Pizza Hawaiana Grande\",\n  \"price\": 45000,\n  \"description\": \"Pizza grande con jamón, piña y queso mozzarella sobre una base de salsa napolitana.\",\n  \"has_flavors\": false\n}",
+          "raw": "{\n  \"name\": \"Pizza Hawaiana Grande\",\n  \"price\": 45000,\n  \"description\": \"Pizza grande con jamón, piña y queso mozzarella sobre una base de salsa napolitana.\",\n  \"image\": \"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ...\",\n  \"flavor_ids\": [\n    \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\"\n  ]\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -64,7 +64,7 @@
           "host": ["{{base_url}}"],
           "path": ["products", "00000000-0000-0000-0000-000000000000"]
         },
-        "description": "Actualiza un producto existente por su item_id (UUID en el path). Requiere cookie `encargalo-session`. Rol: Order Manager."
+        "description": "Actualiza un producto existente por su `item_id` (UUID en el path). Solo puede actualizarlo el Order Manager de la tienda propietaria.\n\n- `image`: opcional. Solo se sube a Cloudinary si es diferente a la imagen actual (comparación por hash).\n- `flavor_ids`: opcional. Si se envía (incluso `[]`), reemplaza todos los sabores. Si no se envía, los sabores no se modifican. `has_flavors` se deriva automáticamente.\n\nRequiere cookie `encargalo-session`. Rol: Order Manager."
       }
     },
     {
@@ -84,7 +84,7 @@
             }
           ]
         },
-        "description": "Retorna todos los productos agrupados por categoría de una tienda. Público."
+        "description": "Retorna todos los productos agrupados por categoría de una tienda. Solo incluye productos disponibles, ordenados por precio ascendente. Público."
       }
     },
     {
@@ -104,7 +104,7 @@
             }
           ]
         },
-        "description": "Retorna los productos más vendidos de una tienda. Público."
+        "description": "Retorna los 5 productos más vendidos de una tienda. Público."
       }
     },
     {
@@ -124,7 +124,7 @@
             }
           ]
         },
-        "description": "Retorna los adiciones disponibles de una categoría. Público."
+        "description": "Retorna las adiciones disponibles de una categoría, ordenadas por precio ascendente. Público."
       }
     },
     {
@@ -140,11 +140,31 @@
             {
               "key": "item_id",
               "value": "00000000-0000-0000-0000-000000000000",
-              "description": "UUID del item"
+              "description": "UUID del producto"
             }
           ]
         },
-        "description": "Retorna los sabores disponibles de un producto. Público."
+        "description": "Retorna los sabores asociados a un producto específico. Público."
+      }
+    },
+    {
+      "name": "Get Flavors by Category",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/products/flavors/category?category_id=00000000-0000-0000-0000-000000000000",
+          "host": ["{{base_url}}"],
+          "path": ["products", "flavors", "category"],
+          "query": [
+            {
+              "key": "category_id",
+              "value": "00000000-0000-0000-0000-000000000000",
+              "description": "UUID de la categoría"
+            }
+          ]
+        },
+        "description": "Retorna todos los sabores asociados a una categoría específica. Público."
       }
     }
   ]

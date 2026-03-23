@@ -15,6 +15,7 @@ type ItemsOrder struct {
 	OrderID     uuid.UUID       `bun:"order_id"`
 	ItemID      uuid.UUID       `bun:"item_id"`
 	Name        string          `bun:"name"`
+	Image       string          `bun:"image"`
 	Amount      int             `bun:"amount"`
 	UnitPrice   int             `bun:"unit_price"`
 	TotalPrice  int             `bun:"total_price"`

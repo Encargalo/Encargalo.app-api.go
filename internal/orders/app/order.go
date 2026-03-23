@@ -95,6 +95,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 
 	orderModel.SetPrices(items)
 	orderModel.SetItemName(items)
+	orderModel.SetItemImage(items)
 
 	for _, v := range orderModel.ItemsOrders {
 		if v.Additions != nil {

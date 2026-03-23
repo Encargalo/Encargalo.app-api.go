@@ -32,6 +32,7 @@ func (d *Details) BuildDetails(order *Order, shop *ShopOrder, customer *models.A
 		d.ItemsDetails[i].ID = order.ItemsOrders[i].ID
 		d.ItemsDetails[i].Name = order.ItemsOrders[i].Name
 		d.ItemsDetails[i].Amount = order.ItemsOrders[i].Amount
+		d.ItemsDetails[i].Image = order.ItemsOrders[i].Image
 		d.ItemsDetails[i].UnitPrice = order.ItemsOrders[i].UnitPrice
 		d.ItemsDetails[i].TotalPrice = order.ItemsOrders[i].TotalPrice
 		d.ItemsDetails[i].Observation = order.ItemsOrders[i].Observation
@@ -71,6 +72,7 @@ type shopDetails struct {
 type itemsDetails struct {
 	ID          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
+	Image       string    `json:"image"`
 	Amount      int       `json:"amount"`
 	UnitPrice   int       `json:"unit_price"`
 	TotalPrice  int       `json:"total_price"`

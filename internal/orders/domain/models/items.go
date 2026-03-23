@@ -11,5 +11,6 @@ type Items struct {
 	ID     uuid.UUID `bun:"id,pk,type:uuid,default:uuid_generate_v4()" json:"id"`
 	ShopID uuid.UUID `bun:"shop_id"`
 	Name   string    `bun:"name" json:"name"`
+	Image  string    `bun:"image" json:"image"`
 	Price  int       `bun:"price" json:"price"`
 }

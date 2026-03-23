@@ -42,7 +42,7 @@ func (i *Item) BuildToModel(item dtos.RegisterItem, imageURL, imgaePublicID, ima
 	i.ImageHash = imageHash
 	i.Description = item.Description
 	i.IsAvailable = false
-	i.HasFlavors = *item.HasFlavors
+	i.HasFlavors = item.HasFlavors
 }
 
 func (i *Item) ToDomainDTO() dtos.ItemResponse {
