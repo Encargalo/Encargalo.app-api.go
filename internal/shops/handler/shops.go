@@ -47,12 +47,7 @@ func (s *shops) GetAllShops(c echo.Context) error {
 
 	shops, err := s.app.GetAllShops(ctx, coords)
 	if err != nil {
-		switch err.Error() {
-		case "not found":
-			return echo.NewHTTPError(http.StatusNotFound, err.Error())
-		default:
-			return echo.NewHTTPError(http.StatusInternalServerError, "unexpected error")
-		}
+		return err
 	}
 
 	return c.JSON(http.StatusOK, shops)
@@ -75,7 +70,6 @@ func (p *shops) GetShopsBy(c echo.Context) error {
 	ctx := c.Request().Context()
 
 	criteria := dtos.SearchShopsByID{}
-
 	coords := dtos.Coords{}
 
 	if err := c.Bind(&criteria); err != nil {
@@ -96,12 +90,8 @@ func (p *shops) GetShopsBy(c echo.Context) error {
 
 	products, err := p.app.GetShopsBy(ctx, criteria, coords)
 	if err != nil {
-		switch err.Error() {
-		case "not found":
-			return echo.NewHTTPError(http.StatusNotFound, err.Error())
-		default:
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-		}
+		return err
 	}
+
 	return c.JSON(http.StatusOK, products)
 }

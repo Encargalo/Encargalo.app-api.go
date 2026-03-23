@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"errors"
 	"log/slog"
 	"net/http"
 
@@ -59,17 +58,12 @@ func (a *auth) SignInCustomer(e echo.Context) error {
 
 	sessionID, err := a.svc.SignInCustomer(ctx, signIn.Phone, signIn.Password)
 	if err != nil {
-		if errors.Is(err, errcustom.ErrIncorrectAccessData) {
-			return echo.NewHTTPError(http.StatusUnprocessableEntity, err.Error())
-		}
-
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-
+		return err
 	}
 
 	jwtSession, err := a.jwt.CreateSession(sessionID)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
+		return errcustom.ErrUnexpectedError
 	}
 
 	e.SetCookie(a.cookie.CreateCookieSession(jwtSession))
@@ -106,21 +100,17 @@ func (a *auth) SignInEmployee(e echo.Context) error {
 
 	sessionID, err := a.svc.SignInEmployee(ctx, signIn.Phone, signIn.Password)
 	if err != nil {
-		if errors.Is(err, errcustom.ErrIncorrectAccessData) {
-			return echo.NewHTTPError(http.StatusUnprocessableEntity, err.Error())
-		}
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return err
 	}
 
 	jwtSession, err := a.jwt.CreateSession(sessionID)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
+		return errcustom.ErrUnexpectedError
 	}
 
 	e.SetCookie(a.cookie.CreateCookieSession(jwtSession))
 
 	return e.JSON(http.StatusCreated, "session created")
-
 }
 
 // DeleteSession godoc
@@ -144,7 +134,7 @@ func (s *auth) Logout(e echo.Context) error {
 	}
 
 	if err := s.svc.DeleteSession(ctx, session.ID); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
+		return err
 	}
 
 	e.SetCookie(s.cookie.DeleteCookieSession())

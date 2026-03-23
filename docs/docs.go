@@ -284,6 +284,18 @@ const docTemplate = `{
                             "$ref": "#/definitions/dtos.ErrorResponse"
                         }
                     },
+                    "409": {
+                        "description": "Order already exists",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "One or more items/additions not found",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Unexpected internal server error",
                         "schema": {
@@ -617,8 +629,14 @@ const docTemplate = `{
                             "type": "string"
                         }
                     },
-                    "409": {
+                    "404": {
                         "description": "customer not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "phone already exist",
                         "schema": {
                             "type": "string"
                         }
@@ -660,6 +678,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Se retorna cuando hay un campo que no cumple con los requisitos o directamente el body se envía vacío.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "Se retorna cuando el teléfono ya está registrado.",
                         "schema": {
                             "type": "string"
                         }
@@ -832,7 +856,7 @@ const docTemplate = `{
                             "type": "string"
                         }
                     },
-                    "409": {
+                    "404": {
                         "description": "customer not found",
                         "schema": {
                             "type": "string"

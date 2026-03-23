@@ -34,6 +34,8 @@ func NewOrderHandler(svc ports.OrdersApp, svc2 app.AppManagerOrder) OrderHandler
 // @Param        order  body      dtos.CreateOrder  true  "Order payload"
 // @Success      201    {string}  string  "Order created successfully"
 // @Failure      400  {object}  dtos.ErrorResponse "Invalid request body or validation failed"
+// @Failure      409  {object}  dtos.ErrorResponse "Order already exists"
+// @Failure      422  {object}  dtos.ErrorResponse "One or more items/additions not found"
 // @Failure      500  {object}  dtos.ErrorResponse "Unexpected internal server error"
 // @Router       /orders [post]
 func (o *orderHandler) CreateOrder(c echo.Context) error {
@@ -60,16 +62,7 @@ func (o *orderHandler) CreateOrder(c echo.Context) error {
 
 	orderModel, err := o.svc.CreateOrder(ctx, &order)
 	if err != nil {
-		switch err.Error() {
-		case "order already exists":
-			return echo.NewHTTPError(http.StatusConflict, err.Error())
-		case "one or more items not found":
-			return echo.NewHTTPError(http.StatusUnprocessableEntity, err.Error())
-		case "one or more additions not found":
-			return echo.NewHTTPError(http.StatusUnprocessableEntity, err.Error())
-		default:
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-		}
+		return err
 	}
 
 	if err = o.svc2.BroadcastOrder(*orderModel); err != nil {

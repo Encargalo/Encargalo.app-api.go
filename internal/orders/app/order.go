@@ -59,11 +59,11 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 
 	ord, err := o.SearchOrdersByID(ctx, order.ID)
 	if ord != nil {
-		return &models.Order{}, errors.New("order already exists")
+		return &models.Order{}, errcustom.ErrOrderAlreadyExists
 	}
 
 	if err != nil {
-		if err.Error() != "order not found" {
+		if !errors.Is(err, errcustom.ErrNotFound) {
 			return &models.Order{}, err
 		}
 	}
@@ -71,7 +71,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 	batchID, err := o.shops.SearchBatchByShopID(ctx, order.ShopID)
 	if err != nil {
 		if errors.Is(err, errcustom.ErrNotFound) {
-			return &models.Order{}, errors.New("batch not open")
+			return &models.Order{}, errcustom.ErrBatchNotOpen
 		}
 	}
 

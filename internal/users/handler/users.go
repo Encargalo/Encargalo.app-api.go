@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -44,6 +43,7 @@ func NewUsersHandler(customerApp ports.UsersApp, auth portsAuth.AuthApp, jwt jwt
 // @Param        customer  body  dto.RegisterCustomer  true  "Datos del cliente"
 // @Success      201  {string}  string  "customer successfully registered"
 // @Failure      400 {string} string "Se retorna cuando hay un campo que no cumple con los requisitos o directamente el body se envía vacío."
+// @Failure      409 {string} string "Se retorna cuando el teléfono ya está registrado."
 // @Failure      500 {string} string "Se retorna cuando ocurre un error inexperado en el servidor."
 // @Router       /users [post]
 func (c *customersHandler) RegisterCustomer(e echo.Context) error {
@@ -60,12 +60,8 @@ func (c *customersHandler) RegisterCustomer(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	err := c.customerApp.RegisterCustomer(ctx, customer)
-	if err != nil {
-		if errors.Is(err, errcustom.ErrPhoneAlreadyExist) {
-			return echo.NewHTTPError(http.StatusConflict, err.Error())
-		}
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	if err := c.customerApp.RegisterCustomer(ctx, customer); err != nil {
+		return err
 	}
 
 	sessionId, err := c.auth.SignInCustomer(ctx, customer.Phone, customer.Password)
@@ -75,7 +71,7 @@ func (c *customersHandler) RegisterCustomer(e echo.Context) error {
 
 	jwtSession, err := c.jwt.CreateSession(sessionId)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
+		return errcustom.ErrUnexpectedError
 	}
 
 	e.SetCookie(c.cookie.CreateCookieSession(jwtSession))
@@ -108,12 +104,7 @@ func (c *customersHandler) SearchCustomer(e echo.Context) error {
 
 	custo, err := c.customerApp.SearchCustomerBy(ctx, customerID)
 	if err != nil {
-		switch err.Error() {
-		case "not found":
-			return echo.NewHTTPError(http.StatusNotFound, "not found")
-		default:
-			return echo.NewHTTPError(http.StatusInternalServerError, "unexpected error")
-		}
+		return err
 	}
 
 	return e.JSON(http.StatusOK, custo.ToDomainDTO())
@@ -128,7 +119,8 @@ func (c *customersHandler) SearchCustomer(e echo.Context) error {
 // @Param customer body dto.UpdateCustomer true "Datos del cliente a actualizar"
 // @Success 200 {string} string "customer updated success"
 // @Failure 400 {string} string "error de validación o formato inválido"
-// @Failure 409 {string} string "customer not found"
+// @Failure 404 {string} string "customer not found"
+// @Failure 409 {string} string "phone already exist"
 // @Failure 500 {string} string "unexpected error"
 // @Security SessionCookie
 // @Router /users [put]
@@ -145,6 +137,7 @@ func (c *customersHandler) UpdateCustomer(e echo.Context) error {
 	if err := customer.Validate(); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
+
 	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
 	if !ok {
 		slog.Error("No se encontró el usuario en el contexto")
@@ -152,14 +145,7 @@ func (c *customersHandler) UpdateCustomer(e echo.Context) error {
 	}
 
 	if err := c.customerApp.UpdateCustomer(ctx, session.UserID, customer); err != nil {
-		switch err.Error() {
-		case "not found.":
-			return echo.NewHTTPError(http.StatusConflict, "customer not found")
-		case "phone al ready exist":
-			return echo.NewHTTPError(http.StatusConflict, "phone al ready exist")
-		default:
-			return echo.NewHTTPError(http.StatusInternalServerError, "unexpected error")
-		}
+		return err
 	}
 
 	return e.JSON(http.StatusOK, "customer updated success")
@@ -174,7 +160,7 @@ func (c *customersHandler) UpdateCustomer(e echo.Context) error {
 // @Param password body dto.UpdatePassword true "Datos para actualizar la contraseña"
 // @Success 200 {string} string "password updated success"
 // @Failure 400 {string} string "error de validación o formato inválido"
-// @Failure 409 {string} string "customer not found"
+// @Failure 404 {string} string "customer not found"
 // @Failure 500 {string} string "unexpected error"
 // @Security SessionCookie
 // @Router /users/change-password [put]
@@ -199,12 +185,7 @@ func (c *customersHandler) UpdatePassword(e echo.Context) error {
 	}
 
 	if err := c.customerApp.UpdatePassword(ctx, session.UserID, pass); err != nil {
-		switch err {
-		case errcustom.ErrNotFound:
-			return echo.NewHTTPError(http.StatusConflict, "customer not found")
-		default:
-			return echo.NewHTTPError(http.StatusInternalServerError, "unexpected error")
-		}
+		return err
 	}
 
 	return e.JSON(http.StatusOK, "password updated success")

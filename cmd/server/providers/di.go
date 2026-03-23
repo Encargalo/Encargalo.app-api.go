@@ -14,6 +14,7 @@ import (
 	"Encargalo.app-api.go/internal/shared/adapters/redis"
 	"Encargalo.app-api.go/internal/shared/adapters/slack"
 	"Encargalo.app-api.go/internal/shared/config"
+	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shared/jwt"
 	"Encargalo.app-api.go/internal/shops/app"
 	"Encargalo.app-api.go/internal/shops/handler"
@@ -54,7 +55,9 @@ func BuildContainer() *dig.Container {
 	})
 
 	_ = Container.Provide(func() *echo.Echo {
-		return echo.New()
+		e := echo.New()
+		e.HTTPErrorHandler = errcustom.HTTPErrorHandler
+		return e
 	})
 
 	_ = Container.Provide(func() *cloudinary.Cloudinary {

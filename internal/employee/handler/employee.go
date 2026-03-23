@@ -6,6 +6,7 @@ import (
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/employee/domain/ports"
+	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/labstack/echo/v4"
 )
 
@@ -28,17 +29,12 @@ func (e *employyeHandler) SearchEmployee(c echo.Context) error {
 	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
 	if !ok {
 		slog.Error("No session found in context")
-		return echo.NewHTTPError(http.StatusInternalServerError)
+		return errcustom.ErrUnexpectedError
 	}
 
 	employee, err := e.svc.SearchEmployeeByID(ctx, session.UserID)
 	if err != nil {
-		switch err.Error() {
-		case "not found":
-			return echo.NewHTTPError(http.StatusNotFound, "not found")
-		default:
-			return echo.NewHTTPError(http.StatusInternalServerError, "unexpected error")
-		}
+		return err
 	}
 
 	return c.JSON(http.StatusOK, employee)

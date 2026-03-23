@@ -29,7 +29,7 @@ func (c *customersApp) RegisterCustomer(ctx context.Context, customer dto.Regist
 
 	custo, err := c.SearchCustomerBy(ctx, dto.SearchCustomerBy{Phone: customer.Phone})
 	if err != nil {
-		if err == errcustom.ErrNotFound {
+		if err != errcustom.ErrNotFound {
 			return err
 		}
 	}
