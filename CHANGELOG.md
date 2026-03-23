@@ -125,8 +125,12 @@
 * mejorar manejo de errores y registro de órdenes en la función Register ([61a8246](https://github.com/Encargalo/Encargalo.app-api.go/commit/61a824624a6dc8186e0c6a4434199aba43a7253e))
 * **order:** ajustar cálculo del precio total para incluir la tarifa de entrega ([f7cf228](https://github.com/Encargalo/Encargalo.app-api.go/commit/f7cf2283cb76b013ea38a62d42b640bee9d8ffad))
 * **router:** corregir importación de documentación en el enrutador ([82e39b6](https://github.com/Encargalo/Encargalo.app-api.go/commit/82e39b648de9c72416e65403f525486a00b031bf))
+* target develop branch for release-please releases ([274c377](https://github.com/Encargalo/Encargalo.app-api.go/commit/274c377588cbe77c15332d22af3bc494f65be409))
+* trigger release-please on both develop and main PR merges ([28c88d0](https://github.com/Encargalo/Encargalo.app-api.go/commit/28c88d0712f456224d5201714108f5817ee724f9))
 * update import path for gosuite config package ([23eef79](https://github.com/Encargalo/Encargalo.app-api.go/commit/23eef79f6e90f0bc729280b025b64dfb6a8a2bf9))
 * update import path for gosuite config package ([b901cf0](https://github.com/Encargalo/Encargalo.app-api.go/commit/b901cf0c5157c0053d83f0e0098bc6035b22a262))
+* use PAT to allow release-please to create pull requests ([6ec5256](https://github.com/Encargalo/Encargalo.app-api.go/commit/6ec52568a961adf2a845476de3878a016bd0d23f))
+* use PAT to allow release-please to create pull requests ([91d47f9](https://github.com/Encargalo/Encargalo.app-api.go/commit/91d47f9b26c0dd150296f7b270ae269441b1b10b))
 
 
 ### Refactors
