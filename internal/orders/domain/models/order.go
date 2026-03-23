@@ -74,6 +74,20 @@ func (o *Order) SetItemName(items models.Items) {
 	}
 }
 
+func (o *Order) SetItemImage(items models.Items) {
+
+	imageMap := make(map[uuid.UUID]string, len(items))
+	for _, item := range items {
+		imageMap[item.ID] = item.Image
+	}
+
+	for i := range o.ItemsOrders {
+		if image, ok := imageMap[o.ItemsOrders[i].ItemID]; ok {
+			o.ItemsOrders[i].Image = image
+		}
+	}
+}
+
 func (o *Order) SetPrices(items models.Items) {
 
 	priceMap := make(map[uuid.UUID]int, len(items))

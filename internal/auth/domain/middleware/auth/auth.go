@@ -61,7 +61,7 @@ func (a *auth) Auth(next echo.HandlerFunc) echo.HandlerFunc {
 			return echo.NewHTTPError(http.StatusUnauthorized, "session expired")
 		}
 
-		ctx = context.WithValue(ctx, "session", *session)
+		ctx = context.WithValue(ctx, models.SessionKey, *session)
 		c.SetRequest(req.WithContext(ctx))
 
 		return next(c)
@@ -76,7 +76,7 @@ func (a *auth) Require(allowed ...models.Role) echo.MiddlewareFunc {
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			session, ok := c.Request().Context().Value("session").(models.ActiveSession)
+			session, ok := c.Request().Context().Value(models.SessionKey).(models.ActiveSession)
 			if !ok {
 				return echo.NewHTTPError(http.StatusUnauthorized, "session not found in context")
 			}

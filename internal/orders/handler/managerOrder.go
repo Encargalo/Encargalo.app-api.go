@@ -81,12 +81,10 @@ var upgrader = websocket.Upgrader{
 // @Failure 403 {string}  "Acceso denegado"
 // @Failure 500 {string}  "Error interno del servidor"
 // @Router /orders/manager [get]
-// @DeprecatedRouter /customers/orders/manager [get]
-// @DeprecatedRouter /employee/orders/manager [get]
 func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 	ctx := c.Request().Context()
 
-	session, ok := ctx.Value("session").(models.ActiveSession)
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
 	if !ok {
 		slog.Error("No se encontró la sesión en el contexto")
 		return errcustom.ErrUnexpectedError
@@ -114,20 +112,20 @@ func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 
 	client, err := h.svc.Register(ctx, connectionID, conn, isShop)
 	if err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return err
 	}
 
 	defer func() {
 		h.svc.Unregister(connectionID, client, isShop)
-		conn.Close()
+		_ = conn.Close()
 	}()
 
 	conn.SetReadLimit(4096)
-	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	_ = conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 
 	conn.SetPongHandler(func(string) error {
-		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		_ = conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 		return nil
 	})
 
@@ -177,7 +175,9 @@ func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 				continue
 			}
 
-			h.svc.BroadcastOrder(order)
+			if err := h.svc.BroadcastOrder(order); err != nil {
+				slog.Error("Error broadcasting order", "error", err)
+			}
 
 		default:
 		}

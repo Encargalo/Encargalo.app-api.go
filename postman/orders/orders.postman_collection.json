@@ -1,0 +1,66 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-0050-4000-8000-000000000000",
+    "name": "Encargalo - Orders",
+    "description": "Endpoints de órdenes. Requieren cookie `encargalo-session`. Create Order: rol Customer/customer. Manager WebSocket: Customer, customer u Order Manager.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Create Order",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"shop_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa7\",\n  \"method_payment\": \"Nequi\",\n  \"delivery_fee\": 5000,\n  \"address\": {\n    \"address\": \"Calle 123 # 45-67\",\n    \"latitude\": 4.609710,\n    \"longitude\": -74.081750\n  },\n  \"items\": [\n    {\n      \"item_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa8\",\n      \"amount\": 2,\n      \"observation\": \"Sin cebolla\",\n      \"flavors\": {\n        \"Hawaiana\": 1,\n        \"Pepperoni\": 1\n      },\n      \"additions\": [\n        {\n          \"addition_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa9\"\n        }\n      ]\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/orders",
+          "host": ["{{base_url}}"],
+          "path": ["orders"]
+        },
+        "description": "Crea una nueva orden. `customer_id` se obtiene automáticamente del token. `method_payment` acepta: Nequi, Efectivo. Requiere cookie `encargalo-session`. Roles: Customer, customer."
+      }
+    },
+    {
+      "name": "Orders Manager WebSocket",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Connection",
+            "value": "Upgrade"
+          },
+          {
+            "key": "Upgrade",
+            "value": "websocket"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/orders/manager",
+          "host": ["{{base_url}}"],
+          "path": ["orders", "manager"]
+        },
+        "description": "WebSocket para el gestor de órdenes en tiempo real. Conectar con ws:// en lugar de http://. Requiere cookie `encargalo-session`. Roles: Customer, customer, Order Manager.\n\nNOTA: Para probar WebSockets en Postman, crea una nueva request de tipo WebSocket con la URL: ws://localhost:8080/orders/manager"
+      }
+    }
+  ]
+}

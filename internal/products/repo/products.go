@@ -44,6 +44,34 @@ func (p *productsRepo) RegisterItem(ctx context.Context, item *models.Item) erro
 	return err
 }
 
+func (p *productsRepo) DeleteItemFlavors(ctx context.Context, itemID uuid.UUID) error {
+	if _, err := p.db.NewDelete().
+		Model((*models.ItemsFlavor)(nil)).
+		Where("item_id = ?", itemID).
+		Exec(ctx); err != nil {
+		slog.Error("Error al eliminar sabores del producto", "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+	return nil
+}
+
+func (p *productsRepo) RegisterItemFlavors(ctx context.Context, itemID uuid.UUID, flavorIDs []uuid.UUID) error {
+	itemsFlavors := make([]models.ItemsFlavor, len(flavorIDs))
+	for i, flavorID := range flavorIDs {
+		itemsFlavors[i] = models.ItemsFlavor{
+			ItemID:   itemID,
+			FlavorID: flavorID,
+		}
+	}
+
+	if _, err := p.db.NewInsert().Model(&itemsFlavors).Exec(ctx); err != nil {
+		slog.Error("Error al registrar sabores del producto", "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+
+	return nil
+}
+
 func (p *productsRepo) UpdateItem(ctx context.Context, item *models.UpdateItem, shopID uuid.UUID) error {
 	_, err := p.db.NewUpdate().Model(item).WherePK().Exec(ctx)
 	if err != nil {
@@ -123,11 +151,11 @@ func (p *productsRepo) SearchAdditionsByShopID(ctx context.Context, categoryID u
 
 	if err != nil {
 		fmt.Println(err.Error())
-		return nil, fmt.Errorf("unexpected error")
+		return nil, errcustom.ErrUnexpectedError
 	}
 
 	if len(categoryAdditions) == 0 {
-		return nil, fmt.Errorf("additions not found")
+		return nil, errcustom.ErrNotFound
 	}
 
 	var additions models.Additions
@@ -151,11 +179,31 @@ func (p *productsRepo) SearchFlavorsByItemID(ctx context.Context, itemID uuid.UU
 		Where("if.item_id = ?", itemID).
 		Scan(ctx, &flavors); err != nil {
 		fmt.Println(err.Error())
-		return nil, fmt.Errorf("unexpected error")
+		return nil, errcustom.ErrUnexpectedError
 	}
 
 	if len(flavors) == 0 {
-		return nil, fmt.Errorf("flavors not found")
+		return nil, errcustom.ErrNotFound
+	}
+
+	return flavors.ToDomainDTO(), nil
+}
+
+func (p *productsRepo) SearchFlavorsByCategoryID(ctx context.Context, categoryID uuid.UUID) (dtos.FlavorsResponse, error) {
+
+	var flavors models.Flavors
+
+	if err := p.db.NewSelect().
+		Model(&flavors).
+		Where("category_id = ?", categoryID).
+		Where("deleted_at IS NULL").
+		Scan(ctx); err != nil {
+		slog.Error("error al obtener los sabores por categoría", "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	if len(flavors) == 0 {
+		return nil, errcustom.ErrNotFound
 	}
 
 	return flavors.ToDomainDTO(), nil

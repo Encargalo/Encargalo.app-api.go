@@ -1,0 +1,259 @@
+package handler_test
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"net/http"
+	"testing"
+
+	authhandler "Encargalo.app-api.go/internal/auth/handler"
+	"Encargalo.app-api.go/internal/auth/domain/models"
+	mocksports "Encargalo.app-api.go/internal/mocks/auth/domain/ports"
+	mockscookie "Encargalo.app-api.go/internal/mocks/pkg/cookie"
+	mocksjwt "Encargalo.app-api.go/internal/mocks/shared/jwt"
+	"Encargalo.app-api.go/internal/shared/buildhttptest"
+	"Encargalo.app-api.go/internal/shared/errcustom"
+	"github.com/google/uuid"
+	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
+)
+
+func buildBody(t *testing.T, v any) *bytes.Buffer {
+	t.Helper()
+	b, err := json.Marshal(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return bytes.NewBuffer(b)
+}
+
+func httpCode(err error) int {
+	if he, ok := err.(*echo.HTTPError); ok {
+		return he.Code
+	}
+	return 0
+}
+
+// --- SignInCustomer ---
+
+func TestSignInCustomer_Success(t *testing.T) {
+	svc := mocksports.NewAuthApp(t)
+	jwtMock := mocksjwt.NewSessions(t)
+	cookieMock := mockscookie.NewCookieHandler(t)
+
+	sessionID := uuid.New()
+	body := buildBody(t, map[string]string{"phone_number": "+573001112233", "password": "claveSegura123"})
+	tc := buildhttptest.SetupControllerCase("/auth/sign-in/users", http.MethodPost, body)
+
+	svc.On("SignInCustomer", tc.Req.Context(), "+573001112233", "claveSegura123").Return(sessionID, nil)
+	jwtMock.On("CreateSession", sessionID).Return("jwt-token", nil)
+	cookieMock.On("CreateCookieSession", "jwt-token").Return(&http.Cookie{Name: "encargalo-session", Value: "jwt-token"})
+
+	h := authhandler.NewAuthHandler(svc, jwtMock, cookieMock)
+	err := h.SignInCustomer(tc.Ctx)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusCreated, tc.Res.Code)
+}
+
+func TestSignInCustomer_InvalidBody(t *testing.T) {
+	svc := mocksports.NewAuthApp(t)
+	jwtMock := mocksjwt.NewSessions(t)
+	cookieMock := mockscookie.NewCookieHandler(t)
+
+	body := bytes.NewBufferString("{invalid-json}")
+	tc := buildhttptest.SetupControllerCase("/auth/sign-in/users", http.MethodPost, body)
+
+	h := authhandler.NewAuthHandler(svc, jwtMock, cookieMock)
+	err := h.SignInCustomer(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusBadRequest, httpCode(err))
+}
+
+func TestSignInCustomer_ValidationFail(t *testing.T) {
+	svc := mocksports.NewAuthApp(t)
+	jwtMock := mocksjwt.NewSessions(t)
+	cookieMock := mockscookie.NewCookieHandler(t)
+
+	// phone_number inválido (no formato e164)
+	body := buildBody(t, map[string]string{"phone_number": "123", "password": "pass"})
+	tc := buildhttptest.SetupControllerCase("/auth/sign-in/users", http.MethodPost, body)
+
+	h := authhandler.NewAuthHandler(svc, jwtMock, cookieMock)
+	err := h.SignInCustomer(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusBadRequest, httpCode(err))
+}
+
+func TestSignInCustomer_IncorrectCredentials(t *testing.T) {
+	svc := mocksports.NewAuthApp(t)
+	jwtMock := mocksjwt.NewSessions(t)
+	cookieMock := mockscookie.NewCookieHandler(t)
+
+	body := buildBody(t, map[string]string{"phone_number": "+573001112233", "password": "wrong"})
+	tc := buildhttptest.SetupControllerCase("/auth/sign-in/users", http.MethodPost, body)
+
+	svc.On("SignInCustomer", tc.Req.Context(), "+573001112233", "wrong").Return(uuid.UUID{}, errcustom.ErrIncorrectAccessData)
+
+	h := authhandler.NewAuthHandler(svc, jwtMock, cookieMock)
+	err := h.SignInCustomer(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusUnprocessableEntity, httpCode(err))
+}
+
+func TestSignInCustomer_UnexpectedError(t *testing.T) {
+	svc := mocksports.NewAuthApp(t)
+	jwtMock := mocksjwt.NewSessions(t)
+	cookieMock := mockscookie.NewCookieHandler(t)
+
+	body := buildBody(t, map[string]string{"phone_number": "+573001112233", "password": "pass"})
+	tc := buildhttptest.SetupControllerCase("/auth/sign-in/users", http.MethodPost, body)
+
+	svc.On("SignInCustomer", tc.Req.Context(), "+573001112233", "pass").Return(uuid.UUID{}, errcustom.ErrUnexpectedError)
+
+	h := authhandler.NewAuthHandler(svc, jwtMock, cookieMock)
+	err := h.SignInCustomer(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusInternalServerError, httpCode(err))
+}
+
+func TestSignInCustomer_JWTError(t *testing.T) {
+	svc := mocksports.NewAuthApp(t)
+	jwtMock := mocksjwt.NewSessions(t)
+	cookieMock := mockscookie.NewCookieHandler(t)
+
+	sessionID := uuid.New()
+	body := buildBody(t, map[string]string{"phone_number": "+573001112233", "password": "pass"})
+	tc := buildhttptest.SetupControllerCase("/auth/sign-in/users", http.MethodPost, body)
+
+	svc.On("SignInCustomer", tc.Req.Context(), "+573001112233", "pass").Return(sessionID, nil)
+	jwtMock.On("CreateSession", sessionID).Return("", errcustom.ErrUnexpectedError)
+
+	h := authhandler.NewAuthHandler(svc, jwtMock, cookieMock)
+	err := h.SignInCustomer(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusInternalServerError, httpCode(err))
+}
+
+// --- SignInEmployee ---
+
+func TestSignInEmployee_Success(t *testing.T) {
+	svc := mocksports.NewAuthApp(t)
+	jwtMock := mocksjwt.NewSessions(t)
+	cookieMock := mockscookie.NewCookieHandler(t)
+
+	sessionID := uuid.New()
+	body := buildBody(t, map[string]string{"phone_number": "+573001112233", "password": "claveSegura123"})
+	tc := buildhttptest.SetupControllerCase("/auth/sign-in/employees", http.MethodPost, body)
+
+	svc.On("SignInEmployee", tc.Req.Context(), "+573001112233", "claveSegura123").Return(sessionID, nil)
+	jwtMock.On("CreateSession", sessionID).Return("jwt-token", nil)
+	cookieMock.On("CreateCookieSession", "jwt-token").Return(&http.Cookie{Name: "encargalo-session", Value: "jwt-token"})
+
+	h := authhandler.NewAuthHandler(svc, jwtMock, cookieMock)
+	err := h.SignInEmployee(tc.Ctx)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusCreated, tc.Res.Code)
+}
+
+func TestSignInEmployee_IncorrectCredentials(t *testing.T) {
+	svc := mocksports.NewAuthApp(t)
+	jwtMock := mocksjwt.NewSessions(t)
+	cookieMock := mockscookie.NewCookieHandler(t)
+
+	body := buildBody(t, map[string]string{"phone_number": "+573001112233", "password": "wrong"})
+	tc := buildhttptest.SetupControllerCase("/auth/sign-in/employees", http.MethodPost, body)
+
+	svc.On("SignInEmployee", tc.Req.Context(), "+573001112233", "wrong").Return(uuid.UUID{}, errcustom.ErrIncorrectAccessData)
+
+	h := authhandler.NewAuthHandler(svc, jwtMock, cookieMock)
+	err := h.SignInEmployee(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusUnprocessableEntity, httpCode(err))
+}
+
+func TestSignInEmployee_UnexpectedError(t *testing.T) {
+	svc := mocksports.NewAuthApp(t)
+	jwtMock := mocksjwt.NewSessions(t)
+	cookieMock := mockscookie.NewCookieHandler(t)
+
+	body := buildBody(t, map[string]string{"phone_number": "+573001112233", "password": "pass"})
+	tc := buildhttptest.SetupControllerCase("/auth/sign-in/employees", http.MethodPost, body)
+
+	svc.On("SignInEmployee", tc.Req.Context(), "+573001112233", "pass").Return(uuid.UUID{}, errcustom.ErrUnexpectedError)
+
+	h := authhandler.NewAuthHandler(svc, jwtMock, cookieMock)
+	err := h.SignInEmployee(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusInternalServerError, httpCode(err))
+}
+
+// --- Logout ---
+
+func TestLogout_Success(t *testing.T) {
+	svc := mocksports.NewAuthApp(t)
+	jwtMock := mocksjwt.NewSessions(t)
+	cookieMock := mockscookie.NewCookieHandler(t)
+
+	sessionID := uuid.New()
+	session := models.ActiveSession{ID: sessionID}
+
+	tc := buildhttptest.SetupControllerCase("/auth/logout", http.MethodDelete, nil)
+	ctx := context.WithValue(tc.Req.Context(), models.SessionKey, session)
+	tc.Req = tc.Req.WithContext(ctx)
+	tc.Ctx.SetRequest(tc.Req)
+
+	svc.On("DeleteSession", ctx, sessionID).Return(nil)
+	cookieMock.On("DeleteCookieSession").Return(&http.Cookie{Name: "encargalo-session", Value: "", MaxAge: -1})
+
+	h := authhandler.NewAuthHandler(svc, jwtMock, cookieMock)
+	err := h.Logout(tc.Ctx)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, tc.Res.Code)
+}
+
+func TestLogout_NoSession(t *testing.T) {
+	svc := mocksports.NewAuthApp(t)
+	jwtMock := mocksjwt.NewSessions(t)
+	cookieMock := mockscookie.NewCookieHandler(t)
+
+	tc := buildhttptest.SetupControllerCase("/auth/logout", http.MethodDelete, nil)
+
+	h := authhandler.NewAuthHandler(svc, jwtMock, cookieMock)
+	err := h.Logout(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, errcustom.ErrUnexpectedError, err)
+}
+
+func TestLogout_DeleteSessionError(t *testing.T) {
+	svc := mocksports.NewAuthApp(t)
+	jwtMock := mocksjwt.NewSessions(t)
+	cookieMock := mockscookie.NewCookieHandler(t)
+
+	sessionID := uuid.New()
+	session := models.ActiveSession{ID: sessionID}
+
+	tc := buildhttptest.SetupControllerCase("/auth/logout", http.MethodDelete, nil)
+	ctx := context.WithValue(tc.Req.Context(), models.SessionKey, session)
+	tc.Req = tc.Req.WithContext(ctx)
+	tc.Ctx.SetRequest(tc.Req)
+
+	svc.On("DeleteSession", ctx, sessionID).Return(errcustom.ErrUnexpectedError)
+
+	h := authhandler.NewAuthHandler(svc, jwtMock, cookieMock)
+	err := h.Logout(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusInternalServerError, httpCode(err))
+}

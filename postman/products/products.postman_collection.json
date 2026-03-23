@@ -1,0 +1,171 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-0040-4000-8000-000000000000",
+    "name": "Encargalo - Products",
+    "description": "Endpoints de productos. POST y PUT requieren cookie `encargalo-session` con rol Order Manager. Los GET son públicos.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Register Item",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"category_id\": \"b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2\",\n  \"name\": \"Pizza Hawaiana Mediana\",\n  \"price\": 32000,\n  \"image\": \"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ...\",\n  \"description\": \"Pizza mediana con jamón, piña y queso mozzarella sobre una base de salsa napolitana.\",\n  \"flavor_ids\": [\n    \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"b2c3d4e5-f6a7-8901-bcde-f12345678901\"\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/products",
+          "host": ["{{base_url}}"],
+          "path": ["products"]
+        },
+        "description": "Registra un nuevo producto en la tienda del empleado autenticado. `shop_id` se obtiene automáticamente del empleado. Si se envía `flavor_ids`, el producto se marcará automáticamente como con sabores. Requiere cookie `encargalo-session`. Rol: Order Manager."
+      }
+    },
+    {
+      "name": "Update Item",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Pizza Hawaiana Grande\",\n  \"price\": 45000,\n  \"description\": \"Pizza grande con jamón, piña y queso mozzarella sobre una base de salsa napolitana.\",\n  \"image\": \"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ...\",\n  \"flavor_ids\": [\n    \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\"\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/products/00000000-0000-0000-0000-000000000000",
+          "host": ["{{base_url}}"],
+          "path": ["products", "00000000-0000-0000-0000-000000000000"]
+        },
+        "description": "Actualiza un producto existente por su `item_id` (UUID en el path). Solo puede actualizarlo el Order Manager de la tienda propietaria.\n\n- `image`: opcional. Solo se sube a Cloudinary si es diferente a la imagen actual (comparación por hash).\n- `flavor_ids`: opcional. Si se envía (incluso `[]`), reemplaza todos los sabores. Si no se envía, los sabores no se modifican. `has_flavors` se deriva automáticamente.\n\nRequiere cookie `encargalo-session`. Rol: Order Manager."
+      }
+    },
+    {
+      "name": "Get Products by Shop",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/products?shop_id=00000000-0000-0000-0000-000000000000",
+          "host": ["{{base_url}}"],
+          "path": ["products"],
+          "query": [
+            {
+              "key": "shop_id",
+              "value": "00000000-0000-0000-0000-000000000000",
+              "description": "UUID de la tienda"
+            }
+          ]
+        },
+        "description": "Retorna todos los productos agrupados por categoría de una tienda. Solo incluye productos disponibles, ordenados por precio ascendente. Público."
+      }
+    },
+    {
+      "name": "Get Best Sellers by Shop",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/products/best-sellers?shop_id=00000000-0000-0000-0000-000000000000",
+          "host": ["{{base_url}}"],
+          "path": ["products", "best-sellers"],
+          "query": [
+            {
+              "key": "shop_id",
+              "value": "00000000-0000-0000-0000-000000000000",
+              "description": "UUID de la tienda"
+            }
+          ]
+        },
+        "description": "Retorna los 5 productos más vendidos de una tienda. Público."
+      }
+    },
+    {
+      "name": "Get Additions by Category",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/products/additions?category_id=00000000-0000-0000-0000-000000000000",
+          "host": ["{{base_url}}"],
+          "path": ["products", "additions"],
+          "query": [
+            {
+              "key": "category_id",
+              "value": "00000000-0000-0000-0000-000000000000",
+              "description": "UUID de la categoría"
+            }
+          ]
+        },
+        "description": "Retorna las adiciones disponibles de una categoría, ordenadas por precio ascendente. Público."
+      }
+    },
+    {
+      "name": "Get Flavors by Item",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/products/flavors?item_id=00000000-0000-0000-0000-000000000000",
+          "host": ["{{base_url}}"],
+          "path": ["products", "flavors"],
+          "query": [
+            {
+              "key": "item_id",
+              "value": "00000000-0000-0000-0000-000000000000",
+              "description": "UUID del producto"
+            }
+          ]
+        },
+        "description": "Retorna los sabores asociados a un producto específico. Público."
+      }
+    },
+    {
+      "name": "Get Flavors by Category",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/products/flavors/category?category_id=00000000-0000-0000-0000-000000000000",
+          "host": ["{{base_url}}"],
+          "path": ["products", "flavors", "category"],
+          "query": [
+            {
+              "key": "category_id",
+              "value": "00000000-0000-0000-0000-000000000000",
+              "description": "UUID de la categoría"
+            }
+          ]
+        },
+        "description": "Retorna todos los sabores asociados a una categoría específica. Público."
+      }
+    }
+  ]
+}

@@ -14,6 +14,7 @@ import (
 	"Encargalo.app-api.go/internal/shared/adapters/redis"
 	"Encargalo.app-api.go/internal/shared/adapters/slack"
 	"Encargalo.app-api.go/internal/shared/config"
+	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shared/jwt"
 	"Encargalo.app-api.go/internal/shops/app"
 	"Encargalo.app-api.go/internal/shops/handler"
@@ -30,9 +31,9 @@ import (
 	handProducts "Encargalo.app-api.go/internal/products/handler"
 	repoProducts "Encargalo.app-api.go/internal/products/repo"
 
-	appCustomer "Encargalo.app-api.go/internal/customers/app"
-	handCustomer "Encargalo.app-api.go/internal/customers/handler"
-	repoCustomer "Encargalo.app-api.go/internal/customers/repo"
+	appCustomer "Encargalo.app-api.go/internal/users/app"
+	handCustomer "Encargalo.app-api.go/internal/users/handler"
+	repoCustomer "Encargalo.app-api.go/internal/users/repo"
 
 	appOrders "Encargalo.app-api.go/internal/orders/app"
 	handOrders "Encargalo.app-api.go/internal/orders/handler"
@@ -54,7 +55,9 @@ func BuildContainer() *dig.Container {
 	})
 
 	_ = Container.Provide(func() *echo.Echo {
-		return echo.New()
+		e := echo.New()
+		e.HTTPErrorHandler = errcustom.HTTPErrorHandler
+		return e
 	})
 
 	_ = Container.Provide(func() *cloudinary.Cloudinary {
@@ -76,33 +79,33 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(groups.NewAuthGroup)
 	_ = Container.Provide(groups.NewShopsGroup)
 	_ = Container.Provide(groups.NewProductsGroup)
-	_ = Container.Provide(groups.NewCustomersGroup)
+	_ = Container.Provide(groups.NewUsersGroup)
 	_ = Container.Provide(groups.NewOrdersGroup)
 	_ = Container.Provide(groups.NewEmployeeGroup)
 
 	_ = Container.Provide(requestinfo.NewRequestMiddleware)
 	_ = Container.Provide(authMiddle.NewAuthMidlleware)
 	_ = Container.Provide(handAuth.NewAuthHandler)
-	_ = Container.Provide(handCustomer.NewCustomersHandler)
+	_ = Container.Provide(handCustomer.NewUsersHandler)
 	_ = Container.Provide(handler.NewShopsHandler)
 	_ = Container.Provide(handProducts.NewProducsHandler)
-	_ = Container.Provide(handCustomer.NewCustomersAddressHandler)
+	_ = Container.Provide(handCustomer.NewUsersAddressHandler)
 	_ = Container.Provide(handOrders.NewOrderHandler)
 	_ = Container.Provide(handOrders.New)
 
-	_ = Container.Provide(appCustomer.NewCustomerApp)
+	_ = Container.Provide(appCustomer.NewUserApp)
 	_ = Container.Provide(appAuth.NewAuthApp)
 	_ = Container.Provide(app.NewShopsApp)
 	_ = Container.Provide(appProducts.NewProductsApp)
-	_ = Container.Provide(appCustomer.NewCustomersAddressApp)
+	_ = Container.Provide(appCustomer.NewUsersAddressApp)
 	_ = Container.Provide(appOrders.NewOrderApp)
 	_ = Container.Provide(appOrders.NewManagerOrderApp)
 
 	_ = Container.Provide(repoAuth.NewAuthRepo)
 	_ = Container.Provide(repo.NewShopsRepository)
 	_ = Container.Provide(repoProducts.NewProductsRepo)
-	_ = Container.Provide(repoCustomer.NewCustomersRepo)
-	_ = Container.Provide(repoCustomer.NewCustomersAddressRepo)
+	_ = Container.Provide(repoCustomer.NewUsersRepo)
+	_ = Container.Provide(repoCustomer.NewUsersAddressRepo)
 	_ = Container.Provide(repoOrders.NewOrdersRepo)
 	_ = Container.Provide(repoOrders.NewRepositoryProducerStream)
 

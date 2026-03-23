@@ -41,68 +41,7 @@
                 }
             }
         },
-        "/auth/sign-in/customers": {
-            "post": {
-                "description": "Autentica a un cliente usando su número de teléfono y contraseña.\nSi las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "Iniciar sesión como cliente",
-                "parameters": [
-                    {
-                        "description": "Datos de inicio de sesión",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/request.SignInRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "session created",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "400": {
-                        "description": "Solicitud inválida (validación o JSON incorrecto)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Credenciales incorrectas",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Error inesperado del servidor",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/auth/sign-in/employee": {
+        "/auth/sign-in/employees": {
             "post": {
                 "description": "Autentica a un empleado usando su número de teléfono y contraseña.\nSi las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.",
                 "consumes": [
@@ -163,430 +102,7 @@
                 }
             }
         },
-        "/customers": {
-            "get": {
-                "description": "Retorna los datos del cliente identificado por el customer_id contenido en el token",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Customers"
-                ],
-                "summary": "Obtiene la información del cliente autenticado",
-                "responses": {
-                    "200": {
-                        "description": "Datos del cliente",
-                        "schema": {
-                            "$ref": "#/definitions/dto.CustomerResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "not found",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "unexpected error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "SessionCookie": []
-                    }
-                ],
-                "description": "Actualiza los datos del cliente usando la información enviada en el cuerpo de la solicitud",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Customers"
-                ],
-                "summary": "Actualiza la información del cliente autenticado",
-                "parameters": [
-                    {
-                        "description": "Datos del cliente a actualizar",
-                        "name": "customer",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.UpdateCustomer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "customer updated success",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "400": {
-                        "description": "error de validación o formato inválido",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "409": {
-                        "description": "customer not found",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "unexpected error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Registrar un nuevo cliente en el sistema con los datos proporcionados. Valida campos obligatorios como nombre, teléfono y contraseña.",
-                "consumes": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Customers"
-                ],
-                "summary": "Registrar un nuevo cliente",
-                "parameters": [
-                    {
-                        "description": "Datos del cliente",
-                        "name": "customer",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.RegisterCustomer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "customer successfully registered",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "400": {
-                        "description": "Se retorna cuando hay un campo que no cumple con los requisitos o directamente el body se envía vacío.",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Se retorna cuando ocurre un error inexperado en el servidor.",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/customers/address": {
-            "get": {
-                "description": "Retorna un arreglo con todas las direcciones asociadas al cliente identificado en el token",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Customers Address"
-                ],
-                "summary": "Obtiene todas las direcciones del cliente autenticado",
-                "responses": {
-                    "200": {
-                        "description": "Lista de direcciones",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/dto.Address"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "not found",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "unexpected error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Registra una dirección asociada al customer_id obtenido del contexto",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Customers Address"
-                ],
-                "summary": "Registra una nueva dirección para el cliente autenticado",
-                "parameters": [
-                    {
-                        "description": "Datos de la dirección",
-                        "name": "address",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.Address"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "address registred",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "400": {
-                        "description": "error de validación o parseo",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "unexpected error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "SessionCookie": []
-                    }
-                ],
-                "description": "Elimina la dirección especificada por su ID, siempre que pertenezca al cliente autenticado",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Customers Address"
-                ],
-                "summary": "Elimina una dirección del cliente autenticado",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "ID de la dirección (UUID)",
-                        "name": "address",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "address deleted success",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "unexpected error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/customers/change-password": {
-            "put": {
-                "security": [
-                    {
-                        "SessionCookie": []
-                    }
-                ],
-                "description": "Permite al cliente autenticado actualizar su contraseña, validando el formato y los requisitos establecidos",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Customers"
-                ],
-                "summary": "Actualiza la contraseña del cliente autenticado",
-                "parameters": [
-                    {
-                        "description": "Datos para actualizar la contraseña",
-                        "name": "password",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.UpdatePassword"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "password updated success",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "400": {
-                        "description": "error de validación o formato inválido",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "409": {
-                        "description": "customer not found",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "unexpected error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/customers/logout": {
-            "delete": {
-                "security": [
-                    {
-                        "SessionCookie": []
-                    }
-                ],
-                "description": "Elimina la sesión activa identificada por session_id en la cookie de autenticación",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "Cierra la sesión actual del cliente o empleado autenticado",
-                "deprecated": true,
-                "responses": {
-                    "200": {
-                        "description": "session deleted success",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "404": {
-                        "description": "not found",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "unexpected error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/customers/orders": {
-            "post": {
-                "description": "Creates a new order with the provided details",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Orders"
-                ],
-                "summary": "Create a new order",
-                "deprecated": true,
-                "parameters": [
-                    {
-                        "description": "Order payload",
-                        "name": "order",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dtos.CreateOrder"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Order created successfully",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request body or validation failed",
-                        "schema": {
-                            "$ref": "#/definitions/dtos.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Unexpected internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/dtos.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/customers/orders/manager": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json",
-                    "text/plain"
-                ],
-                "tags": [
-                    "Orders WebSocket"
-                ],
-                "summary": "WebSocket de gestión de órdenes",
-                "deprecated": true,
-                "responses": {
-                    "401": {
-                        "description": "Sesión no encontrada o inválida",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "403": {
-                        "description": "Acceso denegado",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Error interno del servidor",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/custromers/sign-in": {
+        "/auth/sign-in/users": {
             "post": {
                 "description": "Autentica a un cliente usando su número de teléfono y contraseña.\nSi las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.",
                 "consumes": [
@@ -599,7 +115,6 @@
                     "Auth"
                 ],
                 "summary": "Iniciar sesión como cliente",
-                "deprecated": true,
                 "parameters": [
                     {
                         "description": "Datos de inicio de sesión",
@@ -638,215 +153,6 @@
                     },
                     "500": {
                         "description": "Error inesperado del servidor",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/employee/logout": {
-            "delete": {
-                "security": [
-                    {
-                        "SessionCookie": []
-                    }
-                ],
-                "description": "Elimina la sesión activa identificada por session_id en la cookie de autenticación",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "Cierra la sesión actual del cliente o empleado autenticado",
-                "deprecated": true,
-                "responses": {
-                    "200": {
-                        "description": "session deleted success",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "404": {
-                        "description": "not found",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "unexpected error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/employee/orders/manager": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json",
-                    "text/plain"
-                ],
-                "tags": [
-                    "Orders WebSocket"
-                ],
-                "summary": "WebSocket de gestión de órdenes",
-                "deprecated": true,
-                "responses": {
-                    "401": {
-                        "description": "Sesión no encontrada o inválida",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "403": {
-                        "description": "Acceso denegado",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Error interno del servidor",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/employee/sign-in": {
-            "post": {
-                "description": "Autentica a un empleado usando su número de teléfono y contraseña.\nSi las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "Iniciar sesión como empleado",
-                "deprecated": true,
-                "parameters": [
-                    {
-                        "description": "Datos de inicio de sesión",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/request.SignInRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "session created",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "400": {
-                        "description": "Solicitud inválida (validación o JSON incorrecto)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Credenciales incorrectas",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Error inesperado del servidor",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/items/{item_id}": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Actualiza la información de un producto existente.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Products"
-                ],
-                "summary": "Actualizar un item",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "ID del item",
-                        "name": "item_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Datos del item a actualizar",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dtos.UpdateItem"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "item update success",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -890,6 +196,18 @@
                     },
                     "400": {
                         "description": "Invalid request body or validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Order already exists",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "One or more items/additions not found",
                         "schema": {
                             "$ref": "#/definitions/dtos.ErrorResponse"
                         }
@@ -939,13 +257,62 @@
             }
         },
         "/products": {
+            "get": {
+                "description": "Retorna todos los productos agrupados por categoría de una tienda. Solo incluye productos disponibles, ordenados por precio ascendente.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Obtener productos por tienda",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID de la tienda",
+                        "name": "shop_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dtos.CategoryResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "shop_id es requerido o inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Productos no encontrados",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
                         "Cookie": []
                     }
                 ],
-                "description": "Registra un nuevo producto en la tienda asociada al empleado autenticado.",
+                "description": "Registra un nuevo producto en la tienda asociada al empleado autenticado. Si se envía `flavor_ids`, el producto se marcará automáticamente como con sabores y se asociarán los sabores indicados.",
                 "consumes": [
                     "application/json"
                 ],
@@ -975,7 +342,7 @@
                         }
                     },
                     "400": {
-                        "description": "JSON inválido o mal formado",
+                        "description": "JSON inválido o campos faltantes",
                         "schema": {
                             "type": "string"
                         }
@@ -988,6 +355,57 @@
                     },
                     "422": {
                         "description": "No se encontró la cuenta del empleado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/products/additions": {
+            "get": {
+                "description": "Retorna las adiciones disponibles de una categoría, ordenadas por precio ascendente.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Obtener adiciones por categoría",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID de la categoría",
+                        "name": "category_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dtos.AdditionResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "category_id es requerido o inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Adiciones no encontradas",
                         "schema": {
                             "type": "string"
                         }
@@ -1042,6 +460,179 @@
                     },
                     "404": {
                         "description": "Productos más vendidos no encontrados",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/products/flavors": {
+            "get": {
+                "description": "Retorna los sabores disponibles asociados a un producto específico.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Obtener sabores por producto",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID del producto",
+                        "name": "item_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dtos.FlavorResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "item_id es requerido o inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Sabores no encontrados",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/products/flavors/category": {
+            "get": {
+                "description": "Retorna los sabores disponibles asociados a una categoría específica.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Obtener sabores por categoría",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID de la categoría",
+                        "name": "category_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dtos.FlavorResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "category_id es requerido o inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Sabores no encontrados",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/products/{item_id}": {
+            "put": {
+                "security": [
+                    {
+                        "Cookie": []
+                    }
+                ],
+                "description": "Actualiza la información de un producto existente. Solo puede actualizarlo el Order Manager de la tienda a la que pertenece. La imagen solo se sube a Cloudinary si es diferente a la actual (comparación por hash). Si se envía `flavor_ids` (incluso vacío), los sabores se reemplazan completamente; si no se envía, los sabores no se modifican.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Actualizar un producto",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID del producto",
+                        "name": "item_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos del producto a actualizar",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dtos.UpdateItem"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "item update success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "item_id inválido o JSON mal formado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Producto no encontrado",
                         "schema": {
                             "type": "string"
                         }
@@ -1151,6 +742,320 @@
                     },
                     "500": {
                         "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/users": {
+            "get": {
+                "description": "Retorna los datos del cliente identificado por el customer_id contenido en el token",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Obtiene la información del cliente autenticado",
+                "responses": {
+                    "200": {
+                        "description": "Datos del cliente",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CustomerResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "unexpected error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Actualiza los datos del cliente usando la información enviada en el cuerpo de la solicitud",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Actualiza la información del cliente autenticado",
+                "parameters": [
+                    {
+                        "description": "Datos del cliente a actualizar",
+                        "name": "customer",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateCustomer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "customer updated success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "error de validación o formato inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "customer not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "phone already exist",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "unexpected error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Registrar un nuevo cliente en el sistema con los datos proporcionados. Valida campos obligatorios como nombre, teléfono y contraseña.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Registrar un nuevo cliente",
+                "parameters": [
+                    {
+                        "description": "Datos del cliente",
+                        "name": "customer",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.RegisterCustomer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "customer successfully registered",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Se retorna cuando hay un campo que no cumple con los requisitos o directamente el body se envía vacío.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "Se retorna cuando el teléfono ya está registrado.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Se retorna cuando ocurre un error inexperado en el servidor.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/address": {
+            "get": {
+                "description": "Retorna un arreglo con todas las direcciones asociadas al cliente identificado en el token",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Address"
+                ],
+                "summary": "Obtiene todas las direcciones del cliente autenticado",
+                "responses": {
+                    "200": {
+                        "description": "Lista de direcciones",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dto.Address"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "unexpected error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Registra una dirección asociada al customer_id obtenido del contexto",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Address"
+                ],
+                "summary": "Registra una nueva dirección para el cliente autenticado",
+                "parameters": [
+                    {
+                        "description": "Datos de la dirección",
+                        "name": "address",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.Address"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "address registred",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "error de validación o parseo",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "unexpected error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Elimina la dirección especificada por su ID, siempre que pertenezca al cliente autenticado",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Address"
+                ],
+                "summary": "Elimina una dirección del cliente autenticado",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID de la dirección (UUID)",
+                        "name": "address",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "address deleted success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "unexpected error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/change-password": {
+            "put": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Permite al cliente autenticado actualizar su contraseña, validando el formato y los requisitos establecidos",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Actualiza la contraseña del cliente autenticado",
+                "parameters": [
+                    {
+                        "description": "Datos para actualizar la contraseña",
+                        "name": "password",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdatePassword"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "password updated success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "error de validación o formato inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "customer not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "unexpected error",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 }
             }
@@ -1308,6 +1213,20 @@
                 }
             }
         },
+        "dtos.AdditionResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "integer"
+                }
+            }
+        },
         "dtos.Address": {
             "type": "object",
             "required": [
@@ -1327,6 +1246,26 @@
                 "longitude": {
                     "type": "number",
                     "example": -74.08175
+                }
+            }
+        },
+        "dtos.CategoryResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dtos.ItemResponse"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "shop_id": {
+                    "type": "string"
                 }
             }
         },
@@ -1423,6 +1362,17 @@
                 }
             }
         },
+        "dtos.FlavorResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "dtos.ItemResponse": {
             "type": "object",
             "properties": {
@@ -1500,7 +1450,6 @@
             "required": [
                 "category_id",
                 "description",
-                "has_flavors",
                 "image",
                 "name",
                 "price"
@@ -1514,9 +1463,14 @@
                     "type": "string",
                     "example": "Pizza mediana con jamón, piña y queso mozzarella sobre una base de salsa napolitana."
                 },
-                "has_flavors": {
-                    "type": "boolean",
-                    "example": true
+                "flavor_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "[\"a1b2c3d4-e5f6-7890-abcd-ef1234567890\"]"
+                    ]
                 },
                 "image": {
                     "type": "string",
@@ -1583,7 +1537,6 @@
             "type": "object",
             "required": [
                 "description",
-                "has_flavors",
                 "name",
                 "price"
             ],
@@ -1592,9 +1545,18 @@
                     "type": "string",
                     "example": "Pizza mediana con jamón, piña y queso mozzarella sobre una base de salsa napolitana."
                 },
-                "has_flavors": {
-                    "type": "boolean",
-                    "example": true
+                "flavor_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "[\"a1b2c3d4-e5f6-7890-abcd-ef1234567890\"]"
+                    ]
+                },
+                "image": {
+                    "type": "string",
+                    "example": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ..."
                 },
                 "name": {
                     "type": "string",

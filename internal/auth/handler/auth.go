@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"errors"
 	"log/slog"
 	"net/http"
 
@@ -42,8 +41,7 @@ func NewAuthHandler(svc ports.AuthApp, jwt jwt.Sessions, cookie cookie.CookieHan
 // @Failure      400    {object}  map[string]string  "Solicitud inválida (validación o JSON incorrecto)"
 // @Failure      422    {object}  map[string]string  "Credenciales incorrectas"
 // @Failure      500    {object}  map[string]string  "Error inesperado del servidor"
-// @Router       /auth/sign-in/customers [post]
-// @DeprecatedRouter /custromers/sign-in [post]
+// @Router       /auth/sign-in/users [post]
 func (a *auth) SignInCustomer(e echo.Context) error {
 
 	ctx := e.Request().Context()
@@ -60,17 +58,12 @@ func (a *auth) SignInCustomer(e echo.Context) error {
 
 	sessionID, err := a.svc.SignInCustomer(ctx, signIn.Phone, signIn.Password)
 	if err != nil {
-		if errors.Is(err, errcustom.ErrIncorrectAccessData) {
-			return echo.NewHTTPError(http.StatusUnprocessableEntity, err.Error())
-		}
-
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-
+		return errcustom.ToHTTPError(err)
 	}
 
 	jwtSession, err := a.jwt.CreateSession(sessionID)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
+		return errcustom.ToHTTPError(errcustom.ErrUnexpectedError)
 	}
 
 	e.SetCookie(a.cookie.CreateCookieSession(jwtSession))
@@ -90,8 +83,7 @@ func (a *auth) SignInCustomer(e echo.Context) error {
 // @Failure      400    {object}  map[string]string  "Solicitud inválida (validación o JSON incorrecto)"
 // @Failure      422    {object}  map[string]string  "Credenciales incorrectas"
 // @Failure      500    {object}  map[string]string  "Error inesperado del servidor"
-// @Router       /auth/sign-in/employee [post]
-// @DeprecatedRouter /employee/sign-in [post]
+// @Router       /auth/sign-in/employees [post]
 func (a *auth) SignInEmployee(e echo.Context) error {
 
 	ctx := e.Request().Context()
@@ -108,21 +100,17 @@ func (a *auth) SignInEmployee(e echo.Context) error {
 
 	sessionID, err := a.svc.SignInEmployee(ctx, signIn.Phone, signIn.Password)
 	if err != nil {
-		if errors.Is(err, errcustom.ErrIncorrectAccessData) {
-			return echo.NewHTTPError(http.StatusUnprocessableEntity, err.Error())
-		}
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return errcustom.ToHTTPError(err)
 	}
 
 	jwtSession, err := a.jwt.CreateSession(sessionID)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
+		return errcustom.ToHTTPError(errcustom.ErrUnexpectedError)
 	}
 
 	e.SetCookie(a.cookie.CreateCookieSession(jwtSession))
 
 	return e.JSON(http.StatusCreated, "session created")
-
 }
 
 // DeleteSession godoc
@@ -135,20 +123,18 @@ func (a *auth) SignInEmployee(e echo.Context) error {
 // @Failure 500 {string} string "unexpected error"
 // @Security SessionCookie
 // @Router /auth/logout [delete]
-// @DeprecatedRouter /customers/logout [delete]
-// @DeprecatedRouter /employee/logout [delete]
 func (s *auth) Logout(e echo.Context) error {
 
 	ctx := e.Request().Context()
 
-	session, ok := ctx.Value("session").(models.ActiveSession)
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
 	if !ok {
 		slog.Error("No se encontró el usuario en el contexto")
 		return errcustom.ErrUnexpectedError
 	}
 
 	if err := s.svc.DeleteSession(ctx, session.ID); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, errcustom.ErrUnexpectedError)
+		return errcustom.ToHTTPError(err)
 	}
 
 	e.SetCookie(s.cookie.DeleteCookieSession())

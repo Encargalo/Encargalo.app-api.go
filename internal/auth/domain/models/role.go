@@ -8,3 +8,7 @@ const (
 	OrderManager      Role = "Order Manager"
 	Owner             Role = "Owner"
 )
+
+type ContextKey string
+
+const SessionKey ContextKey = "session"

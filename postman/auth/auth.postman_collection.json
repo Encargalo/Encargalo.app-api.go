@@ -1,0 +1,84 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-0010-4000-8000-000000000000",
+    "name": "Encargalo - Auth",
+    "description": "Endpoints de autenticación. La sesión se maneja con la cookie `encargalo-session` que se establece automáticamente al hacer sign-in.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Sign In - Customer",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone_number\": \"+573001112233\",\n  \"password\": \"claveSegura123\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/auth/sign-in/users",
+          "host": ["{{base_url}}"],
+          "path": ["auth", "sign-in", "users"]
+        },
+        "description": "Autentica un cliente con teléfono y contraseña. Retorna una cookie `encargalo-session` con el JWT de sesión."
+      }
+    },
+    {
+      "name": "Sign In - Employee",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone_number\": \"+573001112233\",\n  \"password\": \"claveSegura123\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/auth/sign-in/employees",
+          "host": ["{{base_url}}"],
+          "path": ["auth", "sign-in", "employees"]
+        },
+        "description": "Autentica un empleado con teléfono y contraseña. Retorna una cookie `encargalo-session` con el JWT de sesión."
+      }
+    },
+    {
+      "name": "Logout",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/auth/logout",
+          "host": ["{{base_url}}"],
+          "path": ["auth", "logout"]
+        },
+        "description": "Cierra la sesión activa del cliente o empleado autenticado. Requiere cookie `encargalo-session`. Roles permitidos: Customer, Order Manager."
+      }
+    }
+  ]
+}
