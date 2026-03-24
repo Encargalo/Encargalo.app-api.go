@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.1](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.5.0...v1.5.1) (2026-03-24)
+
+
+### Bug Fixes
+
+* **orders:** add role-based auth and improve websocket protocol ([05877e6](https://github.com/Encargalo/Encargalo.app-api.go/commit/05877e65fd0ba501c9f7fe42b450bd50f1d17e0f))
+* **orders:** add role-based auth and improve websocket protocol ([f1b902e](https://github.com/Encargalo/Encargalo.app-api.go/commit/f1b902ec48e5c7452ace316c96a07bb6b428c4ab))
+
 ## [1.5.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.4.0...v1.5.0) (2026-03-24)
 
 
