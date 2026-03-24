@@ -1,127 +1,17 @@
 definitions:
-  dto.Address:
-    properties:
-      address:
-        example: 'Calle 123 # 45-67'
-        type: string
-      extra: {}
-      instructions:
-        example: Tocar el timbre azul
-        type: string
-      label:
-        example: Oficina
-        type: string
-      lat:
-        example: 4.60971
-        type: number
-      long:
-        example: -74.08175
-        type: number
-      type:
-        example: Casa
-        type: string
-    required:
-    - address
-    - extra
-    - label
-    - lat
-    - long
-    - type
-    type: object
-  dto.CustomerResponse:
-    properties:
-      birthday_date:
-        example: "1990-05-20"
-        type: string
-      email:
-        example: carlos.ramirez@example.com
-        type: string
-      id:
-        example: 123e4567-e89b-12d3-a456-426614174000
-        type: string
-      name:
-        example: Carlos
-        type: string
-      phone:
-        example: "+573001112233"
-        type: string
-      role:
-        example: customer
-        type: string
-      sur_name:
-        example: Ramírez
-        type: string
-    type: object
-  dto.RegisterCustomer:
-    properties:
-      birthday_date:
-        example: "1990-05-20"
-        type: string
-      email:
-        example: carlos.ramirez@example.com
-        type: string
-      name:
-        example: Carlos
-        minLength: 3
-        type: string
-      password:
-        example: claveSegura123
-        minLength: 8
-        type: string
-      phone:
-        example: "+573001112233"
-        type: string
-      sur_name:
-        example: Ramírez
-        minLength: 3
-        type: string
-    required:
-    - birthday_date
-    - name
-    - password
-    - phone
-    - sur_name
-    type: object
-  dto.UpdateCustomer:
-    properties:
-      email:
-        example: carlos.ramirez@example.com
-        type: string
-      name:
-        example: Carlos
-        minLength: 3
-        type: string
-      phone:
-        example: "+573001112233"
-        type: string
-      sur_name:
-        example: Ramírez
-        minLength: 3
-        type: string
-    required:
-    - name
-    - phone
-    - sur_name
-    type: object
-  dto.UpdatePassword:
+  Encargalo_app-api_go_internal_auth_handler_request.SignInRequest:
     properties:
       password:
         example: claveSegura123
-        minLength: 8
+        type: string
+      phone_number:
+        example: "+573001112233"
         type: string
     required:
     - password
+    - phone_number
     type: object
-  dtos.AdditionResponse:
-    properties:
-      id:
-        type: string
-      name:
-        type: string
-      price:
-        type: integer
-    type: object
-  dtos.Address:
+  Encargalo_app-api_go_internal_orders_domain_dtos.Address:
     properties:
       address:
         example: 'Calle 123 # 45-67'
@@ -137,29 +27,16 @@ definitions:
     - latitude
     - longitude
     type: object
-  dtos.CategoryResponse:
-    properties:
-      id:
-        type: string
-      items:
-        items:
-          $ref: '#/definitions/dtos.ItemResponse'
-        type: array
-      name:
-        type: string
-      shop_id:
-        type: string
-    type: object
-  dtos.CreateAdditionsOrders:
+  Encargalo_app-api_go_internal_orders_domain_dtos.CreateAdditionsOrders:
     properties:
       addition_id:
         type: string
     type: object
-  dtos.CreateItemsOrder:
+  Encargalo_app-api_go_internal_orders_domain_dtos.CreateItemsOrder:
     properties:
       additions:
         items:
-          $ref: '#/definitions/dtos.CreateAdditionsOrders'
+          $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.CreateAdditionsOrders'
         type: array
       amount:
         type: integer
@@ -175,10 +52,10 @@ definitions:
     - amount
     - item_id
     type: object
-  dtos.CreateOrder:
+  Encargalo_app-api_go_internal_orders_domain_dtos.CreateOrder:
     properties:
       address:
-        $ref: '#/definitions/dtos.Address'
+        $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.Address'
       delivery_fee:
         example: 5000
         type: integer
@@ -187,7 +64,7 @@ definitions:
         type: string
       items:
         items:
-          $ref: '#/definitions/dtos.CreateItemsOrder'
+          $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.CreateItemsOrder'
         type: array
       method_payment:
         enum:
@@ -206,7 +83,7 @@ definitions:
     - method_payment
     - shop_id
     type: object
-  dtos.ErrorResponse:
+  Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse:
     properties:
       code:
         example: 400
@@ -215,14 +92,83 @@ definitions:
         example: invalid request
         type: string
     type: object
-  dtos.FlavorResponse:
+  Encargalo_app-api_go_internal_pkg_pagination.Meta:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_AdditionsResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse'
+        type: array
+      pagination:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Meta'
+    type: object
+  Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_CategoriesResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategoryResponse'
+        type: array
+      pagination:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Meta'
+    type: object
+  Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_FlavorsResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse'
+        type: array
+      pagination:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Meta'
+    type: object
+  Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_ItemsResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse'
+        type: array
+      pagination:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Meta'
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      price:
+        type: integer
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.CategoryResponse:
+    properties:
+      id:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse'
+        type: array
+      name:
+        type: string
+      shop_id:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse:
     properties:
       id:
         type: string
       name:
         type: string
     type: object
-  dtos.ItemResponse:
+  Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse:
     properties:
       category_id:
         example: b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2
@@ -248,7 +194,7 @@ definitions:
         type: integer
       rules:
         items:
-          $ref: '#/definitions/dtos.ItemRule'
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemRule'
         type: array
       score:
         example: 4.7
@@ -257,7 +203,7 @@ definitions:
         example: d33aaf08-2c43-41c4-b2e7-882b019edb1e
         type: string
     type: object
-  dtos.ItemRule:
+  Encargalo_app-api_go_internal_products_domain_dtos.ItemRule:
     properties:
       id:
         example: 71c62783-820d-46f8-957d-c8d02db97264
@@ -275,7 +221,7 @@ definitions:
         example: multi_select
         type: string
     type: object
-  dtos.RegisterItem:
+  Encargalo_app-api_go_internal_products_domain_dtos.RegisterItem:
     properties:
       category_id:
         example: b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2
@@ -306,7 +252,33 @@ definitions:
     - name
     - price
     type: object
-  dtos.ShopResponse:
+  Encargalo_app-api_go_internal_products_domain_dtos.UpdateItem:
+    properties:
+      description:
+        example: Pizza mediana con jamón, piña y queso mozzarella sobre una base de
+          salsa napolitana.
+        type: string
+      flavor_ids:
+        example:
+        - '["a1b2c3d4-e5f6-7890-abcd-ef1234567890"]'
+        items:
+          type: string
+        type: array
+      image:
+        example: data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ...
+        type: string
+      name:
+        example: Pizza Hawaiana Mediana
+        type: string
+      price:
+        example: 32000
+        type: integer
+    required:
+    - description
+    - name
+    - price
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.ShopResponse:
     properties:
       address:
         type: string
@@ -337,43 +309,118 @@ definitions:
       type:
         type: string
     type: object
-  dtos.UpdateItem:
+  Encargalo_app-api_go_internal_users_domain_dto.Address:
     properties:
-      description:
-        example: Pizza mediana con jamón, piña y queso mozzarella sobre una base de
-          salsa napolitana.
+      address:
+        example: 'Calle 123 # 45-67'
         type: string
-      flavor_ids:
-        example:
-        - '["a1b2c3d4-e5f6-7890-abcd-ef1234567890"]'
-        items:
-          type: string
-        type: array
-      image:
-        example: data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ...
+      extra: {}
+      instructions:
+        example: Tocar el timbre azul
+        type: string
+      label:
+        example: Oficina
+        type: string
+      lat:
+        example: 4.60971
+        type: number
+      long:
+        example: -74.08175
+        type: number
+      type:
+        example: Casa
+        type: string
+    required:
+    - address
+    - extra
+    - label
+    - lat
+    - long
+    - type
+    type: object
+  Encargalo_app-api_go_internal_users_domain_dto.CustomerResponse:
+    properties:
+      birthday_date:
+        example: "1990-05-20"
+        type: string
+      email:
+        example: carlos.ramirez@example.com
+        type: string
+      id:
+        example: 123e4567-e89b-12d3-a456-426614174000
         type: string
       name:
-        example: Pizza Hawaiana Mediana
+        example: Carlos
         type: string
-      price:
-        example: 32000
-        type: integer
-    required:
-    - description
-    - name
-    - price
+      phone:
+        example: "+573001112233"
+        type: string
+      role:
+        example: customer
+        type: string
+      sur_name:
+        example: Ramírez
+        type: string
     type: object
-  request.SignInRequest:
+  Encargalo_app-api_go_internal_users_domain_dto.RegisterCustomer:
+    properties:
+      birthday_date:
+        example: "1990-05-20"
+        type: string
+      email:
+        example: carlos.ramirez@example.com
+        type: string
+      name:
+        example: Carlos
+        minLength: 3
+        type: string
+      password:
+        example: claveSegura123
+        minLength: 8
+        type: string
+      phone:
+        example: "+573001112233"
+        type: string
+      sur_name:
+        example: Ramírez
+        minLength: 3
+        type: string
+    required:
+    - birthday_date
+    - name
+    - password
+    - phone
+    - sur_name
+    type: object
+  Encargalo_app-api_go_internal_users_domain_dto.UpdateCustomer:
+    properties:
+      email:
+        example: carlos.ramirez@example.com
+        type: string
+      name:
+        example: Carlos
+        minLength: 3
+        type: string
+      phone:
+        example: "+573001112233"
+        type: string
+      sur_name:
+        example: Ramírez
+        minLength: 3
+        type: string
+    required:
+    - name
+    - phone
+    - sur_name
+    type: object
+  Encargalo_app-api_go_internal_users_domain_dto.UpdatePassword:
     properties:
       password:
         example: claveSegura123
-        type: string
-      phone_number:
-        example: "+573001112233"
+        minLength: 8
         type: string
     required:
     - password
-    - phone_number
     type: object
 info:
   contact: {}
@@ -415,7 +462,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/request.SignInRequest'
+          $ref: '#/definitions/Encargalo_app-api_go_internal_auth_handler_request.SignInRequest'
       produces:
       - application/json
       responses:
@@ -457,7 +504,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/request.SignInRequest'
+          $ref: '#/definitions/Encargalo_app-api_go_internal_auth_handler_request.SignInRequest'
       produces:
       - application/json
       responses:
@@ -497,7 +544,7 @@ paths:
         name: order
         required: true
         schema:
-          $ref: '#/definitions/dtos.CreateOrder'
+          $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.CreateOrder'
       produces:
       - application/json
       responses:
@@ -508,19 +555,19 @@ paths:
         "400":
           description: Invalid request body or validation failed
           schema:
-            $ref: '#/definitions/dtos.ErrorResponse'
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
         "409":
           description: Order already exists
           schema:
-            $ref: '#/definitions/dtos.ErrorResponse'
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
         "422":
           description: One or more items/additions not found
           schema:
-            $ref: '#/definitions/dtos.ErrorResponse'
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
         "500":
           description: Unexpected internal server error
           schema:
-            $ref: '#/definitions/dtos.ErrorResponse'
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
       summary: Create a new order
       tags:
       - Orders
@@ -549,7 +596,7 @@ paths:
       - Orders WebSocket
   /products:
     get:
-      description: Retorna todos los productos agrupados por categoría de una tienda.
+      description: Retorna productos agrupados por categoría de una tienda, con paginación.
         Solo incluye productos disponibles, ordenados por precio ascendente.
       parameters:
       - description: ID de la tienda
@@ -558,15 +605,21 @@ paths:
         name: shop_id
         required: true
         type: string
+      - description: 'Número de página (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Categorías por página (default: 10)'
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/dtos.CategoryResponse'
-            type: array
+            $ref: '#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_CategoriesResponse'
         "400":
           description: shop_id es requerido o inválido
           schema:
@@ -594,7 +647,7 @@ paths:
         name: item
         required: true
         schema:
-          $ref: '#/definitions/dtos.RegisterItem'
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.RegisterItem'
       produces:
       - application/json
       responses:
@@ -644,7 +697,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/dtos.UpdateItem'
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.UpdateItem'
       produces:
       - application/json
       responses:
@@ -684,15 +737,21 @@ paths:
         name: category_id
         required: true
         type: string
+      - description: 'Número de página (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Resultados por página (default: 20)'
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/dtos.AdditionResponse'
-            type: array
+            $ref: '#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_AdditionsResponse'
         "400":
           description: category_id es requerido o inválido
           schema:
@@ -721,15 +780,21 @@ paths:
         name: shop_id
         required: true
         type: string
+      - description: 'Número de página (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Resultados por página (default: 5)'
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/dtos.ItemResponse'
-            type: array
+            $ref: '#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_ItemsResponse'
         "400":
           description: shop_id es requerido o inválido
           schema:
@@ -755,15 +820,21 @@ paths:
         name: item_id
         required: true
         type: string
+      - description: 'Número de página (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Resultados por página (default: 20)'
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/dtos.FlavorResponse'
-            type: array
+            $ref: '#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_FlavorsResponse'
         "400":
           description: item_id es requerido o inválido
           schema:
@@ -789,15 +860,21 @@ paths:
         name: category_id
         required: true
         type: string
+      - description: 'Número de página (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Resultados por página (default: 20)'
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/dtos.FlavorResponse'
-            type: array
+            $ref: '#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_FlavorsResponse'
         "400":
           description: category_id es requerido o inválido
           schema:
@@ -841,7 +918,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/dtos.ShopResponse'
+              $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopResponse'
             type: array
         "404":
           description: Not Found
@@ -871,7 +948,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/dtos.ShopResponse'
+              $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopResponse'
             type: array
         "404":
           description: Not Found
@@ -890,7 +967,7 @@ paths:
         "200":
           description: Datos del cliente
           schema:
-            $ref: '#/definitions/dto.CustomerResponse'
+            $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.CustomerResponse'
         "404":
           description: not found
           schema:
@@ -913,7 +990,7 @@ paths:
         name: customer
         required: true
         schema:
-          $ref: '#/definitions/dto.RegisterCustomer'
+          $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.RegisterCustomer'
       responses:
         "201":
           description: customer successfully registered
@@ -946,7 +1023,7 @@ paths:
         name: customer
         required: true
         schema:
-          $ref: '#/definitions/dto.UpdateCustomer'
+          $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.UpdateCustomer'
       produces:
       - application/json
       responses:
@@ -1011,7 +1088,7 @@ paths:
           description: Lista de direcciones
           schema:
             items:
-              $ref: '#/definitions/dto.Address'
+              $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.Address'
             type: array
         "404":
           description: not found
@@ -1034,7 +1111,7 @@ paths:
         name: address
         required: true
         schema:
-          $ref: '#/definitions/dto.Address'
+          $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.Address'
       produces:
       - application/json
       responses:
@@ -1065,7 +1142,7 @@ paths:
         name: password
         required: true
         schema:
-          $ref: '#/definitions/dto.UpdatePassword'
+          $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.UpdatePassword'
       produces:
       - application/json
       responses:

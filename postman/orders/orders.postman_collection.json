@@ -8,7 +8,7 @@
   "variable": [
     {
       "key": "base_url",
-      "value": "http://localhost:8080",
+      "value": "http://localhost:3000",
       "type": "string"
     }
   ],
@@ -59,7 +59,7 @@
           "host": ["{{base_url}}"],
           "path": ["orders", "manager"]
         },
-        "description": "WebSocket para el gestor de órdenes en tiempo real. Conectar con ws:// en lugar de http://. Requiere cookie `encargalo-session`. Roles: Customer, customer, Order Manager.\n\nNOTA: Para probar WebSockets en Postman, crea una nueva request de tipo WebSocket con la URL: ws://localhost:8080/orders/manager"
+        "description": "WebSocket para el gestor de órdenes en tiempo real. Conectar con ws:// en lugar de http://. Requiere cookie `encargalo-session`. Roles: Customer, customer, Order Manager.\n\nNOTA: Para probar WebSockets en Postman, crea una nueva request de tipo WebSocket con la URL: ws://localhost:3000/orders/manager"
       }
     }
   ]

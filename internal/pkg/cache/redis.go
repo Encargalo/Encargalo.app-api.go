@@ -13,6 +13,7 @@ type Cache interface {
 	Get(ctx context.Context, key string) (string, error)
 	Set(ctx context.Context, key string, val any, time time.Duration) error
 	Clear(ctx context.Context, key string) error
+	ClearByPrefix(ctx context.Context, prefix string) error
 }
 
 type cache struct {
@@ -41,4 +42,12 @@ func (c *cache) Set(ctx context.Context, key string, val any, time time.Duration
 
 func (c *cache) Clear(ctx context.Context, key string) error {
 	return c.redis.Del(ctx, key).Err()
+}
+
+func (c *cache) ClearByPrefix(ctx context.Context, prefix string) error {
+	keys, err := c.redis.Keys(ctx, prefix+"*").Result()
+	if err != nil || len(keys) == 0 {
+		return err
+	}
+	return c.redis.Del(ctx, keys...).Err()
 }
