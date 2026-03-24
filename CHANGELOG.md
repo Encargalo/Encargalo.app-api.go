@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.4](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.5.3...v1.5.4) (2026-03-24)
+
+
+### Bug Fixes
+
+* **docker:** harden container image against CVE-2025-60876 ([d297884](https://github.com/Encargalo/Encargalo.app-api.go/commit/d297884b35fcf351e56d8f296e51dd034fa6a61a))
+* **docker:** harden container image against CVE-2025-60876 ([8a233ba](https://github.com/Encargalo/Encargalo.app-api.go/commit/8a233ba53ceb8f9dc6ca6e43ab02ded6a0d03404))
+
 ## [1.5.3](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.5.2...v1.5.3) (2026-03-24)
 
 
