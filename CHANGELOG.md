@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.3.0...v1.4.0) (2026-03-24)
+
+
+### Features
+
+* **release:** add Docker publish workflow after release creation ([e90899b](https://github.com/Encargalo/Encargalo.app-api.go/commit/e90899b31e991eb436d4085125ace832be96029c))
+* **release:** add Docker publish workflow after release creation ([34fe886](https://github.com/Encargalo/Encargalo.app-api.go/commit/34fe886017698bdbbdc993fc79b69eebe1ad27f7))
+
 ## [1.3.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.2.0...v1.3.0) (2026-03-24)
 
 
