@@ -21,7 +21,7 @@ go test ./internal/path/to/package -run TestName
 mockery
 
 # Generate Swagger docs
-swag init -g cmd/server/main.go
+swag init -g cmd/server/main.go --parseDependency --parseInternal
 
 # Run database migrations (goose)
 goose -dir internal/shared/adapters/postgres/migrations postgres "<DSN>" up
@@ -85,6 +85,8 @@ Every time a handler is created or modified, you **must** update the following â
 2. **Postman collection** under `postman/<domain>/<domain>.postman_collection.json`: add or update the corresponding request (method, URL, body, query params, description).
 
 Do **not** regenerate or rewrite documentation for endpoints that were not touched.
+
+> **Postman base URL**: always use `http://localhost:3000` as the default server URL in the `variable.base_url` field of every Postman collection.
 
 ## Orders & Event Streaming
 

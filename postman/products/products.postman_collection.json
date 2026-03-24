@@ -8,7 +8,7 @@
   "variable": [
     {
       "key": "base_url",
-      "value": "http://localhost:8080",
+      "value": "http://localhost:3000",
       "type": "string"
     }
   ],
@@ -73,7 +73,7 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{base_url}}/products?shop_id=00000000-0000-0000-0000-000000000000",
+          "raw": "{{base_url}}/products?shop_id=00000000-0000-0000-0000-000000000000&page=1&limit=10",
           "host": ["{{base_url}}"],
           "path": ["products"],
           "query": [
@@ -81,10 +81,20 @@
               "key": "shop_id",
               "value": "00000000-0000-0000-0000-000000000000",
               "description": "UUID de la tienda"
+            },
+            {
+              "key": "page",
+              "value": "1",
+              "description": "Número de página (default: 1)"
+            },
+            {
+              "key": "limit",
+              "value": "10",
+              "description": "Categorías por página (default: 10)"
             }
           ]
         },
-        "description": "Retorna todos los productos agrupados por categoría de una tienda. Solo incluye productos disponibles, ordenados por precio ascendente. Público."
+        "description": "Retorna productos agrupados por categoría de una tienda, con paginación. Solo incluye productos disponibles, ordenados por precio ascendente. Respuesta incluye `data` (categorías con items) y `pagination` (page, limit, total, total_pages). Público."
       }
     },
     {
@@ -93,7 +103,7 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{base_url}}/products/best-sellers?shop_id=00000000-0000-0000-0000-000000000000",
+          "raw": "{{base_url}}/products/best-sellers?shop_id=00000000-0000-0000-0000-000000000000&page=1&limit=5",
           "host": ["{{base_url}}"],
           "path": ["products", "best-sellers"],
           "query": [
@@ -101,10 +111,20 @@
               "key": "shop_id",
               "value": "00000000-0000-0000-0000-000000000000",
               "description": "UUID de la tienda"
+            },
+            {
+              "key": "page",
+              "value": "1",
+              "description": "Número de página (default: 1)"
+            },
+            {
+              "key": "limit",
+              "value": "5",
+              "description": "Resultados por página (default: 5)"
             }
           ]
         },
-        "description": "Retorna los 5 productos más vendidos de una tienda. Público."
+        "description": "Retorna los productos más vendidos de una tienda ordenados por ventas descendente, con paginación. Público."
       }
     },
     {
@@ -113,7 +133,7 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{base_url}}/products/additions?category_id=00000000-0000-0000-0000-000000000000",
+          "raw": "{{base_url}}/products/additions?category_id=00000000-0000-0000-0000-000000000000&page=1&limit=20",
           "host": ["{{base_url}}"],
           "path": ["products", "additions"],
           "query": [
@@ -121,10 +141,20 @@
               "key": "category_id",
               "value": "00000000-0000-0000-0000-000000000000",
               "description": "UUID de la categoría"
+            },
+            {
+              "key": "page",
+              "value": "1",
+              "description": "Número de página (default: 1)"
+            },
+            {
+              "key": "limit",
+              "value": "20",
+              "description": "Resultados por página (default: 20)"
             }
           ]
         },
-        "description": "Retorna las adiciones disponibles de una categoría, ordenadas por precio ascendente. Público."
+        "description": "Retorna las adiciones disponibles de una categoría, ordenadas por precio ascendente, con paginación. Público."
       }
     },
     {
@@ -133,7 +163,7 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{base_url}}/products/flavors?item_id=00000000-0000-0000-0000-000000000000",
+          "raw": "{{base_url}}/products/flavors?item_id=00000000-0000-0000-0000-000000000000&page=1&limit=20",
           "host": ["{{base_url}}"],
           "path": ["products", "flavors"],
           "query": [
@@ -141,10 +171,20 @@
               "key": "item_id",
               "value": "00000000-0000-0000-0000-000000000000",
               "description": "UUID del producto"
+            },
+            {
+              "key": "page",
+              "value": "1",
+              "description": "Número de página (default: 1)"
+            },
+            {
+              "key": "limit",
+              "value": "20",
+              "description": "Resultados por página (default: 20)"
             }
           ]
         },
-        "description": "Retorna los sabores asociados a un producto específico. Público."
+        "description": "Retorna los sabores asociados a un producto específico, con paginación. Público."
       }
     },
     {
@@ -153,7 +193,7 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{base_url}}/products/flavors/category?category_id=00000000-0000-0000-0000-000000000000",
+          "raw": "{{base_url}}/products/flavors/category?category_id=00000000-0000-0000-0000-000000000000&page=1&limit=20",
           "host": ["{{base_url}}"],
           "path": ["products", "flavors", "category"],
           "query": [
@@ -161,10 +201,20 @@
               "key": "category_id",
               "value": "00000000-0000-0000-0000-000000000000",
               "description": "UUID de la categoría"
+            },
+            {
+              "key": "page",
+              "value": "1",
+              "description": "Número de página (default: 1)"
+            },
+            {
+              "key": "limit",
+              "value": "20",
+              "description": "Resultados por página (default: 20)"
             }
           ]
         },
-        "description": "Retorna todos los sabores asociados a una categoría específica. Público."
+        "description": "Retorna todos los sabores asociados a una categoría específica, con paginación. Público."
       }
     }
   ]
