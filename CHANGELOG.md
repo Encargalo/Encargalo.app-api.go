@@ -128,6 +128,8 @@
 * mejorar manejo de conexiones WebSocket y optimizar registro de órdenes ([c73e8bf](https://github.com/Encargalo/Encargalo.app-api.go/commit/c73e8bf494e0410044e83d654a44c5a8b9bf272b))
 * mejorar manejo de errores y registro de órdenes en la función Register ([61a8246](https://github.com/Encargalo/Encargalo.app-api.go/commit/61a824624a6dc8186e0c6a4434199aba43a7253e))
 * **order:** ajustar cálculo del precio total para incluir la tarifa de entrega ([f7cf228](https://github.com/Encargalo/Encargalo.app-api.go/commit/f7cf2283cb76b013ea38a62d42b640bee9d8ffad))
+* **release:** correct condition for docker job execution ([e3e161f](https://github.com/Encargalo/Encargalo.app-api.go/commit/e3e161fe53041b627a9c989f419e5ad5aefff6d8))
+* **release:** correct condition for docker job execution ([1521d1f](https://github.com/Encargalo/Encargalo.app-api.go/commit/1521d1f61cd80795ef7ec25db749e1ff10bb4a92))
 * **router:** corregir importación de documentación en el enrutador ([82e39b6](https://github.com/Encargalo/Encargalo.app-api.go/commit/82e39b648de9c72416e65403f525486a00b031bf))
 * target develop branch for release-please releases ([274c377](https://github.com/Encargalo/Encargalo.app-api.go/commit/274c377588cbe77c15332d22af3bc494f65be409))
 * trigger release-please on both develop and main PR merges ([28c88d0](https://github.com/Encargalo/Encargalo.app-api.go/commit/28c88d0712f456224d5201714108f5817ee724f9))
