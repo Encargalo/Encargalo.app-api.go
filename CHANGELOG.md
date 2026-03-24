@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.3](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.5.2...v1.5.3) (2026-03-24)
+
+
+### Bug Fixes
+
+* **docker:** revert alpine version from 3.23.3 to 3.21.6 ([ded45be](https://github.com/Encargalo/Encargalo.app-api.go/commit/ded45be9a4e2317b103ef0540e4a4ddc7fa21267))
+* **docker:** revert alpine version from 3.23.3 to 3.21.6 ([069116a](https://github.com/Encargalo/Encargalo.app-api.go/commit/069116a430440434d71da2c96ec838624392de1b))
+
 ## [1.5.2](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.5.1...v1.5.2) (2026-03-24)
 
 
