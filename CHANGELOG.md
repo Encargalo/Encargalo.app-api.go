@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.2.0...v1.3.0) (2026-03-24)
+
+
+### Features
+
+* **products:** add pagination to all product listing endpoints ([d18649c](https://github.com/Encargalo/Encargalo.app-api.go/commit/d18649c7e45569725266b235eee2fbcae8f0c390))
+* **products:** add pagination to all product listing endpoints ([754d66a](https://github.com/Encargalo/Encargalo.app-api.go/commit/754d66a4e73b8f15709d510acb55957eff1799bc))
+
 ## [1.2.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.1.0...v1.2.0) (2026-03-23)
 
 
