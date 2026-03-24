@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.2](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.5.1...v1.5.2) (2026-03-24)
+
+
+### Bug Fixes
+
+* **docker:** bump alpine 3.21.6→3.23.3 and alpine builder 3.22→3.23 ([05754f7](https://github.com/Encargalo/Encargalo.app-api.go/commit/05754f7fd507ad8c198399c8e5b602745e25b13a))
+* **docker:** bump alpine 3.21.6→3.23.3 and alpine builder 3.22→3.23 ([ef2c57a](https://github.com/Encargalo/Encargalo.app-api.go/commit/ef2c57ae9988fa6b54ed0d23021ed212951a22e1))
+
 ## [1.5.1](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.5.0...v1.5.1) (2026-03-24)
 
 
