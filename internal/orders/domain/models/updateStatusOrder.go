@@ -1,13 +1,8 @@
 package models
 
-import (
-	"github.com/google/uuid"
-	"github.com/uptrace/bun"
-)
+import "github.com/google/uuid"
 
 type UpdateStatusOrder struct {
-	bun.BaseModel `bun:"table:orders.orders"`
-
 	OrderID   uuid.UUID `json:"order_id"`
 	NewStatus string    `json:"new_status"`
 }

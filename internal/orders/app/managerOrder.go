@@ -34,6 +34,11 @@ type appManagerOrder struct {
 	svc                 ports.OrdersApp
 }
 
+type orderBroadcast struct {
+	Type  string       `json:"type"`
+	Order models.Order `json:"order"`
+}
+
 func NewManagerOrderApp(svc ports.OrdersApp) AppManagerOrder {
 	return &appManagerOrder{
 		shopConnections:     make(map[uuid.UUID][]*WSClient),
@@ -65,13 +70,13 @@ func (s *appManagerOrder) Register(
 
 	go s.writePump(client)
 
-	orders, err := s.svc.SearchActiveOrdersByCriteria(ctx, connectionID)
+	orders, err := s.svc.SearchActiveOrdersByCriteria(ctx, connectionID, isShop)
 	if err != nil && !errors.Is(err, errcustom.ErrNotFound) {
 		return nil, err
 	}
 
 	for _, order := range orders {
-		data, _ := json.Marshal(order)
+		data, _ := json.Marshal(orderBroadcast{Type: "order_update", Order: order})
 		client.send <- data
 	}
 
@@ -114,7 +119,7 @@ func (s *appManagerOrder) Unregister(
 }
 
 func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
-	data, err := json.Marshal(order)
+	data, err := json.Marshal(orderBroadcast{Type: "order_update", Order: order})
 	if err != nil {
 		return err
 	}

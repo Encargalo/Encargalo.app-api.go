@@ -141,20 +141,26 @@ func (o *orders) SearchAdditionsByID(ctx context.Context, additionID []uuid.UUID
 
 }
 
-func (o *orders) SearchActiveOrdersByCriteria(ctx context.Context, criteria uuid.UUID) ([]models.Order, error) {
+func (o *orders) SearchActiveOrdersByCriteria(ctx context.Context, criteria uuid.UUID, isShop bool) ([]models.Order, error) {
 
 	var orders []models.Order
 
-	err := o.db.NewSelect().
+	q := o.db.NewSelect().
 		Model(&orders).
 		Where("status IN (?)", bun.In([]string{
 			"Pending",
 			"Waiting For Payment Proof",
 			"In Preparation",
 			"On The Way",
-		})).
-		Where("(shop_id = ? OR customer_id = ?)", criteria, criteria).
-		Scan(ctx)
+		}))
+
+	if isShop {
+		q = q.Where("shop_id = ?", criteria)
+	} else {
+		q = q.Where("customer_id = ?", criteria)
+	}
+
+	err := q.Scan(ctx)
 
 	if err != nil {
 		return nil, errcustom.ErrUnexpectedError
@@ -172,7 +178,7 @@ func (o *orders) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, statu
 		Set("status = ?", status).
 		Where("id = ?", orderID)
 
-	if status == "Cancelado" {
+	if status == "Cancelled" {
 		q = q.Set("canceled_at = ?", time.Now())
 	}
 

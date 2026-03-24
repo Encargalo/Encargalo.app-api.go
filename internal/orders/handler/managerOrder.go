@@ -162,6 +162,7 @@ func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 			var payload modelsUpdateOrders.UpdateStatusOrder
 			if err := json.Unmarshal(msg, &payload); err != nil {
 				slog.Warn("Payload inválido update_status", "error", err)
+				client.Send([]byte(`{"type":"error","message":"payload inválido"}`))
 				continue
 			}
 
@@ -169,9 +170,13 @@ func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 				ctx,
 				payload.OrderID,
 				payload.NewStatus,
+				session.UserID,
+				isShop,
 			)
 			if err != nil {
 				slog.Error("Error actualizando orden", "error", err)
+				errMsg, _ := json.Marshal(map[string]string{"type": "error", "message": err.Error()})
+				client.Send(errMsg)
 				continue
 			}
 
