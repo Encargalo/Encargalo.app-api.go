@@ -42,6 +42,9 @@ import (
 	appEmployee "Encargalo.app-api.go/internal/employee/app"
 	handEmployee "Encargalo.app-api.go/internal/employee/handler"
 	repoEmployee "Encargalo.app-api.go/internal/employee/repo"
+
+	appBcv "Encargalo.app-api.go/internal/bcv/app"
+	repoBcv "Encargalo.app-api.go/internal/bcv/repo"
 )
 
 var Container *dig.Container
@@ -112,6 +115,12 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(handEmployee.NewEmployyeHandler)
 	_ = Container.Provide(appEmployee.New)
 	_ = Container.Provide(repoEmployee.New)
+
+	_ = Container.Provide(appBcv.New)
+	_ = Container.Provide(repoBcv.NewScraper)
+	_ = Container.Provide(repoBcv.NewCacheRepo)
+	_ = Container.Provide(repoBcv.NewCalendarScraper)
+	_ = Container.Provide(repoBcv.NewHolidayRepo)
 
 	_ = Container.Provide(bycript.NewHashPassword)
 	_ = Container.Provide(jwt.NewSessionUtils)
