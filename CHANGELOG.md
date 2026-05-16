@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.5.4...v1.6.0) (2026-05-16)
+
+
+### Features
+
+* **bcv:** add exchange rate scraper, banking holiday cron, and seed migrations ([bef6a08](https://github.com/Encargalo/Encargalo.app-api.go/commit/bef6a0819c0ca66a0fda241cf399419e7813e22c))
+* **bcv:** add exchange rate scraper, banking holiday cron, and seed migrations ([c0b161c](https://github.com/Encargalo/Encargalo.app-api.go/commit/c0b161c0a60cf3b83e1b5f8af0288c3b9e845705))
+
 ## [1.5.4](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.5.3...v1.5.4) (2026-03-24)
 
 
