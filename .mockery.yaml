@@ -30,3 +30,11 @@ packages:
   Encargalo.app-api.go/internal/users/domain/ports:
     config:
       dir: "internal/mocks/users/domain/ports"
+
+  Encargalo.app-api.go/internal/products/domain/ports:
+    config:
+      dir: "internal/mocks/products/domain/ports"
+
+  Encargalo.app-api.go/internal/employee/domain/ports:
+    config:
+      dir: "internal/mocks/employee/domain/ports"

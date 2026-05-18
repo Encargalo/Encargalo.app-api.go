@@ -1,5 +1,53 @@
 # Changelog
 
+## [1.7.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.6.0...v1.7.0) (2026-05-18)
+
+
+### Features
+
+* add reference and bolivianos prices to item and addition responses ([053a215](https://github.com/Encargalo/Encargalo.app-api.go/commit/053a215c2b8ee91f73c941142881141af13c99f5))
+* add reference and bolivianos prices to item and addition responses ([e458ee8](https://github.com/Encargalo/Encargalo.app-api.go/commit/e458ee8c7f63babfb840c8d02c5054888e0d0f47))
+
+## [1.6.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.5.4...v1.6.0) (2026-05-16)
+
+
+### Features
+
+* **bcv:** add exchange rate scraper, banking holiday cron, and seed migrations ([bef6a08](https://github.com/Encargalo/Encargalo.app-api.go/commit/bef6a0819c0ca66a0fda241cf399419e7813e22c))
+* **bcv:** add exchange rate scraper, banking holiday cron, and seed migrations ([c0b161c](https://github.com/Encargalo/Encargalo.app-api.go/commit/c0b161c0a60cf3b83e1b5f8af0288c3b9e845705))
+
+## [1.5.4](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.5.3...v1.5.4) (2026-03-24)
+
+
+### Bug Fixes
+
+* **docker:** harden container image against CVE-2025-60876 ([d297884](https://github.com/Encargalo/Encargalo.app-api.go/commit/d297884b35fcf351e56d8f296e51dd034fa6a61a))
+* **docker:** harden container image against CVE-2025-60876 ([8a233ba](https://github.com/Encargalo/Encargalo.app-api.go/commit/8a233ba53ceb8f9dc6ca6e43ab02ded6a0d03404))
+
+## [1.5.3](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.5.2...v1.5.3) (2026-03-24)
+
+
+### Bug Fixes
+
+* **docker:** revert alpine version from 3.23.3 to 3.21.6 ([ded45be](https://github.com/Encargalo/Encargalo.app-api.go/commit/ded45be9a4e2317b103ef0540e4a4ddc7fa21267))
+* **docker:** revert alpine version from 3.23.3 to 3.21.6 ([069116a](https://github.com/Encargalo/Encargalo.app-api.go/commit/069116a430440434d71da2c96ec838624392de1b))
+
+## [1.5.2](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.5.1...v1.5.2) (2026-03-24)
+
+
+### Bug Fixes
+
+* **docker:** bump alpine 3.21.6→3.23.3 and alpine builder 3.22→3.23 ([05754f7](https://github.com/Encargalo/Encargalo.app-api.go/commit/05754f7fd507ad8c198399c8e5b602745e25b13a))
+* **docker:** bump alpine 3.21.6→3.23.3 and alpine builder 3.22→3.23 ([ef2c57a](https://github.com/Encargalo/Encargalo.app-api.go/commit/ef2c57ae9988fa6b54ed0d23021ed212951a22e1))
+
+## [1.5.1](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.5.0...v1.5.1) (2026-03-24)
+
+
+### Bug Fixes
+
+* **orders:** add role-based auth and improve websocket protocol ([05877e6](https://github.com/Encargalo/Encargalo.app-api.go/commit/05877e65fd0ba501c9f7fe42b450bd50f1d17e0f))
+* **orders:** add role-based auth and improve websocket protocol ([f1b902e](https://github.com/Encargalo/Encargalo.app-api.go/commit/f1b902ec48e5c7452ace316c96a07bb6b428c4ab))
+
 ## [1.5.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.4.0...v1.5.0) (2026-03-24)
 
 

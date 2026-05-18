@@ -24,9 +24,9 @@ type Addition struct {
 
 func (a *Addition) ToDomainDTO() dtos.AdditionResponse {
 	return dtos.AdditionResponse{
-		ID:    a.ID,
-		Name:  a.Name,
-		Price: a.Price,
+		ID:   a.ID,
+		Name: a.Name,
+		Ref:  float64(a.Price),
 	}
 }
 

@@ -142,14 +142,18 @@ func (o *orderApp) SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*mo
 	return o.repo.SearchOrdersByID(ctx, orderID)
 }
 
-func (o *orderApp) SearchActiveOrdersByCriteria(ctx context.Context, shopID uuid.UUID) ([]models.Order, error) {
-	return o.repo.SearchActiveOrdersByCriteria(ctx, shopID)
+func (o *orderApp) SearchActiveOrdersByCriteria(ctx context.Context, criteria uuid.UUID, isShop bool) ([]models.Order, error) {
+	return o.repo.SearchActiveOrdersByCriteria(ctx, criteria, isShop)
 }
 
-func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string) (models.Order, error) {
+func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string, requesterID uuid.UUID, isShop bool) (models.Order, error) {
 	order, err := o.SearchOrdersByID(ctx, orderID)
 	if err != nil {
 		return models.Order{}, err
+	}
+
+	if !isShop && order.CustomerID != requesterID {
+		return models.Order{}, errcustom.ErrUnautorized
 	}
 
 	newStatus := OrderStatus(strings.TrimSpace(status))
@@ -167,6 +171,10 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 
 	if !allowedStatuses[newStatus] {
 		return models.Order{}, fmt.Errorf("invalid status: %s", newStatus)
+	}
+
+	if !isShop && newStatus != StatusCancelled {
+		return models.Order{}, errcustom.ErrUnautorized
 	}
 
 	var transitionRules = map[PaymentMethod]map[OrderStatus]OrderStatus{
@@ -194,7 +202,6 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 
 	order.Status = string(newStatus)
 	return *order, nil
-
 }
 
 func buildToDataProduceOrder(items models.Order) []models.DataProduceOrder {
