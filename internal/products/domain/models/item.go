@@ -51,7 +51,7 @@ func (i *Item) ToDomainDTO() dtos.ItemResponse {
 		ShopID:      i.ShopID,
 		CategoryID:  i.CategoryID,
 		Name:        i.Name,
-		Price:       i.Price,
+		Ref:         float64(i.Price),
 		Image:       i.Image,
 		Description: i.Description,
 		Score:       i.Score,

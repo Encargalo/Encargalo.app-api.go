@@ -7,11 +7,12 @@ import (
 	"log/slog"
 	"time"
 
+	"Encargalo.app-api.go/internal/bcv/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/cache"
 	"Encargalo.app-api.go/internal/pkg/pagination"
 	"Encargalo.app-api.go/internal/products/domain/dtos"
 	"Encargalo.app-api.go/internal/products/domain/models"
-	"Encargalo.app-api.go/internal/products/domain/ports"
+	productPorts "Encargalo.app-api.go/internal/products/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
@@ -26,12 +27,13 @@ const (
 )
 
 type productsRepo struct {
-	db    *bun.DB
-	cache cache.Cache
+	db       *bun.DB
+	cache    cache.Cache
+	bcvCache ports.BcvCache
 }
 
-func NewProductsRepo(db *bun.DB, cache cache.Cache) ports.ProductsRepo {
-	return &productsRepo{db, cache}
+func NewProductsRepo(db *bun.DB, cache cache.Cache, bcvCache ports.BcvCache) productPorts.ProductsRepo {
+	return &productsRepo{db, cache, bcvCache}
 }
 
 func (p *productsRepo) RegisterItem(ctx context.Context, item *models.Item) error {
@@ -147,8 +149,11 @@ func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.U
 		return pagination.Response[dtos.CategoriesResponse]{}, errcustom.ErrUnexpectedError
 	}
 
+	data := categories.ToDomainDTO()
+	applyRateToCategories(p.bcvRate(ctx), &data)
+
 	resp := pagination.Response[dtos.CategoriesResponse]{
-		Data: categories.ToDomainDTO(),
+		Data: data,
 		Pagination: pagination.Meta{
 			Page:       params.Page,
 			Limit:      params.Limit,
@@ -211,8 +216,11 @@ func (p *productsRepo) SearchAdditionsByShopID(ctx context.Context, categoryID u
 		}
 	}
 
+	addData := additions.ToDomainDTO()
+	applyRateToAdditions(p.bcvRate(ctx), &addData)
+
 	resp := pagination.Response[dtos.AdditionsResponse]{
-		Data: additions.ToDomainDTO(),
+		Data: addData,
 		Pagination: pagination.Meta{
 			Page:       params.Page,
 			Limit:      params.Limit,
@@ -381,8 +389,11 @@ func (p *productsRepo) SearchBestSellersByShopID(ctx context.Context, shopID uui
 		return pagination.Response[dtos.ItemsResponse]{}, errcustom.ErrUnexpectedError
 	}
 
+	itemsData := topSeller.ToDomainDTO()
+	applyRateToItems(p.bcvRate(ctx), &itemsData)
+
 	resp := pagination.Response[dtos.ItemsResponse]{
-		Data: topSeller.ToDomainDTO(),
+		Data: itemsData,
 		Pagination: pagination.Meta{
 			Page:       params.Page,
 			Limit:      params.Limit,
@@ -407,4 +418,33 @@ func (p *productsRepo) AddSoldItem(ctx context.Context, item models.DataProduceO
 		Exec(ctx)
 	return err
 
+}
+
+func (p *productsRepo) bcvRate(ctx context.Context) float64 {
+	rate, err := p.bcvCache.GetLatest(ctx)
+	if err != nil {
+		slog.Warn("bcv rate unavailable, bs prices will be 0", "error", err)
+		return 0
+	}
+	return rate.Rate
+}
+
+func applyRateToCategories(rate float64, data *dtos.CategoriesResponse) {
+	for i := range *data {
+		for j := range (*data)[i].Items {
+			(*data)[i].Items[j].Bs = (*data)[i].Items[j].Ref * rate
+		}
+	}
+}
+
+func applyRateToItems(rate float64, data *dtos.ItemsResponse) {
+	for i := range *data {
+		(*data)[i].Bs = (*data)[i].Ref * rate
+	}
+}
+
+func applyRateToAdditions(rate float64, data *dtos.AdditionsResponse) {
+	for i := range *data {
+		(*data)[i].Bs = (*data)[i].Ref * rate
+	}
 }
