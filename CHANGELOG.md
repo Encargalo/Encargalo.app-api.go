@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.7.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.6.0...v1.7.0) (2026-05-18)
+
+
+### Features
+
+* add reference and bolivianos prices to item and addition responses ([053a215](https://github.com/Encargalo/Encargalo.app-api.go/commit/053a215c2b8ee91f73c941142881141af13c99f5))
+* add reference and bolivianos prices to item and addition responses ([e458ee8](https://github.com/Encargalo/Encargalo.app-api.go/commit/e458ee8c7f63babfb840c8d02c5054888e0d0f47))
+
 ## [1.6.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.5.4...v1.6.0) (2026-05-16)
 
 
