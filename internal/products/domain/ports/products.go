@@ -3,7 +3,6 @@ package ports
 import (
 	"context"
 
-	"Encargalo.app-api.go/internal/pkg/pagination"
 	"Encargalo.app-api.go/internal/products/domain/dtos"
 	"Encargalo.app-api.go/internal/products/domain/models"
 
@@ -13,11 +12,11 @@ import (
 type ProductsApp interface {
 	RegisterItem(ctx context.Context, item dtos.RegisterItem) error
 	UpdateItem(ctx context.Context, item dtos.UpdateItem, itemID, userID uuid.UUID) error
-	SearchProductsByShopID(ctx context.Context, shopID uuid.UUID, params pagination.Params) (pagination.Response[dtos.CategoriesResponse], error)
-	SearchAdditionsByShopID(ctx context.Context, categoryID uuid.UUID, params pagination.Params) (pagination.Response[dtos.AdditionsResponse], error)
-	SearchFlavorsByItemID(ctx context.Context, itemID uuid.UUID, params pagination.Params) (pagination.Response[dtos.FlavorsResponse], error)
-	SearchFlavorsByCategoryID(ctx context.Context, categoryID uuid.UUID, params pagination.Params) (pagination.Response[dtos.FlavorsResponse], error)
-	SearchBestSellersByShopID(ctx context.Context, shopID uuid.UUID, params pagination.Params) (pagination.Response[dtos.ItemsResponse], error)
+	SearchProductsByShopID(ctx context.Context, shopID uuid.UUID) (dtos.CategoriesResponse, error)
+	SearchAdditionsByShopID(ctx context.Context, categoryID uuid.UUID) (dtos.AdditionsResponse, error)
+	SearchFlavorsByItemID(ctx context.Context, itemID uuid.UUID) (dtos.FlavorsResponse, error)
+	SearchFlavorsByCategoryID(ctx context.Context, categoryID uuid.UUID) (dtos.FlavorsResponse, error)
+	SearchBestSellersByShopID(ctx context.Context, shopID uuid.UUID) (dtos.ItemsResponse, error)
 	AddSoldItem(ctx context.Context, item models.DataProduceOrder) error
 }
 
@@ -27,10 +26,10 @@ type ProductsRepo interface {
 	DeleteItemFlavors(ctx context.Context, itemID uuid.UUID) error
 	UpdateItem(ctx context.Context, item *models.UpdateItem, shopID uuid.UUID) error
 	SearchItemByID(context.Context, uuid.UUID) (*models.Item, error)
-	SearchProductsByShopID(ctx context.Context, shopID uuid.UUID, params pagination.Params) (pagination.Response[dtos.CategoriesResponse], error)
-	SearchAdditionsByShopID(ctx context.Context, categoryID uuid.UUID, params pagination.Params) (pagination.Response[dtos.AdditionsResponse], error)
-	SearchFlavorsByItemID(ctx context.Context, itemID uuid.UUID, params pagination.Params) (pagination.Response[dtos.FlavorsResponse], error)
-	SearchFlavorsByCategoryID(ctx context.Context, categoryID uuid.UUID, params pagination.Params) (pagination.Response[dtos.FlavorsResponse], error)
-	SearchBestSellersByShopID(ctx context.Context, shopID uuid.UUID, params pagination.Params) (pagination.Response[dtos.ItemsResponse], error)
+	SearchProductsByShopID(ctx context.Context, shopID uuid.UUID) (dtos.CategoriesResponse, error)
+	SearchAdditionsByShopID(ctx context.Context, categoryID uuid.UUID) (dtos.AdditionsResponse, error)
+	SearchFlavorsByItemID(ctx context.Context, itemID uuid.UUID) (dtos.FlavorsResponse, error)
+	SearchFlavorsByCategoryID(ctx context.Context, categoryID uuid.UUID) (dtos.FlavorsResponse, error)
+	SearchBestSellersByShopID(ctx context.Context, shopID uuid.UUID) (dtos.ItemsResponse, error)
 	AddSoldItem(ctx context.Context, item models.DataProduceOrder) error
 }

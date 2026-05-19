@@ -92,61 +92,16 @@ definitions:
         example: invalid request
         type: string
     type: object
-  Encargalo_app-api_go_internal_pkg_pagination.Meta:
-    properties:
-      limit:
-        type: integer
-      page:
-        type: integer
-      total:
-        type: integer
-      total_pages:
-        type: integer
-    type: object
-  Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_AdditionsResponse:
-    properties:
-      data:
-        items:
-          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse'
-        type: array
-      pagination:
-        $ref: '#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Meta'
-    type: object
-  Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_CategoriesResponse:
-    properties:
-      data:
-        items:
-          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategoryResponse'
-        type: array
-      pagination:
-        $ref: '#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Meta'
-    type: object
-  Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_FlavorsResponse:
-    properties:
-      data:
-        items:
-          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse'
-        type: array
-      pagination:
-        $ref: '#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Meta'
-    type: object
-  Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_ItemsResponse:
-    properties:
-      data:
-        items:
-          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse'
-        type: array
-      pagination:
-        $ref: '#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Meta'
-    type: object
   Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse:
     properties:
+      bs:
+        type: number
       id:
         type: string
       name:
         type: string
-      price:
-        type: integer
+      ref:
+        type: number
     type: object
   Encargalo_app-api_go_internal_products_domain_dtos.CategoryResponse:
     properties:
@@ -170,6 +125,9 @@ definitions:
     type: object
   Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse:
     properties:
+      bs:
+        example: 7000
+        type: number
       category_id:
         example: b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2
         type: string
@@ -189,9 +147,9 @@ definitions:
       name:
         example: Pizza Hawaiana Mediana
         type: string
-      price:
-        example: 32000
-        type: integer
+      ref:
+        example: 14
+        type: number
       rules:
         items:
           $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemRule'
@@ -596,7 +554,7 @@ paths:
       - Orders WebSocket
   /products:
     get:
-      description: Retorna productos agrupados por categoría de una tienda, con paginación.
+      description: Retorna todos los productos agrupados por categoría de una tienda.
         Solo incluye productos disponibles, ordenados por precio ascendente.
       parameters:
       - description: ID de la tienda
@@ -605,21 +563,15 @@ paths:
         name: shop_id
         required: true
         type: string
-      - description: 'Número de página (default: 1)'
-        in: query
-        name: page
-        type: integer
-      - description: 'Categorías por página (default: 10)'
-        in: query
-        name: limit
-        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_CategoriesResponse'
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategoryResponse'
+            type: array
         "400":
           description: shop_id es requerido o inválido
           schema:
@@ -728,8 +680,8 @@ paths:
       - Products
   /products/additions:
     get:
-      description: Retorna las adiciones disponibles de una categoría, ordenadas por
-        precio ascendente.
+      description: Retorna todas las adiciones disponibles de una categoría, ordenadas
+        por precio ascendente.
       parameters:
       - description: ID de la categoría
         format: uuid
@@ -737,21 +689,15 @@ paths:
         name: category_id
         required: true
         type: string
-      - description: 'Número de página (default: 1)'
-        in: query
-        name: page
-        type: integer
-      - description: 'Resultados por página (default: 20)'
-        in: query
-        name: limit
-        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_AdditionsResponse'
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse'
+            type: array
         "400":
           description: category_id es requerido o inválido
           schema:
@@ -771,8 +717,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: Esta función maneja la solicitud para obtener los productos mas
-        vendidos por tienda de una tienda específica.
+      description: Retorna todos los productos más vendidos de una tienda específica,
+        ordenados por ventas descendente.
       parameters:
       - description: ID de la tienda
         format: uuid
@@ -780,21 +726,15 @@ paths:
         name: shop_id
         required: true
         type: string
-      - description: 'Número de página (default: 1)'
-        in: query
-        name: page
-        type: integer
-      - description: 'Resultados por página (default: 5)'
-        in: query
-        name: limit
-        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_ItemsResponse'
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse'
+            type: array
         "400":
           description: shop_id es requerido o inválido
           schema:
@@ -812,7 +752,7 @@ paths:
       - Products
   /products/flavors:
     get:
-      description: Retorna los sabores disponibles asociados a un producto específico.
+      description: Retorna todos los sabores disponibles asociados a un producto específico.
       parameters:
       - description: ID del producto
         format: uuid
@@ -820,21 +760,15 @@ paths:
         name: item_id
         required: true
         type: string
-      - description: 'Número de página (default: 1)'
-        in: query
-        name: page
-        type: integer
-      - description: 'Resultados por página (default: 20)'
-        in: query
-        name: limit
-        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_FlavorsResponse'
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse'
+            type: array
         "400":
           description: item_id es requerido o inválido
           schema:
@@ -852,7 +786,8 @@ paths:
       - Products
   /products/flavors/category:
     get:
-      description: Retorna los sabores disponibles asociados a una categoría específica.
+      description: Retorna todos los sabores disponibles asociados a una categoría
+        específica.
       parameters:
       - description: ID de la categoría
         format: uuid
@@ -860,21 +795,15 @@ paths:
         name: category_id
         required: true
         type: string
-      - description: 'Número de página (default: 1)'
-        in: query
-        name: page
-        type: integer
-      - description: 'Resultados por página (default: 20)'
-        in: query
-        name: limit
-        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_FlavorsResponse'
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse'
+            type: array
         "400":
           description: category_id es requerido o inválido
           schema:

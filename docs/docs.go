@@ -269,7 +269,7 @@ const docTemplate = `{
         },
         "/products": {
             "get": {
-                "description": "Retorna productos agrupados por categoría de una tienda, con paginación. Solo incluye productos disponibles, ordenados por precio ascendente.",
+                "description": "Retorna todos los productos agrupados por categoría de una tienda. Solo incluye productos disponibles, ordenados por precio ascendente.",
                 "produces": [
                     "application/json"
                 ],
@@ -285,25 +285,16 @@ const docTemplate = `{
                         "name": "shop_id",
                         "in": "query",
                         "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Número de página (default: 1)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Categorías por página (default: 10)",
-                        "name": "limit",
-                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_CategoriesResponse"
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategoryResponse"
+                            }
                         }
                     },
                     "400": {
@@ -390,7 +381,7 @@ const docTemplate = `{
         },
         "/products/additions": {
             "get": {
-                "description": "Retorna las adiciones disponibles de una categoría, ordenadas por precio ascendente.",
+                "description": "Retorna todas las adiciones disponibles de una categoría, ordenadas por precio ascendente.",
                 "produces": [
                     "application/json"
                 ],
@@ -406,25 +397,16 @@ const docTemplate = `{
                         "name": "category_id",
                         "in": "query",
                         "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Número de página (default: 1)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Resultados por página (default: 20)",
-                        "name": "limit",
-                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_AdditionsResponse"
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse"
+                            }
                         }
                     },
                     "400": {
@@ -450,7 +432,7 @@ const docTemplate = `{
         },
         "/products/best-sellers": {
             "get": {
-                "description": "Esta función maneja la solicitud para obtener los productos mas vendidos por tienda de una tienda específica.",
+                "description": "Retorna todos los productos más vendidos de una tienda específica, ordenados por ventas descendente.",
                 "consumes": [
                     "application/json"
                 ],
@@ -469,25 +451,16 @@ const docTemplate = `{
                         "name": "shop_id",
                         "in": "query",
                         "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Número de página (default: 1)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Resultados por página (default: 5)",
-                        "name": "limit",
-                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_ItemsResponse"
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse"
+                            }
                         }
                     },
                     "400": {
@@ -513,7 +486,7 @@ const docTemplate = `{
         },
         "/products/flavors": {
             "get": {
-                "description": "Retorna los sabores disponibles asociados a un producto específico.",
+                "description": "Retorna todos los sabores disponibles asociados a un producto específico.",
                 "produces": [
                     "application/json"
                 ],
@@ -529,25 +502,16 @@ const docTemplate = `{
                         "name": "item_id",
                         "in": "query",
                         "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Número de página (default: 1)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Resultados por página (default: 20)",
-                        "name": "limit",
-                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_FlavorsResponse"
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse"
+                            }
                         }
                     },
                     "400": {
@@ -573,7 +537,7 @@ const docTemplate = `{
         },
         "/products/flavors/category": {
             "get": {
-                "description": "Retorna los sabores disponibles asociados a una categoría específica.",
+                "description": "Retorna todos los sabores disponibles asociados a una categoría específica.",
                 "produces": [
                     "application/json"
                 ],
@@ -589,25 +553,16 @@ const docTemplate = `{
                         "name": "category_id",
                         "in": "query",
                         "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Número de página (default: 1)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Resultados por página (default: 20)",
-                        "name": "limit",
-                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_FlavorsResponse"
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse"
+                            }
                         }
                     },
                     "400": {
@@ -1250,90 +1205,20 @@ const docTemplate = `{
                 }
             }
         },
-        "Encargalo_app-api_go_internal_pkg_pagination.Meta": {
-            "type": "object",
-            "properties": {
-                "limit": {
-                    "type": "integer"
-                },
-                "page": {
-                    "type": "integer"
-                },
-                "total": {
-                    "type": "integer"
-                },
-                "total_pages": {
-                    "type": "integer"
-                }
-            }
-        },
-        "Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_AdditionsResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse"
-                    }
-                },
-                "pagination": {
-                    "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Meta"
-                }
-            }
-        },
-        "Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_CategoriesResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategoryResponse"
-                    }
-                },
-                "pagination": {
-                    "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Meta"
-                }
-            }
-        },
-        "Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_FlavorsResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse"
-                    }
-                },
-                "pagination": {
-                    "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Meta"
-                }
-            }
-        },
-        "Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_ItemsResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse"
-                    }
-                },
-                "pagination": {
-                    "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Meta"
-                }
-            }
-        },
         "Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse": {
             "type": "object",
             "properties": {
+                "bs": {
+                    "type": "number"
+                },
                 "id": {
                     "type": "string"
                 },
                 "name": {
                     "type": "string"
                 },
-                "price": {
-                    "type": "integer"
+                "ref": {
+                    "type": "number"
                 }
             }
         },
@@ -1371,6 +1256,10 @@ const docTemplate = `{
         "Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse": {
             "type": "object",
             "properties": {
+                "bs": {
+                    "type": "number",
+                    "example": 7000
+                },
                 "category_id": {
                     "type": "string",
                     "example": "b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2"
@@ -1395,9 +1284,9 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Pizza Hawaiana Mediana"
                 },
-                "price": {
-                    "type": "integer",
-                    "example": 32000
+                "ref": {
+                    "type": "number",
+                    "example": 14
                 },
                 "rules": {
                     "type": "array",

@@ -2,11 +2,9 @@ package handler
 
 import (
 	"net/http"
-	"strconv"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
 	emplService "Encargalo.app-api.go/internal/employee/domain/ports"
-	"Encargalo.app-api.go/internal/pkg/pagination"
 	"Encargalo.app-api.go/internal/products/domain/dtos"
 	"Encargalo.app-api.go/internal/products/domain/ports"
 	"github.com/google/uuid"
@@ -30,18 +28,6 @@ type productsHandler struct {
 
 func NewProducsHandler(svc ports.ProductsApp, emplService emplService.EmployeeApp) ProductsHandler {
 	return &productsHandler{svc, emplService}
-}
-
-func paginationParams(e echo.Context, defaultLimit int) pagination.Params {
-	page := 1
-	if v, err := strconv.Atoi(e.QueryParam("page")); err == nil && v > 0 {
-		page = v
-	}
-	limit := defaultLimit
-	if v, err := strconv.Atoi(e.QueryParam("limit")); err == nil && v > 0 {
-		limit = v
-	}
-	return pagination.Params{Page: page, Limit: limit}
 }
 
 // RegisterItems godoc
@@ -141,13 +127,11 @@ func (p *productsHandler) UpdateItem(e echo.Context) error {
 
 // SearchProductsByShopID godoc
 // @Summary      Obtener productos por tienda
-// @Description  Retorna productos agrupados por categoría de una tienda, con paginación. Solo incluye productos disponibles, ordenados por precio ascendente.
+// @Description  Retorna todos los productos agrupados por categoría de una tienda. Solo incluye productos disponibles, ordenados por precio ascendente.
 // @Tags         Products
 // @Produce      json
-// @Param        shop_id  query     string  true   "ID de la tienda"  Format(uuid)
-// @Param        page     query     int     false  "Número de página (default: 1)"
-// @Param        limit    query     int     false  "Categorías por página (default: 10)"
-// @Success      200      {object}  pagination.Response[dtos.CategoriesResponse]
+// @Param        shop_id  query     string  true  "ID de la tienda"  Format(uuid)
+// @Success      200      {object}  dtos.CategoriesResponse
 // @Failure      400      {string}  string  "shop_id es requerido o inválido"
 // @Failure      404      {string}  string  "Productos no encontrados"
 // @Failure      500      {string}  string  "Error interno del servidor"
@@ -166,7 +150,7 @@ func (p *productsHandler) SearchProductsByShopID(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "shop_id inválido")
 	}
 
-	items, err := p.svc.SearchProductsByShopID(ctx, shopID, paginationParams(e, 10))
+	items, err := p.svc.SearchProductsByShopID(ctx, shopID)
 	if err != nil {
 		return err
 	}
@@ -176,13 +160,11 @@ func (p *productsHandler) SearchProductsByShopID(e echo.Context) error {
 
 // SearchAdditionsByShopID godoc
 // @Summary      Obtener adiciones por categoría
-// @Description  Retorna las adiciones disponibles de una categoría, ordenadas por precio ascendente.
+// @Description  Retorna todas las adiciones disponibles de una categoría, ordenadas por precio ascendente.
 // @Tags         Products
 // @Produce      json
-// @Param        category_id  query     string  true   "ID de la categoría"  Format(uuid)
-// @Param        page         query     int     false  "Número de página (default: 1)"
-// @Param        limit        query     int     false  "Resultados por página (default: 20)"
-// @Success      200          {object}  pagination.Response[dtos.AdditionsResponse]
+// @Param        category_id  query     string  true  "ID de la categoría"  Format(uuid)
+// @Success      200          {object}  dtos.AdditionsResponse
 // @Failure      400          {string}  string  "category_id es requerido o inválido"
 // @Failure      404          {string}  string  "Adiciones no encontradas"
 // @Failure      500          {string}  string  "Error interno del servidor"
@@ -201,7 +183,7 @@ func (p *productsHandler) SearchAdditionsByShopID(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "category_id inválido")
 	}
 
-	additions, err := p.svc.SearchAdditionsByShopID(ctx, categoryID, paginationParams(e, 20))
+	additions, err := p.svc.SearchAdditionsByShopID(ctx, categoryID)
 	if err != nil {
 		return err
 	}
@@ -211,13 +193,11 @@ func (p *productsHandler) SearchAdditionsByShopID(e echo.Context) error {
 
 // SearchFlavorsByItemID godoc
 // @Summary      Obtener sabores por producto
-// @Description  Retorna los sabores disponibles asociados a un producto específico.
+// @Description  Retorna todos los sabores disponibles asociados a un producto específico.
 // @Tags         Products
 // @Produce      json
-// @Param        item_id  query     string  true   "ID del producto" Format(uuid)
-// @Param        page     query     int     false  "Número de página (default: 1)"
-// @Param        limit    query     int     false  "Resultados por página (default: 20)"
-// @Success      200      {object}  pagination.Response[dtos.FlavorsResponse]
+// @Param        item_id  query     string  true  "ID del producto" Format(uuid)
+// @Success      200      {object}  dtos.FlavorsResponse
 // @Failure      400      {string}  string  "item_id es requerido o inválido"
 // @Failure      404      {string}  string  "Sabores no encontrados"
 // @Failure      500      {string}  string  "Error interno del servidor"
@@ -236,7 +216,7 @@ func (p *productsHandler) SearchFlavorsByItemID(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "item_id inválido")
 	}
 
-	flavors, err := p.svc.SearchFlavorsByItemID(ctx, itemID, paginationParams(e, 20))
+	flavors, err := p.svc.SearchFlavorsByItemID(ctx, itemID)
 	if err != nil {
 		return err
 	}
@@ -246,13 +226,11 @@ func (p *productsHandler) SearchFlavorsByItemID(e echo.Context) error {
 
 // SearchFlavorsByCategoryID godoc
 // @Summary      Obtener sabores por categoría
-// @Description  Retorna los sabores disponibles asociados a una categoría específica.
+// @Description  Retorna todos los sabores disponibles asociados a una categoría específica.
 // @Tags         Products
 // @Produce      json
-// @Param        category_id  query     string  true   "ID de la categoría" Format(uuid)
-// @Param        page         query     int     false  "Número de página (default: 1)"
-// @Param        limit        query     int     false  "Resultados por página (default: 20)"
-// @Success      200          {object}  pagination.Response[dtos.FlavorsResponse]
+// @Param        category_id  query     string  true  "ID de la categoría" Format(uuid)
+// @Success      200          {object}  dtos.FlavorsResponse
 // @Failure      400          {string}  string  "category_id es requerido o inválido"
 // @Failure      404          {string}  string  "Sabores no encontrados"
 // @Failure      500          {string}  string  "Error interno del servidor"
@@ -271,7 +249,7 @@ func (p *productsHandler) SearchFlavorsByCategoryID(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "category_id inválido")
 	}
 
-	flavors, err := p.svc.SearchFlavorsByCategoryID(ctx, categoryID, paginationParams(e, 20))
+	flavors, err := p.svc.SearchFlavorsByCategoryID(ctx, categoryID)
 	if err != nil {
 		return err
 	}
@@ -281,14 +259,12 @@ func (p *productsHandler) SearchFlavorsByCategoryID(e echo.Context) error {
 
 // SearchBestSellersByShopID godoc
 // @Summary      Obtener los productos mas vendidos por tienda
-// @Description  Esta función maneja la solicitud para obtener los productos mas vendidos por tienda de una tienda específica.
+// @Description  Retorna todos los productos más vendidos de una tienda específica, ordenados por ventas descendente.
 // @Tags         Products
 // @Accept       json
 // @Produce      json
-// @Param        shop_id  query     string  true   "ID de la tienda" Format(uuid)
-// @Param        page     query     int     false  "Número de página (default: 1)"
-// @Param        limit    query     int     false  "Resultados por página (default: 5)"
-// @Success      200      {object}  pagination.Response[dtos.ItemsResponse]
+// @Param        shop_id  query     string  true  "ID de la tienda" Format(uuid)
+// @Success      200      {object}  dtos.ItemsResponse
 // @Failure      400      {string}  string  "shop_id es requerido o inválido"
 // @Failure      404      {string}  string  "Productos más vendidos no encontrados"
 // @Failure      500      {string}  string  "Error interno del servidor"
@@ -307,7 +283,7 @@ func (p *productsHandler) SearchBestSellersByShopID(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "shop_id invalid")
 	}
 
-	topSeller, err := p.svc.SearchBestSellersByShopID(ctx, shopID, paginationParams(e, 5))
+	topSeller, err := p.svc.SearchBestSellersByShopID(ctx, shopID)
 	if err != nil {
 		return err
 	}
