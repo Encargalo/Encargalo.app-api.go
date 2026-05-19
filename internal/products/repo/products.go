@@ -9,7 +9,6 @@ import (
 
 	"Encargalo.app-api.go/internal/bcv/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/cache"
-	"Encargalo.app-api.go/internal/pkg/pagination"
 	"Encargalo.app-api.go/internal/products/domain/dtos"
 	"Encargalo.app-api.go/internal/products/domain/models"
 	productPorts "Encargalo.app-api.go/internal/products/domain/ports"
@@ -107,17 +106,17 @@ func (p *productsRepo) SearchItemByID(ctx context.Context, id uuid.UUID) (*model
 	return &item, nil
 }
 
-func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.UUID, params pagination.Params) (pagination.Response[dtos.CategoriesResponse], error) {
+func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.UUID) (dtos.CategoriesResponse, error) {
 
-	cacheKey := fmt.Sprintf("%s%s_p%d_l%d", prefix_shop_cashe, shopID.String(), params.Page, params.Limit)
+	cacheKey := prefix_shop_cashe + shopID.String()
 
 	cached, _ := p.cache.Get(ctx, cacheKey)
 	if cached != "" {
-		var resp pagination.Response[dtos.CategoriesResponse]
-		if err := json.Unmarshal([]byte(cached), &resp); err == nil {
-			return resp, nil
+		var data dtos.CategoriesResponse
+		if err := json.Unmarshal([]byte(cached), &data); err == nil {
+			return data, nil
 		}
-		slog.Error("error al hacer unmarshal de los products paginados", "key", cacheKey)
+		slog.Error("error al hacer unmarshal de los productos", "key", cacheKey)
 	}
 
 	total, err := p.db.NewSelect().
@@ -126,11 +125,11 @@ func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.U
 		Count(ctx)
 	if err != nil {
 		slog.Error("error al contar categorías", "error", err)
-		return pagination.Response[dtos.CategoriesResponse]{}, errcustom.ErrUnexpectedError
+		return nil, errcustom.ErrUnexpectedError
 	}
 
 	if total == 0 {
-		return pagination.Response[dtos.CategoriesResponse]{}, errcustom.ErrNotFound
+		return nil, errcustom.ErrNotFound
 	}
 
 	var categories models.Categories
@@ -142,44 +141,32 @@ func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.U
 			return sq.Where("is_available = ?", true).Order("price ASC")
 		}).
 		Relation("Items.ItemRule").
-		Limit(params.Limit).
-		Offset(params.Offset()).
 		Scan(ctx); err != nil {
 		slog.Error("error al obtener los productos", "error", err)
-		return pagination.Response[dtos.CategoriesResponse]{}, errcustom.ErrUnexpectedError
+		return nil, errcustom.ErrUnexpectedError
 	}
 
 	data := categories.ToDomainDTO()
 	applyRateToCategories(p.bcvRate(ctx), &data)
 
-	resp := pagination.Response[dtos.CategoriesResponse]{
-		Data: data,
-		Pagination: pagination.Meta{
-			Page:       params.Page,
-			Limit:      params.Limit,
-			Total:      total,
-			TotalPages: pagination.TotalPages(total, params.Limit),
-		},
-	}
-
-	if err := p.cache.Set(ctx, cacheKey, resp, 1*time.Hour); err != nil {
+	if err := p.cache.Set(ctx, cacheKey, data, 1*time.Hour); err != nil {
 		slog.Error("error al guardar los productos en el cache", "error", err)
 	}
 
-	return resp, nil
+	return data, nil
 }
 
-func (p *productsRepo) SearchAdditionsByShopID(ctx context.Context, categoryID uuid.UUID, params pagination.Params) (pagination.Response[dtos.AdditionsResponse], error) {
+func (p *productsRepo) SearchAdditionsByShopID(ctx context.Context, categoryID uuid.UUID) (dtos.AdditionsResponse, error) {
 
-	cacheKey := fmt.Sprintf("%s%s_p%d_l%d", prefix_additions_cache, categoryID.String(), params.Page, params.Limit)
+	cacheKey := prefix_additions_cache + categoryID.String()
 
 	cached, _ := p.cache.Get(ctx, cacheKey)
 	if cached != "" {
-		var resp pagination.Response[dtos.AdditionsResponse]
-		if err := json.Unmarshal([]byte(cached), &resp); err == nil {
-			return resp, nil
+		var data dtos.AdditionsResponse
+		if err := json.Unmarshal([]byte(cached), &data); err == nil {
+			return data, nil
 		}
-		slog.Error("error al hacer unmarshal de las adiciones paginadas", "key", cacheKey)
+		slog.Error("error al hacer unmarshal de las adiciones", "key", cacheKey)
 	}
 
 	total, err := p.db.NewSelect().
@@ -188,11 +175,11 @@ func (p *productsRepo) SearchAdditionsByShopID(ctx context.Context, categoryID u
 		Count(ctx)
 	if err != nil {
 		slog.Error("error al contar adiciones", "error", err)
-		return pagination.Response[dtos.AdditionsResponse]{}, errcustom.ErrUnexpectedError
+		return nil, errcustom.ErrUnexpectedError
 	}
 
 	if total == 0 {
-		return pagination.Response[dtos.AdditionsResponse]{}, errcustom.ErrNotFound
+		return nil, errcustom.ErrNotFound
 	}
 
 	var categoryAdditions []models.CategoryAddition
@@ -202,11 +189,9 @@ func (p *productsRepo) SearchAdditionsByShopID(ctx context.Context, categoryID u
 		Relation("Addition").
 		Order("price ASC").
 		Where("category_id = ?", categoryID).
-		Limit(params.Limit).
-		Offset(params.Offset()).
 		Scan(ctx); err != nil {
 		fmt.Println(err.Error())
-		return pagination.Response[dtos.AdditionsResponse]{}, errcustom.ErrUnexpectedError
+		return nil, errcustom.ErrUnexpectedError
 	}
 
 	var additions models.Additions
@@ -216,37 +201,27 @@ func (p *productsRepo) SearchAdditionsByShopID(ctx context.Context, categoryID u
 		}
 	}
 
-	addData := additions.ToDomainDTO()
-	applyRateToAdditions(p.bcvRate(ctx), &addData)
+	data := additions.ToDomainDTO()
+	applyRateToAdditions(p.bcvRate(ctx), &data)
 
-	resp := pagination.Response[dtos.AdditionsResponse]{
-		Data: addData,
-		Pagination: pagination.Meta{
-			Page:       params.Page,
-			Limit:      params.Limit,
-			Total:      total,
-			TotalPages: pagination.TotalPages(total, params.Limit),
-		},
-	}
-
-	if err := p.cache.Set(ctx, cacheKey, resp, 1*time.Hour); err != nil {
+	if err := p.cache.Set(ctx, cacheKey, data, 1*time.Hour); err != nil {
 		slog.Error("error al guardar las adiciones en el cache", "error", err)
 	}
 
-	return resp, nil
+	return data, nil
 }
 
-func (p *productsRepo) SearchFlavorsByItemID(ctx context.Context, itemID uuid.UUID, params pagination.Params) (pagination.Response[dtos.FlavorsResponse], error) {
+func (p *productsRepo) SearchFlavorsByItemID(ctx context.Context, itemID uuid.UUID) (dtos.FlavorsResponse, error) {
 
-	cacheKey := fmt.Sprintf("%s%s_p%d_l%d", prefix_flavors_item_cache, itemID.String(), params.Page, params.Limit)
+	cacheKey := prefix_flavors_item_cache + itemID.String()
 
 	cached, _ := p.cache.Get(ctx, cacheKey)
 	if cached != "" {
-		var resp pagination.Response[dtos.FlavorsResponse]
-		if err := json.Unmarshal([]byte(cached), &resp); err == nil {
-			return resp, nil
+		var data dtos.FlavorsResponse
+		if err := json.Unmarshal([]byte(cached), &data); err == nil {
+			return data, nil
 		}
-		slog.Error("error al hacer unmarshal de los sabores por item paginados", "key", cacheKey)
+		slog.Error("error al hacer unmarshal de los sabores por item", "key", cacheKey)
 	}
 
 	total, err := p.db.NewSelect().
@@ -255,11 +230,11 @@ func (p *productsRepo) SearchFlavorsByItemID(ctx context.Context, itemID uuid.UU
 		Count(ctx)
 	if err != nil {
 		slog.Error("error al contar sabores por item", "error", err)
-		return pagination.Response[dtos.FlavorsResponse]{}, errcustom.ErrUnexpectedError
+		return nil, errcustom.ErrUnexpectedError
 	}
 
 	if total == 0 {
-		return pagination.Response[dtos.FlavorsResponse]{}, errcustom.ErrNotFound
+		return nil, errcustom.ErrNotFound
 	}
 
 	var flavors models.Flavors
@@ -269,41 +244,31 @@ func (p *productsRepo) SearchFlavorsByItemID(ctx context.Context, itemID uuid.UU
 		ColumnExpr("f.*").
 		Join("JOIN products.flavors AS f ON f.id = if.flavor_id").
 		Where("if.item_id = ?", itemID).
-		Limit(params.Limit).
-		Offset(params.Offset()).
 		Scan(ctx, &flavors); err != nil {
 		fmt.Println(err.Error())
-		return pagination.Response[dtos.FlavorsResponse]{}, errcustom.ErrUnexpectedError
+		return nil, errcustom.ErrUnexpectedError
 	}
 
-	resp := pagination.Response[dtos.FlavorsResponse]{
-		Data: flavors.ToDomainDTO(),
-		Pagination: pagination.Meta{
-			Page:       params.Page,
-			Limit:      params.Limit,
-			Total:      total,
-			TotalPages: pagination.TotalPages(total, params.Limit),
-		},
-	}
+	data := flavors.ToDomainDTO()
 
-	if err := p.cache.Set(ctx, cacheKey, resp, 1*time.Hour); err != nil {
+	if err := p.cache.Set(ctx, cacheKey, data, 1*time.Hour); err != nil {
 		slog.Error("error al guardar los sabores por item en el cache", "error", err)
 	}
 
-	return resp, nil
+	return data, nil
 }
 
-func (p *productsRepo) SearchFlavorsByCategoryID(ctx context.Context, categoryID uuid.UUID, params pagination.Params) (pagination.Response[dtos.FlavorsResponse], error) {
+func (p *productsRepo) SearchFlavorsByCategoryID(ctx context.Context, categoryID uuid.UUID) (dtos.FlavorsResponse, error) {
 
-	cacheKey := fmt.Sprintf("%s%s_p%d_l%d", prefix_flavors_cat_cache, categoryID.String(), params.Page, params.Limit)
+	cacheKey := prefix_flavors_cat_cache + categoryID.String()
 
 	cached, _ := p.cache.Get(ctx, cacheKey)
 	if cached != "" {
-		var resp pagination.Response[dtos.FlavorsResponse]
-		if err := json.Unmarshal([]byte(cached), &resp); err == nil {
-			return resp, nil
+		var data dtos.FlavorsResponse
+		if err := json.Unmarshal([]byte(cached), &data); err == nil {
+			return data, nil
 		}
-		slog.Error("error al hacer unmarshal de los sabores por categoría paginados", "key", cacheKey)
+		slog.Error("error al hacer unmarshal de los sabores por categoría", "key", cacheKey)
 	}
 
 	total, err := p.db.NewSelect().
@@ -313,11 +278,11 @@ func (p *productsRepo) SearchFlavorsByCategoryID(ctx context.Context, categoryID
 		Count(ctx)
 	if err != nil {
 		slog.Error("error al contar sabores por categoría", "error", err)
-		return pagination.Response[dtos.FlavorsResponse]{}, errcustom.ErrUnexpectedError
+		return nil, errcustom.ErrUnexpectedError
 	}
 
 	if total == 0 {
-		return pagination.Response[dtos.FlavorsResponse]{}, errcustom.ErrNotFound
+		return nil, errcustom.ErrNotFound
 	}
 
 	var flavors models.Flavors
@@ -326,41 +291,31 @@ func (p *productsRepo) SearchFlavorsByCategoryID(ctx context.Context, categoryID
 		Model(&flavors).
 		Where("category_id = ?", categoryID).
 		Where("deleted_at IS NULL").
-		Limit(params.Limit).
-		Offset(params.Offset()).
 		Scan(ctx); err != nil {
 		slog.Error("error al obtener los sabores por categoría", "error", err)
-		return pagination.Response[dtos.FlavorsResponse]{}, errcustom.ErrUnexpectedError
+		return nil, errcustom.ErrUnexpectedError
 	}
 
-	resp := pagination.Response[dtos.FlavorsResponse]{
-		Data: flavors.ToDomainDTO(),
-		Pagination: pagination.Meta{
-			Page:       params.Page,
-			Limit:      params.Limit,
-			Total:      total,
-			TotalPages: pagination.TotalPages(total, params.Limit),
-		},
-	}
+	data := flavors.ToDomainDTO()
 
-	if err := p.cache.Set(ctx, cacheKey, resp, 1*time.Hour); err != nil {
+	if err := p.cache.Set(ctx, cacheKey, data, 1*time.Hour); err != nil {
 		slog.Error("error al guardar los sabores por categoría en el cache", "error", err)
 	}
 
-	return resp, nil
+	return data, nil
 }
 
-func (p *productsRepo) SearchBestSellersByShopID(ctx context.Context, shopID uuid.UUID, params pagination.Params) (pagination.Response[dtos.ItemsResponse], error) {
+func (p *productsRepo) SearchBestSellersByShopID(ctx context.Context, shopID uuid.UUID) (dtos.ItemsResponse, error) {
 
-	cacheKey := fmt.Sprintf("%s%s_p%d_l%d", prefix_best_sellers_cache, shopID.String(), params.Page, params.Limit)
+	cacheKey := prefix_best_sellers_cache + shopID.String()
 
 	cached, _ := p.cache.Get(ctx, cacheKey)
 	if cached != "" {
-		var resp pagination.Response[dtos.ItemsResponse]
-		if err := json.Unmarshal([]byte(cached), &resp); err == nil {
-			return resp, nil
+		var data dtos.ItemsResponse
+		if err := json.Unmarshal([]byte(cached), &data); err == nil {
+			return data, nil
 		}
-		slog.Error("error al hacer unmarshal de los productos más vendidos paginados", "key", cacheKey)
+		slog.Error("error al hacer unmarshal de los productos más vendidos", "key", cacheKey)
 	}
 
 	total, err := p.db.NewSelect().
@@ -369,11 +324,11 @@ func (p *productsRepo) SearchBestSellersByShopID(ctx context.Context, shopID uui
 		Count(ctx)
 	if err != nil {
 		slog.Error("error al contar productos más vendidos", "error", err)
-		return pagination.Response[dtos.ItemsResponse]{}, errcustom.ErrUnexpectedError
+		return nil, errcustom.ErrUnexpectedError
 	}
 
 	if total == 0 {
-		return pagination.Response[dtos.ItemsResponse]{}, errcustom.ErrNotFound
+		return nil, errcustom.ErrNotFound
 	}
 
 	var topSeller models.Items
@@ -382,31 +337,19 @@ func (p *productsRepo) SearchBestSellersByShopID(ctx context.Context, shopID uui
 		Model(&topSeller).
 		Where("shop_id = ?", shopID).
 		Order("sold desc").
-		Limit(params.Limit).
-		Offset(params.Offset()).
 		Scan(ctx); err != nil {
 		slog.Error("error al obtener los productos mas vendidos", "error", err)
-		return pagination.Response[dtos.ItemsResponse]{}, errcustom.ErrUnexpectedError
+		return nil, errcustom.ErrUnexpectedError
 	}
 
-	itemsData := topSeller.ToDomainDTO()
-	applyRateToItems(p.bcvRate(ctx), &itemsData)
+	data := topSeller.ToDomainDTO()
+	applyRateToItems(p.bcvRate(ctx), &data)
 
-	resp := pagination.Response[dtos.ItemsResponse]{
-		Data: itemsData,
-		Pagination: pagination.Meta{
-			Page:       params.Page,
-			Limit:      params.Limit,
-			Total:      total,
-			TotalPages: pagination.TotalPages(total, params.Limit),
-		},
-	}
-
-	if err := p.cache.Set(ctx, cacheKey, resp, 1*time.Hour); err != nil {
+	if err := p.cache.Set(ctx, cacheKey, data, 1*time.Hour); err != nil {
 		slog.Error("error al guardar los productos mas vendidos en el cache", "error", err)
 	}
 
-	return resp, nil
+	return data, nil
 }
 
 func (p *productsRepo) AddSoldItem(ctx context.Context, item models.DataProduceOrder) error {

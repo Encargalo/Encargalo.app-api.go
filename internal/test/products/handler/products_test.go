@@ -11,7 +11,6 @@ import (
 	employeedto "Encargalo.app-api.go/internal/employee/domain/dto"
 	mocksempl "Encargalo.app-api.go/internal/mocks/employee/domain/ports"
 	mocksprod "Encargalo.app-api.go/internal/mocks/products/domain/ports"
-	"Encargalo.app-api.go/internal/pkg/pagination"
 	"Encargalo.app-api.go/internal/products/domain/dtos"
 	productshandler "Encargalo.app-api.go/internal/products/handler"
 	"Encargalo.app-api.go/internal/shared/buildhttptest"
@@ -336,12 +335,12 @@ func TestSearchProductsByShopID_Success(t *testing.T) {
 	empl := mocksempl.NewEmployeeApp(t)
 
 	shopID := uuid.New()
-	expected := pagination.Response[dtos.CategoriesResponse]{Data: dtos.CategoriesResponse{}}
+	expected := dtos.CategoriesResponse{}
 
 	tc := buildhttptest.SetupControllerCase("/products?shop_id="+shopID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("shop_id", shopID.String())
 
-	svc.On("SearchProductsByShopID", tc.Req.Context(), shopID, pagination.Params{Page: 1, Limit: 10}).Return(expected, nil)
+	svc.On("SearchProductsByShopID", tc.Req.Context(), shopID).Return(expected, nil)
 
 	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchProductsByShopID(tc.Ctx)
@@ -385,8 +384,8 @@ func TestSearchProductsByShopID_NotFound(t *testing.T) {
 	tc := buildhttptest.SetupControllerCase("/products?shop_id="+shopID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("shop_id", shopID.String())
 
-	svc.On("SearchProductsByShopID", tc.Req.Context(), shopID, pagination.Params{Page: 1, Limit: 10}).
-		Return(pagination.Response[dtos.CategoriesResponse]{}, errcustom.ErrNotFound)
+	svc.On("SearchProductsByShopID", tc.Req.Context(), shopID).
+		Return(dtos.CategoriesResponse(nil), errcustom.ErrNotFound)
 
 	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchProductsByShopID(tc.Ctx)
@@ -403,8 +402,8 @@ func TestSearchProductsByShopID_UnexpectedError(t *testing.T) {
 	tc := buildhttptest.SetupControllerCase("/products?shop_id="+shopID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("shop_id", shopID.String())
 
-	svc.On("SearchProductsByShopID", tc.Req.Context(), shopID, pagination.Params{Page: 1, Limit: 10}).
-		Return(pagination.Response[dtos.CategoriesResponse]{}, errcustom.ErrUnexpectedError)
+	svc.On("SearchProductsByShopID", tc.Req.Context(), shopID).
+		Return(dtos.CategoriesResponse(nil), errcustom.ErrUnexpectedError)
 
 	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchProductsByShopID(tc.Ctx)
@@ -420,12 +419,12 @@ func TestSearchAdditionsByShopID_Success(t *testing.T) {
 	empl := mocksempl.NewEmployeeApp(t)
 
 	categoryID := uuid.New()
-	expected := pagination.Response[dtos.AdditionsResponse]{Data: dtos.AdditionsResponse{}}
+	expected := dtos.AdditionsResponse{}
 
 	tc := buildhttptest.SetupControllerCase("/products/additions?category_id="+categoryID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("category_id", categoryID.String())
 
-	svc.On("SearchAdditionsByShopID", tc.Req.Context(), categoryID, pagination.Params{Page: 1, Limit: 20}).Return(expected, nil)
+	svc.On("SearchAdditionsByShopID", tc.Req.Context(), categoryID).Return(expected, nil)
 
 	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchAdditionsByShopID(tc.Ctx)
@@ -469,8 +468,8 @@ func TestSearchAdditionsByShopID_NotFound(t *testing.T) {
 	tc := buildhttptest.SetupControllerCase("/products/additions?category_id="+categoryID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("category_id", categoryID.String())
 
-	svc.On("SearchAdditionsByShopID", tc.Req.Context(), categoryID, pagination.Params{Page: 1, Limit: 20}).
-		Return(pagination.Response[dtos.AdditionsResponse]{}, errcustom.ErrNotFound)
+	svc.On("SearchAdditionsByShopID", tc.Req.Context(), categoryID).
+		Return(dtos.AdditionsResponse(nil), errcustom.ErrNotFound)
 
 	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchAdditionsByShopID(tc.Ctx)
@@ -486,12 +485,12 @@ func TestSearchFlavorsByItemID_Success(t *testing.T) {
 	empl := mocksempl.NewEmployeeApp(t)
 
 	itemID := uuid.New()
-	expected := pagination.Response[dtos.FlavorsResponse]{Data: dtos.FlavorsResponse{}}
+	expected := dtos.FlavorsResponse{}
 
 	tc := buildhttptest.SetupControllerCase("/products/flavors?item_id="+itemID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("item_id", itemID.String())
 
-	svc.On("SearchFlavorsByItemID", tc.Req.Context(), itemID, pagination.Params{Page: 1, Limit: 20}).Return(expected, nil)
+	svc.On("SearchFlavorsByItemID", tc.Req.Context(), itemID).Return(expected, nil)
 
 	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchFlavorsByItemID(tc.Ctx)
@@ -535,8 +534,8 @@ func TestSearchFlavorsByItemID_NotFound(t *testing.T) {
 	tc := buildhttptest.SetupControllerCase("/products/flavors?item_id="+itemID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("item_id", itemID.String())
 
-	svc.On("SearchFlavorsByItemID", tc.Req.Context(), itemID, pagination.Params{Page: 1, Limit: 20}).
-		Return(pagination.Response[dtos.FlavorsResponse]{}, errcustom.ErrNotFound)
+	svc.On("SearchFlavorsByItemID", tc.Req.Context(), itemID).
+		Return(dtos.FlavorsResponse(nil), errcustom.ErrNotFound)
 
 	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchFlavorsByItemID(tc.Ctx)
@@ -552,12 +551,12 @@ func TestSearchFlavorsByCategoryID_Success(t *testing.T) {
 	empl := mocksempl.NewEmployeeApp(t)
 
 	categoryID := uuid.New()
-	expected := pagination.Response[dtos.FlavorsResponse]{Data: dtos.FlavorsResponse{}}
+	expected := dtos.FlavorsResponse{}
 
 	tc := buildhttptest.SetupControllerCase("/products/flavors/category?category_id="+categoryID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("category_id", categoryID.String())
 
-	svc.On("SearchFlavorsByCategoryID", tc.Req.Context(), categoryID, pagination.Params{Page: 1, Limit: 20}).Return(expected, nil)
+	svc.On("SearchFlavorsByCategoryID", tc.Req.Context(), categoryID).Return(expected, nil)
 
 	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchFlavorsByCategoryID(tc.Ctx)
@@ -601,8 +600,8 @@ func TestSearchFlavorsByCategoryID_NotFound(t *testing.T) {
 	tc := buildhttptest.SetupControllerCase("/products/flavors/category?category_id="+categoryID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("category_id", categoryID.String())
 
-	svc.On("SearchFlavorsByCategoryID", tc.Req.Context(), categoryID, pagination.Params{Page: 1, Limit: 20}).
-		Return(pagination.Response[dtos.FlavorsResponse]{}, errcustom.ErrNotFound)
+	svc.On("SearchFlavorsByCategoryID", tc.Req.Context(), categoryID).
+		Return(dtos.FlavorsResponse(nil), errcustom.ErrNotFound)
 
 	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchFlavorsByCategoryID(tc.Ctx)
@@ -618,12 +617,12 @@ func TestSearchBestSellersByShopID_Success(t *testing.T) {
 	empl := mocksempl.NewEmployeeApp(t)
 
 	shopID := uuid.New()
-	expected := pagination.Response[dtos.ItemsResponse]{Data: dtos.ItemsResponse{}}
+	expected := dtos.ItemsResponse{}
 
 	tc := buildhttptest.SetupControllerCase("/products/best-sellers?shop_id="+shopID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("shop_id", shopID.String())
 
-	svc.On("SearchBestSellersByShopID", tc.Req.Context(), shopID, pagination.Params{Page: 1, Limit: 5}).Return(expected, nil)
+	svc.On("SearchBestSellersByShopID", tc.Req.Context(), shopID).Return(expected, nil)
 
 	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchBestSellersByShopID(tc.Ctx)
@@ -667,8 +666,8 @@ func TestSearchBestSellersByShopID_NotFound(t *testing.T) {
 	tc := buildhttptest.SetupControllerCase("/products/best-sellers?shop_id="+shopID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("shop_id", shopID.String())
 
-	svc.On("SearchBestSellersByShopID", tc.Req.Context(), shopID, pagination.Params{Page: 1, Limit: 5}).
-		Return(pagination.Response[dtos.ItemsResponse]{}, errcustom.ErrNotFound)
+	svc.On("SearchBestSellersByShopID", tc.Req.Context(), shopID).
+		Return(dtos.ItemsResponse(nil), errcustom.ErrNotFound)
 
 	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchBestSellersByShopID(tc.Ctx)
@@ -685,8 +684,8 @@ func TestSearchBestSellersByShopID_UnexpectedError(t *testing.T) {
 	tc := buildhttptest.SetupControllerCase("/products/best-sellers?shop_id="+shopID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("shop_id", shopID.String())
 
-	svc.On("SearchBestSellersByShopID", tc.Req.Context(), shopID, pagination.Params{Page: 1, Limit: 5}).
-		Return(pagination.Response[dtos.ItemsResponse]{}, errcustom.ErrUnexpectedError)
+	svc.On("SearchBestSellersByShopID", tc.Req.Context(), shopID).
+		Return(dtos.ItemsResponse(nil), errcustom.ErrUnexpectedError)
 
 	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchBestSellersByShopID(tc.Ctx)

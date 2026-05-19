@@ -10,8 +10,6 @@ import (
 
 	models "Encargalo.app-api.go/internal/products/domain/models"
 
-	pagination "Encargalo.app-api.go/internal/pkg/pagination"
-
 	uuid "github.com/google/uuid"
 )
 
@@ -92,27 +90,29 @@ func (_m *ProductsRepo) RegisterItemFlavors(ctx context.Context, itemID uuid.UUI
 	return r0
 }
 
-// SearchAdditionsByShopID provides a mock function with given fields: ctx, categoryID, params
-func (_m *ProductsRepo) SearchAdditionsByShopID(ctx context.Context, categoryID uuid.UUID, params pagination.Params) (pagination.Response[dtos.AdditionsResponse], error) {
-	ret := _m.Called(ctx, categoryID, params)
+// SearchAdditionsByShopID provides a mock function with given fields: ctx, categoryID
+func (_m *ProductsRepo) SearchAdditionsByShopID(ctx context.Context, categoryID uuid.UUID) (dtos.AdditionsResponse, error) {
+	ret := _m.Called(ctx, categoryID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SearchAdditionsByShopID")
 	}
 
-	var r0 pagination.Response[dtos.AdditionsResponse]
+	var r0 dtos.AdditionsResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, pagination.Params) (pagination.Response[dtos.AdditionsResponse], error)); ok {
-		return rf(ctx, categoryID, params)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (dtos.AdditionsResponse, error)); ok {
+		return rf(ctx, categoryID)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, pagination.Params) pagination.Response[dtos.AdditionsResponse]); ok {
-		r0 = rf(ctx, categoryID, params)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) dtos.AdditionsResponse); ok {
+		r0 = rf(ctx, categoryID)
 	} else {
-		r0 = ret.Get(0).(pagination.Response[dtos.AdditionsResponse])
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(dtos.AdditionsResponse)
+		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, pagination.Params) error); ok {
-		r1 = rf(ctx, categoryID, params)
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, categoryID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -120,27 +120,29 @@ func (_m *ProductsRepo) SearchAdditionsByShopID(ctx context.Context, categoryID 
 	return r0, r1
 }
 
-// SearchBestSellersByShopID provides a mock function with given fields: ctx, shopID, params
-func (_m *ProductsRepo) SearchBestSellersByShopID(ctx context.Context, shopID uuid.UUID, params pagination.Params) (pagination.Response[dtos.ItemsResponse], error) {
-	ret := _m.Called(ctx, shopID, params)
+// SearchBestSellersByShopID provides a mock function with given fields: ctx, shopID
+func (_m *ProductsRepo) SearchBestSellersByShopID(ctx context.Context, shopID uuid.UUID) (dtos.ItemsResponse, error) {
+	ret := _m.Called(ctx, shopID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SearchBestSellersByShopID")
 	}
 
-	var r0 pagination.Response[dtos.ItemsResponse]
+	var r0 dtos.ItemsResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, pagination.Params) (pagination.Response[dtos.ItemsResponse], error)); ok {
-		return rf(ctx, shopID, params)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (dtos.ItemsResponse, error)); ok {
+		return rf(ctx, shopID)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, pagination.Params) pagination.Response[dtos.ItemsResponse]); ok {
-		r0 = rf(ctx, shopID, params)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) dtos.ItemsResponse); ok {
+		r0 = rf(ctx, shopID)
 	} else {
-		r0 = ret.Get(0).(pagination.Response[dtos.ItemsResponse])
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(dtos.ItemsResponse)
+		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, pagination.Params) error); ok {
-		r1 = rf(ctx, shopID, params)
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, shopID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -148,27 +150,29 @@ func (_m *ProductsRepo) SearchBestSellersByShopID(ctx context.Context, shopID uu
 	return r0, r1
 }
 
-// SearchFlavorsByCategoryID provides a mock function with given fields: ctx, categoryID, params
-func (_m *ProductsRepo) SearchFlavorsByCategoryID(ctx context.Context, categoryID uuid.UUID, params pagination.Params) (pagination.Response[dtos.FlavorsResponse], error) {
-	ret := _m.Called(ctx, categoryID, params)
+// SearchFlavorsByCategoryID provides a mock function with given fields: ctx, categoryID
+func (_m *ProductsRepo) SearchFlavorsByCategoryID(ctx context.Context, categoryID uuid.UUID) (dtos.FlavorsResponse, error) {
+	ret := _m.Called(ctx, categoryID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SearchFlavorsByCategoryID")
 	}
 
-	var r0 pagination.Response[dtos.FlavorsResponse]
+	var r0 dtos.FlavorsResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, pagination.Params) (pagination.Response[dtos.FlavorsResponse], error)); ok {
-		return rf(ctx, categoryID, params)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (dtos.FlavorsResponse, error)); ok {
+		return rf(ctx, categoryID)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, pagination.Params) pagination.Response[dtos.FlavorsResponse]); ok {
-		r0 = rf(ctx, categoryID, params)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) dtos.FlavorsResponse); ok {
+		r0 = rf(ctx, categoryID)
 	} else {
-		r0 = ret.Get(0).(pagination.Response[dtos.FlavorsResponse])
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(dtos.FlavorsResponse)
+		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, pagination.Params) error); ok {
-		r1 = rf(ctx, categoryID, params)
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, categoryID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -176,27 +180,29 @@ func (_m *ProductsRepo) SearchFlavorsByCategoryID(ctx context.Context, categoryI
 	return r0, r1
 }
 
-// SearchFlavorsByItemID provides a mock function with given fields: ctx, itemID, params
-func (_m *ProductsRepo) SearchFlavorsByItemID(ctx context.Context, itemID uuid.UUID, params pagination.Params) (pagination.Response[dtos.FlavorsResponse], error) {
-	ret := _m.Called(ctx, itemID, params)
+// SearchFlavorsByItemID provides a mock function with given fields: ctx, itemID
+func (_m *ProductsRepo) SearchFlavorsByItemID(ctx context.Context, itemID uuid.UUID) (dtos.FlavorsResponse, error) {
+	ret := _m.Called(ctx, itemID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SearchFlavorsByItemID")
 	}
 
-	var r0 pagination.Response[dtos.FlavorsResponse]
+	var r0 dtos.FlavorsResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, pagination.Params) (pagination.Response[dtos.FlavorsResponse], error)); ok {
-		return rf(ctx, itemID, params)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (dtos.FlavorsResponse, error)); ok {
+		return rf(ctx, itemID)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, pagination.Params) pagination.Response[dtos.FlavorsResponse]); ok {
-		r0 = rf(ctx, itemID, params)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) dtos.FlavorsResponse); ok {
+		r0 = rf(ctx, itemID)
 	} else {
-		r0 = ret.Get(0).(pagination.Response[dtos.FlavorsResponse])
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(dtos.FlavorsResponse)
+		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, pagination.Params) error); ok {
-		r1 = rf(ctx, itemID, params)
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, itemID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -234,27 +240,29 @@ func (_m *ProductsRepo) SearchItemByID(_a0 context.Context, _a1 uuid.UUID) (*mod
 	return r0, r1
 }
 
-// SearchProductsByShopID provides a mock function with given fields: ctx, shopID, params
-func (_m *ProductsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.UUID, params pagination.Params) (pagination.Response[dtos.CategoriesResponse], error) {
-	ret := _m.Called(ctx, shopID, params)
+// SearchProductsByShopID provides a mock function with given fields: ctx, shopID
+func (_m *ProductsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.UUID) (dtos.CategoriesResponse, error) {
+	ret := _m.Called(ctx, shopID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SearchProductsByShopID")
 	}
 
-	var r0 pagination.Response[dtos.CategoriesResponse]
+	var r0 dtos.CategoriesResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, pagination.Params) (pagination.Response[dtos.CategoriesResponse], error)); ok {
-		return rf(ctx, shopID, params)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (dtos.CategoriesResponse, error)); ok {
+		return rf(ctx, shopID)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, pagination.Params) pagination.Response[dtos.CategoriesResponse]); ok {
-		r0 = rf(ctx, shopID, params)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) dtos.CategoriesResponse); ok {
+		r0 = rf(ctx, shopID)
 	} else {
-		r0 = ret.Get(0).(pagination.Response[dtos.CategoriesResponse])
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(dtos.CategoriesResponse)
+		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, pagination.Params) error); ok {
-		r1 = rf(ctx, shopID, params)
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, shopID)
 	} else {
 		r1 = ret.Error(1)
 	}
