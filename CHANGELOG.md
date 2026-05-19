@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.7.0...v1.7.1) (2026-05-19)
+
+
+### Bug Fixes
+
+* add missing go.sum entries for otel semconv/trace (pgdriver@v1.2.16) ([802fc06](https://github.com/Encargalo/Encargalo.app-api.go/commit/802fc0660cc9cb334201525a2387e74ddae5ca75))
+
 ## [1.7.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.6.0...v1.7.0) (2026-05-18)
 
 
