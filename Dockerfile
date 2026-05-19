@@ -5,16 +5,13 @@ WORKDIR /app
 COPY ["go.mod", "go.sum", "./"]
 RUN go mod download
 COPY . .
-RUN go build -o app ./cmd/server
+RUN CGO_ENABLED=0 go build -o app ./cmd/server
 RUN upx app
 
 #final stage
-FROM alpine:3.23.3
-RUN apk update && apk --no-cache add ca-certificates && \
-    rm -f /usr/bin/wget
-RUN addgroup -S app && adduser -S app -G app
-WORKDIR /app
-COPY --from=builder /app .
+FROM scratch
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /app/app ./app
 EXPOSE 3000
-USER app
+USER 65534
 ENTRYPOINT ["./app"]
