@@ -73,14 +73,14 @@ var upgrader = websocket.Upgrader{
 // ### Mensajes salientes
 // - Eventos de órdenes actualizadas (broadcast).
 //
-// @Tags Orders WebSocket
-// @Accept json
-// @Produce json
-// @Produce plain
-// @Failure 401 {string}  "Sesión no encontrada o inválida"
-// @Failure 403 {string}  "Acceso denegado"
-// @Failure 500 {string}  "Error interno del servidor"
-// @Router /orders/manager [get]
+// @Tags         Orders WebSocket
+// @Accept       json
+// @Produce      json
+// @Security     SessionCookie
+// @Failure      401  {string}  string  "Sesión no encontrada o inválida"
+// @Failure      403  {string}  string  "Acceso denegado"
+// @Failure      500  {string}  string  "Error interno del servidor"
+// @Router       /orders/manager [get]
 func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 	ctx := c.Request().Context()
 

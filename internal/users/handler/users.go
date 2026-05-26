@@ -37,14 +37,15 @@ func NewUsersHandler(customerApp ports.UsersApp, auth portsAuth.AuthApp, jwt jwt
 
 // RegisterCustomer godoc
 // @Summary      Registrar un nuevo cliente
-// @Description  Registrar un nuevo cliente en el sistema con los datos proporcionados. Valida campos obligatorios como nombre, teléfono y contraseña.
+// @Description  Registra un nuevo cliente en el sistema. Al completarse, crea automáticamente la sesión y establece la cookie de autenticación.
 // @Tags         Users
 // @Accept       json
-// @Param        customer  body  dto.RegisterCustomer  true  "Datos del cliente"
-// @Success      201  {string}  string  "customer successfully registered"
-// @Failure      400 {string} string "Se retorna cuando hay un campo que no cumple con los requisitos o directamente el body se envía vacío."
-// @Failure      409 {string} string "Se retorna cuando el teléfono ya está registrado."
-// @Failure      500 {string} string "Se retorna cuando ocurre un error inexperado en el servidor."
+// @Produce      json
+// @Param        customer  body      dto.RegisterCustomer  true  "Datos del cliente"
+// @Success      201       {string}  string                "customer successfully registered"
+// @Failure      400       {string}  string                "Campo inválido o body vacío"
+// @Failure      409       {string}  string                "El teléfono ya está registrado"
+// @Failure      500       {string}  string                "Error interno del servidor"
 // @Router       /users [post]
 func (c *customersHandler) RegisterCustomer(e echo.Context) error {
 
@@ -80,14 +81,16 @@ func (c *customersHandler) RegisterCustomer(e echo.Context) error {
 }
 
 // SearchCustomer godoc
-// @Summary Obtiene la información del cliente autenticado
-// @Description Retorna los datos del cliente identificado por el customer_id contenido en el token
-// @Tags Users
-// @Produce json
-// @Success 200 {object} dto.CustomerResponse "Datos del cliente"
-// @Failure 404 {string} string "not found"
-// @Failure 500 {string} string "unexpected error"
-// @Router /users [get]
+// @Summary      Obtener datos del cliente autenticado
+// @Description  Retorna los datos del cliente identificado por el customer_id contenido en el token de sesión.
+// @Tags         Users
+// @Produce      json
+// @Security     SessionCookie
+// @Success      200  {object}  dto.CustomerResponse  "Datos del cliente"
+// @Failure      401  {string}  string                "No autorizado"
+// @Failure      404  {string}  string                "Cliente no encontrado"
+// @Failure      500  {string}  string                "Error interno del servidor"
+// @Router       /users [get]
 func (c *customersHandler) SearchCustomer(e echo.Context) error {
 
 	ctx := e.Request().Context()

@@ -43,7 +43,7 @@ func NewProducsHandler(svc ports.ProductsApp, emplService emplService.EmployeeAp
 // @Failure      401   {string}  string             "No autorizado"
 // @Failure      422   {string}  string             "No se encontró la cuenta del empleado"
 // @Failure      500   {string}  string             "Error interno del servidor"
-// @Router       /products [post]
+// @Router       /products/items [post]
 func (p *productsHandler) RegisterItems(e echo.Context) error {
 
 	ctx := e.Request().Context()

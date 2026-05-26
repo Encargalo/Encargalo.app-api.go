@@ -22,14 +22,14 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Elimina la sesión activa identificada por session_id en la cookie de autenticación",
+                "description": "Elimina la sesión activa del cliente o empleado autenticado y borra la cookie de autenticación.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Cierra la sesión actual del cliente o empleado autenticado",
+                "summary": "Cerrar sesión",
                 "responses": {
                     "200": {
                         "description": "session deleted success",
@@ -37,14 +37,20 @@ const docTemplate = `{
                             "type": "string"
                         }
                     },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
                     "404": {
-                        "description": "not found",
+                        "description": "Sesión no encontrada",
                         "schema": {
                             "type": "string"
                         }
                     },
                     "500": {
-                        "description": "unexpected error",
+                        "description": "Error interno del servidor",
                         "schema": {
                             "type": "string"
                         }
@@ -174,9 +180,57 @@ const docTemplate = `{
                 }
             }
         },
+        "/employee": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna la información del empleado autenticado, incluyendo los datos de su tienda asociada. Requiere rol OrderManager.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Employee"
+                ],
+                "summary": "Obtener datos del empleado autenticado",
+                "responses": {
+                    "200": {
+                        "description": "Datos del empleado",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_employee_domain_dto.EmployeeResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Empleado no encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/orders": {
             "post": {
-                "description": "Creates a new order with the provided details",
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Crea una nueva orden con los productos e información de entrega proporcionados. El customer_id se obtiene automáticamente del token de sesión.",
                 "consumes": [
                     "application/json"
                 ],
@@ -186,10 +240,10 @@ const docTemplate = `{
                 "tags": [
                     "Orders"
                 ],
-                "summary": "Create a new order",
+                "summary": "Crear una nueva orden",
                 "parameters": [
                     {
-                        "description": "Order payload",
+                        "description": "Datos de la orden",
                         "name": "order",
                         "in": "body",
                         "required": true,
@@ -206,25 +260,31 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Invalid request body or validation failed",
+                        "description": "Body inválido o validación fallida",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
                     "409": {
-                        "description": "Order already exists",
+                        "description": "La orden ya existe",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
                     },
                     "422": {
-                        "description": "One or more items/additions not found",
+                        "description": "Uno o más productos/adiciones no encontrados",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Unexpected internal server error",
+                        "description": "Error interno del servidor",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
@@ -234,12 +294,16 @@ const docTemplate = `{
         },
         "/orders/manager": {
             "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
-                    "application/json",
-                    "text/plain"
+                    "application/json"
                 ],
                 "tags": [
                     "Orders WebSocket"
@@ -305,67 +369,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Productos no encontrados",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Error interno del servidor",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "Cookie": []
-                    }
-                ],
-                "description": "Registra un nuevo producto en la tienda asociada al empleado autenticado. Si se envía ` + "`" + `flavor_ids` + "`" + `, el producto se marcará automáticamente como con sabores y se asociarán los sabores indicados.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Products"
-                ],
-                "summary": "Registrar un nuevo producto",
-                "parameters": [
-                    {
-                        "description": "Datos del producto a registrar",
-                        "name": "item",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.RegisterItem"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "product registered successfully",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "400": {
-                        "description": "JSON inválido o campos faltantes",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "401": {
-                        "description": "No autorizado",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "422": {
-                        "description": "No se encontró la cuenta del empleado",
                         "schema": {
                             "type": "string"
                         }
@@ -586,6 +589,69 @@ const docTemplate = `{
                 }
             }
         },
+        "/products/items": {
+            "post": {
+                "security": [
+                    {
+                        "Cookie": []
+                    }
+                ],
+                "description": "Registra un nuevo producto en la tienda asociada al empleado autenticado. Si se envía ` + "`" + `flavor_ids` + "`" + `, el producto se marcará automáticamente como con sabores y se asociarán los sabores indicados.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Registrar un nuevo producto",
+                "parameters": [
+                    {
+                        "description": "Datos del producto a registrar",
+                        "name": "item",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.RegisterItem"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "product registered successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "JSON inválido o campos faltantes",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "No se encontró la cuenta del empleado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/products/{item_id}": {
             "put": {
                 "security": [
@@ -659,36 +725,37 @@ const docTemplate = `{
         },
         "/shops": {
             "get": {
+                "description": "Retorna la información de una tienda junto con sus productos. Se debe enviar al menos uno de los parámetros: ` + "`" + `id` + "`" + ` o ` + "`" + `tag` + "`" + `.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Shops"
                 ],
-                "summary": "End Point para obtener un negocio con todos sus products, se debe enviar alguno de los 2 query params requeridos.",
+                "summary": "Obtener tienda por ID o tag",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Este es el ID del negocio, viene en formato UUID",
+                        "description": "ID de la tienda (UUID)",
                         "name": "id",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Este es el tag del negocio .ej:dmo",
+                        "description": "Tag de la tienda, ej: dmo",
                         "name": "tag",
                         "in": "query"
                     },
                     {
                         "type": "number",
-                        "description": "Latitud del usuario .ej: 4.678034",
+                        "description": "Latitud del usuario, ej: 4.678034",
                         "name": "lat",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "number",
-                        "description": "Longitud del usuario .ej: -74.0496399",
+                        "description": "Longitud del usuario, ej: -74.0496399",
                         "name": "lon",
                         "in": "query",
                         "required": true
@@ -696,7 +763,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Datos de la tienda",
                         "schema": {
                             "type": "array",
                             "items": {
@@ -704,35 +771,48 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "400": {
+                        "description": "Parámetros inválidos o faltantes",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
                     "404": {
-                        "description": "Not Found"
+                        "description": "Tienda no encontrada",
+                        "schema": {
+                            "type": "string"
+                        }
                     },
                     "500": {
-                        "description": "Internal Server Error"
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 }
             }
         },
         "/shops/all": {
             "get": {
+                "description": "Retorna todas las tiendas disponibles ordenadas por proximidad a las coordenadas proporcionadas.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Shops"
                 ],
-                "summary": "Para que no me fastidies de cual es la ruta",
+                "summary": "Obtener todas las tiendas cercanas",
                 "parameters": [
                     {
                         "type": "number",
-                        "description": "Latitud del usuario .ej: 4.678034",
+                        "description": "Latitud del usuario, ej: 4.678034",
                         "name": "lat",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "number",
-                        "description": "Longitud del usuario .ej: -74.0496399",
+                        "description": "Longitud del usuario, ej: -74.0496399",
                         "name": "lon",
                         "in": "query",
                         "required": true
@@ -740,7 +820,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Lista de tiendas",
                         "schema": {
                             "type": "array",
                             "items": {
@@ -748,25 +828,42 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "400": {
+                        "description": "Coordenadas inválidas o faltantes",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
                     "404": {
-                        "description": "Not Found"
+                        "description": "No se encontraron tiendas",
+                        "schema": {
+                            "type": "string"
+                        }
                     },
                     "500": {
-                        "description": "Internal Server Error"
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 }
             }
         },
         "/users": {
             "get": {
-                "description": "Retorna los datos del cliente identificado por el customer_id contenido en el token",
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna los datos del cliente identificado por el customer_id contenido en el token de sesión.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Users"
                 ],
-                "summary": "Obtiene la información del cliente autenticado",
+                "summary": "Obtener datos del cliente autenticado",
                 "responses": {
                     "200": {
                         "description": "Datos del cliente",
@@ -774,14 +871,20 @@ const docTemplate = `{
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.CustomerResponse"
                         }
                     },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
                     "404": {
-                        "description": "not found",
+                        "description": "Cliente no encontrado",
                         "schema": {
                             "type": "string"
                         }
                     },
                     "500": {
-                        "description": "unexpected error",
+                        "description": "Error interno del servidor",
                         "schema": {
                             "type": "string"
                         }
@@ -850,8 +953,11 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Registrar un nuevo cliente en el sistema con los datos proporcionados. Valida campos obligatorios como nombre, teléfono y contraseña.",
+                "description": "Registra un nuevo cliente en el sistema. Al completarse, crea automáticamente la sesión y establece la cookie de autenticación.",
                 "consumes": [
+                    "application/json"
+                ],
+                "produces": [
                     "application/json"
                 ],
                 "tags": [
@@ -877,19 +983,19 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Se retorna cuando hay un campo que no cumple con los requisitos o directamente el body se envía vacío.",
+                        "description": "Campo inválido o body vacío",
                         "schema": {
                             "type": "string"
                         }
                     },
                     "409": {
-                        "description": "Se retorna cuando el teléfono ya está registrado.",
+                        "description": "El teléfono ya está registrado",
                         "schema": {
                             "type": "string"
                         }
                     },
                     "500": {
-                        "description": "Se retorna cuando ocurre un error inexperado en el servidor.",
+                        "description": "Error interno del servidor",
                         "schema": {
                             "type": "string"
                         }
@@ -899,14 +1005,19 @@ const docTemplate = `{
         },
         "/users/address": {
             "get": {
-                "description": "Retorna un arreglo con todas las direcciones asociadas al cliente identificado en el token",
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna un arreglo con todas las direcciones asociadas al cliente identificado en el token de sesión.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Users Address"
                 ],
-                "summary": "Obtiene todas las direcciones del cliente autenticado",
+                "summary": "Obtener todas las direcciones del cliente autenticado",
                 "responses": {
                     "200": {
                         "description": "Lista de direcciones",
@@ -917,14 +1028,20 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
                     "404": {
-                        "description": "not found",
+                        "description": "No se encontraron direcciones",
                         "schema": {
                             "type": "string"
                         }
                     },
                     "500": {
-                        "description": "unexpected error",
+                        "description": "Error interno del servidor",
                         "schema": {
                             "type": "string"
                         }
@@ -932,7 +1049,12 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Registra una dirección asociada al customer_id obtenido del contexto",
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Registra una dirección asociada al cliente autenticado, identificado por el token de sesión.",
                 "consumes": [
                     "application/json"
                 ],
@@ -942,7 +1064,7 @@ const docTemplate = `{
                 "tags": [
                     "Users Address"
                 ],
-                "summary": "Registra una nueva dirección para el cliente autenticado",
+                "summary": "Registrar una nueva dirección",
                 "parameters": [
                     {
                         "description": "Datos de la dirección",
@@ -962,13 +1084,19 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "error de validación o parseo",
+                        "description": "Error de validación o parseo",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
                         "schema": {
                             "type": "string"
                         }
                     },
                     "500": {
-                        "description": "unexpected error",
+                        "description": "Error interno del servidor",
                         "schema": {
                             "type": "string"
                         }
@@ -981,20 +1109,20 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Elimina la dirección especificada por su ID, siempre que pertenezca al cliente autenticado",
+                "description": "Elimina la dirección especificada por su ID, siempre que pertenezca al cliente autenticado.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Users Address"
                 ],
-                "summary": "Elimina una dirección del cliente autenticado",
+                "summary": "Eliminar una dirección del cliente autenticado",
                 "parameters": [
                     {
                         "type": "string",
                         "description": "ID de la dirección (UUID)",
-                        "name": "address",
-                        "in": "path",
+                        "name": "address_id",
+                        "in": "query",
                         "required": true
                     }
                 ],
@@ -1005,8 +1133,20 @@ const docTemplate = `{
                             "type": "string"
                         }
                     },
+                    "400": {
+                        "description": "address_id es requerido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
                     "500": {
-                        "description": "unexpected error",
+                        "description": "Error interno del servidor",
                         "schema": {
                             "type": "string"
                         }
@@ -1087,6 +1227,46 @@ const docTemplate = `{
                 "phone_number": {
                     "type": "string",
                     "example": "+573001112233"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_employee_domain_dto.EmployeeResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "shop": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_employee_domain_dto.ShopResponse"
+                },
+                "shop_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_employee_domain_dto.ShopResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "opened": {
+                    "type": "boolean"
                 }
             }
         },

@@ -22,15 +22,17 @@ func NewShopsHandler(app ports.ShopsApp) Shops {
 }
 
 // GetAllShops godoc
-// @Tags Shops
-// @Summary Para que no me fastidies de cual es la ruta
-// @Produce json
-// @Param lat query number true "Latitud del usuario .ej: 4.678034"
-// @Param lon query number true "Longitud del usuario .ej: -74.0496399"
-// @Success 200 {object} []dtos.ShopResponse
-// @Failure 404
-// @Failure 500
-// @Router /shops/all [get]
+// @Summary      Obtener todas las tiendas cercanas
+// @Description  Retorna todas las tiendas disponibles ordenadas por proximidad a las coordenadas proporcionadas.
+// @Tags         Shops
+// @Produce      json
+// @Param        lat  query     number  true  "Latitud del usuario, ej: 4.678034"
+// @Param        lon  query     number  true  "Longitud del usuario, ej: -74.0496399"
+// @Success      200  {array}   dtos.ShopResponse  "Lista de tiendas"
+// @Failure      400  {string}  string             "Coordenadas inválidas o faltantes"
+// @Failure      404  {string}  string             "No se encontraron tiendas"
+// @Failure      500  {string}  string             "Error interno del servidor"
+// @Router       /shops/all [get]
 func (s *shops) GetAllShops(c echo.Context) error {
 
 	ctx := c.Request().Context()
@@ -54,17 +56,19 @@ func (s *shops) GetAllShops(c echo.Context) error {
 }
 
 // GetShopsBy godoc
-// @Tags Shops
-// @Summary End Point para obtener un negocio con todos sus products, se debe enviar alguno de los 2 query params requeridos.
-// @Produce json
-// @Param id query string false "Este es el ID del negocio, viene en formato UUID"
-// @Param tag query string false "Este es el tag del negocio .ej:dmo"
-// @Param lat query number true "Latitud del usuario .ej: 4.678034"
-// @Param lon query number true "Longitud del usuario .ej: -74.0496399"
-// @Success 200 {object} []dtos.ShopResponse
-// @Failure 404
-// @Failure 500
-// @Router /shops [get]
+// @Summary      Obtener tienda por ID o tag
+// @Description  Retorna la información de una tienda junto con sus productos. Se debe enviar al menos uno de los parámetros: `id` o `tag`.
+// @Tags         Shops
+// @Produce      json
+// @Param        id   query     string  false  "ID de la tienda (UUID)"
+// @Param        tag  query     string  false  "Tag de la tienda, ej: dmo"
+// @Param        lat  query     number  true   "Latitud del usuario, ej: 4.678034"
+// @Param        lon  query     number  true   "Longitud del usuario, ej: -74.0496399"
+// @Success      200  {array}   dtos.ShopResponse  "Datos de la tienda"
+// @Failure      400  {string}  string             "Parámetros inválidos o faltantes"
+// @Failure      404  {string}  string             "Tienda no encontrada"
+// @Failure      500  {string}  string             "Error interno del servidor"
+// @Router       /shops [get]
 func (p *shops) GetShopsBy(c echo.Context) error {
 
 	ctx := c.Request().Context()
