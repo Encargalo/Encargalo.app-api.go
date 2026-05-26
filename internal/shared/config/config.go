@@ -29,8 +29,6 @@ type Config struct {
 	Environment   Environment   `env:"environment"`
 	Google        Google        `env:"google"`
 	Cloudinary    Cloudinary    `env:"cloudinary"`
-	Discord       Discord       `env:"discord"`
-	CreditManager CreditManager `env:"credit_manager"`
 }
 
 type Server struct {
@@ -78,16 +76,6 @@ type Google struct {
 type Cloudinary struct {
 	URL    string `validate:"required" env:"url"`
 	Folder string `validate:"required" env:"folder"`
-}
-
-type CreditManager struct {
-	Url        string `validate:"required" env:"url"`
-	SigningKey string `validate:"required" env:"signing_key"`
-}
-
-type Discord struct {
-	Url  string `validate:"required" env:"url"`
-	Path string `validate:"required" env:"path"`
 }
 
 func Environments() {
