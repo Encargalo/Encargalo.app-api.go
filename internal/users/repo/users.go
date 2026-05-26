@@ -147,6 +147,31 @@ func (c *customersRepo) UpdatePassword(ctx context.Context, customer_id uuid.UUI
 	return nil
 }
 
+func (c *customersRepo) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	var rows []struct {
+		Name string `bun:"name"`
+	}
+
+	err := c.db.NewSelect().
+		TableExpr("users.user_roles ur").
+		ColumnExpr("r.name AS name").
+		Join("JOIN users.roles r ON r.id = ur.role_id").
+		Where("ur.user_id = ?", userID).
+		Where("ur.enabled = TRUE").
+		Scan(ctx, &rows)
+
+	if err != nil {
+		c.slackLogs.Slack(err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	roles := make([]string, len(rows))
+	for i, r := range rows {
+		roles[i] = r.Name
+	}
+	return roles, nil
+}
+
 func (c *customersRepo) SearchCustomerProfileByID(ctx context.Context, userID uuid.UUID) (*models.Account, error) {
 	var result accountWithRole
 

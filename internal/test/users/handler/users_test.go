@@ -165,7 +165,7 @@ func TestSearchCustomer_Success(t *testing.T) {
 	ctx, tc := sessionCtx(t, tc, userID)
 
 	account := &models.Account{ID: userID, Name: "Carlos", Phone: "+573001112233"}
-	svc.On("SearchCustomerBy", ctx, dto.SearchCustomerBy{ID: userID}).Return(account, nil)
+	svc.On("SearchCustomerProfileByID", ctx, userID).Return(account, nil)
 
 	err := h.SearchCustomer(tc.Ctx)
 
@@ -191,7 +191,7 @@ func TestSearchCustomer_NotFound(t *testing.T) {
 	tc := buildhttptest.SetupControllerCase("/users", http.MethodGet, nil)
 	ctx, tc := sessionCtx(t, tc, userID)
 
-	svc.On("SearchCustomerBy", ctx, dto.SearchCustomerBy{ID: userID}).Return(nil, errcustom.ErrNotFound)
+	svc.On("SearchCustomerProfileByID", ctx, userID).Return(nil, errcustom.ErrNotFound)
 
 	err := h.SearchCustomer(tc.Ctx)
 
@@ -206,7 +206,7 @@ func TestSearchCustomer_UnexpectedError(t *testing.T) {
 	tc := buildhttptest.SetupControllerCase("/users", http.MethodGet, nil)
 	ctx, tc := sessionCtx(t, tc, userID)
 
-	svc.On("SearchCustomerBy", ctx, dto.SearchCustomerBy{ID: userID}).Return(nil, errcustom.ErrUnexpectedError)
+	svc.On("SearchCustomerProfileByID", ctx, userID).Return(nil, errcustom.ErrUnexpectedError)
 
 	err := h.SearchCustomer(tc.Ctx)
 

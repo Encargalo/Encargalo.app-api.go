@@ -91,7 +91,7 @@ func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 	}
 
 	var connectionID uuid.UUID
-	isShop := session.UserType == models.OrderManager
+	isShop := session.HasRole(models.OrderManager) || session.HasRole(models.Owner)
 
 	if isShop {
 		employee, err := h.svc2.SearchEmployeeByID(ctx, session.UserID)

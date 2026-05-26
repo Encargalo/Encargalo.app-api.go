@@ -81,11 +81,13 @@ func (a *auth) Require(allowed ...models.Role) echo.MiddlewareFunc {
 				return echo.NewHTTPError(http.StatusUnauthorized, "session not found in context")
 			}
 
-			if _, ok := allowedMap[models.Role(session.UserType)]; !ok {
-				return echo.NewHTTPError(http.StatusForbidden, "access denied")
+			for _, role := range session.Roles {
+				if _, ok := allowedMap[role]; ok {
+					return next(c)
+				}
 			}
 
-			return next(c)
+			return echo.NewHTTPError(http.StatusForbidden, "access denied")
 		}
 	}
 }

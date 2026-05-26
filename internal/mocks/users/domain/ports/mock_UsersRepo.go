@@ -18,6 +18,36 @@ type UsersRepo struct {
 	mock.Mock
 }
 
+// GetUserRoles provides a mock function with given fields: ctx, userID
+func (_m *UsersRepo) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUserRoles")
+	}
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) ([]string, error)); ok {
+		return rf(ctx, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) []string); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // RegisterCustomer provides a mock function with given fields: ctx, customer
 func (_m *UsersRepo) RegisterCustomer(ctx context.Context, customer *models.Account) error {
 	ret := _m.Called(ctx, customer)
@@ -119,6 +149,36 @@ func (_m *UsersRepo) SearchCustomerByPhoneAndNotIDEquals(ctx context.Context, cu
 
 	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, string) error); ok {
 		r1 = rf(ctx, customer_id, phone)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SearchCustomerProfileByID provides a mock function with given fields: ctx, userID
+func (_m *UsersRepo) SearchCustomerProfileByID(ctx context.Context, userID uuid.UUID) (*models.Account, error) {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SearchCustomerProfileByID")
+	}
+
+	var r0 *models.Account
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*models.Account, error)); ok {
+		return rf(ctx, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) *models.Account); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.Account)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, userID)
 	} else {
 		r1 = ret.Error(1)
 	}
