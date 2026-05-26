@@ -81,14 +81,14 @@ func (c *customersHandler) RegisterCustomer(e echo.Context) error {
 }
 
 // SearchCustomer godoc
-// @Summary      Obtener datos del cliente autenticado
-// @Description  Retorna los datos del cliente identificado por el customer_id contenido en el token de sesión.
+// @Summary      Obtener perfil del usuario autenticado
+// @Description  Retorna los datos del usuario autenticado sin importar su rol. Para usuarios con rol OrderManager u Owner, la respuesta incluye adicionalmente los campos `shop_id` y `shop`.
 // @Tags         Users
 // @Produce      json
 // @Security     SessionCookie
-// @Success      200  {object}  dto.CustomerResponse  "Datos del cliente"
+// @Success      200  {object}  dto.CustomerResponse  "Datos del usuario"
 // @Failure      401  {string}  string                "No autorizado"
-// @Failure      404  {string}  string                "Cliente no encontrado"
+// @Failure      404  {string}  string                "Usuario no encontrado"
 // @Failure      500  {string}  string                "Error interno del servidor"
 // @Router       /users [get]
 func (c *customersHandler) SearchCustomer(e echo.Context) error {
@@ -101,16 +101,12 @@ func (c *customersHandler) SearchCustomer(e echo.Context) error {
 		return errcustom.ErrUnexpectedError
 	}
 
-	customerID := dto.SearchCustomerBy{
-		ID: session.UserID,
-	}
-
-	custo, err := c.customerApp.SearchCustomerBy(ctx, customerID)
+	profile, err := c.customerApp.SearchCustomerProfileByID(ctx, session.UserID)
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
 
-	return e.JSON(http.StatusOK, custo.ToDomainDTO())
+	return e.JSON(http.StatusOK, profile.ToDomainDTO())
 }
 
 // UpdateCustomer godoc

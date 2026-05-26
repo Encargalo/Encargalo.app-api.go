@@ -55,6 +55,10 @@ func (c *customersApp) SearchCustomerBy(ctx context.Context, criteria dto.Search
 	return c.repo.SearchCustomerBy(ctx, criteria)
 }
 
+func (c *customersApp) SearchCustomerProfileByID(ctx context.Context, userID uuid.UUID) (*models.Account, error) {
+	return c.repo.SearchCustomerProfileByID(ctx, userID)
+}
+
 func (c *customersApp) SearchAccountByPhone(ctx context.Context, phone string, roles []string) (*models.Account, error) {
 	return c.repo.SearchAccountByPhone(ctx, phone, roles)
 }

@@ -180,49 +180,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/employee": {
-            "get": {
-                "security": [
-                    {
-                        "SessionCookie": []
-                    }
-                ],
-                "description": "Retorna la información del empleado autenticado, incluyendo los datos de su tienda asociada. Requiere rol OrderManager.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Employee"
-                ],
-                "summary": "Obtener datos del empleado autenticado",
-                "responses": {
-                    "200": {
-                        "description": "Datos del empleado",
-                        "schema": {
-                            "$ref": "#/definitions/Encargalo_app-api_go_internal_employee_domain_dto.EmployeeResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "No autorizado",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "404": {
-                        "description": "Empleado no encontrado",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Error interno del servidor",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "/orders": {
             "post": {
                 "security": [
@@ -856,17 +813,17 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna los datos del cliente identificado por el customer_id contenido en el token de sesión.",
+                "description": "Retorna los datos del usuario autenticado sin importar su rol. Para usuarios con rol OrderManager u Owner, la respuesta incluye adicionalmente los campos ` + "`" + `shop_id` + "`" + ` y ` + "`" + `shop` + "`" + `.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Users"
                 ],
-                "summary": "Obtener datos del cliente autenticado",
+                "summary": "Obtener perfil del usuario autenticado",
                 "responses": {
                     "200": {
-                        "description": "Datos del cliente",
+                        "description": "Datos del usuario",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.CustomerResponse"
                         }
@@ -878,7 +835,7 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "Cliente no encontrado",
+                        "description": "Usuario no encontrado",
                         "schema": {
                             "type": "string"
                         }
@@ -1227,46 +1184,6 @@ const docTemplate = `{
                 "phone_number": {
                     "type": "string",
                     "example": "+573001112233"
-                }
-            }
-        },
-        "Encargalo_app-api_go_internal_employee_domain_dto.EmployeeResponse": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "phone": {
-                    "type": "string"
-                },
-                "role": {
-                    "type": "string"
-                },
-                "shop": {
-                    "$ref": "#/definitions/Encargalo_app-api_go_internal_employee_domain_dto.ShopResponse"
-                },
-                "shop_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "Encargalo_app-api_go_internal_employee_domain_dto.ShopResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "opened": {
-                    "type": "boolean"
                 }
             }
         },
@@ -1697,6 +1614,13 @@ const docTemplate = `{
                     "type": "string",
                     "example": "customer"
                 },
+                "shop": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.ShopInfo"
+                },
+                "shop_id": {
+                    "type": "string",
+                    "example": "456e7890-e89b-12d3-a456-426614174001"
+                },
                 "sur_name": {
                     "type": "string",
                     "example": "Ramírez"
@@ -1739,6 +1663,23 @@ const docTemplate = `{
                     "type": "string",
                     "minLength": 3,
                     "example": "Ramírez"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_users_domain_dto.ShopInfo": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "456e7890-e89b-12d3-a456-426614174001"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Mi Tienda"
+                },
+                "opened": {
+                    "type": "boolean",
+                    "example": true
                 }
             }
         },

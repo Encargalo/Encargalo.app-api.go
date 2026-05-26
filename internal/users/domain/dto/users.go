@@ -72,11 +72,19 @@ func (c *UpdatePassword) Validate() error {
 }
 
 type CustomerResponse struct {
-	ID           uuid.UUID `json:"id" example:"123e4567-e89b-12d3-a456-426614174000"`
-	Name         string    `json:"name" example:"Carlos"`
-	SurName      string    `json:"sur_name" example:"Ramírez"`
-	Phone        string    `json:"phone" example:"+573001112233"`
-	Email        string    `json:"email" example:"carlos.ramirez@example.com"`
-	BirthdayDate string    `json:"birthday_date" example:"1990-05-20"`
-	Role         string    `json:"role" example:"customer"`
+	ID           uuid.UUID  `json:"id" example:"123e4567-e89b-12d3-a456-426614174000"`
+	Name         string     `json:"name" example:"Carlos"`
+	SurName      string     `json:"sur_name" example:"Ramírez"`
+	Phone        string     `json:"phone" example:"+573001112233"`
+	Email        string     `json:"email" example:"carlos.ramirez@example.com"`
+	BirthdayDate string     `json:"birthday_date" example:"1990-05-20"`
+	Role         string     `json:"role" example:"customer"`
+	ShopID       *uuid.UUID `json:"shop_id,omitempty" example:"456e7890-e89b-12d3-a456-426614174001"`
+	Shop         *ShopInfo  `json:"shop,omitempty"`
+}
+
+type ShopInfo struct {
+	ID     uuid.UUID `json:"id" example:"456e7890-e89b-12d3-a456-426614174001"`
+	Name   string    `json:"name" example:"Mi Tienda"`
+	Opened bool      `json:"opened" example:"true"`
 }
