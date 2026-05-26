@@ -5,6 +5,7 @@ import (
 
 	"Encargalo.app-api.go/internal/shops/domain/dtos"
 	portsShops "Encargalo.app-api.go/internal/shops/domain/ports"
+	"github.com/google/uuid"
 )
 
 type Destination struct {
@@ -32,4 +33,8 @@ func (s *shopsApp) GetAllShops(ctx context.Context, coords dtos.Coords) (dtos.Sh
 
 func (p *shopsApp) GetShopsBy(ctx context.Context, criteria dtos.SearchShopsByID, coords dtos.Coords) (dtos.ShopsResponse, error) {
 	return p.repo.GetShopsBy(ctx, criteria, coords)
+}
+
+func (s *shopsApp) GetShopByID(ctx context.Context, shopID uuid.UUID) (dtos.ShopResponse, error) {
+	return s.repo.GetShopByID(ctx, shopID)
 }

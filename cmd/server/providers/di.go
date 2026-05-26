@@ -40,7 +40,6 @@ import (
 	repoOrders "Encargalo.app-api.go/internal/orders/repo"
 
 	appEmployee "Encargalo.app-api.go/internal/employee/app"
-	handEmployee "Encargalo.app-api.go/internal/employee/handler"
 	repoEmployee "Encargalo.app-api.go/internal/employee/repo"
 
 	appBcv "Encargalo.app-api.go/internal/bcv/app"
@@ -84,7 +83,6 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(groups.NewProductsGroup)
 	_ = Container.Provide(groups.NewUsersGroup)
 	_ = Container.Provide(groups.NewOrdersGroup)
-	_ = Container.Provide(groups.NewEmployeeGroup)
 
 	_ = Container.Provide(requestinfo.NewRequestMiddleware)
 	_ = Container.Provide(authMiddle.NewAuthMidlleware)
@@ -112,7 +110,6 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(repoOrders.NewOrdersRepo)
 	_ = Container.Provide(repoOrders.NewRepositoryProducerStream)
 
-	_ = Container.Provide(handEmployee.NewEmployyeHandler)
 	_ = Container.Provide(appEmployee.New)
 	_ = Container.Provide(repoEmployee.New)
 

@@ -189,6 +189,40 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 	return resp, nil
 }
 
+func (s *shopsRepo) GetShopByID(ctx context.Context, shopID uuid.UUID) (shopsDTO.ShopResponse, error) {
+	var shop shops.Shop
+	if err := s.db.NewSelect().Model(&shop).Where("id = ?", shopID).Scan(ctx); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return shopsDTO.ShopResponse{}, errcustom.ErrNotFound
+		}
+		slog.Error("error al obtener el negocio por id", "error", err)
+		return shopsDTO.ShopResponse{}, errcustom.ErrUnexpectedError
+	}
+
+	var lat, lon float64
+	if shop.Latitude != nil {
+		lat = *shop.Latitude
+	}
+	if shop.Longitude != nil {
+		lon = *shop.Longitude
+	}
+
+	return shopsDTO.ShopResponse{
+		ID:        shop.ID,
+		Name:      shop.Name,
+		Tag:       shop.Tag,
+		Address:   shop.Address,
+		Latitude:  lat,
+		Longitude: lon,
+		HomePhone: shop.HomePhone,
+		Logo:      shop.LogoImage,
+		Banner:    shop.Banner,
+		Opened:    shop.Opened,
+		Type:      shop.Type,
+		Score:     shop.Score,
+	}, nil
+}
+
 func (s *shopsRepo) SearchBatchByShopID(ctx context.Context, shopID uuid.UUID) (uuid.UUID, error) {
 
 	var batchID uuid.UUID

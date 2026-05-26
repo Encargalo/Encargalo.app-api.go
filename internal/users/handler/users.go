@@ -37,14 +37,15 @@ func NewUsersHandler(customerApp ports.UsersApp, auth portsAuth.AuthApp, jwt jwt
 
 // RegisterCustomer godoc
 // @Summary      Registrar un nuevo cliente
-// @Description  Registrar un nuevo cliente en el sistema con los datos proporcionados. Valida campos obligatorios como nombre, teléfono y contraseña.
+// @Description  Registra un nuevo cliente en el sistema. Al completarse, crea automáticamente la sesión y establece la cookie de autenticación.
 // @Tags         Users
 // @Accept       json
-// @Param        customer  body  dto.RegisterCustomer  true  "Datos del cliente"
-// @Success      201  {string}  string  "customer successfully registered"
-// @Failure      400 {string} string "Se retorna cuando hay un campo que no cumple con los requisitos o directamente el body se envía vacío."
-// @Failure      409 {string} string "Se retorna cuando el teléfono ya está registrado."
-// @Failure      500 {string} string "Se retorna cuando ocurre un error inexperado en el servidor."
+// @Produce      json
+// @Param        customer  body      dto.RegisterCustomer  true  "Datos del cliente"
+// @Success      201       {string}  string                "customer successfully registered"
+// @Failure      400       {string}  string                "Campo inválido o body vacío"
+// @Failure      409       {string}  string                "El teléfono ya está registrado"
+// @Failure      500       {string}  string                "Error interno del servidor"
 // @Router       /users [post]
 func (c *customersHandler) RegisterCustomer(e echo.Context) error {
 
@@ -80,14 +81,16 @@ func (c *customersHandler) RegisterCustomer(e echo.Context) error {
 }
 
 // SearchCustomer godoc
-// @Summary Obtiene la información del cliente autenticado
-// @Description Retorna los datos del cliente identificado por el customer_id contenido en el token
-// @Tags Users
-// @Produce json
-// @Success 200 {object} dto.CustomerResponse "Datos del cliente"
-// @Failure 404 {string} string "not found"
-// @Failure 500 {string} string "unexpected error"
-// @Router /users [get]
+// @Summary      Obtener perfil del usuario autenticado
+// @Description  Retorna los datos del usuario autenticado sin importar su rol. Para usuarios con rol OrderManager u Owner, la respuesta incluye adicionalmente los campos `shop_id` y `shop`.
+// @Tags         Users
+// @Produce      json
+// @Security     SessionCookie
+// @Success      200  {object}  dto.CustomerResponse  "Datos del usuario"
+// @Failure      401  {string}  string                "No autorizado"
+// @Failure      404  {string}  string                "Usuario no encontrado"
+// @Failure      500  {string}  string                "Error interno del servidor"
+// @Router       /users [get]
 func (c *customersHandler) SearchCustomer(e echo.Context) error {
 
 	ctx := e.Request().Context()
@@ -98,32 +101,29 @@ func (c *customersHandler) SearchCustomer(e echo.Context) error {
 		return errcustom.ErrUnexpectedError
 	}
 
-	customerID := dto.SearchCustomerBy{
-		ID: session.UserID,
-	}
-
-	custo, err := c.customerApp.SearchCustomerBy(ctx, customerID)
+	profile, err := c.customerApp.SearchCustomerProfileByID(ctx, session.UserID)
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
 
-	return e.JSON(http.StatusOK, custo.ToDomainDTO())
+	return e.JSON(http.StatusOK, profile.ToDomainDTO())
 }
 
 // UpdateCustomer godoc
-// @Summary Actualiza la información del cliente autenticado
-// @Description Actualiza los datos del cliente usando la información enviada en el cuerpo de la solicitud
-// @Tags Users
-// @Accept json
-// @Produce json
-// @Param customer body dto.UpdateCustomer true "Datos del cliente a actualizar"
-// @Success 200 {string} string "customer updated success"
-// @Failure 400 {string} string "error de validación o formato inválido"
-// @Failure 404 {string} string "customer not found"
-// @Failure 409 {string} string "phone already exist"
-// @Failure 500 {string} string "unexpected error"
-// @Security SessionCookie
-// @Router /users [put]
+// @Summary      Actualiza la información del usuario autenticado
+// @Description  Actualiza los datos del usuario usando la información enviada en el cuerpo de la solicitud.
+// @Tags         Users
+// @Accept       json
+// @Produce      json
+// @Security     SessionCookie
+// @Param        customer  body      dto.UpdateCustomer  true  "Datos del usuario a actualizar"
+// @Success      200       {string}  string              "customer updated success"
+// @Failure      400       {string}  string              "Error de validación o formato inválido"
+// @Failure      401       {string}  string              "No autorizado"
+// @Failure      404       {string}  string              "Usuario no encontrado"
+// @Failure      409       {string}  string              "El teléfono ya está registrado"
+// @Failure      500       {string}  string              "Error interno del servidor"
+// @Router       /users [put]
 func (c *customersHandler) UpdateCustomer(e echo.Context) error {
 
 	ctx := e.Request().Context()
@@ -152,18 +152,19 @@ func (c *customersHandler) UpdateCustomer(e echo.Context) error {
 }
 
 // UpdatePassword godoc
-// @Summary Actualiza la contraseña del cliente autenticado
-// @Description Permite al cliente autenticado actualizar su contraseña, validando el formato y los requisitos establecidos
-// @Tags Users
-// @Accept json
-// @Produce json
-// @Param password body dto.UpdatePassword true "Datos para actualizar la contraseña"
-// @Success 200 {string} string "password updated success"
-// @Failure 400 {string} string "error de validación o formato inválido"
-// @Failure 404 {string} string "customer not found"
-// @Failure 500 {string} string "unexpected error"
-// @Security SessionCookie
-// @Router /users/change-password [put]
+// @Summary      Actualiza la contraseña del usuario autenticado
+// @Description  Permite al usuario autenticado actualizar su contraseña, validando el formato y los requisitos establecidos.
+// @Tags         Users
+// @Accept       json
+// @Produce      json
+// @Security     SessionCookie
+// @Param        password  body      dto.UpdatePassword  true  "Nueva contraseña"
+// @Success      200       {string}  string              "password updated success"
+// @Failure      400       {string}  string              "Error de validación o formato inválido"
+// @Failure      401       {string}  string              "No autorizado"
+// @Failure      404       {string}  string              "Usuario no encontrado"
+// @Failure      500       {string}  string              "Error interno del servidor"
+// @Router       /users/change-password [put]
 func (c *customersHandler) UpdatePassword(e echo.Context) error {
 
 	ctx := e.Request().Context()
