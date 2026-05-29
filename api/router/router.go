@@ -18,11 +18,12 @@ type Router struct {
 	server *echo.Echo
 	config config.Config
 
-	authGroup     groups.AuthGroup
-	shopsGroup    groups.ShopsGroup
-	productsGroup groups.ProductsGroup
-	userGroup     groups.UsersGroup
-	ordersGroup   groups.OrdersGroup
+	authGroup           groups.AuthGroup
+	shopsGroup          groups.ShopsGroup
+	productsGroup       groups.ProductsGroup
+	userGroup           groups.UsersGroup
+	ordersGroup         groups.OrdersGroup
+	paymentMethodsGroup groups.PaymentMethodsGroup
 }
 
 func New(
@@ -33,6 +34,7 @@ func New(
 	productsGroup groups.ProductsGroup,
 	userGroup groups.UsersGroup,
 	ordersGroup groups.OrdersGroup,
+	paymentMethodsGroup groups.PaymentMethodsGroup,
 ) *Router {
 	return &Router{
 		server,
@@ -43,6 +45,7 @@ func New(
 		productsGroup,
 		userGroup,
 		ordersGroup,
+		paymentMethodsGroup,
 	}
 }
 
@@ -70,5 +73,6 @@ func (r *Router) Init() {
 	r.productsGroup.Resource(r.server)
 	r.userGroup.Resource(r.server)
 	r.ordersGroup.Resource(r.server)
+	r.paymentMethodsGroup.Resource(r.server)
 
 }

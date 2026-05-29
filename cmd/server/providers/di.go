@@ -44,6 +44,10 @@ import (
 
 	appBcv "Encargalo.app-api.go/internal/bcv/app"
 	repoBcv "Encargalo.app-api.go/internal/bcv/repo"
+
+	appPayment  "Encargalo.app-api.go/internal/payment_methods/app"
+	handPayment "Encargalo.app-api.go/internal/payment_methods/handler"
+	repoPayment "Encargalo.app-api.go/internal/payment_methods/repo"
 )
 
 var Container *dig.Container
@@ -83,6 +87,10 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(groups.NewProductsGroup)
 	_ = Container.Provide(groups.NewUsersGroup)
 	_ = Container.Provide(groups.NewOrdersGroup)
+	_ = Container.Provide(groups.NewPaymentMethodsGroup)
+	_ = Container.Provide(handPayment.NewPaymentMethodsHandler)
+	_ = Container.Provide(appPayment.NewPaymentMethodsApp)
+	_ = Container.Provide(repoPayment.NewPaymentMethodsRepo)
 
 	_ = Container.Provide(requestinfo.NewRequestMiddleware)
 	_ = Container.Provide(authMiddle.NewAuthMidlleware)
