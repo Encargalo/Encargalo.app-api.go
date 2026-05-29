@@ -13,6 +13,7 @@ import (
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
+	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	shops "Encargalo.app-api.go/internal/shops/domain/ports"
 	"github.com/google/uuid"
@@ -32,19 +33,21 @@ const (
 )
 
 const (
-	MethodNequi PaymentMethod = "Nequi"
-	MethodCash  PaymentMethod = "Efectivo"
+	MethodCashBs    PaymentMethod = "EfectivoBs"
+	MethodCashUSD   PaymentMethod = "EfectivoDolar"
+	MethodPagoMovil PaymentMethod = "PagoMovil"
 )
 
 type orderApp struct {
-	repo   ports.OrdersRepo
-	shops  shops.ShopsRepo
-	custo  portsCustomers.UsersRepo
-	stream ports.RedisStream
+	repo        ports.OrdersRepo
+	shops       shops.ShopsRepo
+	custo       portsCustomers.UsersRepo
+	stream      ports.RedisStream
+	uploadImage uploadimage.UploadImage
 }
 
-func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.UsersRepo, stream ports.RedisStream) ports.OrdersApp {
-	return &orderApp{repo, shops, custo, stream}
+func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.UsersRepo, stream ports.RedisStream, uploadImage uploadimage.UploadImage) ports.OrdersApp {
+	return &orderApp{repo, shops, custo, stream, uploadImage}
 }
 
 func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*models.Order, error) {
@@ -103,6 +106,20 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 
 	DetailsModel := new(models.Details)
 	DetailsModel.BuildDetails(orderModel, shop, customer)
+
+	if order.PagoMovilData != nil {
+		proofUpload, err := o.uploadImage.UploadImage(ctx, order.PaymentProofImage)
+		if err != nil {
+			return &models.Order{}, fmt.Errorf("error subiendo comprobante de pago: %w", err)
+		}
+		DetailsModel.PaymentDetails = &models.PaymentDetails{
+			Nombre:          order.PagoMovilData.Nombre,
+			Cedula:          order.PagoMovilData.Cedula,
+			Telefono:        order.PagoMovilData.Telefono,
+			Banco:           order.PagoMovilData.Banco,
+			PaymentProofURL: proofUpload.SecureURL,
+		}
+	}
 
 	detailsData, err := json.Marshal(DetailsModel)
 	if err != nil {
@@ -170,12 +187,9 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 	}
 
 	var transitionRules = map[PaymentMethod]map[OrderStatus]OrderStatus{
-		MethodNequi: {
-			StatusAccepted: StatusWaitingPaymentProof,
-		},
-		MethodCash: {
-			StatusAccepted: StatusInPreparation,
-		},
+		MethodCashBs:    {StatusAccepted: StatusInPreparation},
+		MethodCashUSD:   {StatusAccepted: StatusInPreparation},
+		MethodPagoMovil: {StatusAccepted: StatusInPreparation},
 	}
 
 	if methodRules, ok := transitionRules[method]; ok {

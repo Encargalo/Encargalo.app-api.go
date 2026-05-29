@@ -68,9 +68,15 @@ definitions:
         type: array
       method_payment:
         enum:
-        - Nequi
-        - Efectivo
-        example: Nequi
+        - EfectivoBs
+        - EfectivoDolar
+        - PagoMovil
+        example: EfectivoBs
+        type: string
+      pago_movil_data:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.PagoMovilData'
+      payment_proof_image:
+        example: data:image/jpeg;base64,/9j/4AAQ...
         type: string
       shop_id:
         example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
@@ -83,6 +89,11 @@ definitions:
     - method_payment
     - shop_id
     type: object
+  Encargalo_app-api_go_internal_orders_domain_dtos.CreateOrderResponse:
+    properties:
+      message:
+        type: string
+    type: object
   Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse:
     properties:
       code:
@@ -90,6 +101,41 @@ definitions:
         type: integer
       message:
         example: invalid request
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_orders_domain_dtos.PagoMovilData:
+    properties:
+      banco:
+        type: string
+      cedula:
+        type: string
+      nombre:
+        type: string
+      telefono:
+        type: string
+    required:
+    - banco
+    - cedula
+    - nombre
+    - telefono
+    type: object
+  Encargalo_app-api_go_internal_payment_methods_domain_models.PaymentMethod:
+    properties:
+      description:
+        type: string
+      fields:
+        items:
+          type: integer
+        type: array
+      id:
+        type: string
+      is_active:
+        type: boolean
+      name:
+        type: string
+      qr_url:
+        type: string
+      type:
         type: string
     type: object
   Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse:
@@ -670,6 +716,8 @@ paths:
       - application/json
       description: Crea una nueva orden con los productos e información de entrega
         proporcionados. El customer_id se obtiene automáticamente del token de sesión.
+        Si el método de pago es PagoMovil, se debe enviar `pago_movil_data` y `payment_proof_image`
+        (base64).
       parameters:
       - description: Datos de la orden
         in: body
@@ -681,9 +729,9 @@ paths:
       - application/json
       responses:
         "201":
-          description: Order created successfully
+          description: Orden creada
           schema:
-            type: string
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.CreateOrderResponse'
         "400":
           description: Body inválido o validación fallida
           schema:
@@ -733,6 +781,32 @@ paths:
       summary: WebSocket de gestión de órdenes
       tags:
       - Orders WebSocket
+  /payment-methods:
+    get:
+      description: Retorna la lista de métodos de pago activos. Para PagoMovil se
+        incluyen los campos requeridos al crear una orden.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_payment_methods_domain_models.PaymentMethod'
+            type: array
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Obtener métodos de pago disponibles
+      tags:
+      - Payment Methods
   /products:
     get:
       description: Retorna todos los productos agrupados por categoría de una tienda.
@@ -757,6 +831,10 @@ paths:
           description: shop_id es requerido o inválido
           schema:
             type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
         "404":
           description: Productos no encontrados
           schema:
@@ -765,6 +843,8 @@ paths:
           description: Error interno del servidor
           schema:
             type: string
+      security:
+      - SessionCookie: []
       summary: Obtener productos por tienda
       tags:
       - Products
@@ -792,6 +872,10 @@ paths:
           description: category_id es requerido o inválido
           schema:
             type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
         "404":
           description: Adiciones no encontradas
           schema:
@@ -800,13 +884,13 @@ paths:
           description: Error interno del servidor
           schema:
             type: string
+      security:
+      - SessionCookie: []
       summary: Obtener adiciones por categoría
       tags:
       - Products
   /products/best-sellers:
     get:
-      consumes:
-      - application/json
       description: Retorna todos los productos más vendidos de una tienda específica,
         ordenados por ventas descendente.
       parameters:
@@ -829,6 +913,10 @@ paths:
           description: shop_id es requerido o inválido
           schema:
             type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
         "404":
           description: Productos más vendidos no encontrados
           schema:
@@ -837,6 +925,8 @@ paths:
           description: Error interno del servidor
           schema:
             type: string
+      security:
+      - SessionCookie: []
       summary: Obtener los productos mas vendidos por tienda
       tags:
       - Products
@@ -863,6 +953,10 @@ paths:
           description: item_id es requerido o inválido
           schema:
             type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
         "404":
           description: Sabores no encontrados
           schema:
@@ -871,6 +965,8 @@ paths:
           description: Error interno del servidor
           schema:
             type: string
+      security:
+      - SessionCookie: []
       summary: Obtener sabores por producto
       tags:
       - Products
@@ -898,6 +994,10 @@ paths:
           description: category_id es requerido o inválido
           schema:
             type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
         "404":
           description: Sabores no encontrados
           schema:
@@ -906,6 +1006,8 @@ paths:
           description: Error interno del servidor
           schema:
             type: string
+      security:
+      - SessionCookie: []
       summary: Obtener sabores por categoría
       tags:
       - Products
@@ -945,6 +1047,10 @@ paths:
           description: Parámetros inválidos o faltantes
           schema:
             type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
         "404":
           description: Tienda no encontrada
           schema:
@@ -953,6 +1059,8 @@ paths:
           description: Error interno del servidor
           schema:
             type: string
+      security:
+      - SessionCookie: []
       summary: Obtener tienda por ID o tag
       tags:
       - Shops
@@ -984,6 +1092,10 @@ paths:
           description: Coordenadas inválidas o faltantes
           schema:
             type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
         "404":
           description: No se encontraron tiendas
           schema:
@@ -992,6 +1104,8 @@ paths:
           description: Error interno del servidor
           schema:
             type: string
+      security:
+      - SessionCookie: []
       summary: Obtener todas las tiendas cercanas
       tags:
       - Shops
@@ -1061,10 +1175,10 @@ paths:
     put:
       consumes:
       - application/json
-      description: Actualiza los datos del cliente usando la información enviada en
-        el cuerpo de la solicitud
+      description: Actualiza los datos del usuario usando la información enviada en
+        el cuerpo de la solicitud.
       parameters:
-      - description: Datos del cliente a actualizar
+      - description: Datos del usuario a actualizar
         in: body
         name: customer
         required: true
@@ -1078,24 +1192,28 @@ paths:
           schema:
             type: string
         "400":
-          description: error de validación o formato inválido
+          description: Error de validación o formato inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
           schema:
             type: string
         "404":
-          description: customer not found
+          description: Usuario no encontrado
           schema:
             type: string
         "409":
-          description: phone already exist
+          description: El teléfono ya está registrado
           schema:
             type: string
         "500":
-          description: unexpected error
+          description: Error interno del servidor
           schema:
             type: string
       security:
       - SessionCookie: []
-      summary: Actualiza la información del cliente autenticado
+      summary: Actualiza la información del usuario autenticado
       tags:
       - Users
   /users/address:
@@ -1201,10 +1319,10 @@ paths:
     put:
       consumes:
       - application/json
-      description: Permite al cliente autenticado actualizar su contraseña, validando
-        el formato y los requisitos establecidos
+      description: Permite al usuario autenticado actualizar su contraseña, validando
+        el formato y los requisitos establecidos.
       parameters:
-      - description: Datos para actualizar la contraseña
+      - description: Nueva contraseña
         in: body
         name: password
         required: true
@@ -1218,20 +1336,24 @@ paths:
           schema:
             type: string
         "400":
-          description: error de validación o formato inválido
+          description: Error de validación o formato inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
           schema:
             type: string
         "404":
-          description: customer not found
+          description: Usuario no encontrado
           schema:
             type: string
         "500":
-          description: unexpected error
+          description: Error interno del servidor
           schema:
             type: string
       security:
       - SessionCookie: []
-      summary: Actualiza la contraseña del cliente autenticado
+      summary: Actualiza la contraseña del usuario autenticado
       tags:
       - Users
 swagger: "2.0"
