@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.9.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.8.0...v1.9.0) (2026-05-29)
+
+
+### Features
+
+* add payment methods domain and update order creation flow ([9704ac8](https://github.com/Encargalo/Encargalo.app-api.go/commit/9704ac8e4406481c7618d9da3af40eacb0961b52))
+* add payment methods domain and update order creation flow ([1fe30a5](https://github.com/Encargalo/Encargalo.app-api.go/commit/1fe30a51eec7ff5cb52c197565d1fded51c9956d))
+
 ## [1.8.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.7.1...v1.8.0) (2026-05-26)
 
 
