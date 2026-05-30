@@ -18,6 +18,7 @@ type ProductsApp interface {
 	SearchFlavorsByCategoryID(ctx context.Context, categoryID uuid.UUID) (dtos.FlavorsResponse, error)
 	SearchBestSellersByShopID(ctx context.Context, shopID uuid.UUID) (dtos.ItemsResponse, error)
 	AddSoldItem(ctx context.Context, item models.DataProduceOrder) error
+	GetTrendingByCoords(ctx context.Context, coords dtos.TrendingCoords) (dtos.TrendingResponse, error)
 }
 
 type ProductsRepo interface {
@@ -32,4 +33,5 @@ type ProductsRepo interface {
 	SearchFlavorsByCategoryID(ctx context.Context, categoryID uuid.UUID) (dtos.FlavorsResponse, error)
 	SearchBestSellersByShopID(ctx context.Context, shopID uuid.UUID) (dtos.ItemsResponse, error)
 	AddSoldItem(ctx context.Context, item models.DataProduceOrder) error
+	GetTrendingByCoords(ctx context.Context, coords dtos.TrendingCoords) (dtos.TrendingResponse, error)
 }

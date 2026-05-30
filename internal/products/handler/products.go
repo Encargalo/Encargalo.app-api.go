@@ -19,6 +19,7 @@ type ProductsHandler interface {
 	GetMyProducts(e echo.Context) error
 	RegisterItem(e echo.Context) error
 	UpdateItem(e echo.Context) error
+	GetTrendingProducts(e echo.Context) error
 }
 
 type productsHandler struct {
@@ -277,6 +278,38 @@ func (p *productsHandler) RegisterItem(e echo.Context) error {
 	}
 
 	return e.JSON(http.StatusCreated, "product registered successfully")
+}
+
+// GetTrendingProducts godoc
+// @Summary      Productos más vendidos cerca del usuario
+// @Description  Retorna el producto más vendido de cada local abierto dentro de un radio de 1 km de las coordenadas dadas. Máximo 10 resultados. Cacheado 15 minutos.
+// @Tags         Products
+// @Produce      json
+// @Security     SessionCookie
+// @Param        lat  query     number  true  "Latitud del usuario"
+// @Param        lon  query     number  true  "Longitud del usuario"
+// @Success      200  {object}  dtos.TrendingResponse
+// @Failure      400  {string}  string  "lat/lon requeridos o inválidos"
+// @Failure      401  {string}  string  "No autorizado"
+// @Failure      500  {string}  string  "Error interno del servidor"
+// @Router       /products/trending [get]
+func (p *productsHandler) GetTrendingProducts(e echo.Context) error {
+	ctx := e.Request().Context()
+
+	var coords dtos.TrendingCoords
+	if err := e.Bind(&coords); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := coords.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	result, err := p.svc.GetTrendingByCoords(ctx, coords)
+	if err != nil {
+		return err
+	}
+
+	return e.JSON(http.StatusOK, result)
 }
 
 // UpdateItem godoc

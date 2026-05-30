@@ -26,6 +26,7 @@ func (r *productsGroup) Resource(g *echo.Echo) {
 		r.middleAuth.Require(models.Customer),
 	)
 	customerRoutes.GET("", r.handlerProducts.SearchProductsByShopID)
+	customerRoutes.GET("/trending", r.handlerProducts.GetTrendingProducts)
 	customerRoutes.GET("/best-sellers", r.handlerProducts.SearchBestSellersByShopID)
 	customerRoutes.GET("/additions", r.handlerProducts.SearchAdditionsByShopID)
 	customerRoutes.GET("/flavors", r.handlerProducts.SearchFlavorsByItemID)

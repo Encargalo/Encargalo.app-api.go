@@ -36,6 +36,36 @@ func (_m *ProductsApp) AddSoldItem(ctx context.Context, item models.DataProduceO
 	return r0
 }
 
+// GetTrendingByCoords provides a mock function with given fields: ctx, coords
+func (_m *ProductsApp) GetTrendingByCoords(ctx context.Context, coords dtos.TrendingCoords) (dtos.TrendingResponse, error) {
+	ret := _m.Called(ctx, coords)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetTrendingByCoords")
+	}
+
+	var r0 dtos.TrendingResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, dtos.TrendingCoords) (dtos.TrendingResponse, error)); ok {
+		return rf(ctx, coords)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, dtos.TrendingCoords) dtos.TrendingResponse); ok {
+		r0 = rf(ctx, coords)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(dtos.TrendingResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, dtos.TrendingCoords) error); ok {
+		r1 = rf(ctx, coords)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // RegisterItem provides a mock function with given fields: ctx, item
 func (_m *ProductsApp) RegisterItem(ctx context.Context, item dtos.RegisterItem) error {
 	ret := _m.Called(ctx, item)

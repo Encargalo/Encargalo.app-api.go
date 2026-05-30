@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	shops_all = "shops_all_coords"
+	shops_all = "shops:"
 )
 
 type shopsRepo struct {

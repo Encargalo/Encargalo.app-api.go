@@ -862,6 +862,68 @@
                 }
             }
         },
+        "/products/trending": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna el producto más vendido de cada local abierto dentro de un radio de 1 km de las coordenadas dadas. Máximo 10 resultados. Cacheado 15 minutos.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Productos más vendidos cerca del usuario",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "Latitud del usuario",
+                        "name": "lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Longitud del usuario",
+                        "name": "lon",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.TrendingEntry"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "lat/lon requeridos o inválidos",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/shops": {
             "get": {
                 "security": [
@@ -1748,6 +1810,72 @@
                 "price": {
                     "type": "integer",
                     "example": 32000
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.TrendingEntry": {
+            "type": "object",
+            "properties": {
+                "product": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.TrendingProduct"
+                },
+                "shop": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.TrendingShop"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.TrendingProduct": {
+            "type": "object",
+            "properties": {
+                "bs": {
+                    "type": "number"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "image": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ref": {
+                    "type": "number"
+                },
+                "score": {
+                    "type": "number"
+                },
+                "sold": {
+                    "type": "integer"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.TrendingShop": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "logo": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "score": {
+                    "type": "number"
+                },
+                "tag": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
                 }
             }
         },
