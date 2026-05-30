@@ -148,6 +148,10 @@ func (p *productsApp) AddSoldItem(ctx context.Context, item models.DataProduceOr
 	return p.repo.AddSoldItem(ctx, item)
 }
 
+func (p *productsApp) GetTrendingByCoords(ctx context.Context, coords dtos.TrendingCoords) (dtos.TrendingResponse, error) {
+	return p.repo.GetTrendingByCoords(ctx, coords)
+}
+
 func base64ToBytes(b64 string) ([]byte, error) {
 	if strings.Contains(b64, ",") {
 		b64 = strings.Split(b64, ",")[1]

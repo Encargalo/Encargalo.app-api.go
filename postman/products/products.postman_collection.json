@@ -98,6 +98,31 @@
       }
     },
     {
+      "name": "Get Trending Products Near Me",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/products/trending?lat=10.4806&lon=-66.9036",
+          "host": ["{{base_url}}"],
+          "path": ["products", "trending"],
+          "query": [
+            {
+              "key": "lat",
+              "value": "10.4806",
+              "description": "Latitud del usuario"
+            },
+            {
+              "key": "lon",
+              "value": "-66.9036",
+              "description": "Longitud del usuario"
+            }
+          ]
+        },
+        "description": "Retorna el producto más vendido de cada local abierto dentro de un radio de 1 km. Máximo 10 resultados. Cacheado 15 minutos. Requiere cookie `encargalo-session`. Rol: Customer."
+      }
+    },
+    {
       "name": "Get Best Sellers by Shop",
       "request": {
         "method": "GET",

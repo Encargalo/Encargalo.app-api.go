@@ -18,11 +18,11 @@ import (
 )
 
 const (
-	prefix_shop_cashe         = "prod_"
-	prefix_best_sellers_cache = "best_sellers_"
-	prefix_additions_cache    = "additions_"
-	prefix_flavors_item_cache = "flavors_item_"
-	prefix_flavors_cat_cache  = "flavors_cat_"
+	prefix_shop_cashe         = "products:shop:"
+	prefix_best_sellers_cache = "products:best-sellers:"
+	prefix_additions_cache    = "products:additions:"
+	prefix_flavors_item_cache = "products:flavors:item:"
+	prefix_flavors_cat_cache  = "products:flavors:cat:"
 )
 
 type productsRepo struct {
@@ -363,6 +363,100 @@ func (p *productsRepo) AddSoldItem(ctx context.Context, item models.DataProduceO
 		Exec(ctx)
 	return err
 
+}
+
+const prefix_trending_cache = "products:trending:"
+
+func (p *productsRepo) GetTrendingByCoords(ctx context.Context, coords dtos.TrendingCoords) (dtos.TrendingResponse, error) {
+	lat, lon := coords.Latitude, coords.Longitude
+	cacheKey := fmt.Sprintf("%s%v_%v", prefix_trending_cache, lat, lon)
+
+	if cached, err := p.cache.Get(ctx, cacheKey); err == nil && cached != "" {
+		var data dtos.TrendingResponse
+		if err := json.Unmarshal([]byte(cached), &data); err == nil {
+			applyRateToTrending(p.bcvRate(ctx), &data)
+			return data, nil
+		}
+		slog.Error("error al deserializar trending del cache", "key", cacheKey)
+	}
+
+	var rows []models.TrendingRow
+
+	err := p.db.NewRaw(`
+		SELECT
+			s.id::text        AS shop_id,
+			s.name            AS shop_name,
+			s.tag             AS shop_tag,
+			s.logo_image      AS shop_logo,
+			s.address         AS shop_address,
+			s.score           AS shop_score,
+			s.type            AS shop_type,
+			i.id::text        AS item_id,
+			i.name            AS item_name,
+			i.price           AS item_price,
+			i.image           AS item_image,
+			i.description     AS item_desc,
+			i.score           AS item_score,
+			i.sold            AS item_sold
+		FROM business.shops s
+		JOIN products.items i ON i.shop_id = s.id
+		WHERE s.opened = true
+			AND s.license_status = 'active'
+			AND s.latitude IS NOT NULL
+			AND s.longitude IS NOT NULL
+			AND i.is_available = true
+			AND i.sold > 0
+			AND 6371 * acos(
+				cos(radians(?)) * cos(radians(s.latitude)) *
+				cos(radians(s.longitude) - radians(?)) +
+				sin(radians(?)) * sin(radians(s.latitude))
+			) <= 1
+		ORDER BY i.sold DESC
+		LIMIT 10
+	`, lat, lon, lat).Scan(ctx, &rows)
+	if err != nil {
+		slog.Error("error al obtener trending products", "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	data := make(dtos.TrendingResponse, 0, len(rows))
+	for _, r := range rows {
+		shopID, _ := uuid.Parse(r.ShopID)
+		itemID, _ := uuid.Parse(r.ItemID)
+		data = append(data, dtos.TrendingEntry{
+			Shop: dtos.TrendingShop{
+				ID:      shopID,
+				Name:    r.ShopName,
+				Tag:     r.ShopTag,
+				Logo:    r.ShopLogo,
+				Address: r.ShopAddress,
+				Score:   r.ShopScore,
+				Type:    r.ShopType,
+			},
+			Product: dtos.TrendingProduct{
+				ID:          itemID,
+				Name:        r.ItemName,
+				Ref:         float64(r.ItemPrice),
+				Image:       r.ItemImage,
+				Description: r.ItemDesc,
+				Score:       r.ItemScore,
+				Sold:        r.ItemSold,
+			},
+		})
+	}
+
+	if err := p.cache.Set(ctx, cacheKey, data, 15*time.Minute); err != nil {
+		slog.Error("error al guardar trending en cache", "error", err)
+	}
+
+	applyRateToTrending(p.bcvRate(ctx), &data)
+	return data, nil
+}
+
+func applyRateToTrending(rate float64, data *dtos.TrendingResponse) {
+	for i := range *data {
+		(*data)[i].Product.Bs = (*data)[i].Product.Ref * rate
+	}
 }
 
 func (p *productsRepo) bcvRate(ctx context.Context) float64 {

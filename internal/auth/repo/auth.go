@@ -23,11 +23,15 @@ func NewAuthRepo(redis *redis.Client, slackLogs logs.Logs) ports.AuthRepo {
 	return &authRepo{redis, slackLogs}
 }
 
+const sessionKeyPrefix = "sessions:"
+
+func sessionKey(id uuid.UUID) string { return sessionKeyPrefix + id.String() }
+
 func (s *authRepo) SaveSession(ctx context.Context, session *models.ActiveSession) error {
 
 	sessionData, _ := json.Marshal(session)
 
-	if err := s.redis.Set(ctx, session.ID.String(), sessionData, 365*24*time.Hour).Err(); err != nil {
+	if err := s.redis.Set(ctx, sessionKey(session.ID), sessionData, 365*24*time.Hour).Err(); err != nil {
 		slog.Error("error al registrar la sesion - "+session.ID.String(), "error", err)
 		s.slackLogs.Slack(err)
 		return errcustom.ErrUnexpectedError
@@ -38,9 +42,7 @@ func (s *authRepo) SaveSession(ctx context.Context, session *models.ActiveSessio
 
 func (s *authRepo) SearchSession(ctx context.Context, sessionID uuid.UUID) (*models.ActiveSession, error) {
 
-	sessionIDStr := sessionID.String()
-
-	sessionData, err := s.redis.Get(ctx, sessionIDStr).Result()
+	sessionData, err := s.redis.Get(ctx, sessionKey(sessionID)).Result()
 	if err != nil {
 		if err == redis.Nil {
 			return nil, errcustom.ErrNotFound
@@ -61,9 +63,7 @@ func (s *authRepo) SearchSession(ctx context.Context, sessionID uuid.UUID) (*mod
 }
 
 func (s *authRepo) DeleteSession(ctx context.Context, session_id uuid.UUID) error {
-	sessionIDStr := session_id.String()
-
-	if err := s.redis.Del(ctx, sessionIDStr).Err(); err != nil {
+	if err := s.redis.Del(ctx, sessionKey(session_id)).Err(); err != nil {
 		slog.Error("Error deleting session:", "error", err)
 		s.slackLogs.Slack(err)
 		return errcustom.ErrUnexpectedError

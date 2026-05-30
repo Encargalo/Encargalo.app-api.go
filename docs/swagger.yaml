@@ -256,6 +256,49 @@ definitions:
     - name
     - price
     type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.TrendingEntry:
+    properties:
+      product:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.TrendingProduct'
+      shop:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.TrendingShop'
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.TrendingProduct:
+    properties:
+      bs:
+        type: number
+      description:
+        type: string
+      id:
+        type: string
+      image:
+        type: string
+      name:
+        type: string
+      ref:
+        type: number
+      score:
+        type: number
+      sold:
+        type: integer
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.TrendingShop:
+    properties:
+      address:
+        type: string
+      id:
+        type: string
+      logo:
+        type: string
+      name:
+        type: string
+      score:
+        type: number
+      tag:
+        type: string
+      type:
+        type: string
+    type: object
   Encargalo_app-api_go_internal_products_domain_dtos.UpdateItem:
     properties:
       description:
@@ -1009,6 +1052,48 @@ paths:
       security:
       - SessionCookie: []
       summary: Obtener sabores por categoría
+      tags:
+      - Products
+  /products/trending:
+    get:
+      description: Retorna el producto más vendido de cada local abierto dentro de
+        un radio de 1 km de las coordenadas dadas. Máximo 10 resultados. Cacheado
+        15 minutos.
+      parameters:
+      - description: Latitud del usuario
+        in: query
+        name: lat
+        required: true
+        type: number
+      - description: Longitud del usuario
+        in: query
+        name: lon
+        required: true
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.TrendingEntry'
+            type: array
+        "400":
+          description: lat/lon requeridos o inválidos
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Productos más vendidos cerca del usuario
       tags:
       - Products
   /shops:
