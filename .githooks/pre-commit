@@ -1,0 +1,68 @@
+#!/bin/bash
+# Pre-commit: gofmt, go vet, golangci-lint, go build, go test
+# Solo actúa sobre archivos .go staged (excluye mocks autogenerados).
+
+staged_go=$(git diff --cached --name-only --diff-filter=ACM -- '*.go' | grep -v '/mocks/' | sort -u)
+
+if [ -z "$staged_go" ]; then
+    exit 0
+fi
+
+pkgs=$(echo "$staged_go" | xargs -n1 dirname | sort -u)
+PASS=true
+
+# ── 1. gofmt ────────────────────────────────────────────────────────────────
+echo "→ gofmt..."
+unformatted=$(gofmt -l $staged_go 2>&1)
+if [ -n "$unformatted" ]; then
+    echo "❌ gofmt: archivos sin formatear (corre 'gofmt -w <archivo>'):"
+    echo "$unformatted"
+    PASS=false
+fi
+
+# ── 2. go vet ───────────────────────────────────────────────────────────────
+echo "→ go vet..."
+pkg_args=$(echo "$pkgs" | sed 's|^|./|')
+if ! vet_out=$(go vet $pkg_args 2>&1); then
+    echo "❌ go vet:"
+    echo "$vet_out"
+    PASS=false
+fi
+
+# ── 3. golangci-lint (si está instalado) ────────────────────────────────────
+if command -v golangci-lint >/dev/null 2>&1; then
+    echo "→ golangci-lint..."
+    if ! lint_out=$(golangci-lint run $pkg_args 2>&1); then
+        echo "❌ golangci-lint:"
+        echo "$lint_out"
+        PASS=false
+    fi
+fi
+
+# ── 4. go build ─────────────────────────────────────────────────────────────
+echo "→ go build..."
+if ! build_out=$(go build ./... 2>&1); then
+    echo "❌ go build:"
+    echo "$build_out"
+    PASS=false
+fi
+
+# ── 5. go test ──────────────────────────────────────────────────────────────
+echo "→ go test..."
+for pkg in $pkgs; do
+    if ! test_out=$(go test -count=1 ./"$pkg" 2>&1); then
+        echo "❌ go test ./$pkg:"
+        echo "$test_out"
+        PASS=false
+    fi
+done
+
+# ── Resultado ───────────────────────────────────────────────────────────────
+if [ "$PASS" = false ]; then
+    echo ""
+    echo "❌ Pre-commit falló. Corrige los errores antes de hacer commit."
+    exit 1
+fi
+
+echo "✅ Pre-commit OK"
+exit 0

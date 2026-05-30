@@ -1,5 +1,9 @@
 CONTAINERS = postgres encargalo-redis redis-interface
 
+install-hooks:
+	git config core.hooksPath .githooks
+	@echo "✅ Git hooks instalados desde .githooks/"
+
 up:
 	sg docker -c "docker start $(CONTAINERS)"
 
