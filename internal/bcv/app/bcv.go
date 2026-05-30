@@ -85,13 +85,14 @@ func (a *bcvApp) syncHolidays(ctx context.Context) {
 
 // runDailyCron checks if today is a banking holiday before polling.
 // If it is, skips entirely. Otherwise retries every 5 minutes until BCV
-// publishes a rate newer than the one in cache.
+// publishes a rate newer than the one in cache, up to a maximum of 8 hours.
 func (a *bcvApp) runDailyCron(ctx context.Context) {
 	today := time.Now().In(venezuelaLoc)
 
 	isHoliday, err := a.holidayRepo.IsHoliday(ctx, today)
 	if err != nil {
-		slog.Error("bcv: failed to check banking holiday", "err", err)
+		slog.Error("bcv: failed to check banking holiday, skipping cron", "err", err)
+		return
 	}
 	if isHoliday {
 		slog.Info("bcv: today is a banking holiday, skipping", "date", today.Format("2006-01-02"))
@@ -99,13 +100,12 @@ func (a *bcvApp) runDailyCron(ctx context.Context) {
 	}
 
 	slog.Info("bcv: daily cron started")
-	for {
+	deadline := time.Now().Add(8 * time.Hour)
+	for time.Now().Before(deadline) {
 		updated, err := a.trySyncUpdatedRate(ctx)
 		if err != nil {
 			slog.Error("bcv: cron sync error", "err", err)
-			return
-		}
-		if updated {
+		} else if updated {
 			return
 		}
 		slog.Info("bcv: rate not yet updated, retrying in 5 minutes")
@@ -115,22 +115,31 @@ func (a *bcvApp) runDailyCron(ctx context.Context) {
 		case <-time.After(5 * time.Minute):
 		}
 	}
+	slog.Warn("bcv: gave up waiting for BCV to publish today's rate", "date", today.Format("2006-01-02"))
 }
 
 // trySyncUpdatedRate returns true if BCV published a newer date than what is cached.
+// If the cache is empty, any scraped rate is saved immediately.
 func (a *bcvApp) trySyncUpdatedRate(ctx context.Context) (bool, error) {
-	cached, err := a.cache.GetLatest(ctx)
-	if err != nil {
-		return false, err
-	}
-
 	rate, err := a.scraper.Scrape(ctx)
 	if err != nil {
 		return false, err
 	}
 
-	cachedDay := cached.Date.In(venezuelaLoc).Truncate(24 * time.Hour)
-	scrapedDay := rate.Date.In(venezuelaLoc).Truncate(24 * time.Hour)
+	cached, err := a.cache.GetLatest(ctx)
+	if err != nil {
+		// Cache miss or Redis unavailable: save whatever we scraped.
+		if saveErr := a.cache.Save(ctx, rate); saveErr != nil {
+			return false, saveErr
+		}
+		slog.Info("bcv: rate saved (cache was empty)", "rate", rate.Rate)
+		return true, nil
+	}
+
+	y, m, d := cached.Date.In(venezuelaLoc).Date()
+	cachedDay := time.Date(y, m, d, 0, 0, 0, 0, venezuelaLoc)
+	y, m, d = rate.Date.In(venezuelaLoc).Date()
+	scrapedDay := time.Date(y, m, d, 0, 0, 0, 0, venezuelaLoc)
 
 	if scrapedDay.After(cachedDay) {
 		if err := a.cache.Save(ctx, rate); err != nil {

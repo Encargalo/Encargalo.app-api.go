@@ -114,6 +114,7 @@ func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.U
 	if cached != "" {
 		var data dtos.CategoriesResponse
 		if err := json.Unmarshal([]byte(cached), &data); err == nil {
+			applyRateToCategories(p.bcvRate(ctx), &data)
 			return data, nil
 		}
 		slog.Error("error al hacer unmarshal de los productos", "key", cacheKey)
@@ -147,12 +148,12 @@ func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.U
 	}
 
 	data := categories.ToDomainDTO()
-	applyRateToCategories(p.bcvRate(ctx), &data)
 
 	if err := p.cache.Set(ctx, cacheKey, data, 1*time.Hour); err != nil {
 		slog.Error("error al guardar los productos en el cache", "error", err)
 	}
 
+	applyRateToCategories(p.bcvRate(ctx), &data)
 	return data, nil
 }
 
@@ -202,12 +203,12 @@ func (p *productsRepo) SearchAdditionsByShopID(ctx context.Context, categoryID u
 	}
 
 	data := additions.ToDomainDTO()
-	applyRateToAdditions(p.bcvRate(ctx), &data)
 
 	if err := p.cache.Set(ctx, cacheKey, data, 1*time.Hour); err != nil {
 		slog.Error("error al guardar las adiciones en el cache", "error", err)
 	}
 
+	applyRateToAdditions(p.bcvRate(ctx), &data)
 	return data, nil
 }
 
@@ -313,6 +314,7 @@ func (p *productsRepo) SearchBestSellersByShopID(ctx context.Context, shopID uui
 	if cached != "" {
 		var data dtos.ItemsResponse
 		if err := json.Unmarshal([]byte(cached), &data); err == nil {
+			applyRateToItems(p.bcvRate(ctx), &data)
 			return data, nil
 		}
 		slog.Error("error al hacer unmarshal de los productos más vendidos", "key", cacheKey)
@@ -343,12 +345,12 @@ func (p *productsRepo) SearchBestSellersByShopID(ctx context.Context, shopID uui
 	}
 
 	data := topSeller.ToDomainDTO()
-	applyRateToItems(p.bcvRate(ctx), &data)
 
 	if err := p.cache.Set(ctx, cacheKey, data, 1*time.Hour); err != nil {
 		slog.Error("error al guardar los productos mas vendidos en el cache", "error", err)
 	}
 
+	applyRateToItems(p.bcvRate(ctx), &data)
 	return data, nil
 }
 

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -32,10 +33,5 @@ func (a *ActiveSession) BuildActiveSessionModel(userID uuid.UUID, userType strin
 
 // HasRole reports whether the session contains the given role.
 func (a *ActiveSession) HasRole(role Role) bool {
-	for _, r := range a.Roles {
-		if r == role {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(a.Roles, role)
 }

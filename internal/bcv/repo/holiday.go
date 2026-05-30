@@ -43,6 +43,6 @@ func (r *holidayRepo) SyncYear(ctx context.Context, year int, dates []time.Time)
 		holidays[i] = &models.BankingHoliday{Date: d.UTC().Truncate(24 * time.Hour)}
 	}
 
-	_, err = r.db.NewInsert().Model(&holidays).Exec(ctx)
+	_, err = r.db.NewInsert().Model(&holidays).On("CONFLICT (date) DO NOTHING").Exec(ctx)
 	return err
 }
