@@ -2,27 +2,20 @@ package app
 
 import (
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
-	"net/http"
-	"strconv"
 	"strings"
-	"time"
 
 	"Encargalo.app-api.go/internal/users/domain/dto"
 	portsCustomers "Encargalo.app-api.go/internal/users/domain/ports"
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
-	"Encargalo.app-api.go/internal/shared/config"
+	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	shops "Encargalo.app-api.go/internal/shops/domain/ports"
-	"github.com/AndresXLP/ravenTree"
 	"github.com/google/uuid"
 )
 
@@ -40,19 +33,21 @@ const (
 )
 
 const (
-	MethodNequi PaymentMethod = "Nequi"
-	MethodCash  PaymentMethod = "Efectivo"
+	MethodCashBs    PaymentMethod = "EfectivoBs"
+	MethodCashUSD   PaymentMethod = "EfectivoDolar"
+	MethodPagoMovil PaymentMethod = "PagoMovil"
 )
 
 type orderApp struct {
-	repo   ports.OrdersRepo
-	shops  shops.ShopsRepo
-	custo  portsCustomers.UsersRepo
-	stream ports.RedisStream
+	repo        ports.OrdersRepo
+	shops       shops.ShopsRepo
+	custo       portsCustomers.UsersRepo
+	stream      ports.RedisStream
+	uploadImage uploadimage.UploadImage
 }
 
-func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.UsersRepo, stream ports.RedisStream) ports.OrdersApp {
-	return &orderApp{repo, shops, custo, stream}
+func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.UsersRepo, stream ports.RedisStream, uploadImage uploadimage.UploadImage) ports.OrdersApp {
+	return &orderApp{repo, shops, custo, stream, uploadImage}
 }
 
 func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*models.Order, error) {
@@ -111,6 +106,20 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 
 	DetailsModel := new(models.Details)
 	DetailsModel.BuildDetails(orderModel, shop, customer)
+
+	if order.PagoMovilData != nil {
+		proofUpload, err := o.uploadImage.UploadImage(ctx, order.PaymentProofImage)
+		if err != nil {
+			return &models.Order{}, fmt.Errorf("error subiendo comprobante de pago: %w", err)
+		}
+		DetailsModel.PaymentDetails = &models.PaymentDetails{
+			Nombre:          order.PagoMovilData.Nombre,
+			Cedula:          order.PagoMovilData.Cedula,
+			Telefono:        order.PagoMovilData.Telefono,
+			Banco:           order.PagoMovilData.Banco,
+			PaymentProofURL: proofUpload.SecureURL,
+		}
+	}
 
 	detailsData, err := json.Marshal(DetailsModel)
 	if err != nil {
@@ -178,12 +187,9 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 	}
 
 	var transitionRules = map[PaymentMethod]map[OrderStatus]OrderStatus{
-		MethodNequi: {
-			StatusAccepted: StatusWaitingPaymentProof,
-		},
-		MethodCash: {
-			StatusAccepted: StatusInPreparation,
-		},
+		MethodCashBs:    {StatusAccepted: StatusInPreparation},
+		MethodCashUSD:   {StatusAccepted: StatusInPreparation},
+		MethodPagoMovil: {StatusAccepted: StatusInPreparation},
 	}
 
 	if methodRules, ok := transitionRules[method]; ok {
@@ -194,10 +200,6 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 
 	if err := o.repo.UpdateOrderStatus(ctx, orderID, string(newStatus)); err != nil {
 		return models.Order{}, err
-	}
-
-	if newStatus == StatusOnTheWay {
-		o.sendCreditDiscount(ctx, order)
 	}
 
 	order.Status = string(newStatus)
@@ -218,63 +220,3 @@ func buildToDataProduceOrder(items models.Order) []models.DataProduceOrder {
 	return dataProduceOrder
 }
 
-func (o *orderApp) sendCreditDiscount(ctx context.Context, order *models.Order) {
-
-	config := config.Get().CreditManager
-
-	serviceName := "billing-service"
-	requestID := uuid.New().String()
-	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
-
-	body := calculateLoanAmount(*order)
-
-	bodyAux, _ := json.Marshal(body)
-
-	payload := serviceName + requestID + timestamp + string(bodyAux)
-
-	h := hmac.New(sha256.New, []byte(config.SigningKey))
-	h.Write([]byte(payload))
-	signature := hex.EncodeToString(h.Sum(nil))
-
-	tree := ravenTree.NewRavensTree()
-	options := &ravenTree.Options{
-		Headers: map[string]string{
-			"X-Service-Name": serviceName,
-			"X-Request-ID":   requestID,
-			"X-Timestamp":    timestamp,
-			"X-Signature":    signature,
-		},
-		Host:   config.Url,
-		Path:   fmt.Sprintf("/credits/wallet/%s/deduct-commission", order.ShopID),
-		Method: http.MethodPost,
-		Body:   body,
-	}
-
-	resp, _ := tree.SendRaven(ctx, options)
-
-	if resp.Status != "202" {
-		var dataEventFail models.EventFailCreditDiscount
-		dataEventFail.BuildFailCreditDiscount(resp.Status, resp.ParseBodyToString(), body.OrderID.String(), body.Amount)
-
-		if err := o.stream.PublisherEvent(ctx, dataEventFail); err != nil {
-			slog.Error("error producing event fail credits discounts to stream", "error", err)
-		}
-		slog.Info("event publisher successfully")
-		return
-	}
-
-	slog.Info("credit discount sent successfully")
-}
-
-func calculateLoanAmount(order models.Order) models.CreditManager {
-
-	amount := float64(order.TotalPrice-order.DeliveryFee) * 0.10
-
-	data := models.CreditManager{
-		Amount:  amount,
-		OrderID: order.ID,
-	}
-
-	return data
-
-}

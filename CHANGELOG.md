@@ -1,5 +1,35 @@
 # Changelog
 
+## [1.9.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.8.0...v1.9.0) (2026-05-29)
+
+
+### Features
+
+* add payment methods domain and update order creation flow ([9704ac8](https://github.com/Encargalo/Encargalo.app-api.go/commit/9704ac8e4406481c7618d9da3af40eacb0961b52))
+* add payment methods domain and update order creation flow ([1fe30a5](https://github.com/Encargalo/Encargalo.app-api.go/commit/1fe30a51eec7ff5cb52c197565d1fded51c9956d))
+
+## [1.8.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.7.1...v1.8.0) (2026-05-26)
+
+
+### Features
+
+* add GetShopByID method to retrieve shop details by ID ([9f49602](https://github.com/Encargalo/Encargalo.app-api.go/commit/9f496023aa0fc82493a74ddbd6f9925fce61ccd8))
+* Enhance API documentation and functionality ([42be9c7](https://github.com/Encargalo/Encargalo.app-api.go/commit/42be9c797718b54c43b9c8409c8443a097e84623))
+* Implement user roles management and update authentication logic ([fc1328e](https://github.com/Encargalo/Encargalo.app-api.go/commit/fc1328efc50d03b8182baad2f1537ac19bd4edb5))
+
+
+### Refactors
+
+* remove employee group and related logic; update user group to include shop information ([2ced36f](https://github.com/Encargalo/Encargalo.app-api.go/commit/2ced36fd16c873f46140c0e2fa512d685679e87d))
+* remove unused credit discount logic and related models ([c4481c0](https://github.com/Encargalo/Encargalo.app-api.go/commit/c4481c0e935944d846c66e104e4ace38c0a74441))
+
+## [1.7.1](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.7.0...v1.7.1) (2026-05-19)
+
+
+### Bug Fixes
+
+* add missing go.sum entries for otel semconv/trace (pgdriver@v1.2.16) ([802fc06](https://github.com/Encargalo/Encargalo.app-api.go/commit/802fc0660cc9cb334201525a2387e74ddae5ca75))
+
 ## [1.7.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.6.0...v1.7.0) (2026-05-18)
 
 

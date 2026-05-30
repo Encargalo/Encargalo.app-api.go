@@ -113,16 +113,17 @@ func (a *auth) SignInEmployee(e echo.Context) error {
 	return e.JSON(http.StatusCreated, "session created")
 }
 
-// DeleteSession godoc
-// @Summary Cierra la sesión actual del cliente o empleado autenticado
-// @Description Elimina la sesión activa identificada por session_id en la cookie de autenticación
-// @Tags Auth
-// @Produce json
-// @Success 200 {string} string "session deleted success"
-// @Failure 404 {string} string "not found"
-// @Failure 500 {string} string "unexpected error"
-// @Security SessionCookie
-// @Router /auth/logout [delete]
+// Logout godoc
+// @Summary      Cerrar sesión
+// @Description  Elimina la sesión activa del cliente o empleado autenticado y borra la cookie de autenticación.
+// @Tags         Auth
+// @Produce      json
+// @Security     SessionCookie
+// @Success      200  {string}  string  "session deleted success"
+// @Failure      401  {string}  string  "No autorizado"
+// @Failure      404  {string}  string  "Sesión no encontrada"
+// @Failure      500  {string}  string  "Error interno del servidor"
+// @Router       /auth/logout [delete]
 func (s *auth) Logout(e echo.Context) error {
 
 	ctx := e.Request().Context()

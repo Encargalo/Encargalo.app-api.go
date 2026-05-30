@@ -33,9 +33,9 @@
           }
         },
         "url": {
-          "raw": "{{base_url}}/products",
+          "raw": "{{base_url}}/products/items",
           "host": ["{{base_url}}"],
-          "path": ["products"]
+          "path": ["products", "items"]
         },
         "description": "Registra un nuevo producto en la tienda del empleado autenticado. `shop_id` se obtiene automáticamente del empleado. Si se envía `flavor_ids`, el producto se marcará automáticamente como con sabores. Requiere cookie `encargalo-session`. Rol: Order Manager."
       }

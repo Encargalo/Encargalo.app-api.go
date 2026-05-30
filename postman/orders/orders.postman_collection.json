@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "a1b2c3d4-0050-4000-8000-000000000000",
     "name": "Encargalo - Orders",
-    "description": "Endpoints de órdenes. Requieren cookie `encargalo-session`. Create Order: rol Customer/customer. Manager WebSocket: Customer, customer u Order Manager.",
+    "description": "Endpoints de órdenes. Requieren cookie `encargalo-session`. Create Order: rol Customer. Manager WebSocket: Customer u Order Manager.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -14,7 +14,20 @@
   ],
   "item": [
     {
-      "name": "Create Order",
+      "name": "Get Payment Methods",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/payment-methods",
+          "host": ["{{base_url}}"],
+          "path": ["payment-methods"]
+        },
+        "description": "Retorna los métodos de pago activos. PagoMovil incluye `qr_url` y los campos requeridos. Requiere cookie `encargalo-session`."
+      }
+    },
+    {
+      "name": "Create Order (EfectivoBs / EfectivoDolar)",
       "request": {
         "method": "POST",
         "header": [
@@ -25,7 +38,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"shop_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa7\",\n  \"method_payment\": \"Nequi\",\n  \"delivery_fee\": 5000,\n  \"address\": {\n    \"address\": \"Calle 123 # 45-67\",\n    \"latitude\": 4.609710,\n    \"longitude\": -74.081750\n  },\n  \"items\": [\n    {\n      \"item_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa8\",\n      \"amount\": 2,\n      \"observation\": \"Sin cebolla\",\n      \"flavors\": {\n        \"Hawaiana\": 1,\n        \"Pepperoni\": 1\n      },\n      \"additions\": [\n        {\n          \"addition_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa9\"\n        }\n      ]\n    }\n  ]\n}",
+          "raw": "{\n  \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"shop_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa7\",\n  \"method_payment\": \"EfectivoBs\",\n  \"delivery_fee\": 5000,\n  \"address\": {\n    \"address\": \"Av. Principal, Caracas\",\n    \"latitude\": 10.488801,\n    \"longitude\": -66.879190\n  },\n  \"items\": [\n    {\n      \"item_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa8\",\n      \"amount\": 2,\n      \"observation\": \"Sin cebolla\",\n      \"flavors\": {},\n      \"additions\": []\n    }\n  ]\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -37,7 +50,34 @@
           "host": ["{{base_url}}"],
           "path": ["orders"]
         },
-        "description": "Crea una nueva orden. `customer_id` se obtiene automáticamente del token. `method_payment` acepta: Nequi, Efectivo. Requiere cookie `encargalo-session`. Roles: Customer, customer."
+        "description": "Crea una orden en efectivo. `method_payment` acepta `EfectivoBs` o `EfectivoDolar`. Al aceptar pasa directo a In Preparation. Requiere cookie `encargalo-session`. Rol: Customer."
+      }
+    },
+    {
+      "name": "Create Order (PagoMovil)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"shop_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa7\",\n  \"method_payment\": \"PagoMovil\",\n  \"pago_movil_data\": {\n    \"nombre\": \"Juan Pérez\",\n    \"cedula\": \"V-12345678\",\n    \"telefono\": \"0412-1234567\",\n    \"banco\": \"Banco de Venezuela\"\n  },\n  \"payment_proof_image\": \"data:image/jpeg;base64,/9j/4AAQSkZJRgAB...\",\n  \"delivery_fee\": 5000,\n  \"address\": {\n    \"address\": \"Av. Principal, Caracas\",\n    \"latitude\": 10.488801,\n    \"longitude\": -66.879190\n  },\n  \"items\": [\n    {\n      \"item_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa8\",\n      \"amount\": 2,\n      \"observation\": \"\",\n      \"flavors\": {},\n      \"additions\": []\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/orders",
+          "host": ["{{base_url}}"],
+          "path": ["orders"]
+        },
+        "description": "Crea una orden con Pago Móvil. Requiere `pago_movil_data` y `payment_proof_image` (base64). El comprobante se sube a Cloudinary. La respuesta incluye `payment_qr_url`. Requiere cookie `encargalo-session`. Rol: Customer."
       }
     },
     {
@@ -59,7 +99,7 @@
           "host": ["{{base_url}}"],
           "path": ["orders", "manager"]
         },
-        "description": "WebSocket para el gestor de órdenes en tiempo real. Conectar con ws:// en lugar de http://. Requiere cookie `encargalo-session`. Roles: Customer, customer, Order Manager.\n\nNOTA: Para probar WebSockets en Postman, crea una nueva request de tipo WebSocket con la URL: ws://localhost:3000/orders/manager"
+        "description": "WebSocket para el gestor de órdenes en tiempo real. Conectar con ws:// en lugar de http://. Requiere cookie `encargalo-session`. Roles: Customer, Order Manager.\n\nNOTA: Para probar WebSockets en Postman, crea una nueva request de tipo WebSocket con la URL: ws://localhost:3000/orders/manager"
       }
     }
   ]

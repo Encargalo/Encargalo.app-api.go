@@ -22,14 +22,14 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Elimina la sesión activa identificada por session_id en la cookie de autenticación",
+                "description": "Elimina la sesión activa del cliente o empleado autenticado y borra la cookie de autenticación.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Cierra la sesión actual del cliente o empleado autenticado",
+                "summary": "Cerrar sesión",
                 "responses": {
                     "200": {
                         "description": "session deleted success",
@@ -37,14 +37,20 @@ const docTemplate = `{
                             "type": "string"
                         }
                     },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
                     "404": {
-                        "description": "not found",
+                        "description": "Sesión no encontrada",
                         "schema": {
                             "type": "string"
                         }
                     },
                     "500": {
-                        "description": "unexpected error",
+                        "description": "Error interno del servidor",
                         "schema": {
                             "type": "string"
                         }
@@ -174,140 +180,33 @@ const docTemplate = `{
                 }
             }
         },
-        "/orders": {
-            "post": {
-                "description": "Creates a new order with the provided details",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Orders"
-                ],
-                "summary": "Create a new order",
-                "parameters": [
-                    {
-                        "description": "Order payload",
-                        "name": "order",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.CreateOrder"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Order created successfully",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request body or validation failed",
-                        "schema": {
-                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
-                        }
-                    },
-                    "409": {
-                        "description": "Order already exists",
-                        "schema": {
-                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
-                        }
-                    },
-                    "422": {
-                        "description": "One or more items/additions not found",
-                        "schema": {
-                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Unexpected internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/orders/manager": {
+        "/business/products": {
             "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json",
-                    "text/plain"
-                ],
-                "tags": [
-                    "Orders WebSocket"
-                ],
-                "summary": "WebSocket de gestión de órdenes",
-                "responses": {
-                    "401": {
-                        "description": "Sesión no encontrada o inválida",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "403": {
-                        "description": "Acceso denegado",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Error interno del servidor",
-                        "schema": {
-                            "type": "string"
-                        }
+                "security": [
+                    {
+                        "SessionCookie": []
                     }
-                }
-            }
-        },
-        "/products": {
-            "get": {
-                "description": "Retorna productos agrupados por categoría de una tienda, con paginación. Solo incluye productos disponibles, ordenados por precio ascendente.",
+                ],
+                "description": "Retorna todos los productos agrupados por categoría del negocio asociado a la sesión autenticada.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Products"
+                    "Business"
                 ],
-                "summary": "Obtener productos por tienda",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "ID de la tienda",
-                        "name": "shop_id",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Número de página (default: 1)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Categorías por página (default: 10)",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
+                "summary": "Obtener productos del negocio",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_CategoriesResponse"
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategoryResponse"
+                            }
                         }
                     },
-                    "400": {
-                        "description": "shop_id es requerido o inválido",
+                    "401": {
+                        "description": "No autorizado",
                         "schema": {
                             "type": "string"
                         }
@@ -318,6 +217,12 @@ const docTemplate = `{
                             "type": "string"
                         }
                     },
+                    "422": {
+                        "description": "El usuario no tiene un negocio asociado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
                     "500": {
                         "description": "Error interno del servidor",
                         "schema": {
@@ -325,14 +230,16 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
+            }
+        },
+        "/business/products/items": {
             "post": {
                 "security": [
                     {
-                        "Cookie": []
+                        "SessionCookie": []
                     }
                 ],
-                "description": "Registra un nuevo producto en la tienda asociada al empleado autenticado. Si se envía ` + "`" + `flavor_ids` + "`" + `, el producto se marcará automáticamente como con sabores y se asociarán los sabores indicados.",
+                "description": "Registra un nuevo producto en el negocio asociado a la sesión autenticada.",
                 "consumes": [
                     "application/json"
                 ],
@@ -340,7 +247,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Products"
+                    "Business"
                 ],
                 "summary": "Registrar un nuevo producto",
                 "parameters": [
@@ -374,7 +281,7 @@ const docTemplate = `{
                         }
                     },
                     "422": {
-                        "description": "No se encontró la cuenta del empleado",
+                        "description": "El usuario no tiene un negocio asociado",
                         "schema": {
                             "type": "string"
                         }
@@ -388,257 +295,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/products/additions": {
-            "get": {
-                "description": "Retorna las adiciones disponibles de una categoría, ordenadas por precio ascendente.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Products"
-                ],
-                "summary": "Obtener adiciones por categoría",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "ID de la categoría",
-                        "name": "category_id",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Número de página (default: 1)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Resultados por página (default: 20)",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_AdditionsResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "category_id es requerido o inválido",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "404": {
-                        "description": "Adiciones no encontradas",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Error interno del servidor",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/products/best-sellers": {
-            "get": {
-                "description": "Esta función maneja la solicitud para obtener los productos mas vendidos por tienda de una tienda específica.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Products"
-                ],
-                "summary": "Obtener los productos mas vendidos por tienda",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "ID de la tienda",
-                        "name": "shop_id",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Número de página (default: 1)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Resultados por página (default: 5)",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_ItemsResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "shop_id es requerido o inválido",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "404": {
-                        "description": "Productos más vendidos no encontrados",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Error interno del servidor",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/products/flavors": {
-            "get": {
-                "description": "Retorna los sabores disponibles asociados a un producto específico.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Products"
-                ],
-                "summary": "Obtener sabores por producto",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "ID del producto",
-                        "name": "item_id",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Número de página (default: 1)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Resultados por página (default: 20)",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_FlavorsResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "item_id es requerido o inválido",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "404": {
-                        "description": "Sabores no encontrados",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Error interno del servidor",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/products/flavors/category": {
-            "get": {
-                "description": "Retorna los sabores disponibles asociados a una categoría específica.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Products"
-                ],
-                "summary": "Obtener sabores por categoría",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "ID de la categoría",
-                        "name": "category_id",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Número de página (default: 1)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Resultados por página (default: 20)",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_FlavorsResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "category_id es requerido o inválido",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "404": {
-                        "description": "Sabores no encontrados",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Error interno del servidor",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/products/{item_id}": {
+        "/business/products/{item_id}": {
             "put": {
                 "security": [
                     {
-                        "Cookie": []
+                        "SessionCookie": []
                     }
                 ],
-                "description": "Actualiza la información de un producto existente. Solo puede actualizarlo el Order Manager de la tienda a la que pertenece. La imagen solo se sube a Cloudinary si es diferente a la actual (comparación por hash). Si se envía ` + "`" + `flavor_ids` + "`" + ` (incluso vacío), los sabores se reemplazan completamente; si no se envía, los sabores no se modifican.",
+                "description": "Actualiza la información de un producto existente del negocio autenticado.",
                 "consumes": [
                     "application/json"
                 ],
@@ -646,7 +310,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Products"
+                    "Business"
                 ],
                 "summary": "Actualizar un producto",
                 "parameters": [
@@ -702,39 +366,224 @@ const docTemplate = `{
                 }
             }
         },
-        "/shops": {
+        "/business/shops/me": {
             "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna la información del negocio asociado a la sesión del empleado autenticado.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Shops"
+                    "Business"
                 ],
-                "summary": "End Point para obtener un negocio con todos sus products, se debe enviar alguno de los 2 query params requeridos.",
+                "summary": "Obtener información del negocio propio",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Negocio no encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "El usuario no tiene un negocio asociado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/orders": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Crea una nueva orden con los productos e información de entrega proporcionados. El customer_id se obtiene automáticamente del token de sesión. Si el método de pago es PagoMovil, se debe enviar ` + "`" + `pago_movil_data` + "`" + ` y ` + "`" + `payment_proof_image` + "`" + ` (base64).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Crear una nueva orden",
+                "parameters": [
+                    {
+                        "description": "Datos de la orden",
+                        "name": "order",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.CreateOrder"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Orden creada",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.CreateOrderResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Body inválido o validación fallida",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "La orden ya existe",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Uno o más productos/adiciones no encontrados",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/orders/manager": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders WebSocket"
+                ],
+                "summary": "WebSocket de gestión de órdenes",
+                "responses": {
+                    "401": {
+                        "description": "Sesión no encontrada o inválida",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/payment-methods": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna la lista de métodos de pago activos. Para PagoMovil se incluyen los campos requeridos al crear una orden.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payment Methods"
+                ],
+                "summary": "Obtener métodos de pago disponibles",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_payment_methods_domain_models.PaymentMethod"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/products": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna todos los productos agrupados por categoría de una tienda. Solo incluye productos disponibles, ordenados por precio ascendente.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Obtener productos por tienda",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Este es el ID del negocio, viene en formato UUID",
-                        "name": "id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Este es el tag del negocio .ej:dmo",
-                        "name": "tag",
-                        "in": "query"
-                    },
-                    {
-                        "type": "number",
-                        "description": "Latitud del usuario .ej: 4.678034",
-                        "name": "lat",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "number",
-                        "description": "Longitud del usuario .ej: -74.0496399",
-                        "name": "lon",
+                        "format": "uuid",
+                        "description": "ID de la tienda",
+                        "name": "shop_id",
                         "in": "query",
                         "required": true
                     }
@@ -745,39 +594,391 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategoryResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "shop_id es requerido o inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Productos no encontrados",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/products/additions": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna todas las adiciones disponibles de una categoría, ordenadas por precio ascendente.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Obtener adiciones por categoría",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID de la categoría",
+                        "name": "category_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "category_id es requerido o inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Adiciones no encontradas",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/products/best-sellers": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna todos los productos más vendidos de una tienda específica, ordenados por ventas descendente.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Obtener los productos mas vendidos por tienda",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID de la tienda",
+                        "name": "shop_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "shop_id es requerido o inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Productos más vendidos no encontrados",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/products/flavors": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna todos los sabores disponibles asociados a un producto específico.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Obtener sabores por producto",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID del producto",
+                        "name": "item_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "item_id es requerido o inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Sabores no encontrados",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/products/flavors/category": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna todos los sabores disponibles asociados a una categoría específica.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Obtener sabores por categoría",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID de la categoría",
+                        "name": "category_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "category_id es requerido o inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Sabores no encontrados",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shops": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna la información de una tienda junto con sus productos. Se debe enviar al menos uno de los parámetros: ` + "`" + `id` + "`" + ` o ` + "`" + `tag` + "`" + `.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops"
+                ],
+                "summary": "Obtener tienda por ID o tag",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID de la tienda (UUID)",
+                        "name": "id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Tag de la tienda, ej: dmo",
+                        "name": "tag",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Latitud del usuario, ej: 4.678034",
+                        "name": "lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Longitud del usuario, ej: -74.0496399",
+                        "name": "lon",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Datos de la tienda",
+                        "schema": {
+                            "type": "array",
+                            "items": {
                                 "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopResponse"
                             }
                         }
                     },
+                    "400": {
+                        "description": "Parámetros inválidos o faltantes",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
                     "404": {
-                        "description": "Not Found"
+                        "description": "Tienda no encontrada",
+                        "schema": {
+                            "type": "string"
+                        }
                     },
                     "500": {
-                        "description": "Internal Server Error"
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 }
             }
         },
         "/shops/all": {
             "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna todas las tiendas disponibles ordenadas por proximidad a las coordenadas proporcionadas.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Shops"
                 ],
-                "summary": "Para que no me fastidies de cual es la ruta",
+                "summary": "Obtener todas las tiendas cercanas",
                 "parameters": [
                     {
                         "type": "number",
-                        "description": "Latitud del usuario .ej: 4.678034",
+                        "description": "Latitud del usuario, ej: 4.678034",
                         "name": "lat",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "number",
-                        "description": "Longitud del usuario .ej: -74.0496399",
+                        "description": "Longitud del usuario, ej: -74.0496399",
                         "name": "lon",
                         "in": "query",
                         "required": true
@@ -785,7 +986,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Lista de tiendas",
                         "schema": {
                             "type": "array",
                             "items": {
@@ -793,40 +994,69 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "400": {
+                        "description": "Coordenadas inválidas o faltantes",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
                     "404": {
-                        "description": "Not Found"
+                        "description": "No se encontraron tiendas",
+                        "schema": {
+                            "type": "string"
+                        }
                     },
                     "500": {
-                        "description": "Internal Server Error"
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 }
             }
         },
         "/users": {
             "get": {
-                "description": "Retorna los datos del cliente identificado por el customer_id contenido en el token",
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna los datos del usuario autenticado sin importar su rol. Para usuarios con rol OrderManager u Owner, la respuesta incluye adicionalmente los campos ` + "`" + `shop_id` + "`" + ` y ` + "`" + `shop` + "`" + `.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Users"
                 ],
-                "summary": "Obtiene la información del cliente autenticado",
+                "summary": "Obtener perfil del usuario autenticado",
                 "responses": {
                     "200": {
-                        "description": "Datos del cliente",
+                        "description": "Datos del usuario",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.CustomerResponse"
                         }
                     },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
                     "404": {
-                        "description": "not found",
+                        "description": "Usuario no encontrado",
                         "schema": {
                             "type": "string"
                         }
                     },
                     "500": {
-                        "description": "unexpected error",
+                        "description": "Error interno del servidor",
                         "schema": {
                             "type": "string"
                         }
@@ -839,7 +1069,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Actualiza los datos del cliente usando la información enviada en el cuerpo de la solicitud",
+                "description": "Actualiza los datos del usuario usando la información enviada en el cuerpo de la solicitud.",
                 "consumes": [
                     "application/json"
                 ],
@@ -849,10 +1079,10 @@ const docTemplate = `{
                 "tags": [
                     "Users"
                 ],
-                "summary": "Actualiza la información del cliente autenticado",
+                "summary": "Actualiza la información del usuario autenticado",
                 "parameters": [
                     {
-                        "description": "Datos del cliente a actualizar",
+                        "description": "Datos del usuario a actualizar",
                         "name": "customer",
                         "in": "body",
                         "required": true,
@@ -869,25 +1099,31 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "error de validación o formato inválido",
+                        "description": "Error de validación o formato inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
                         "schema": {
                             "type": "string"
                         }
                     },
                     "404": {
-                        "description": "customer not found",
+                        "description": "Usuario no encontrado",
                         "schema": {
                             "type": "string"
                         }
                     },
                     "409": {
-                        "description": "phone already exist",
+                        "description": "El teléfono ya está registrado",
                         "schema": {
                             "type": "string"
                         }
                     },
                     "500": {
-                        "description": "unexpected error",
+                        "description": "Error interno del servidor",
                         "schema": {
                             "type": "string"
                         }
@@ -895,8 +1131,11 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Registrar un nuevo cliente en el sistema con los datos proporcionados. Valida campos obligatorios como nombre, teléfono y contraseña.",
+                "description": "Registra un nuevo cliente en el sistema. Al completarse, crea automáticamente la sesión y establece la cookie de autenticación.",
                 "consumes": [
+                    "application/json"
+                ],
+                "produces": [
                     "application/json"
                 ],
                 "tags": [
@@ -922,19 +1161,19 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Se retorna cuando hay un campo que no cumple con los requisitos o directamente el body se envía vacío.",
+                        "description": "Campo inválido o body vacío",
                         "schema": {
                             "type": "string"
                         }
                     },
                     "409": {
-                        "description": "Se retorna cuando el teléfono ya está registrado.",
+                        "description": "El teléfono ya está registrado",
                         "schema": {
                             "type": "string"
                         }
                     },
                     "500": {
-                        "description": "Se retorna cuando ocurre un error inexperado en el servidor.",
+                        "description": "Error interno del servidor",
                         "schema": {
                             "type": "string"
                         }
@@ -944,14 +1183,19 @@ const docTemplate = `{
         },
         "/users/address": {
             "get": {
-                "description": "Retorna un arreglo con todas las direcciones asociadas al cliente identificado en el token",
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna un arreglo con todas las direcciones asociadas al cliente identificado en el token de sesión.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Users Address"
                 ],
-                "summary": "Obtiene todas las direcciones del cliente autenticado",
+                "summary": "Obtener todas las direcciones del cliente autenticado",
                 "responses": {
                     "200": {
                         "description": "Lista de direcciones",
@@ -962,14 +1206,20 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
                     "404": {
-                        "description": "not found",
+                        "description": "No se encontraron direcciones",
                         "schema": {
                             "type": "string"
                         }
                     },
                     "500": {
-                        "description": "unexpected error",
+                        "description": "Error interno del servidor",
                         "schema": {
                             "type": "string"
                         }
@@ -977,7 +1227,12 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Registra una dirección asociada al customer_id obtenido del contexto",
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Registra una dirección asociada al cliente autenticado, identificado por el token de sesión.",
                 "consumes": [
                     "application/json"
                 ],
@@ -987,7 +1242,7 @@ const docTemplate = `{
                 "tags": [
                     "Users Address"
                 ],
-                "summary": "Registra una nueva dirección para el cliente autenticado",
+                "summary": "Registrar una nueva dirección",
                 "parameters": [
                     {
                         "description": "Datos de la dirección",
@@ -1007,13 +1262,19 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "error de validación o parseo",
+                        "description": "Error de validación o parseo",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
                         "schema": {
                             "type": "string"
                         }
                     },
                     "500": {
-                        "description": "unexpected error",
+                        "description": "Error interno del servidor",
                         "schema": {
                             "type": "string"
                         }
@@ -1026,20 +1287,20 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Elimina la dirección especificada por su ID, siempre que pertenezca al cliente autenticado",
+                "description": "Elimina la dirección especificada por su ID, siempre que pertenezca al cliente autenticado.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Users Address"
                 ],
-                "summary": "Elimina una dirección del cliente autenticado",
+                "summary": "Eliminar una dirección del cliente autenticado",
                 "parameters": [
                     {
                         "type": "string",
                         "description": "ID de la dirección (UUID)",
-                        "name": "address",
-                        "in": "path",
+                        "name": "address_id",
+                        "in": "query",
                         "required": true
                     }
                 ],
@@ -1050,8 +1311,20 @@ const docTemplate = `{
                             "type": "string"
                         }
                     },
+                    "400": {
+                        "description": "address_id es requerido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
                     "500": {
-                        "description": "unexpected error",
+                        "description": "Error interno del servidor",
                         "schema": {
                             "type": "string"
                         }
@@ -1066,7 +1339,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Permite al cliente autenticado actualizar su contraseña, validando el formato y los requisitos establecidos",
+                "description": "Permite al usuario autenticado actualizar su contraseña, validando el formato y los requisitos establecidos.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1076,10 +1349,10 @@ const docTemplate = `{
                 "tags": [
                     "Users"
                 ],
-                "summary": "Actualiza la contraseña del cliente autenticado",
+                "summary": "Actualiza la contraseña del usuario autenticado",
                 "parameters": [
                     {
-                        "description": "Datos para actualizar la contraseña",
+                        "description": "Nueva contraseña",
                         "name": "password",
                         "in": "body",
                         "required": true,
@@ -1096,19 +1369,25 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "error de validación o formato inválido",
+                        "description": "Error de validación o formato inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
                         "schema": {
                             "type": "string"
                         }
                     },
                     "404": {
-                        "description": "customer not found",
+                        "description": "Usuario no encontrado",
                         "schema": {
                             "type": "string"
                         }
                     },
                     "500": {
-                        "description": "unexpected error",
+                        "description": "Error interno del servidor",
                         "schema": {
                             "type": "string"
                         }
@@ -1226,14 +1505,30 @@ const docTemplate = `{
                 "method_payment": {
                     "type": "string",
                     "enum": [
-                        "Nequi",
-                        "Efectivo"
+                        "EfectivoBs",
+                        "EfectivoDolar",
+                        "PagoMovil"
                     ],
-                    "example": "Nequi"
+                    "example": "EfectivoBs"
+                },
+                "pago_movil_data": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.PagoMovilData"
+                },
+                "payment_proof_image": {
+                    "type": "string",
+                    "example": "data:image/jpeg;base64,/9j/4AAQ..."
                 },
                 "shop_id": {
                     "type": "string",
                     "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_orders_domain_dtos.CreateOrderResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
                 }
             }
         },
@@ -1250,90 +1545,72 @@ const docTemplate = `{
                 }
             }
         },
-        "Encargalo_app-api_go_internal_pkg_pagination.Meta": {
+        "Encargalo_app-api_go_internal_orders_domain_dtos.PagoMovilData": {
             "type": "object",
+            "required": [
+                "banco",
+                "cedula",
+                "nombre",
+                "telefono"
+            ],
             "properties": {
-                "limit": {
-                    "type": "integer"
+                "banco": {
+                    "type": "string"
                 },
-                "page": {
-                    "type": "integer"
+                "cedula": {
+                    "type": "string"
                 },
-                "total": {
-                    "type": "integer"
+                "nombre": {
+                    "type": "string"
                 },
-                "total_pages": {
-                    "type": "integer"
+                "telefono": {
+                    "type": "string"
                 }
             }
         },
-        "Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_AdditionsResponse": {
+        "Encargalo_app-api_go_internal_payment_methods_domain_models.PaymentMethod": {
             "type": "object",
             "properties": {
-                "data": {
+                "description": {
+                    "type": "string"
+                },
+                "fields": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse"
+                        "type": "integer"
                     }
                 },
-                "pagination": {
-                    "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Meta"
-                }
-            }
-        },
-        "Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_CategoriesResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategoryResponse"
-                    }
+                "id": {
+                    "type": "string"
                 },
-                "pagination": {
-                    "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Meta"
-                }
-            }
-        },
-        "Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_FlavorsResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse"
-                    }
+                "is_active": {
+                    "type": "boolean"
                 },
-                "pagination": {
-                    "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Meta"
-                }
-            }
-        },
-        "Encargalo_app-api_go_internal_pkg_pagination.Response-Encargalo_app-api_go_internal_products_domain_dtos_ItemsResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse"
-                    }
+                "name": {
+                    "type": "string"
                 },
-                "pagination": {
-                    "$ref": "#/definitions/Encargalo_app-api_go_internal_pkg_pagination.Meta"
+                "qr_url": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
                 }
             }
         },
         "Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse": {
             "type": "object",
             "properties": {
+                "bs": {
+                    "type": "number"
+                },
                 "id": {
                     "type": "string"
                 },
                 "name": {
                     "type": "string"
                 },
-                "price": {
-                    "type": "integer"
+                "ref": {
+                    "type": "number"
                 }
             }
         },
@@ -1371,6 +1648,10 @@ const docTemplate = `{
         "Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse": {
             "type": "object",
             "properties": {
+                "bs": {
+                    "type": "number",
+                    "example": 7000
+                },
                 "category_id": {
                     "type": "string",
                     "example": "b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2"
@@ -1395,9 +1676,9 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Pizza Hawaiana Mediana"
                 },
-                "price": {
-                    "type": "integer",
-                    "example": 32000
+                "ref": {
+                    "type": "number",
+                    "example": 14
                 },
                 "rules": {
                     "type": "array",
@@ -1628,6 +1909,13 @@ const docTemplate = `{
                     "type": "string",
                     "example": "customer"
                 },
+                "shop": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.ShopInfo"
+                },
+                "shop_id": {
+                    "type": "string",
+                    "example": "456e7890-e89b-12d3-a456-426614174001"
+                },
                 "sur_name": {
                     "type": "string",
                     "example": "Ramírez"
@@ -1670,6 +1958,23 @@ const docTemplate = `{
                     "type": "string",
                     "minLength": 3,
                     "example": "Ramírez"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_users_domain_dto.ShopInfo": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "456e7890-e89b-12d3-a456-426614174001"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Mi Tienda"
+                },
+                "opened": {
+                    "type": "boolean",
+                    "example": true
                 }
             }
         },

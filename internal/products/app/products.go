@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	emplService "Encargalo.app-api.go/internal/employee/domain/ports"
-	"Encargalo.app-api.go/internal/pkg/pagination"
 	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
 	"Encargalo.app-api.go/internal/products/domain/dtos"
 	"Encargalo.app-api.go/internal/products/domain/models"
@@ -125,24 +124,24 @@ func (p *productsApp) UpdateItem(ctx context.Context, item dtos.UpdateItem, item
 	return nil
 }
 
-func (p *productsApp) SearchProductsByShopID(ctx context.Context, shopID uuid.UUID, params pagination.Params) (pagination.Response[dtos.CategoriesResponse], error) {
-	return p.repo.SearchProductsByShopID(ctx, shopID, params)
+func (p *productsApp) SearchProductsByShopID(ctx context.Context, shopID uuid.UUID) (dtos.CategoriesResponse, error) {
+	return p.repo.SearchProductsByShopID(ctx, shopID)
 }
 
-func (p *productsApp) SearchAdditionsByShopID(ctx context.Context, categoryID uuid.UUID, params pagination.Params) (pagination.Response[dtos.AdditionsResponse], error) {
-	return p.repo.SearchAdditionsByShopID(ctx, categoryID, params)
+func (p *productsApp) SearchAdditionsByShopID(ctx context.Context, categoryID uuid.UUID) (dtos.AdditionsResponse, error) {
+	return p.repo.SearchAdditionsByShopID(ctx, categoryID)
 }
 
-func (p *productsApp) SearchFlavorsByItemID(ctx context.Context, itemID uuid.UUID, params pagination.Params) (pagination.Response[dtos.FlavorsResponse], error) {
-	return p.repo.SearchFlavorsByItemID(ctx, itemID, params)
+func (p *productsApp) SearchFlavorsByItemID(ctx context.Context, itemID uuid.UUID) (dtos.FlavorsResponse, error) {
+	return p.repo.SearchFlavorsByItemID(ctx, itemID)
 }
 
-func (p *productsApp) SearchFlavorsByCategoryID(ctx context.Context, categoryID uuid.UUID, params pagination.Params) (pagination.Response[dtos.FlavorsResponse], error) {
-	return p.repo.SearchFlavorsByCategoryID(ctx, categoryID, params)
+func (p *productsApp) SearchFlavorsByCategoryID(ctx context.Context, categoryID uuid.UUID) (dtos.FlavorsResponse, error) {
+	return p.repo.SearchFlavorsByCategoryID(ctx, categoryID)
 }
 
-func (p *productsApp) SearchBestSellersByShopID(ctx context.Context, shopID uuid.UUID, params pagination.Params) (pagination.Response[dtos.ItemsResponse], error) {
-	return p.repo.SearchBestSellersByShopID(ctx, shopID, params)
+func (p *productsApp) SearchBestSellersByShopID(ctx context.Context, shopID uuid.UUID) (dtos.ItemsResponse, error) {
+	return p.repo.SearchBestSellersByShopID(ctx, shopID)
 }
 
 func (p *productsApp) AddSoldItem(ctx context.Context, item models.DataProduceOrder) error {

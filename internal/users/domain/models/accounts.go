@@ -25,9 +25,10 @@ type Account struct {
 	UpdatedAt        time.Time  `bun:"updated_at,default:now()"`
 	DeletedAt        *time.Time `bun:"deleted_at,soft_delete,nullzero"`
 
-	// Populated via JOIN in employee repo — zero values for customers
-	ShopID uuid.UUID `bun:"-"`
-	Role   string    `bun:"-"`
+	// Populated via JOIN — zero values for customers
+	ShopID uuid.UUID     `bun:"-"`
+	Role   string        `bun:"-"`
+	Shop   *dto.ShopInfo `bun:"-"`
 }
 
 func (c *Account) BuildCustomerRegisterModel(customer dto.RegisterCustomer) {
@@ -61,12 +62,25 @@ func (c *Account) ToDomainDTO() dto.CustomerResponse {
 		email = *c.Email
 	}
 
-	return dto.CustomerResponse{
+	role := c.Role
+	if role == "" {
+		role = string(models.Customer)
+	}
+
+	response := dto.CustomerResponse{
 		ID:      c.ID,
 		Name:    c.Name,
 		SurName: surName,
 		Phone:   c.Phone,
 		Email:   email,
-		Role:    string(models.Customer),
+		Role:    role,
 	}
+
+	if c.ShopID != (uuid.UUID{}) {
+		shopID := c.ShopID
+		response.ShopID = &shopID
+		response.Shop = c.Shop
+	}
+
+	return response
 }

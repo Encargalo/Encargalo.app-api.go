@@ -11,6 +11,15 @@ type Details struct {
 	CustomerDetails customerDetails `json:"customer"`
 	ShopDetails     shopDetails     `json:"shop"`
 	ItemsDetails    []itemsDetails  `json:"items"`
+	PaymentDetails  *PaymentDetails `json:"payment,omitempty"`
+}
+
+type PaymentDetails struct {
+	Nombre          string `json:"nombre"`
+	Cedula          string `json:"cedula"`
+	Telefono        string `json:"telefono"`
+	Banco           string `json:"banco"`
+	PaymentProofURL string `json:"payment_proof_url"`
 }
 
 func (d *Details) BuildDetails(order *Order, shop *ShopOrder, customer *models.Account) {

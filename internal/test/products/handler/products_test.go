@@ -8,10 +8,7 @@ import (
 	"testing"
 
 	authmodels "Encargalo.app-api.go/internal/auth/domain/models"
-	employeedto "Encargalo.app-api.go/internal/employee/domain/dto"
-	mocksempl "Encargalo.app-api.go/internal/mocks/employee/domain/ports"
 	mocksprod "Encargalo.app-api.go/internal/mocks/products/domain/ports"
-	"Encargalo.app-api.go/internal/pkg/pagination"
 	"Encargalo.app-api.go/internal/products/domain/dtos"
 	productshandler "Encargalo.app-api.go/internal/products/handler"
 	"Encargalo.app-api.go/internal/shared/buildhttptest"
@@ -38,6 +35,12 @@ func httpCode(err error) int {
 	return 0
 }
 
+func newHandler(t *testing.T) (productshandler.ProductsHandler, *mocksprod.ProductsApp) {
+	t.Helper()
+	svc := mocksprod.NewProductsApp(t)
+	return productshandler.NewProducsHandler(svc), svc
+}
+
 func withSession(tc buildhttptest.ControllerCase, session authmodels.ActiveSession) buildhttptest.ControllerCase {
 	ctx := context.WithValue(tc.Req.Context(), authmodels.SessionKey, session)
 	tc.Req = tc.Req.WithContext(ctx)
@@ -45,15 +48,13 @@ func withSession(tc buildhttptest.ControllerCase, session authmodels.ActiveSessi
 	return tc
 }
 
-// --- RegisterItems ---
+// --- RegisterItem ---
 
-func TestRegisterItems_Success(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+func TestRegisterItem_Success(t *testing.T) {
+	h, svc := newHandler(t)
 
-	userID := uuid.New()
 	shopID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: uuid.New(), ShopID: &shopID}
 
 	body := buildBody(t, map[string]any{
 		"category_id": uuid.New().String(),
@@ -62,23 +63,19 @@ func TestRegisterItems_Success(t *testing.T) {
 		"image":       "data:image/jpeg;base64,/9j/abc123",
 		"description": "Pizza con piña y jamón",
 	})
-	tc := buildhttptest.SetupControllerCase("/products", http.MethodPost, body)
+	tc := buildhttptest.SetupControllerCase("/business/products/items", http.MethodPost, body)
 	tc = withSession(tc, session)
 
-	emplResp := employeedto.EmployeeResponse{ID: userID, ShopID: shopID}
-	empl.On("SearchEmployeeByID", tc.Req.Context(), userID).Return(emplResp, nil)
 	svc.On("RegisterItem", tc.Req.Context(), mock.AnythingOfType("dtos.RegisterItem")).Return(nil)
 
-	h := productshandler.NewProducsHandler(svc, empl)
-	err := h.RegisterItems(tc.Ctx)
+	err := h.RegisterItem(tc.Ctx)
 
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusCreated, tc.Res.Code)
 }
 
-func TestRegisterItems_NoSession(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+func TestRegisterItem_NoSession(t *testing.T) {
+	h, _ := newHandler(t)
 
 	body := buildBody(t, map[string]any{
 		"category_id": uuid.New().String(),
@@ -87,53 +84,18 @@ func TestRegisterItems_NoSession(t *testing.T) {
 		"image":       "data:image/jpeg;base64,/9j/abc",
 		"description": "Descripción",
 	})
-	tc := buildhttptest.SetupControllerCase("/products", http.MethodPost, body)
+	tc := buildhttptest.SetupControllerCase("/business/products/items", http.MethodPost, body)
 
-	h := productshandler.NewProducsHandler(svc, empl)
-	err := h.RegisterItems(tc.Ctx)
+	err := h.RegisterItem(tc.Ctx)
 
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusUnauthorized, httpCode(err))
 }
 
-func TestRegisterItems_InvalidBody(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+func TestRegisterItem_NoShopID(t *testing.T) {
+	h, _ := newHandler(t)
 
-	session := authmodels.ActiveSession{UserID: uuid.New()}
-	tc := buildhttptest.SetupControllerCase("/products", http.MethodPost, bytes.NewBufferString("{invalid}"))
-	tc = withSession(tc, session)
-
-	h := productshandler.NewProducsHandler(svc, empl)
-	err := h.RegisterItems(tc.Ctx)
-
-	assert.Error(t, err)
-	assert.Equal(t, http.StatusBadRequest, httpCode(err))
-}
-
-func TestRegisterItems_ValidationFail(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
-
-	session := authmodels.ActiveSession{UserID: uuid.New()}
-	// Missing required fields: name, price, image, description
-	body := buildBody(t, map[string]any{"category_id": uuid.New().String()})
-	tc := buildhttptest.SetupControllerCase("/products", http.MethodPost, body)
-	tc = withSession(tc, session)
-
-	h := productshandler.NewProducsHandler(svc, empl)
-	err := h.RegisterItems(tc.Ctx)
-
-	assert.Error(t, err)
-	assert.Equal(t, http.StatusBadRequest, httpCode(err))
-}
-
-func TestRegisterItems_EmployeeNotFound(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
-
-	userID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: uuid.New(), ShopID: nil}
 	body := buildBody(t, map[string]any{
 		"category_id": uuid.New().String(),
 		"name":        "Pizza",
@@ -141,25 +103,49 @@ func TestRegisterItems_EmployeeNotFound(t *testing.T) {
 		"image":       "data:image/jpeg;base64,/9j/abc",
 		"description": "Descripción",
 	})
-	tc := buildhttptest.SetupControllerCase("/products", http.MethodPost, body)
+	tc := buildhttptest.SetupControllerCase("/business/products/items", http.MethodPost, body)
 	tc = withSession(tc, session)
 
-	empl.On("SearchEmployeeByID", tc.Req.Context(), userID).Return(employeedto.EmployeeResponse{}, errcustom.ErrNotFound)
-
-	h := productshandler.NewProducsHandler(svc, empl)
-	err := h.RegisterItems(tc.Ctx)
+	err := h.RegisterItem(tc.Ctx)
 
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusUnprocessableEntity, httpCode(err))
 }
 
-func TestRegisterItems_ServiceError(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+func TestRegisterItem_InvalidBody(t *testing.T) {
+	h, _ := newHandler(t)
 
-	userID := uuid.New()
 	shopID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: uuid.New(), ShopID: &shopID}
+	tc := buildhttptest.SetupControllerCase("/business/products/items", http.MethodPost, bytes.NewBufferString("{invalid}"))
+	tc = withSession(tc, session)
+
+	err := h.RegisterItem(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusBadRequest, httpCode(err))
+}
+
+func TestRegisterItem_ValidationFail(t *testing.T) {
+	h, _ := newHandler(t)
+
+	shopID := uuid.New()
+	session := authmodels.ActiveSession{UserID: uuid.New(), ShopID: &shopID}
+	body := buildBody(t, map[string]any{"category_id": uuid.New().String()})
+	tc := buildhttptest.SetupControllerCase("/business/products/items", http.MethodPost, body)
+	tc = withSession(tc, session)
+
+	err := h.RegisterItem(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusBadRequest, httpCode(err))
+}
+
+func TestRegisterItem_ServiceError(t *testing.T) {
+	h, svc := newHandler(t)
+
+	shopID := uuid.New()
+	session := authmodels.ActiveSession{UserID: uuid.New(), ShopID: &shopID}
 	body := buildBody(t, map[string]any{
 		"category_id": uuid.New().String(),
 		"name":        "Pizza",
@@ -167,15 +153,12 @@ func TestRegisterItems_ServiceError(t *testing.T) {
 		"image":       "data:image/jpeg;base64,/9j/abc",
 		"description": "Descripción",
 	})
-	tc := buildhttptest.SetupControllerCase("/products", http.MethodPost, body)
+	tc := buildhttptest.SetupControllerCase("/business/products/items", http.MethodPost, body)
 	tc = withSession(tc, session)
 
-	emplResp := employeedto.EmployeeResponse{ID: userID, ShopID: shopID}
-	empl.On("SearchEmployeeByID", tc.Req.Context(), userID).Return(emplResp, nil)
 	svc.On("RegisterItem", tc.Req.Context(), mock.AnythingOfType("dtos.RegisterItem")).Return(errcustom.ErrUnexpectedError)
 
-	h := productshandler.NewProducsHandler(svc, empl)
-	err := h.RegisterItems(tc.Ctx)
+	err := h.RegisterItem(tc.Ctx)
 
 	assert.Error(t, err)
 	assert.Equal(t, errcustom.ErrUnexpectedError, err)
@@ -184,8 +167,7 @@ func TestRegisterItems_ServiceError(t *testing.T) {
 // --- UpdateItem ---
 
 func TestUpdateItem_Success(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, svc := newHandler(t)
 
 	userID := uuid.New()
 	itemID := uuid.New()
@@ -196,14 +178,13 @@ func TestUpdateItem_Success(t *testing.T) {
 		"price":       35000,
 		"description": "Nueva descripción",
 	})
-	tc := buildhttptest.SetupControllerCase("/products/"+itemID.String(), http.MethodPut, body)
+	tc := buildhttptest.SetupControllerCase("/business/products/"+itemID.String(), http.MethodPut, body)
 	tc = withSession(tc, session)
 	tc.Ctx.SetParamNames("item_id")
 	tc.Ctx.SetParamValues(itemID.String())
 
 	svc.On("UpdateItem", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateItem"), itemID, userID).Return(nil)
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.UpdateItem(tc.Ctx)
 
 	assert.NoError(t, err)
@@ -211,8 +192,7 @@ func TestUpdateItem_Success(t *testing.T) {
 }
 
 func TestUpdateItem_NoSession(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, _ := newHandler(t)
 
 	itemID := uuid.New()
 	body := buildBody(t, map[string]any{
@@ -220,11 +200,10 @@ func TestUpdateItem_NoSession(t *testing.T) {
 		"price":       35000,
 		"description": "Desc",
 	})
-	tc := buildhttptest.SetupControllerCase("/products/"+itemID.String(), http.MethodPut, body)
+	tc := buildhttptest.SetupControllerCase("/business/products/"+itemID.String(), http.MethodPut, body)
 	tc.Ctx.SetParamNames("item_id")
 	tc.Ctx.SetParamValues(itemID.String())
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.UpdateItem(tc.Ctx)
 
 	assert.Error(t, err)
@@ -232,8 +211,7 @@ func TestUpdateItem_NoSession(t *testing.T) {
 }
 
 func TestUpdateItem_InvalidItemID(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, _ := newHandler(t)
 
 	session := authmodels.ActiveSession{UserID: uuid.New()}
 	body := buildBody(t, map[string]any{
@@ -241,12 +219,11 @@ func TestUpdateItem_InvalidItemID(t *testing.T) {
 		"price":       35000,
 		"description": "Desc",
 	})
-	tc := buildhttptest.SetupControllerCase("/products/not-a-uuid", http.MethodPut, body)
+	tc := buildhttptest.SetupControllerCase("/business/products/not-a-uuid", http.MethodPut, body)
 	tc = withSession(tc, session)
 	tc.Ctx.SetParamNames("item_id")
 	tc.Ctx.SetParamValues("not-a-uuid")
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.UpdateItem(tc.Ctx)
 
 	assert.Error(t, err)
@@ -254,21 +231,18 @@ func TestUpdateItem_InvalidItemID(t *testing.T) {
 }
 
 func TestUpdateItem_ValidationFail(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, _ := newHandler(t)
 
 	userID := uuid.New()
 	itemID := uuid.New()
 	session := authmodels.ActiveSession{UserID: userID}
 
-	// Missing required fields: price, description
 	body := buildBody(t, map[string]any{"name": "Pizza"})
-	tc := buildhttptest.SetupControllerCase("/products/"+itemID.String(), http.MethodPut, body)
+	tc := buildhttptest.SetupControllerCase("/business/products/"+itemID.String(), http.MethodPut, body)
 	tc = withSession(tc, session)
 	tc.Ctx.SetParamNames("item_id")
 	tc.Ctx.SetParamValues(itemID.String())
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.UpdateItem(tc.Ctx)
 
 	assert.Error(t, err)
@@ -276,8 +250,7 @@ func TestUpdateItem_ValidationFail(t *testing.T) {
 }
 
 func TestUpdateItem_NotFound(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, svc := newHandler(t)
 
 	userID := uuid.New()
 	itemID := uuid.New()
@@ -288,14 +261,13 @@ func TestUpdateItem_NotFound(t *testing.T) {
 		"price":       35000,
 		"description": "Desc",
 	})
-	tc := buildhttptest.SetupControllerCase("/products/"+itemID.String(), http.MethodPut, body)
+	tc := buildhttptest.SetupControllerCase("/business/products/"+itemID.String(), http.MethodPut, body)
 	tc = withSession(tc, session)
 	tc.Ctx.SetParamNames("item_id")
 	tc.Ctx.SetParamValues(itemID.String())
 
 	svc.On("UpdateItem", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateItem"), itemID, userID).Return(errcustom.ErrNotFound)
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.UpdateItem(tc.Ctx)
 
 	assert.Error(t, err)
@@ -303,8 +275,7 @@ func TestUpdateItem_NotFound(t *testing.T) {
 }
 
 func TestUpdateItem_UnexpectedError(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, svc := newHandler(t)
 
 	userID := uuid.New()
 	itemID := uuid.New()
@@ -315,14 +286,13 @@ func TestUpdateItem_UnexpectedError(t *testing.T) {
 		"price":       35000,
 		"description": "Desc",
 	})
-	tc := buildhttptest.SetupControllerCase("/products/"+itemID.String(), http.MethodPut, body)
+	tc := buildhttptest.SetupControllerCase("/business/products/"+itemID.String(), http.MethodPut, body)
 	tc = withSession(tc, session)
 	tc.Ctx.SetParamNames("item_id")
 	tc.Ctx.SetParamValues(itemID.String())
 
 	svc.On("UpdateItem", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateItem"), itemID, userID).Return(errcustom.ErrUnexpectedError)
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.UpdateItem(tc.Ctx)
 
 	assert.Error(t, err)
@@ -332,18 +302,14 @@ func TestUpdateItem_UnexpectedError(t *testing.T) {
 // --- SearchProductsByShopID ---
 
 func TestSearchProductsByShopID_Success(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, svc := newHandler(t)
 
 	shopID := uuid.New()
-	expected := pagination.Response[dtos.CategoriesResponse]{Data: dtos.CategoriesResponse{}}
-
 	tc := buildhttptest.SetupControllerCase("/products?shop_id="+shopID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("shop_id", shopID.String())
 
-	svc.On("SearchProductsByShopID", tc.Req.Context(), shopID, pagination.Params{Page: 1, Limit: 10}).Return(expected, nil)
+	svc.On("SearchProductsByShopID", tc.Req.Context(), shopID).Return(dtos.CategoriesResponse{}, nil)
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchProductsByShopID(tc.Ctx)
 
 	assert.NoError(t, err)
@@ -351,12 +317,10 @@ func TestSearchProductsByShopID_Success(t *testing.T) {
 }
 
 func TestSearchProductsByShopID_MissingShopID(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, _ := newHandler(t)
 
 	tc := buildhttptest.SetupControllerCase("/products", http.MethodGet, nil)
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchProductsByShopID(tc.Ctx)
 
 	assert.Error(t, err)
@@ -364,13 +328,11 @@ func TestSearchProductsByShopID_MissingShopID(t *testing.T) {
 }
 
 func TestSearchProductsByShopID_InvalidShopID(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, _ := newHandler(t)
 
 	tc := buildhttptest.SetupControllerCase("/products?shop_id=not-a-uuid", http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("shop_id", "not-a-uuid")
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchProductsByShopID(tc.Ctx)
 
 	assert.Error(t, err)
@@ -378,17 +340,14 @@ func TestSearchProductsByShopID_InvalidShopID(t *testing.T) {
 }
 
 func TestSearchProductsByShopID_NotFound(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, svc := newHandler(t)
 
 	shopID := uuid.New()
 	tc := buildhttptest.SetupControllerCase("/products?shop_id="+shopID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("shop_id", shopID.String())
 
-	svc.On("SearchProductsByShopID", tc.Req.Context(), shopID, pagination.Params{Page: 1, Limit: 10}).
-		Return(pagination.Response[dtos.CategoriesResponse]{}, errcustom.ErrNotFound)
+	svc.On("SearchProductsByShopID", tc.Req.Context(), shopID).Return(dtos.CategoriesResponse(nil), errcustom.ErrNotFound)
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchProductsByShopID(tc.Ctx)
 
 	assert.Error(t, err)
@@ -396,17 +355,14 @@ func TestSearchProductsByShopID_NotFound(t *testing.T) {
 }
 
 func TestSearchProductsByShopID_UnexpectedError(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, svc := newHandler(t)
 
 	shopID := uuid.New()
 	tc := buildhttptest.SetupControllerCase("/products?shop_id="+shopID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("shop_id", shopID.String())
 
-	svc.On("SearchProductsByShopID", tc.Req.Context(), shopID, pagination.Params{Page: 1, Limit: 10}).
-		Return(pagination.Response[dtos.CategoriesResponse]{}, errcustom.ErrUnexpectedError)
+	svc.On("SearchProductsByShopID", tc.Req.Context(), shopID).Return(dtos.CategoriesResponse(nil), errcustom.ErrUnexpectedError)
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchProductsByShopID(tc.Ctx)
 
 	assert.Error(t, err)
@@ -416,18 +372,14 @@ func TestSearchProductsByShopID_UnexpectedError(t *testing.T) {
 // --- SearchAdditionsByShopID ---
 
 func TestSearchAdditionsByShopID_Success(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, svc := newHandler(t)
 
 	categoryID := uuid.New()
-	expected := pagination.Response[dtos.AdditionsResponse]{Data: dtos.AdditionsResponse{}}
-
 	tc := buildhttptest.SetupControllerCase("/products/additions?category_id="+categoryID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("category_id", categoryID.String())
 
-	svc.On("SearchAdditionsByShopID", tc.Req.Context(), categoryID, pagination.Params{Page: 1, Limit: 20}).Return(expected, nil)
+	svc.On("SearchAdditionsByShopID", tc.Req.Context(), categoryID).Return(dtos.AdditionsResponse{}, nil)
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchAdditionsByShopID(tc.Ctx)
 
 	assert.NoError(t, err)
@@ -435,12 +387,10 @@ func TestSearchAdditionsByShopID_Success(t *testing.T) {
 }
 
 func TestSearchAdditionsByShopID_MissingCategoryID(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, _ := newHandler(t)
 
 	tc := buildhttptest.SetupControllerCase("/products/additions", http.MethodGet, nil)
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchAdditionsByShopID(tc.Ctx)
 
 	assert.Error(t, err)
@@ -448,13 +398,11 @@ func TestSearchAdditionsByShopID_MissingCategoryID(t *testing.T) {
 }
 
 func TestSearchAdditionsByShopID_InvalidCategoryID(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, _ := newHandler(t)
 
 	tc := buildhttptest.SetupControllerCase("/products/additions?category_id=bad", http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("category_id", "bad")
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchAdditionsByShopID(tc.Ctx)
 
 	assert.Error(t, err)
@@ -462,17 +410,14 @@ func TestSearchAdditionsByShopID_InvalidCategoryID(t *testing.T) {
 }
 
 func TestSearchAdditionsByShopID_NotFound(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, svc := newHandler(t)
 
 	categoryID := uuid.New()
 	tc := buildhttptest.SetupControllerCase("/products/additions?category_id="+categoryID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("category_id", categoryID.String())
 
-	svc.On("SearchAdditionsByShopID", tc.Req.Context(), categoryID, pagination.Params{Page: 1, Limit: 20}).
-		Return(pagination.Response[dtos.AdditionsResponse]{}, errcustom.ErrNotFound)
+	svc.On("SearchAdditionsByShopID", tc.Req.Context(), categoryID).Return(dtos.AdditionsResponse(nil), errcustom.ErrNotFound)
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchAdditionsByShopID(tc.Ctx)
 
 	assert.Error(t, err)
@@ -482,18 +427,14 @@ func TestSearchAdditionsByShopID_NotFound(t *testing.T) {
 // --- SearchFlavorsByItemID ---
 
 func TestSearchFlavorsByItemID_Success(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, svc := newHandler(t)
 
 	itemID := uuid.New()
-	expected := pagination.Response[dtos.FlavorsResponse]{Data: dtos.FlavorsResponse{}}
-
 	tc := buildhttptest.SetupControllerCase("/products/flavors?item_id="+itemID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("item_id", itemID.String())
 
-	svc.On("SearchFlavorsByItemID", tc.Req.Context(), itemID, pagination.Params{Page: 1, Limit: 20}).Return(expected, nil)
+	svc.On("SearchFlavorsByItemID", tc.Req.Context(), itemID).Return(dtos.FlavorsResponse{}, nil)
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchFlavorsByItemID(tc.Ctx)
 
 	assert.NoError(t, err)
@@ -501,12 +442,10 @@ func TestSearchFlavorsByItemID_Success(t *testing.T) {
 }
 
 func TestSearchFlavorsByItemID_MissingItemID(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, _ := newHandler(t)
 
 	tc := buildhttptest.SetupControllerCase("/products/flavors", http.MethodGet, nil)
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchFlavorsByItemID(tc.Ctx)
 
 	assert.Error(t, err)
@@ -514,13 +453,11 @@ func TestSearchFlavorsByItemID_MissingItemID(t *testing.T) {
 }
 
 func TestSearchFlavorsByItemID_InvalidItemID(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, _ := newHandler(t)
 
 	tc := buildhttptest.SetupControllerCase("/products/flavors?item_id=bad", http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("item_id", "bad")
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchFlavorsByItemID(tc.Ctx)
 
 	assert.Error(t, err)
@@ -528,17 +465,14 @@ func TestSearchFlavorsByItemID_InvalidItemID(t *testing.T) {
 }
 
 func TestSearchFlavorsByItemID_NotFound(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, svc := newHandler(t)
 
 	itemID := uuid.New()
 	tc := buildhttptest.SetupControllerCase("/products/flavors?item_id="+itemID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("item_id", itemID.String())
 
-	svc.On("SearchFlavorsByItemID", tc.Req.Context(), itemID, pagination.Params{Page: 1, Limit: 20}).
-		Return(pagination.Response[dtos.FlavorsResponse]{}, errcustom.ErrNotFound)
+	svc.On("SearchFlavorsByItemID", tc.Req.Context(), itemID).Return(dtos.FlavorsResponse(nil), errcustom.ErrNotFound)
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchFlavorsByItemID(tc.Ctx)
 
 	assert.Error(t, err)
@@ -548,18 +482,14 @@ func TestSearchFlavorsByItemID_NotFound(t *testing.T) {
 // --- SearchFlavorsByCategoryID ---
 
 func TestSearchFlavorsByCategoryID_Success(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, svc := newHandler(t)
 
 	categoryID := uuid.New()
-	expected := pagination.Response[dtos.FlavorsResponse]{Data: dtos.FlavorsResponse{}}
-
 	tc := buildhttptest.SetupControllerCase("/products/flavors/category?category_id="+categoryID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("category_id", categoryID.String())
 
-	svc.On("SearchFlavorsByCategoryID", tc.Req.Context(), categoryID, pagination.Params{Page: 1, Limit: 20}).Return(expected, nil)
+	svc.On("SearchFlavorsByCategoryID", tc.Req.Context(), categoryID).Return(dtos.FlavorsResponse{}, nil)
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchFlavorsByCategoryID(tc.Ctx)
 
 	assert.NoError(t, err)
@@ -567,12 +497,10 @@ func TestSearchFlavorsByCategoryID_Success(t *testing.T) {
 }
 
 func TestSearchFlavorsByCategoryID_MissingCategoryID(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, _ := newHandler(t)
 
 	tc := buildhttptest.SetupControllerCase("/products/flavors/category", http.MethodGet, nil)
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchFlavorsByCategoryID(tc.Ctx)
 
 	assert.Error(t, err)
@@ -580,13 +508,11 @@ func TestSearchFlavorsByCategoryID_MissingCategoryID(t *testing.T) {
 }
 
 func TestSearchFlavorsByCategoryID_InvalidCategoryID(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, _ := newHandler(t)
 
 	tc := buildhttptest.SetupControllerCase("/products/flavors/category?category_id=bad", http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("category_id", "bad")
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchFlavorsByCategoryID(tc.Ctx)
 
 	assert.Error(t, err)
@@ -594,17 +520,14 @@ func TestSearchFlavorsByCategoryID_InvalidCategoryID(t *testing.T) {
 }
 
 func TestSearchFlavorsByCategoryID_NotFound(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, svc := newHandler(t)
 
 	categoryID := uuid.New()
 	tc := buildhttptest.SetupControllerCase("/products/flavors/category?category_id="+categoryID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("category_id", categoryID.String())
 
-	svc.On("SearchFlavorsByCategoryID", tc.Req.Context(), categoryID, pagination.Params{Page: 1, Limit: 20}).
-		Return(pagination.Response[dtos.FlavorsResponse]{}, errcustom.ErrNotFound)
+	svc.On("SearchFlavorsByCategoryID", tc.Req.Context(), categoryID).Return(dtos.FlavorsResponse(nil), errcustom.ErrNotFound)
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchFlavorsByCategoryID(tc.Ctx)
 
 	assert.Error(t, err)
@@ -614,18 +537,14 @@ func TestSearchFlavorsByCategoryID_NotFound(t *testing.T) {
 // --- SearchBestSellersByShopID ---
 
 func TestSearchBestSellersByShopID_Success(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, svc := newHandler(t)
 
 	shopID := uuid.New()
-	expected := pagination.Response[dtos.ItemsResponse]{Data: dtos.ItemsResponse{}}
-
 	tc := buildhttptest.SetupControllerCase("/products/best-sellers?shop_id="+shopID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("shop_id", shopID.String())
 
-	svc.On("SearchBestSellersByShopID", tc.Req.Context(), shopID, pagination.Params{Page: 1, Limit: 5}).Return(expected, nil)
+	svc.On("SearchBestSellersByShopID", tc.Req.Context(), shopID).Return(dtos.ItemsResponse{}, nil)
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchBestSellersByShopID(tc.Ctx)
 
 	assert.NoError(t, err)
@@ -633,12 +552,10 @@ func TestSearchBestSellersByShopID_Success(t *testing.T) {
 }
 
 func TestSearchBestSellersByShopID_MissingShopID(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, _ := newHandler(t)
 
 	tc := buildhttptest.SetupControllerCase("/products/best-sellers", http.MethodGet, nil)
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchBestSellersByShopID(tc.Ctx)
 
 	assert.Error(t, err)
@@ -646,13 +563,11 @@ func TestSearchBestSellersByShopID_MissingShopID(t *testing.T) {
 }
 
 func TestSearchBestSellersByShopID_InvalidShopID(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, _ := newHandler(t)
 
 	tc := buildhttptest.SetupControllerCase("/products/best-sellers?shop_id=bad", http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("shop_id", "bad")
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchBestSellersByShopID(tc.Ctx)
 
 	assert.Error(t, err)
@@ -660,17 +575,14 @@ func TestSearchBestSellersByShopID_InvalidShopID(t *testing.T) {
 }
 
 func TestSearchBestSellersByShopID_NotFound(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, svc := newHandler(t)
 
 	shopID := uuid.New()
 	tc := buildhttptest.SetupControllerCase("/products/best-sellers?shop_id="+shopID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("shop_id", shopID.String())
 
-	svc.On("SearchBestSellersByShopID", tc.Req.Context(), shopID, pagination.Params{Page: 1, Limit: 5}).
-		Return(pagination.Response[dtos.ItemsResponse]{}, errcustom.ErrNotFound)
+	svc.On("SearchBestSellersByShopID", tc.Req.Context(), shopID).Return(dtos.ItemsResponse(nil), errcustom.ErrNotFound)
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchBestSellersByShopID(tc.Ctx)
 
 	assert.Error(t, err)
@@ -678,17 +590,14 @@ func TestSearchBestSellersByShopID_NotFound(t *testing.T) {
 }
 
 func TestSearchBestSellersByShopID_UnexpectedError(t *testing.T) {
-	svc := mocksprod.NewProductsApp(t)
-	empl := mocksempl.NewEmployeeApp(t)
+	h, svc := newHandler(t)
 
 	shopID := uuid.New()
 	tc := buildhttptest.SetupControllerCase("/products/best-sellers?shop_id="+shopID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("shop_id", shopID.String())
 
-	svc.On("SearchBestSellersByShopID", tc.Req.Context(), shopID, pagination.Params{Page: 1, Limit: 5}).
-		Return(pagination.Response[dtos.ItemsResponse]{}, errcustom.ErrUnexpectedError)
+	svc.On("SearchBestSellersByShopID", tc.Req.Context(), shopID).Return(dtos.ItemsResponse(nil), errcustom.ErrUnexpectedError)
 
-	h := productshandler.NewProducsHandler(svc, empl)
 	err := h.SearchBestSellersByShopID(tc.Ctx)
 
 	assert.Error(t, err)

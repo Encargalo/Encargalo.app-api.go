@@ -29,6 +29,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
       - name: Check if tests exist
         id: check_tests
         run: |
@@ -38,9 +43,17 @@ jobs:
             echo "has_tests=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Run tests
+      - name: Run tests with coverage
         if: steps.check_tests.outputs.has_tests == 'true'
-        run: go test ./...
+        run: go test -coverprofile=coverage.out -covermode=atomic ./...
+
+      - name: Upload coverage to Codecov
+        if: steps.check_tests.outputs.has_tests == 'true'
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.out
+          fail_ci_if_error: true
 
   docker_validate:
     runs-on: ubuntu-latest

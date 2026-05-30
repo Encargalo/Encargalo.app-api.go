@@ -26,17 +26,19 @@ func NewOrderHandler(svc ports.OrdersApp, svc2 app.AppManagerOrder) OrderHandler
 }
 
 // CreateOrder godoc
-// @Summary      Create a new order
-// @Description  Creates a new order with the provided details
+// @Summary      Crear una nueva orden
+// @Description  Crea una nueva orden con los productos e información de entrega proporcionados. El customer_id se obtiene automáticamente del token de sesión. Si el método de pago es PagoMovil, se debe enviar `pago_movil_data` y `payment_proof_image` (base64).
 // @Tags         Orders
 // @Accept       json
 // @Produce      json
-// @Param        order  body      dtos.CreateOrder  true  "Order payload"
-// @Success      201    {string}  string  "Order created successfully"
-// @Failure      400  {object}  dtos.ErrorResponse "Invalid request body or validation failed"
-// @Failure      409  {object}  dtos.ErrorResponse "Order already exists"
-// @Failure      422  {object}  dtos.ErrorResponse "One or more items/additions not found"
-// @Failure      500  {object}  dtos.ErrorResponse "Unexpected internal server error"
+// @Security     SessionCookie
+// @Param        order  body      dtos.CreateOrder          true  "Datos de la orden"
+// @Success      201    {object}  dtos.CreateOrderResponse  "Orden creada"
+// @Failure      400    {object}  dtos.ErrorResponse        "Body inválido o validación fallida"
+// @Failure      401    {string}  string                    "No autorizado"
+// @Failure      409    {object}  dtos.ErrorResponse        "La orden ya existe"
+// @Failure      422    {object}  dtos.ErrorResponse        "Uno o más productos/adiciones no encontrados"
+// @Failure      500    {object}  dtos.ErrorResponse        "Error interno del servidor"
 // @Router       /orders [post]
 func (o *orderHandler) CreateOrder(c echo.Context) error {
 
@@ -69,5 +71,5 @@ func (o *orderHandler) CreateOrder(c echo.Context) error {
 		slog.Error("error broadcasting order to websockets", "error", err)
 	}
 
-	return c.JSON(http.StatusCreated, "Order created successfully")
+	return c.JSON(http.StatusCreated, dtos.CreateOrderResponse{Message: "Order created successfully"})
 }

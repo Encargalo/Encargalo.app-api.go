@@ -2,11 +2,8 @@ package handler
 
 import (
 	"net/http"
-	"strconv"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
-	emplService "Encargalo.app-api.go/internal/employee/domain/ports"
-	"Encargalo.app-api.go/internal/pkg/pagination"
 	"Encargalo.app-api.go/internal/products/domain/dtos"
 	"Encargalo.app-api.go/internal/products/domain/ports"
 	"github.com/google/uuid"
@@ -14,141 +11,34 @@ import (
 )
 
 type ProductsHandler interface {
-	RegisterItems(e echo.Context) error
-	UpdateItem(e echo.Context) error
 	SearchProductsByShopID(e echo.Context) error
 	SearchAdditionsByShopID(e echo.Context) error
 	SearchFlavorsByItemID(e echo.Context) error
 	SearchFlavorsByCategoryID(e echo.Context) error
 	SearchBestSellersByShopID(e echo.Context) error
+	GetMyProducts(e echo.Context) error
+	RegisterItem(e echo.Context) error
+	UpdateItem(e echo.Context) error
 }
 
 type productsHandler struct {
-	svc         ports.ProductsApp
-	emplService emplService.EmployeeApp
+	svc ports.ProductsApp
 }
 
-func NewProducsHandler(svc ports.ProductsApp, emplService emplService.EmployeeApp) ProductsHandler {
-	return &productsHandler{svc, emplService}
-}
-
-func paginationParams(e echo.Context, defaultLimit int) pagination.Params {
-	page := 1
-	if v, err := strconv.Atoi(e.QueryParam("page")); err == nil && v > 0 {
-		page = v
-	}
-	limit := defaultLimit
-	if v, err := strconv.Atoi(e.QueryParam("limit")); err == nil && v > 0 {
-		limit = v
-	}
-	return pagination.Params{Page: page, Limit: limit}
-}
-
-// RegisterItems godoc
-// @Summary      Registrar un nuevo producto
-// @Description  Registra un nuevo producto en la tienda asociada al empleado autenticado. Si se envía `flavor_ids`, el producto se marcará automáticamente como con sabores y se asociarán los sabores indicados.
-// @Tags         Products
-// @Accept       json
-// @Produce      json
-// @Security     Cookie
-// @Param        item  body      dtos.RegisterItem  true  "Datos del producto a registrar"
-// @Success      201   {string}  string             "product registered successfully"
-// @Failure      400   {string}  string             "JSON inválido o campos faltantes"
-// @Failure      401   {string}  string             "No autorizado"
-// @Failure      422   {string}  string             "No se encontró la cuenta del empleado"
-// @Failure      500   {string}  string             "Error interno del servidor"
-// @Router       /products [post]
-func (p *productsHandler) RegisterItems(e echo.Context) error {
-
-	ctx := e.Request().Context()
-
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
-	}
-
-	var item dtos.RegisterItem
-
-	if err := e.Bind(&item); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-	}
-
-	if err := item.Validate(); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-	}
-
-	empl, err := p.emplService.SearchEmployeeByID(ctx, session.UserID)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusUnprocessableEntity, "No se encontró la cuenta que quiere registrar el item")
-	}
-
-	item.ShopID = empl.ShopID
-
-	if err := p.svc.RegisterItem(ctx, item); err != nil {
-		return err
-	}
-
-	return e.JSON(http.StatusCreated, "product registered successfully")
-}
-
-// UpdateItem godoc
-// @Summary      Actualizar un producto
-// @Description  Actualiza la información de un producto existente. Solo puede actualizarlo el Order Manager de la tienda a la que pertenece. La imagen solo se sube a Cloudinary si es diferente a la actual (comparación por hash). Si se envía `flavor_ids` (incluso vacío), los sabores se reemplazan completamente; si no se envía, los sabores no se modifican.
-// @Tags         Products
-// @Accept       json
-// @Produce      json
-// @Security     Cookie
-// @Param        item_id  path      string           true  "ID del producto"  Format(uuid)
-// @Param        body     body      dtos.UpdateItem  true  "Datos del producto a actualizar"
-// @Success      200      {string}  string           "item update success"
-// @Failure      400      {string}  string           "item_id inválido o JSON mal formado"
-// @Failure      401      {string}  string           "No autorizado"
-// @Failure      404      {string}  string           "Producto no encontrado"
-// @Failure      500      {string}  string           "Error interno del servidor"
-// @Router       /products/{item_id} [put]
-func (p *productsHandler) UpdateItem(e echo.Context) error {
-
-	ctx := e.Request().Context()
-
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
-	}
-
-	itemIDParam := e.Param("item_id")
-
-	itemID, err := uuid.Parse(itemIDParam)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "item_id inválido")
-	}
-
-	var item dtos.UpdateItem
-
-	if err := e.Bind(&item); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-	}
-
-	if err := item.Validate(); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-	}
-
-	if err := p.svc.UpdateItem(ctx, item, itemID, session.UserID); err != nil {
-		return err
-	}
-
-	return e.JSON(http.StatusOK, "item update success")
+func NewProducsHandler(svc ports.ProductsApp) ProductsHandler {
+	return &productsHandler{svc}
 }
 
 // SearchProductsByShopID godoc
 // @Summary      Obtener productos por tienda
-// @Description  Retorna productos agrupados por categoría de una tienda, con paginación. Solo incluye productos disponibles, ordenados por precio ascendente.
+// @Description  Retorna todos los productos agrupados por categoría de una tienda. Solo incluye productos disponibles, ordenados por precio ascendente.
 // @Tags         Products
 // @Produce      json
-// @Param        shop_id  query     string  true   "ID de la tienda"  Format(uuid)
-// @Param        page     query     int     false  "Número de página (default: 1)"
-// @Param        limit    query     int     false  "Categorías por página (default: 10)"
-// @Success      200      {object}  pagination.Response[dtos.CategoriesResponse]
+// @Security     SessionCookie
+// @Param        shop_id  query     string  true  "ID de la tienda"  Format(uuid)
+// @Success      200      {object}  dtos.CategoriesResponse
 // @Failure      400      {string}  string  "shop_id es requerido o inválido"
+// @Failure      401      {string}  string  "No autorizado"
 // @Failure      404      {string}  string  "Productos no encontrados"
 // @Failure      500      {string}  string  "Error interno del servidor"
 // @Router       /products [get]
@@ -166,7 +56,7 @@ func (p *productsHandler) SearchProductsByShopID(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "shop_id inválido")
 	}
 
-	items, err := p.svc.SearchProductsByShopID(ctx, shopID, paginationParams(e, 10))
+	items, err := p.svc.SearchProductsByShopID(ctx, shopID)
 	if err != nil {
 		return err
 	}
@@ -176,14 +66,14 @@ func (p *productsHandler) SearchProductsByShopID(e echo.Context) error {
 
 // SearchAdditionsByShopID godoc
 // @Summary      Obtener adiciones por categoría
-// @Description  Retorna las adiciones disponibles de una categoría, ordenadas por precio ascendente.
+// @Description  Retorna todas las adiciones disponibles de una categoría, ordenadas por precio ascendente.
 // @Tags         Products
 // @Produce      json
-// @Param        category_id  query     string  true   "ID de la categoría"  Format(uuid)
-// @Param        page         query     int     false  "Número de página (default: 1)"
-// @Param        limit        query     int     false  "Resultados por página (default: 20)"
-// @Success      200          {object}  pagination.Response[dtos.AdditionsResponse]
+// @Security     SessionCookie
+// @Param        category_id  query     string  true  "ID de la categoría"  Format(uuid)
+// @Success      200          {object}  dtos.AdditionsResponse
 // @Failure      400          {string}  string  "category_id es requerido o inválido"
+// @Failure      401          {string}  string  "No autorizado"
 // @Failure      404          {string}  string  "Adiciones no encontradas"
 // @Failure      500          {string}  string  "Error interno del servidor"
 // @Router       /products/additions [get]
@@ -201,7 +91,7 @@ func (p *productsHandler) SearchAdditionsByShopID(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "category_id inválido")
 	}
 
-	additions, err := p.svc.SearchAdditionsByShopID(ctx, categoryID, paginationParams(e, 20))
+	additions, err := p.svc.SearchAdditionsByShopID(ctx, categoryID)
 	if err != nil {
 		return err
 	}
@@ -211,14 +101,14 @@ func (p *productsHandler) SearchAdditionsByShopID(e echo.Context) error {
 
 // SearchFlavorsByItemID godoc
 // @Summary      Obtener sabores por producto
-// @Description  Retorna los sabores disponibles asociados a un producto específico.
+// @Description  Retorna todos los sabores disponibles asociados a un producto específico.
 // @Tags         Products
 // @Produce      json
-// @Param        item_id  query     string  true   "ID del producto" Format(uuid)
-// @Param        page     query     int     false  "Número de página (default: 1)"
-// @Param        limit    query     int     false  "Resultados por página (default: 20)"
-// @Success      200      {object}  pagination.Response[dtos.FlavorsResponse]
+// @Security     SessionCookie
+// @Param        item_id  query     string  true  "ID del producto" Format(uuid)
+// @Success      200      {object}  dtos.FlavorsResponse
 // @Failure      400      {string}  string  "item_id es requerido o inválido"
+// @Failure      401      {string}  string  "No autorizado"
 // @Failure      404      {string}  string  "Sabores no encontrados"
 // @Failure      500      {string}  string  "Error interno del servidor"
 // @Router       /products/flavors [get]
@@ -236,7 +126,7 @@ func (p *productsHandler) SearchFlavorsByItemID(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "item_id inválido")
 	}
 
-	flavors, err := p.svc.SearchFlavorsByItemID(ctx, itemID, paginationParams(e, 20))
+	flavors, err := p.svc.SearchFlavorsByItemID(ctx, itemID)
 	if err != nil {
 		return err
 	}
@@ -246,14 +136,14 @@ func (p *productsHandler) SearchFlavorsByItemID(e echo.Context) error {
 
 // SearchFlavorsByCategoryID godoc
 // @Summary      Obtener sabores por categoría
-// @Description  Retorna los sabores disponibles asociados a una categoría específica.
+// @Description  Retorna todos los sabores disponibles asociados a una categoría específica.
 // @Tags         Products
 // @Produce      json
-// @Param        category_id  query     string  true   "ID de la categoría" Format(uuid)
-// @Param        page         query     int     false  "Número de página (default: 1)"
-// @Param        limit        query     int     false  "Resultados por página (default: 20)"
-// @Success      200          {object}  pagination.Response[dtos.FlavorsResponse]
+// @Security     SessionCookie
+// @Param        category_id  query     string  true  "ID de la categoría" Format(uuid)
+// @Success      200          {object}  dtos.FlavorsResponse
 // @Failure      400          {string}  string  "category_id es requerido o inválido"
+// @Failure      401          {string}  string  "No autorizado"
 // @Failure      404          {string}  string  "Sabores no encontrados"
 // @Failure      500          {string}  string  "Error interno del servidor"
 // @Router       /products/flavors/category [get]
@@ -271,7 +161,7 @@ func (p *productsHandler) SearchFlavorsByCategoryID(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "category_id inválido")
 	}
 
-	flavors, err := p.svc.SearchFlavorsByCategoryID(ctx, categoryID, paginationParams(e, 20))
+	flavors, err := p.svc.SearchFlavorsByCategoryID(ctx, categoryID)
 	if err != nil {
 		return err
 	}
@@ -281,15 +171,14 @@ func (p *productsHandler) SearchFlavorsByCategoryID(e echo.Context) error {
 
 // SearchBestSellersByShopID godoc
 // @Summary      Obtener los productos mas vendidos por tienda
-// @Description  Esta función maneja la solicitud para obtener los productos mas vendidos por tienda de una tienda específica.
+// @Description  Retorna todos los productos más vendidos de una tienda específica, ordenados por ventas descendente.
 // @Tags         Products
-// @Accept       json
 // @Produce      json
-// @Param        shop_id  query     string  true   "ID de la tienda" Format(uuid)
-// @Param        page     query     int     false  "Número de página (default: 1)"
-// @Param        limit    query     int     false  "Resultados por página (default: 5)"
-// @Success      200      {object}  pagination.Response[dtos.ItemsResponse]
+// @Security     SessionCookie
+// @Param        shop_id  query     string  true  "ID de la tienda" Format(uuid)
+// @Success      200      {object}  dtos.ItemsResponse
 // @Failure      400      {string}  string  "shop_id es requerido o inválido"
+// @Failure      401      {string}  string  "No autorizado"
 // @Failure      404      {string}  string  "Productos más vendidos no encontrados"
 // @Failure      500      {string}  string  "Error interno del servidor"
 // @Router       /products/best-sellers [get]
@@ -307,10 +196,129 @@ func (p *productsHandler) SearchBestSellersByShopID(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "shop_id invalid")
 	}
 
-	topSeller, err := p.svc.SearchBestSellersByShopID(ctx, shopID, paginationParams(e, 5))
+	topSeller, err := p.svc.SearchBestSellersByShopID(ctx, shopID)
 	if err != nil {
 		return err
 	}
 
 	return e.JSON(http.StatusOK, topSeller)
+}
+
+// GetMyProducts godoc
+// @Summary      Obtener productos del negocio
+// @Description  Retorna todos los productos agrupados por categoría del negocio asociado a la sesión autenticada.
+// @Tags         Business
+// @Produce      json
+// @Security     SessionCookie
+// @Success      200  {object}  dtos.CategoriesResponse
+// @Failure      401  {string}  string  "No autorizado"
+// @Failure      404  {string}  string  "Productos no encontrados"
+// @Failure      422  {string}  string  "El usuario no tiene un negocio asociado"
+// @Failure      500  {string}  string  "Error interno del servidor"
+// @Router       /business/products [get]
+func (p *productsHandler) GetMyProducts(e echo.Context) error {
+	ctx := e.Request().Context()
+
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
+	}
+
+	if session.ShopID == nil {
+		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
+	}
+
+	items, err := p.svc.SearchProductsByShopID(ctx, *session.ShopID)
+	if err != nil {
+		return err
+	}
+
+	return e.JSON(http.StatusOK, items)
+}
+
+// RegisterItem godoc
+// @Summary      Registrar un nuevo producto
+// @Description  Registra un nuevo producto en el negocio asociado a la sesión autenticada.
+// @Tags         Business
+// @Accept       json
+// @Produce      json
+// @Security     SessionCookie
+// @Param        item  body      dtos.RegisterItem  true  "Datos del producto a registrar"
+// @Success      201   {string}  string             "product registered successfully"
+// @Failure      400   {string}  string             "JSON inválido o campos faltantes"
+// @Failure      401   {string}  string             "No autorizado"
+// @Failure      422   {string}  string             "El usuario no tiene un negocio asociado"
+// @Failure      500   {string}  string             "Error interno del servidor"
+// @Router       /business/products/items [post]
+func (p *productsHandler) RegisterItem(e echo.Context) error {
+	ctx := e.Request().Context()
+
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
+	}
+
+	if session.ShopID == nil {
+		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
+	}
+
+	var item dtos.RegisterItem
+	if err := e.Bind(&item); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := item.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	item.ShopID = *session.ShopID
+
+	if err := p.svc.RegisterItem(ctx, item); err != nil {
+		return err
+	}
+
+	return e.JSON(http.StatusCreated, "product registered successfully")
+}
+
+// UpdateItem godoc
+// @Summary      Actualizar un producto
+// @Description  Actualiza la información de un producto existente del negocio autenticado.
+// @Tags         Business
+// @Accept       json
+// @Produce      json
+// @Security     SessionCookie
+// @Param        item_id  path      string           true  "ID del producto"  Format(uuid)
+// @Param        body     body      dtos.UpdateItem  true  "Datos del producto a actualizar"
+// @Success      200      {string}  string           "item update success"
+// @Failure      400      {string}  string           "item_id inválido o JSON mal formado"
+// @Failure      401      {string}  string           "No autorizado"
+// @Failure      404      {string}  string           "Producto no encontrado"
+// @Failure      500      {string}  string           "Error interno del servidor"
+// @Router       /business/products/{item_id} [put]
+func (p *productsHandler) UpdateItem(e echo.Context) error {
+	ctx := e.Request().Context()
+
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
+	}
+
+	itemIDParam := e.Param("item_id")
+	itemID, err := uuid.Parse(itemIDParam)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "item_id inválido")
+	}
+
+	var item dtos.UpdateItem
+	if err := e.Bind(&item); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := item.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := p.svc.UpdateItem(ctx, item, itemID, session.UserID); err != nil {
+		return err
+	}
+
+	return e.JSON(http.StatusOK, "item update success")
 }

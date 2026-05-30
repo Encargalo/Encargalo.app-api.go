@@ -147,6 +147,80 @@ func (c *customersRepo) UpdatePassword(ctx context.Context, customer_id uuid.UUI
 	return nil
 }
 
+func (c *customersRepo) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	var rows []struct {
+		Name string `bun:"name"`
+	}
+
+	err := c.db.NewSelect().
+		TableExpr("users.user_roles ur").
+		ColumnExpr("r.name AS name").
+		Join("JOIN users.roles r ON r.id = ur.role_id").
+		Where("ur.user_id = ?", userID).
+		Where("ur.enabled = TRUE").
+		Scan(ctx, &rows)
+
+	if err != nil {
+		c.slackLogs.Slack(err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	roles := make([]string, len(rows))
+	for i, r := range rows {
+		roles[i] = r.Name
+	}
+	return roles, nil
+}
+
+func (c *customersRepo) SearchCustomerProfileByID(ctx context.Context, userID uuid.UUID) (*models.Account, error) {
+	var result accountWithRole
+
+	err := c.db.NewSelect().
+		TableExpr("users.accounts AS ua").
+		ColumnExpr("ua.*").
+		ColumnExpr("COALESCE(ur.shop_id, '00000000-0000-0000-0000-000000000000'::uuid) AS shop_id").
+		ColumnExpr("COALESCE(r.name, '') AS role_name").
+		Join("LEFT JOIN users.user_roles ur ON ur.user_id = ua.id AND ur.enabled = TRUE").
+		Join("LEFT JOIN users.roles r ON r.id = ur.role_id").
+		Where("ua.id = ?", userID).
+		Where("ua.deleted_at IS NULL").
+		Limit(1).
+		Scan(ctx, &result)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errcustom.ErrNotFound
+		}
+		c.slackLogs.Slack(err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	result.Account.ShopID = result.ShopID
+	result.Account.Role = result.RoleName
+
+	if result.ShopID != (uuid.UUID{}) {
+		type shopRow struct {
+			ID     uuid.UUID `bun:"id"`
+			Name   string    `bun:"name"`
+			Opened bool      `bun:"opened"`
+		}
+		var shop shopRow
+		if err := c.db.NewSelect().
+			TableExpr("business.shops").
+			ColumnExpr("id, name, opened").
+			Where("id = ?", result.ShopID).
+			Scan(ctx, &shop); err == nil {
+			result.Account.Shop = &dto.ShopInfo{
+				ID:     shop.ID,
+				Name:   shop.Name,
+				Opened: shop.Opened,
+			}
+		}
+	}
+
+	return &result.Account, nil
+}
+
 func (c *customersRepo) SearchAccountByPhone(ctx context.Context, phone string, roles []string) (*models.Account, error) {
 
 	var result accountWithRole
