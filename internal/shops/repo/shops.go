@@ -16,6 +16,7 @@ import (
 	"database/sql"
 
 	"Encargalo.app-api.go/internal/pkg/cache"
+	productModels "Encargalo.app-api.go/internal/products/domain/models"
 	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	shopsDTO "Encargalo.app-api.go/internal/shops/domain/dtos"
@@ -221,6 +222,181 @@ func (s *shopsRepo) GetShopByID(ctx context.Context, shopID uuid.UUID) (shopsDTO
 		Type:      shop.Type,
 		Score:     shop.Score,
 	}, nil
+}
+
+func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.SearchShopsQuery) ([]shopsDTO.SearchShopCandidate, error) {
+	qNorm := strings.ToLower(strings.TrimSpace(query.Q))
+	lat4 := strconv.FormatFloat(query.Latitude, 'f', 4, 64)
+	lon4 := strconv.FormatFloat(query.Longitude, 'f', 4, 64)
+	keyCache := "shops:search:" + qNorm + ":" + lat4 + ":" + lon4
+	cacheTTL := 2 * time.Minute
+
+	if cached, err := s.cache.Get(ctx, keyCache); err == nil && cached != "" {
+		var resp []shopsDTO.SearchShopCandidate
+		if err := json.Unmarshal([]byte(cached), &resp); err == nil {
+			return resp, nil
+		}
+		slog.Error("error al deserializar búsqueda del cache", "error", err)
+	}
+
+	rawSQL := `
+		SELECT
+			s.id, s.name, s.tag, s.address, s.latitude, s.longitude,
+			s.home_phone, s.logo_image, s.banner, s.opened, s.type,
+			s.score, s.coverage, s.minimum_delivery, s.maximum_delivery,
+			(
+				to_tsvector('spanish', s.name) @@ plainto_tsquery('spanish', ?)
+				OR s.name ILIKE '%' || ? || '%'
+			) AS matched_by_name
+		FROM business.shops s
+		WHERE s.opened = true
+		  AND s.license_status = 'active'
+		  AND s.latitude IS NOT NULL
+		  AND s.longitude IS NOT NULL
+		  AND s.deleted_at IS NULL
+		  AND 6371 * acos(
+				cos(radians(?)) * cos(radians(s.latitude)) *
+				cos(radians(s.longitude) - radians(?)) +
+				sin(radians(?)) * sin(radians(s.latitude))
+			) <= 3
+		  AND (
+			  to_tsvector('spanish', s.name) @@ plainto_tsquery('spanish', ?)
+			  OR s.name ILIKE '%' || ? || '%'
+			  OR EXISTS (
+				  SELECT 1 FROM products.categories cat
+				  LEFT JOIN products.macro_categories mc ON mc.id = cat.macro_category_id
+				  WHERE cat.shop_id = s.id
+					AND (
+						to_tsvector('spanish', cat.name) @@ plainto_tsquery('spanish', ?)
+						OR cat.name ILIKE '%' || ? || '%'
+						OR to_tsvector('spanish', mc.name) @@ plainto_tsquery('spanish', ?)
+						OR mc.name ILIKE '%' || ? || '%'
+					)
+			  )
+		  )
+		ORDER BY s.score DESC
+	`
+
+	var rows []shops.SearchShopRow
+	if err := s.db.NewRaw(
+		rawSQL,
+		qNorm, qNorm,
+		query.Latitude, query.Longitude, query.Latitude,
+		qNorm, qNorm, qNorm, qNorm, qNorm, qNorm,
+	).Scan(ctx, &rows); err != nil {
+		slog.Error("error en búsqueda de tiendas", "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	if len(rows) == 0 {
+		return nil, nil
+	}
+
+	shopModels := make(shops.Shops, len(rows))
+	for i, row := range rows {
+		shopModels[i] = shops.Shop{
+			ID:              row.ID,
+			Name:            row.Name,
+			Tag:             row.Tag,
+			Address:         row.Address,
+			HomePhone:       row.HomePhone,
+			LogoImage:       row.LogoImage,
+			Banner:          row.Banner,
+			Opened:          row.Opened,
+			Type:            row.Type,
+			Score:           row.Score,
+			Latitude:        row.Latitude,
+			Longitude:       row.Longitude,
+			Coverage:        row.Coverage,
+			MinimunDelivery: row.MinimumDelivery,
+			MaximumDelivery: row.MaximumDelivery,
+		}
+	}
+
+	distances := make([]entity.ShopDistance, len(rows))
+	for i, row := range rows {
+		distances[i] = entity.ShopDistance{ShopID: row.ID}
+	}
+
+	if config.Get().Environment.Current == "production" {
+		coords := shopsDTO.Coords{Latitude: query.Latitude, Longitude: query.Longitude}
+		prodDistances, err := calculateDistances(coords, &shopModels)
+		if err != nil {
+			slog.Error("error al calcular distancias en búsqueda", "error", err)
+			return nil, errcustom.ErrUnexpectedError
+		}
+		distances = prodDistances
+	}
+
+	distMap := make(map[uuid.UUID]entity.ShopDistance, len(distances))
+	for _, d := range distances {
+		distMap[d.ShopID] = d
+	}
+
+	candidates := make([]shopsDTO.SearchShopCandidate, 0, len(rows))
+	for i, row := range rows {
+		dist, ok := distMap[row.ID]
+		if !ok {
+			continue
+		}
+		candidates = append(candidates, shopsDTO.SearchShopCandidate{
+			ShopResponse:  shopModels[i].ToDomainDTO(dist),
+			MatchedByName: row.MatchedByName,
+		})
+	}
+
+	if err := s.cache.Set(ctx, keyCache, candidates, cacheTTL); err != nil {
+		slog.Error("error al guardar búsqueda en cache", "error", err)
+	}
+
+	return candidates, nil
+}
+
+func (s *shopsRepo) FindMatchedProducts(ctx context.Context, shopIDs []uuid.UUID, q string) (map[uuid.UUID][]shopsDTO.MatchedProductItem, error) {
+	qNorm := strings.ToLower(strings.TrimSpace(q))
+
+	var items []productModels.Item
+	if err := s.db.NewSelect().
+		Model(&items).
+		Relation("ItemRule").
+		Join("JOIN products.categories AS cat ON cat.id = item.category_id").
+		Join("LEFT JOIN products.macro_categories AS mc ON mc.id = cat.macro_category_id").
+		Where("item.shop_id IN (?)", bun.In(shopIDs)).
+		Where("item.is_available = true").
+		Where("item.deleted_at IS NULL").
+		Where("(to_tsvector('spanish', cat.name) @@ plainto_tsquery('spanish', ?) OR cat.name ILIKE ? OR to_tsvector('spanish', mc.name) @@ plainto_tsquery('spanish', ?) OR mc.name ILIKE ?)",
+			qNorm, "%"+qNorm+"%", qNorm, "%"+qNorm+"%").
+		Scan(ctx); err != nil {
+		slog.Error("error al cargar productos del buscador", "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	result := make(map[uuid.UUID][]shopsDTO.MatchedProductItem, len(shopIDs))
+	for _, item := range items {
+		rules := make([]shopsDTO.MatchedItemRule, 0, len(item.ItemRule))
+		for _, r := range item.ItemRule {
+			rules = append(rules, shopsDTO.MatchedItemRule{
+				ID:           r.ID,
+				ItemID:       r.ItemID,
+				RuleKey:      r.RuleKey,
+				RuleValue:    r.RuleValue,
+				SelectorType: r.SelectorType,
+			})
+		}
+		result[item.ShopID] = append(result[item.ShopID], shopsDTO.MatchedProductItem{
+			ID:          item.ID,
+			ShopID:      item.ShopID,
+			Name:        item.Name,
+			Ref:         float64(item.Price),
+			Image:       item.Image,
+			Description: item.Description,
+			Score:       item.Score,
+			HasFlavors:  item.HasFlavors,
+			Rules:       rules,
+		})
+	}
+
+	return result, nil
 }
 
 func (s *shopsRepo) SearchBatchByShopID(ctx context.Context, shopID uuid.UUID) (uuid.UUID, error) {

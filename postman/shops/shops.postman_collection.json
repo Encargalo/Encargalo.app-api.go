@@ -110,5 +110,35 @@
         "description": "Retorna una tienda con todos sus productos buscando por tag."
       }
     }
+    ,{
+      "name": "Search Shops",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/shops/search?q=pizza&lat=4.678034&lon=-74.0496399",
+          "host": ["{{base_url}}"],
+          "path": ["shops", "search"],
+          "query": [
+            {
+              "key": "q",
+              "value": "pizza",
+              "description": "Texto a buscar (nombre de tienda o producto)"
+            },
+            {
+              "key": "lat",
+              "value": "4.678034",
+              "description": "Latitud del usuario"
+            },
+            {
+              "key": "lon",
+              "value": "-74.0496399",
+              "description": "Longitud del usuario"
+            }
+          ]
+        },
+        "description": "Busca tiendas dentro de 3 km que coincidan con el texto en nombre de tienda o en sus productos. Retorna matched_products solo cuando el match fue por producto."
+      }
+    }
   ]
 }
