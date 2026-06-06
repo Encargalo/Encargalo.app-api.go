@@ -325,6 +325,77 @@ definitions:
     - name
     - price
     type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.MatchedItemRule:
+    properties:
+      id:
+        type: string
+      item_id:
+        type: string
+      rule_key:
+        type: string
+      rule_value:
+        type: integer
+      selector_type:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.MatchedProductItem:
+    properties:
+      description:
+        type: string
+      has_flavors:
+        type: boolean
+      id:
+        type: string
+      image:
+        type: string
+      name:
+        type: string
+      ref:
+        type: number
+      rules:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedItemRule'
+        type: array
+      score:
+        type: number
+      shop_id:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.SearchShopResponse:
+    properties:
+      address:
+        type: string
+      banner:
+        type: string
+      delivery_fee:
+        type: integer
+      home_phone:
+        type: string
+      id:
+        type: string
+      latitude:
+        type: number
+      logo:
+        type: string
+      longitude:
+        type: number
+      matched_products:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedProductItem'
+        type: array
+      name:
+        type: string
+      opened:
+        type: boolean
+      score:
+        type: number
+      tag:
+        type: string
+      time:
+        type: integer
+      type:
+        type: string
+    type: object
   Encargalo_app-api_go_internal_shops_domain_dtos.ShopResponse:
     properties:
       address:
@@ -1192,6 +1263,52 @@ paths:
       security:
       - SessionCookie: []
       summary: Obtener todas las tiendas cercanas
+      tags:
+      - Shops
+  /shops/search:
+    get:
+      description: Retorna tiendas dentro de 3 km que coincidan con la búsqueda en
+        nombre de tienda o nombre/descripción de producto.
+      parameters:
+      - description: 'Texto a buscar, ej: pizza'
+        in: query
+        name: q
+        required: true
+        type: string
+      - description: Latitud del usuario
+        in: query
+        name: lat
+        required: true
+        type: number
+      - description: Longitud del usuario
+        in: query
+        name: lon
+        required: true
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tiendas encontradas
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.SearchShopResponse'
+            type: array
+        "400":
+          description: Parámetros inválidos o faltantes
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Buscar tiendas por texto y proximidad
       tags:
       - Shops
   /users:

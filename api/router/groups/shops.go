@@ -26,6 +26,7 @@ func (s *shopGroup) Resource(g *echo.Echo) {
 		s.middleAuth.Require(models.Customer),
 	)
 	customerRoutes.GET("/all", s.handlerShops.GetAllShops)
+	customerRoutes.GET("/search", s.handlerShops.SearchShops)
 	customerRoutes.GET("", s.handlerShops.GetShopsBy)
 
 	businessRoutes := g.Group("/business/shops",

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log/slog"
 	"net/http"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
@@ -13,6 +14,7 @@ type Shops interface {
 	GetAllShops(c echo.Context) error
 	GetShopsBy(c echo.Context) error
 	GetMyShop(c echo.Context) error
+	SearchShops(c echo.Context) error
 }
 
 type shops struct {
@@ -53,6 +55,41 @@ func (s *shops) GetMyShop(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, shop)
+}
+
+// SearchShops godoc
+// @Summary      Buscar tiendas por texto y proximidad
+// @Description  Retorna tiendas dentro de 3 km que coincidan con la búsqueda en nombre de tienda o nombre/descripción de producto.
+// @Tags         Shops
+// @Produce      json
+// @Security     SessionCookie
+// @Param        q    query     string  true  "Texto a buscar, ej: pizza"
+// @Param        lat  query     number  true  "Latitud del usuario"
+// @Param        lon  query     number  true  "Longitud del usuario"
+// @Success      200  {array}   dtos.SearchShopResponse  "Tiendas encontradas"
+// @Failure      400  {string}  string                   "Parámetros inválidos o faltantes"
+// @Failure      401  {string}  string                   "No autorizado"
+// @Failure      500  {string}  string                   "Error interno del servidor"
+// @Router       /shops/search [get]
+func (s *shops) SearchShops(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	query := dtos.SearchShopsQuery{}
+	if err := c.Bind(&query); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := query.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	result, err := s.app.SearchShops(ctx, query)
+	if err != nil {
+		slog.Error("error en SearchShops", "error", err, "query", query.Q, "lat", query.Latitude, "lon", query.Longitude)
+		return err
+	}
+
+	return c.JSON(http.StatusOK, result)
 }
 
 // GetAllShops godoc

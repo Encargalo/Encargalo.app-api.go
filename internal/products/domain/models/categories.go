@@ -11,11 +11,13 @@ type Categories []Category
 type Category struct {
 	bun.BaseModel `bun:"table:products.categories" swaggerignore:"true"`
 
-	ID     uuid.UUID `bun:"id,pk,type:uuid,default:uuid_generate_v4()" json:"id"`
-	ShopID uuid.UUID `bun:"shop_id" json:"shop_id"`
-	Name   string    `bun:"name" json:"name"`
+	ID              uuid.UUID  `bun:"id,pk,type:uuid,default:uuid_generate_v4()" json:"id"`
+	ShopID          uuid.UUID  `bun:"shop_id" json:"shop_id"`
+	Name            string     `bun:"name" json:"name"`
+	MacroCategoryID *uuid.UUID `bun:"macro_category_id" json:"macro_category_id,omitempty"`
 
-	Items Items `bun:"rel:has-many,join:id=category_id" json:"items"`
+	Items         Items          `bun:"rel:has-many,join:id=category_id" json:"items"`
+	MacroCategory *MacroCategory `bun:"rel:belongs-to,join:macro_category_id=id" json:"macro_category,omitempty"`
 }
 
 func (c *Category) ToDomainDTO() dtos.CategoryResponse {
