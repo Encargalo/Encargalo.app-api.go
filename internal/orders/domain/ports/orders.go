@@ -14,6 +14,8 @@ type OrdersApp interface {
 	SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*models.Order, error)
 	SearchActiveOrdersByCriteria(ctx context.Context, criteria uuid.UUID, isShop bool) ([]models.Order, error)
 	UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string, requesterID uuid.UUID, isShop bool) (models.Order, error)
+	ConfirmPickup(ctx context.Context, orderID uuid.UUID, code string) (models.Order, error)
+	ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code string) error
 }
 
 type OrdersRepo interface {
@@ -24,4 +26,8 @@ type OrdersRepo interface {
 	SearchAdditionsByID(ctx context.Context, additionID []uuid.UUID) ([]models.Addition, error)
 	SearchActiveOrdersByCriteria(ctx context.Context, criteria uuid.UUID, isShop bool) ([]models.Order, error)
 	UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string) error
+	SavePickupCode(ctx context.Context, orderID uuid.UUID, code string) error
+	SaveDeliveryCode(ctx context.Context, orderID uuid.UUID, code string) error
+	MarkPickupCodeUsed(ctx context.Context, orderID uuid.UUID) error
+	MarkDeliveryCodeUsed(ctx context.Context, orderID uuid.UUID) error
 }

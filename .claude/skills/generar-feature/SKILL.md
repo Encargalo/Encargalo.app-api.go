@@ -12,6 +12,28 @@ Antes de responder, consultar:
 - `/reglas-arquitectura` — constraints obligatorios
 - `/flujo-desarrollo` — orden de bloques y gates
 
+## Integración con OpenSpec
+
+Si hay un change activo en `openspec/changes/` (directorio no archivado), leer los artefactos disponibles **antes** de pedir entradas al usuario:
+
+```bash
+ls openspec/changes/
+```
+
+Si existe un change relevante, leer en orden:
+1. `openspec/changes/<nombre>/proposal.md` → objetivo de negocio y alcance
+2. `openspec/changes/<nombre>/specs/` → requisitos funcionales, endpoints, invariantes
+3. `openspec/changes/<nombre>/design.md` → modelo de dominio, DTOs, contratos de ports
+4. `openspec/changes/<nombre>/tasks.md` → plan de implementación (si ya existe)
+
+Con esos artefactos:
+- Omitir las preguntas de "Entradas mínimas" cuyos valores ya estén en los artefactos
+- Mostrar al inicio: "Leyendo change OpenSpec: `<nombre>`" con un resumen de lo encontrado
+- Confirmar con el usuario antes de avanzar al Bloque 1 de diseño
+- Al completar cada bloque, marcar como `[x]` las tareas correspondientes en `tasks.md`
+
+Si no hay change activo, seguir el flujo normal de entradas mínimas.
+
 ## Entradas mínimas (pedir antes de diseñar)
 
 Si el usuario no proporcionó todos estos datos, solicitarlos:

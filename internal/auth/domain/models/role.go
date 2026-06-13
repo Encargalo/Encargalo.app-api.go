@@ -6,6 +6,7 @@ const (
 	Customer     Role = "Customer"
 	OrderManager Role = "Order Manager"
 	Owner        Role = "Owner"
+	Rider        Role = "Rider"
 )
 
 type ContextKey string

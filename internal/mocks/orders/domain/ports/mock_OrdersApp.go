@@ -18,6 +18,52 @@ type OrdersApp struct {
 	mock.Mock
 }
 
+// ConfirmDelivery provides a mock function with given fields: ctx, orderID, code
+func (_m *OrdersApp) ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code string) error {
+	ret := _m.Called(ctx, orderID, code)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ConfirmDelivery")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) error); ok {
+		r0 = rf(ctx, orderID, code)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// ConfirmPickup provides a mock function with given fields: ctx, orderID, code
+func (_m *OrdersApp) ConfirmPickup(ctx context.Context, orderID uuid.UUID, code string) (models.Order, error) {
+	ret := _m.Called(ctx, orderID, code)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ConfirmPickup")
+	}
+
+	var r0 models.Order
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) (models.Order, error)); ok {
+		return rf(ctx, orderID, code)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) models.Order); ok {
+		r0 = rf(ctx, orderID, code)
+	} else {
+		r0 = ret.Get(0).(models.Order)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, string) error); ok {
+		r1 = rf(ctx, orderID, code)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // CreateOrder provides a mock function with given fields: ctx, order
 func (_m *OrdersApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*models.Order, error) {
 	ret := _m.Called(ctx, order)

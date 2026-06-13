@@ -523,6 +523,152 @@ const docTemplate = `{
                 }
             }
         },
+        "/orders/{id}/confirm-delivery": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "El rider introduce el código de 6 dígitos que le muestra el usuario para confirmar la entrega. Transiciona el pedido de \"On The Way\" a \"Completed\".",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Confirmar entrega del pedido",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID del pedido",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Código de entrega",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ConfirmCodeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Pedido entregado",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Código inválido",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Pedido no encontrado",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Código ya utilizado",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Estado del pedido incorrecto",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/orders/{id}/confirm-pickup": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "El local introduce el código de 6 dígitos que le muestra el rider para confirmar que está presente. Transiciona el pedido de \"In Preparation\" o \"Ready\" a \"On The Way\" y genera el código de entrega para el usuario.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Confirmar recogida del pedido",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID del pedido",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Código de recogida",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ConfirmCodeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Pedido en camino",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Código inválido",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Pedido no encontrado",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Código ya utilizado",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Estado del pedido incorrecto",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/payment-methods": {
             "get": {
                 "security": [
@@ -1564,6 +1710,14 @@ const docTemplate = `{
                 "longitude": {
                     "type": "number",
                     "example": -74.08175
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_orders_domain_dtos.ConfirmCodeRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
                 }
             }
         },

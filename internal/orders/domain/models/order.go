@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"time"
 
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/products/domain/models"
@@ -12,19 +13,23 @@ import (
 type Order struct {
 	bun.BaseModel `bun:"table:orders.orders"`
 
-	ID            uuid.UUID       `bun:"id,pk,type:uuid" json:"id"`
-	ShopID        uuid.UUID       `bun:"shop_id" json:"shop_id"`
-	CustomerID    uuid.UUID       `bun:"customer_id" json:"customer_id"`
-	BatchID       uuid.UUID       `bun:"batch_id,nullzero,type:uuid" json:"batch_id,omitempty"`
-	Number        int             `bun:"number" json:"number"`
-	Address       string          `bun:"address" json:"address"`
-	Latitude      float64         `bun:"latitude" json:"latitude"`
-	Longitude     float64         `bun:"longitude" json:"longitude"`
-	MethodPayment string          `bun:"method_payment" json:"method_payment"`
-	Status        string          `bun:"status" json:"status"`
-	DeliveryFee   int             `bun:"delivery_fee" json:"delivery_fee"`
-	TotalPrice    int             `bun:"total_price" json:"total_price"`
-	Details       json.RawMessage `bun:"details,type:jsonb" json:"details"`
+	ID                 uuid.UUID       `bun:"id,pk,type:uuid" json:"id"`
+	ShopID             uuid.UUID       `bun:"shop_id" json:"shop_id"`
+	CustomerID         uuid.UUID       `bun:"customer_id" json:"customer_id"`
+	BatchID            uuid.UUID       `bun:"batch_id,nullzero,type:uuid" json:"batch_id,omitempty"`
+	Number             int             `bun:"number" json:"number"`
+	Address            string          `bun:"address" json:"address"`
+	Latitude           float64         `bun:"latitude" json:"latitude"`
+	Longitude          float64         `bun:"longitude" json:"longitude"`
+	MethodPayment      string          `bun:"method_payment" json:"method_payment"`
+	Status             string          `bun:"status" json:"status"`
+	DeliveryFee        int             `bun:"delivery_fee" json:"delivery_fee"`
+	TotalPrice         int             `bun:"total_price" json:"total_price"`
+	Details            json.RawMessage `bun:"details,type:jsonb" json:"details"`
+	PickupCode         *string         `bun:"pickup_code" json:"pickup_code,omitempty"`
+	DeliveryCode       *string         `bun:"delivery_code" json:"delivery_code,omitempty"`
+	PickupCodeUsedAt   *time.Time      `bun:"pickup_code_used_at" json:"-"`
+	DeliveryCodeUsedAt *time.Time      `bun:"delivery_code_used_at" json:"-"`
 
 	ItemsOrders []ItemsOrder `bun:"rel:has-many,join:id=order_id" json:"-"`
 }

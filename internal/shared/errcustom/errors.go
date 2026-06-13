@@ -11,6 +11,9 @@ var (
 	ErrOrderAlreadyExists  = errors.New("order already exists")
 	ErrItemsNotFound       = errors.New("one or more items not found")
 	ErrBatchNotOpen        = errors.New("batch not open")
+	ErrInvalidCode         = errors.New("invalid confirmation code")
+	ErrCodeAlreadyUsed     = errors.New("confirmation code already used")
+	ErrInvalidTransition   = errors.New("invalid order status for this operation")
 )
 
 var (

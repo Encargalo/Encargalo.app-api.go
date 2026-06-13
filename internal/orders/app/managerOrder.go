@@ -76,7 +76,7 @@ func (s *appManagerOrder) Register(
 	}
 
 	for _, order := range orders {
-		data, _ := json.Marshal(orderBroadcast{Type: "order_update", Order: order})
+		data, _ := json.Marshal(orderBroadcast{Type: "order_update", Order: stripCodes(order, isShop)})
 		client.send <- data
 	}
 
@@ -119,7 +119,12 @@ func (s *appManagerOrder) Unregister(
 }
 
 func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
-	data, err := json.Marshal(orderBroadcast{Type: "order_update", Order: order})
+	shopData, err := json.Marshal(orderBroadcast{Type: "order_update", Order: stripCodes(order, true)})
+	if err != nil {
+		return err
+	}
+
+	customerData, err := json.Marshal(orderBroadcast{Type: "order_update", Order: stripCodes(order, false)})
 	if err != nil {
 		return err
 	}
@@ -129,7 +134,7 @@ func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
 	customerClients := s.customerConnections[order.CustomerID]
 	s.mu.RUnlock()
 
-	send := func(clients []*WSClient) {
+	send := func(clients []*WSClient, data []byte) {
 		for _, c := range clients {
 			select {
 			case <-c.ready:
@@ -143,10 +148,20 @@ func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
 		}
 	}
 
-	send(shopClients)
-	send(customerClients)
+	send(shopClients, shopData)
+	send(customerClients, customerData)
 
 	return nil
+}
+
+// stripCodes elimina los códigos de confirmación según el destinatario.
+// El local no recibe ningún código; el cliente solo recibe delivery_code.
+func stripCodes(order models.Order, isShop bool) models.Order {
+	order.PickupCode = nil
+	if isShop {
+		order.DeliveryCode = nil
+	}
+	return order
 }
 
 func (s *appManagerOrder) writePump(c *WSClient) {
