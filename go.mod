@@ -1,9 +1,8 @@
 module Encargalo.app-api.go
 
-go 1.26
+go 1.26.4
 
 require (
-	github.com/AndresXLP/ravenTree v1.1.0
 	github.com/PuerkitoBio/goquery v1.12.0
 	github.com/andresxlp/redsumer v1.1.5
 	github.com/charmbracelet/log v0.4.2
