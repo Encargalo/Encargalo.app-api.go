@@ -11,6 +11,8 @@ Controlar cómo evoluciona el sistema de skills para que permanezca coherente, s
 
 ## Mapa de ownership (anti-duplicación)
 
+### Skills del proyecto (`.claude/skills/`)
+
 | Skill | Dueño de |
 |---|---|
 | `/reglas-arquitectura` | Reglas prescriptivas DEBE/NO DEBE (única fuente) |
@@ -18,11 +20,51 @@ Controlar cómo evoluciona el sistema de skills para que permanezca coherente, s
 | `/contexto-proyecto` | Mapa de dominio, módulos, lenguaje ubicuo, stack |
 | `/flujo-desarrollo` | Proceso por bloques, orden de capas, gates |
 | `/flujo-documentacion` | Qué documentos actualizar y cómo |
-| `/generar-feature` | Template operativo para crear features |
+| `/generar-feature` | Template operativo para crear features + bridge con OpenSpec |
 | `/auditor-arquitectura` | Checklist de auditoría, clasificación, veredicto |
 | `/refactor` | Proceso de refactor guiado |
 | `/historia-usuario` | Formato y reglas de Historias de Usuario |
 | `/auditor-seguridad` | Checklist OWASP, clasificación de vulnerabilidades |
+
+### Skills de OpenSpec (generados por `openspec init`, NO editar manualmente)
+
+| Skill | Dueño de |
+|---|---|
+| `/openspec-propose` | Crear un change con todos sus artefactos en un paso |
+| `/openspec-apply-change` | Implementar tasks de un change (usa `/generar-feature` como destino) |
+| `/openspec-archive-change` | Archivar un change completado |
+| `/openspec-explore` | Modo exploración / thinking partner antes de proponer |
+| `/openspec-sync-specs` | Sincronizar specs delta de un change a specs principales |
+
+### Archivo de configuración OpenSpec
+
+| Archivo | Dueño de |
+|---|---|
+| `openspec/config.yaml` | Contexto del proyecto para los artefactos OpenSpec: stack, lenguaje ubicuo, reglas de specs/tasks/design |
+
+> **Regla**: `openspec/config.yaml` y `/contexto-proyecto` tienen solapamiento intencionado. El primero guía a OpenSpec al *crear artefactos*. El segundo guía al asistente al *implementar*. No son duplicación — tienen audiencias distintas.
+
+## Relación entre sistemas
+
+```
+/opsx:propose  ──→  openspec/changes/<nombre>/
+                         proposal.md
+                         specs/
+                         design.md
+                         tasks.md
+                              │
+                              ▼
+              /generar-feature  (lee los artefactos, omite preguntas ya respondidas)
+                              │
+                              ▼
+              Implementación por bloques hexagonales
+                              │
+                              ▼
+              /opsx:archive  (archiva el change completo)
+```
+
+Los skills de OpenSpec se actualizan con `openspec update` (no editar manualmente).
+Los skills del proyecto se evolucionan siguiendo el proceso de este skill.
 
 ## Cuándo evolucionar un skill
 
