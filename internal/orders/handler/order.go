@@ -9,11 +9,14 @@ import (
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
 type OrderHandler interface {
 	CreateOrder(c echo.Context) error
+	ConfirmPickup(c echo.Context) error
+	ConfirmDelivery(c echo.Context) error
 }
 
 type orderHandler struct {
@@ -72,4 +75,91 @@ func (o *orderHandler) CreateOrder(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusCreated, dtos.CreateOrderResponse{Message: "Order created successfully"})
+}
+
+// ConfirmPickup godoc
+// @Summary      Confirmar recogida del pedido
+// @Description  El local introduce el código de 6 dígitos que le muestra el rider para confirmar que está presente. Transiciona el pedido de "In Preparation" o "Ready" a "On The Way" y genera el código de entrega para el usuario.
+// @Tags         Orders
+// @Accept       json
+// @Produce      json
+// @Security     SessionCookie
+// @Param        id    path      string                   true  "ID del pedido"
+// @Param        body  body      dtos.ConfirmCodeRequest  true  "Código de recogida"
+// @Success      200   {object}  map[string]string        "Pedido en camino"
+// @Failure      400   {object}  dtos.ErrorResponse       "Código inválido"
+// @Failure      409   {object}  dtos.ErrorResponse       "Código ya utilizado"
+// @Failure      422   {object}  dtos.ErrorResponse       "Estado del pedido incorrecto"
+// @Failure      404   {object}  dtos.ErrorResponse       "Pedido no encontrado"
+// @Router       /orders/{id}/confirm-pickup [post]
+func (o *orderHandler) ConfirmPickup(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	orderID, err := parseOrderID(c)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	var req dtos.ConfirmCodeRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := req.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	order, err := o.svc.ConfirmPickup(ctx, orderID, req.Code)
+	if err != nil {
+		return err
+	}
+
+	if err := o.svc2.BroadcastOrder(order); err != nil {
+		slog.Error("error broadcasting order after confirm-pickup", "error", err)
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "Order is now on the way"})
+}
+
+// ConfirmDelivery godoc
+// @Summary      Confirmar entrega del pedido
+// @Description  El rider introduce el código de 6 dígitos que le muestra el usuario para confirmar la entrega. Transiciona el pedido de "On The Way" a "Completed".
+// @Tags         Orders
+// @Accept       json
+// @Produce      json
+// @Security     SessionCookie
+// @Param        id    path      string                   true  "ID del pedido"
+// @Param        body  body      dtos.ConfirmCodeRequest  true  "Código de entrega"
+// @Success      200   {object}  map[string]string        "Pedido entregado"
+// @Failure      400   {object}  dtos.ErrorResponse       "Código inválido"
+// @Failure      409   {object}  dtos.ErrorResponse       "Código ya utilizado"
+// @Failure      422   {object}  dtos.ErrorResponse       "Estado del pedido incorrecto"
+// @Failure      404   {object}  dtos.ErrorResponse       "Pedido no encontrado"
+// @Router       /orders/{id}/confirm-delivery [post]
+func (o *orderHandler) ConfirmDelivery(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	orderID, err := parseOrderID(c)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	var req dtos.ConfirmCodeRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := req.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := o.svc.ConfirmDelivery(ctx, orderID, req.Code); err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "Order delivered successfully"})
+}
+
+func parseOrderID(c echo.Context) (uuid.UUID, error) {
+	return uuid.Parse(c.Param("id"))
 }

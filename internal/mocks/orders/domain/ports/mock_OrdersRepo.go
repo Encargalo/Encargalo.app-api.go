@@ -48,6 +48,78 @@ func (_m *OrdersRepo) CreateOrder(ctx context.Context, order *models.Order) (*mo
 	return r0, r1
 }
 
+// MarkDeliveryCodeUsed provides a mock function with given fields: ctx, orderID
+func (_m *OrdersRepo) MarkDeliveryCodeUsed(ctx context.Context, orderID uuid.UUID) error {
+	ret := _m.Called(ctx, orderID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MarkDeliveryCodeUsed")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = rf(ctx, orderID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MarkPickupCodeUsed provides a mock function with given fields: ctx, orderID
+func (_m *OrdersRepo) MarkPickupCodeUsed(ctx context.Context, orderID uuid.UUID) error {
+	ret := _m.Called(ctx, orderID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MarkPickupCodeUsed")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = rf(ctx, orderID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SaveDeliveryCode provides a mock function with given fields: ctx, orderID, code
+func (_m *OrdersRepo) SaveDeliveryCode(ctx context.Context, orderID uuid.UUID, code string) error {
+	ret := _m.Called(ctx, orderID, code)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SaveDeliveryCode")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) error); ok {
+		r0 = rf(ctx, orderID, code)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SavePickupCode provides a mock function with given fields: ctx, orderID, code
+func (_m *OrdersRepo) SavePickupCode(ctx context.Context, orderID uuid.UUID, code string) error {
+	ret := _m.Called(ctx, orderID, code)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SavePickupCode")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) error); ok {
+		r0 = rf(ctx, orderID, code)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // SearchActiveOrdersByCriteria provides a mock function with given fields: ctx, criteria, isShop
 func (_m *OrdersRepo) SearchActiveOrdersByCriteria(ctx context.Context, criteria uuid.UUID, isShop bool) ([]models.Order, error) {
 	ret := _m.Called(ctx, criteria, isShop)

@@ -27,6 +27,11 @@ definitions:
     - latitude
     - longitude
     type: object
+  Encargalo_app-api_go_internal_orders_domain_dtos.ConfirmCodeRequest:
+    properties:
+      code:
+        type: string
+    type: object
   Encargalo_app-api_go_internal_orders_domain_dtos.CreateAdditionsOrders:
     properties:
       addition_id:
@@ -869,6 +874,103 @@ paths:
       security:
       - SessionCookie: []
       summary: Crear una nueva orden
+      tags:
+      - Orders
+  /orders/{id}/confirm-delivery:
+    post:
+      consumes:
+      - application/json
+      description: El rider introduce el código de 6 dígitos que le muestra el usuario
+        para confirmar la entrega. Transiciona el pedido de "On The Way" a "Completed".
+      parameters:
+      - description: ID del pedido
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Código de entrega
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ConfirmCodeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Pedido entregado
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Código inválido
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+        "404":
+          description: Pedido no encontrado
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+        "409":
+          description: Código ya utilizado
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+        "422":
+          description: Estado del pedido incorrecto
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+      security:
+      - SessionCookie: []
+      summary: Confirmar entrega del pedido
+      tags:
+      - Orders
+  /orders/{id}/confirm-pickup:
+    post:
+      consumes:
+      - application/json
+      description: El local introduce el código de 6 dígitos que le muestra el rider
+        para confirmar que está presente. Transiciona el pedido de "In Preparation"
+        o "Ready" a "On The Way" y genera el código de entrega para el usuario.
+      parameters:
+      - description: ID del pedido
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Código de recogida
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ConfirmCodeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Pedido en camino
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Código inválido
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+        "404":
+          description: Pedido no encontrado
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+        "409":
+          description: Código ya utilizado
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+        "422":
+          description: Estado del pedido incorrecto
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+      security:
+      - SessionCookie: []
+      summary: Confirmar recogida del pedido
       tags:
       - Orders
   /orders/manager:

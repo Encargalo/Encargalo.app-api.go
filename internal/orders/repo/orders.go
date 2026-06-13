@@ -142,27 +142,35 @@ func (o *orders) SearchAdditionsByID(ctx context.Context, additionID []uuid.UUID
 }
 
 func (o *orders) SearchActiveOrdersByCriteria(ctx context.Context, criteria uuid.UUID, isShop bool) ([]models.Order, error) {
-
 	var orders []models.Order
 
-	q := o.db.NewSelect().
-		Model(&orders).
-		Where("status IN (?)", bun.In([]string{
-			"Pending",
-			"Waiting For Payment Proof",
-			"In Preparation",
-			"On The Way",
-		}))
+	var q *bun.SelectQuery
 
 	if isShop {
-		q = q.Where("shop_id = ?", criteria)
+		lastBatch := o.db.NewSelect().
+			TableExpr("orders.orders").
+			ColumnExpr("batch_id").
+			Where("shop_id = ?", criteria).
+			OrderExpr("created_at DESC").
+			Limit(1)
+
+		q = o.db.NewSelect().
+			Model(&orders).
+			Where("shop_id = ?", criteria).
+			Where("batch_id = (?)", lastBatch)
 	} else {
-		q = q.Where("customer_id = ?", criteria)
+		q = o.db.NewSelect().
+			Model(&orders).
+			Where("customer_id = ?", criteria).
+			Where("status IN (?)", bun.In([]string{
+				"Pending",
+				"In Preparation",
+				"Ready",
+				"On The Way",
+			}))
 	}
 
-	err := q.Scan(ctx)
-
-	if err != nil {
+	if err := q.Scan(ctx); err != nil {
 		return nil, errcustom.ErrUnexpectedError
 	}
 
@@ -189,6 +197,38 @@ func (o *orders) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, statu
 	}
 
 	return nil
+}
+
+func (o *orders) SavePickupCode(ctx context.Context, orderID uuid.UUID, code string) error {
+	_, err := o.db.NewUpdate().Model(&models.Order{}).
+		Set("pickup_code = ?", code).
+		Where("id = ?", orderID).
+		Exec(ctx)
+	return err
+}
+
+func (o *orders) SaveDeliveryCode(ctx context.Context, orderID uuid.UUID, code string) error {
+	_, err := o.db.NewUpdate().Model(&models.Order{}).
+		Set("delivery_code = ?", code).
+		Where("id = ?", orderID).
+		Exec(ctx)
+	return err
+}
+
+func (o *orders) MarkPickupCodeUsed(ctx context.Context, orderID uuid.UUID) error {
+	_, err := o.db.NewUpdate().Model(&models.Order{}).
+		Set("pickup_code_used_at = NOW()").
+		Where("id = ?", orderID).
+		Exec(ctx)
+	return err
+}
+
+func (o *orders) MarkDeliveryCodeUsed(ctx context.Context, orderID uuid.UUID) error {
+	_, err := o.db.NewUpdate().Model(&models.Order{}).
+		Set("delivery_code_used_at = NOW()").
+		Where("id = ?", orderID).
+		Exec(ctx)
+	return err
 }
 
 func getLastOrderNumber(ctx context.Context, tx bun.Tx, batchID uuid.UUID) (int, error) {

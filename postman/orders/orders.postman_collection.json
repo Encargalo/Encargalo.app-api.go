@@ -81,6 +81,74 @@
       }
     },
     {
+      "name": "Confirm Pickup (Shop → On The Way)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"123456\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/orders/:id/confirm-pickup",
+          "host": ["{{base_url}}"],
+          "path": ["orders", ":id", "confirm-pickup"],
+          "variable": [
+            {
+              "key": "id",
+              "value": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+              "description": "UUID del pedido"
+            }
+          ]
+        },
+        "description": "El local introduce el código de 6 dígitos que le muestra el rider. Si el código es válido, el pedido pasa de 'In Preparation' o 'Ready' a 'On The Way' y se genera el código de entrega para el usuario. Requiere cookie `encargalo-session`. Roles: Order Manager, Owner."
+      }
+    },
+    {
+      "name": "Confirm Delivery (Rider → Completed)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"654321\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/orders/:id/confirm-delivery",
+          "host": ["{{base_url}}"],
+          "path": ["orders", ":id", "confirm-delivery"],
+          "variable": [
+            {
+              "key": "id",
+              "value": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+              "description": "UUID del pedido"
+            }
+          ]
+        },
+        "description": "El rider introduce el código de 6 dígitos que le muestra el usuario. Si el código es válido, el pedido pasa de 'On The Way' a 'Completed'. Requiere cookie `encargalo-session`. Rol: Rider."
+      }
+    },
+    {
       "name": "Orders Manager WebSocket",
       "request": {
         "method": "GET",

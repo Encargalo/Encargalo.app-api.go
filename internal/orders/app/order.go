@@ -2,20 +2,22 @@ package app
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
+	"math/big"
 	"strings"
 
-	"Encargalo.app-api.go/internal/users/domain/dto"
-	portsCustomers "Encargalo.app-api.go/internal/users/domain/ports"
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
 	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	shops "Encargalo.app-api.go/internal/shops/domain/ports"
+	"Encargalo.app-api.go/internal/users/domain/dto"
+	portsCustomers "Encargalo.app-api.go/internal/users/domain/ports"
 	"github.com/google/uuid"
 )
 
@@ -26,6 +28,7 @@ const (
 	StatusAccepted            OrderStatus = "Accepted"
 	StatusWaitingPaymentProof OrderStatus = "Waiting For Payment Proof"
 	StatusInPreparation       OrderStatus = "In Preparation"
+	StatusReady               OrderStatus = "Ready"
 	StatusOnTheWay            OrderStatus = "On The Way"
 	StatusCompleted           OrderStatus = "Completed"
 	StatusCancelled           OrderStatus = "Cancelled"
@@ -172,6 +175,7 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 		StatusAccepted:            true,
 		StatusWaitingPaymentProof: true,
 		StatusInPreparation:       true,
+		StatusReady:               true,
 		StatusOnTheWay:            true,
 		StatusCompleted:           true,
 		StatusCancelled:           true,
@@ -183,6 +187,10 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 	}
 
 	if !isShop && newStatus != StatusCancelled {
+		return models.Order{}, errcustom.ErrUnautorized
+	}
+
+	if isShop && newStatus == StatusCompleted {
 		return models.Order{}, errcustom.ErrUnautorized
 	}
 
@@ -202,8 +210,89 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 		return models.Order{}, err
 	}
 
+	if newStatus == StatusInPreparation {
+		code, err := generateCode()
+		if err != nil {
+			slog.Error("error generating pickup code", "orderID", orderID, "error", err)
+			order.Status = string(newStatus)
+			return *order, nil
+		}
+		if err := o.repo.SavePickupCode(ctx, orderID, code); err != nil {
+			slog.Error("error saving pickup code", "orderID", orderID, "error", err)
+		}
+	}
+
 	order.Status = string(newStatus)
 	return *order, nil
+}
+
+func (o *orderApp) ConfirmPickup(ctx context.Context, orderID uuid.UUID, code string) (models.Order, error) {
+	order, err := o.SearchOrdersByID(ctx, orderID)
+	if err != nil {
+		return models.Order{}, err
+	}
+
+	if order.Status != string(StatusInPreparation) && order.Status != string(StatusReady) {
+		return models.Order{}, errcustom.ErrInvalidTransition
+	}
+
+	if order.PickupCode == nil || *order.PickupCode != code {
+		return models.Order{}, errcustom.ErrInvalidCode
+	}
+
+	if order.PickupCodeUsedAt != nil {
+		return models.Order{}, errcustom.ErrCodeAlreadyUsed
+	}
+
+	if err := o.repo.MarkPickupCodeUsed(ctx, orderID); err != nil {
+		return models.Order{}, err
+	}
+
+	deliveryCode, err := generateCode()
+	if err != nil {
+		slog.Error("error generating delivery code", "orderID", orderID, "error", err)
+		if err := o.repo.UpdateOrderStatus(ctx, orderID, string(StatusOnTheWay)); err != nil {
+			return models.Order{}, err
+		}
+		order.Status = string(StatusOnTheWay)
+		return *order, nil
+	}
+
+	if err := o.repo.SaveDeliveryCode(ctx, orderID, deliveryCode); err != nil {
+		slog.Error("error saving delivery code", "orderID", orderID, "error", err)
+	}
+
+	if err := o.repo.UpdateOrderStatus(ctx, orderID, string(StatusOnTheWay)); err != nil {
+		return models.Order{}, err
+	}
+
+	order.Status = string(StatusOnTheWay)
+	return *order, nil
+}
+
+func (o *orderApp) ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code string) error {
+	order, err := o.SearchOrdersByID(ctx, orderID)
+	if err != nil {
+		return err
+	}
+
+	if order.Status != string(StatusOnTheWay) {
+		return errcustom.ErrInvalidTransition
+	}
+
+	if order.DeliveryCode == nil || *order.DeliveryCode != code {
+		return errcustom.ErrInvalidCode
+	}
+
+	if order.DeliveryCodeUsedAt != nil {
+		return errcustom.ErrCodeAlreadyUsed
+	}
+
+	if err := o.repo.MarkDeliveryCodeUsed(ctx, orderID); err != nil {
+		return err
+	}
+
+	return o.repo.UpdateOrderStatus(ctx, orderID, string(StatusCompleted))
 }
 
 func buildToDataProduceOrder(items models.Order) []models.DataProduceOrder {
@@ -220,3 +309,10 @@ func buildToDataProduceOrder(items models.Order) []models.DataProduceOrder {
 	return dataProduceOrder
 }
 
+func generateCode() (string, error) {
+	n, err := rand.Int(rand.Reader, big.NewInt(1_000_000))
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%06d", n.Int64()), nil
+}
