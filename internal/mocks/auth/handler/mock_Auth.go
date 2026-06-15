@@ -67,6 +67,24 @@ func (_m *Auth) SignInEmployee(e echo.Context) error {
 	return r0
 }
 
+// SignInRider provides a mock function with given fields: e
+func (_m *Auth) SignInRider(e echo.Context) error {
+	ret := _m.Called(e)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SignInRider")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(echo.Context) error); ok {
+		r0 = rf(e)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // NewAuth creates a new instance of Auth. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewAuth(t interface {

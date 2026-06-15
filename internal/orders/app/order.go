@@ -47,10 +47,11 @@ type orderApp struct {
 	custo       portsCustomers.UsersRepo
 	stream      ports.RedisStream
 	uploadImage uploadimage.UploadImage
+	riderMgr    ports.OrderRiderBroadcaster
 }
 
-func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.UsersRepo, stream ports.RedisStream, uploadImage uploadimage.UploadImage) ports.OrdersApp {
-	return &orderApp{repo, shops, custo, stream, uploadImage}
+func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.UsersRepo, stream ports.RedisStream, uploadImage uploadimage.UploadImage, riderMgr ports.OrderRiderBroadcaster) ports.OrdersApp {
+	return &orderApp{repo, shops, custo, stream, uploadImage, riderMgr}
 }
 
 func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*models.Order, error) {
@@ -210,20 +211,29 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 		return models.Order{}, err
 	}
 
+	order.Status = string(newStatus)
+
 	if newStatus == StatusInPreparation {
-		code, err := generateCode()
-		if err != nil {
-			slog.Error("error generating pickup code", "orderID", orderID, "error", err)
-			order.Status = string(newStatus)
-			return *order, nil
-		}
-		if err := o.repo.SavePickupCode(ctx, orderID, code); err != nil {
-			slog.Error("error saving pickup code", "orderID", orderID, "error", err)
-		}
+		o.generateAndSavePickupCode(ctx, orderID)
+		o.riderMgr.BroadcastNewOrder(*order)
 	}
 
-	order.Status = string(newStatus)
+	if newStatus != StatusInPreparation {
+		o.riderMgr.BroadcastOrderUpdate(*order)
+	}
+
 	return *order, nil
+}
+
+func (o *orderApp) generateAndSavePickupCode(ctx context.Context, orderID uuid.UUID) {
+	code, err := generateCode()
+	if err != nil {
+		slog.Error("error generating pickup code", "orderID", orderID, "error", err)
+		return
+	}
+	if err := o.repo.SavePickupCode(ctx, orderID, code); err != nil {
+		slog.Error("error saving pickup code", "orderID", orderID, "error", err)
+	}
 }
 
 func (o *orderApp) ConfirmPickup(ctx context.Context, orderID uuid.UUID, code string) (models.Order, error) {

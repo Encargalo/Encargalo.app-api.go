@@ -75,8 +75,12 @@ func (s *appManagerOrder) Register(
 		return nil, err
 	}
 
+	role := ClientRoleCustomer
+	if isShop {
+		role = ClientRoleShop
+	}
 	for _, order := range orders {
-		data, _ := json.Marshal(orderBroadcast{Type: "order_update", Order: stripCodes(order, isShop)})
+		data, _ := json.Marshal(orderBroadcast{Type: "order_update", Order: stripCodes(order, role)})
 		client.send <- data
 	}
 
@@ -119,12 +123,12 @@ func (s *appManagerOrder) Unregister(
 }
 
 func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
-	shopData, err := json.Marshal(orderBroadcast{Type: "order_update", Order: stripCodes(order, true)})
+	shopData, err := json.Marshal(orderBroadcast{Type: "order_update", Order: stripCodes(order, ClientRoleShop)})
 	if err != nil {
 		return err
 	}
 
-	customerData, err := json.Marshal(orderBroadcast{Type: "order_update", Order: stripCodes(order, false)})
+	customerData, err := json.Marshal(orderBroadcast{Type: "order_update", Order: stripCodes(order, ClientRoleCustomer)})
 	if err != nil {
 		return err
 	}
@@ -154,11 +158,24 @@ func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
 	return nil
 }
 
-// stripCodes elimina los códigos de confirmación según el destinatario.
-// El local no recibe ningún código; el cliente solo recibe delivery_code.
-func stripCodes(order models.Order, isShop bool) models.Order {
-	order.PickupCode = nil
-	if isShop {
+type ClientRole string
+
+const (
+	ClientRoleShop     ClientRole = "shop"
+	ClientRoleCustomer ClientRole = "customer"
+	ClientRoleRider    ClientRole = "rider"
+)
+
+// stripCodes filtra los códigos de confirmación según el rol del destinatario:
+// Shop → ninguno; Customer → solo delivery_code; Rider → solo pickup_code.
+func stripCodes(order models.Order, role ClientRole) models.Order {
+	switch role {
+	case ClientRoleShop:
+		order.PickupCode = nil
+		order.DeliveryCode = nil
+	case ClientRoleCustomer:
+		order.PickupCode = nil
+	case ClientRoleRider:
 		order.DeliveryCode = nil
 	}
 	return order

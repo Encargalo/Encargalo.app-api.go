@@ -50,3 +50,7 @@ packages:
   Encargalo.app-api.go/internal/payment_methods/domain/ports:
     config:
       dir: "internal/mocks/payment_methods/domain/ports"
+
+  Encargalo.app-api.go/internal/riders/domain/ports:
+    config:
+      dir: "internal/mocks/riders/domain/ports"

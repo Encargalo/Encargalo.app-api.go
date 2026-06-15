@@ -25,5 +25,6 @@ func (a *authGroup) Resource(g *echo.Echo) {
 
 	group.POST("/sign-in/users", a.handAuth.SignInCustomer)
 	group.POST("/sign-in/employees", a.handAuth.SignInEmployee)
-	group.DELETE("/logout", a.handAuth.Logout, a.middleAuth.Auth, a.middleAuth.Require(models.Customer, models.OrderManager, models.Owner))
+	group.POST("/sign-in/riders", a.handAuth.SignInRider)
+	group.DELETE("/logout", a.handAuth.Logout, a.middleAuth.Auth, a.middleAuth.Require(models.Customer, models.OrderManager, models.Owner, models.Rider))
 }

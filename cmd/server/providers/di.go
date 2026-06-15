@@ -39,13 +39,20 @@ import (
 	handOrders "Encargalo.app-api.go/internal/orders/handler"
 	repoOrders "Encargalo.app-api.go/internal/orders/repo"
 
+	appRiders "Encargalo.app-api.go/internal/riders/app"
+	handRiders "Encargalo.app-api.go/internal/riders/handler"
+	repoRiders "Encargalo.app-api.go/internal/riders/repo"
+
+	ordersPorts "Encargalo.app-api.go/internal/orders/domain/ports"
+	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
+
 	appEmployee "Encargalo.app-api.go/internal/employee/app"
 	repoEmployee "Encargalo.app-api.go/internal/employee/repo"
 
 	appBcv "Encargalo.app-api.go/internal/bcv/app"
 	repoBcv "Encargalo.app-api.go/internal/bcv/repo"
 
-	appPayment  "Encargalo.app-api.go/internal/payment_methods/app"
+	appPayment "Encargalo.app-api.go/internal/payment_methods/app"
 	handPayment "Encargalo.app-api.go/internal/payment_methods/handler"
 	repoPayment "Encargalo.app-api.go/internal/payment_methods/repo"
 )
@@ -101,6 +108,10 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(handCustomer.NewUsersAddressHandler)
 	_ = Container.Provide(handOrders.NewOrderHandler)
 	_ = Container.Provide(handOrders.New)
+	_ = Container.Provide(handRiders.New)
+	_ = Container.Provide(repoRiders.NewRidersRepo)
+	_ = Container.Provide(repoRiders.NewRidersStream)
+	_ = Container.Provide(func(mgr ridersPorts.RidersApp) ordersPorts.OrderRiderBroadcaster { return mgr })
 
 	_ = Container.Provide(appCustomer.NewUserApp)
 	_ = Container.Provide(appAuth.NewAuthApp)
@@ -109,6 +120,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(appCustomer.NewUsersAddressApp)
 	_ = Container.Provide(appOrders.NewOrderApp)
 	_ = Container.Provide(appOrders.NewManagerOrderApp)
+	_ = Container.Provide(appRiders.New)
 
 	_ = Container.Provide(repoAuth.NewAuthRepo)
 	_ = Container.Provide(repo.NewShopsRepository)
