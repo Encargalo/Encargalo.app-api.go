@@ -68,6 +68,33 @@
       }
     },
     {
+      "name": "Sign In Rider",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone_number\": \"+573001112233\",\n  \"password\": \"claveSegura123\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/auth/sign-in/riders",
+          "host": ["{{base_url}}"],
+          "path": ["auth", "sign-in", "riders"]
+        },
+        "description": "Autentica un rider con teléfono y contraseña. Retorna una cookie `encargalo-session` con el JWT de sesión. Solo funciona con cuentas que tengan el rol Rider."
+      }
+    },
+    {
       "name": "Logout",
       "request": {
         "method": "DELETE",
@@ -77,7 +104,7 @@
           "host": ["{{base_url}}"],
           "path": ["auth", "logout"]
         },
-        "description": "Cierra la sesión activa del cliente o empleado autenticado. Requiere cookie `encargalo-session`. Roles permitidos: Customer, Order Manager."
+        "description": "Cierra la sesión activa. Requiere cookie `encargalo-session`. Roles permitidos: Customer, Order Manager, Owner, Rider."
       }
     }
   ]

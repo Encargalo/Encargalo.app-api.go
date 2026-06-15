@@ -18,6 +18,24 @@ type OrdersRepo struct {
 	mock.Mock
 }
 
+// AssignRider provides a mock function with given fields: ctx, orderID, riderID
+func (_m *OrdersRepo) AssignRider(ctx context.Context, orderID uuid.UUID, riderID uuid.UUID) error {
+	ret := _m.Called(ctx, orderID, riderID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AssignRider")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r0 = rf(ctx, orderID, riderID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // CreateOrder provides a mock function with given fields: ctx, order
 func (_m *OrdersRepo) CreateOrder(ctx context.Context, order *models.Order) (*models.Order, error) {
 	ret := _m.Called(ctx, order)
@@ -143,6 +161,36 @@ func (_m *OrdersRepo) SearchActiveOrdersByCriteria(ctx context.Context, criteria
 
 	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, bool) error); ok {
 		r1 = rf(ctx, criteria, isShop)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SearchActiveOrdersByRiderID provides a mock function with given fields: ctx, riderID
+func (_m *OrdersRepo) SearchActiveOrdersByRiderID(ctx context.Context, riderID uuid.UUID) ([]models.Order, error) {
+	ret := _m.Called(ctx, riderID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SearchActiveOrdersByRiderID")
+	}
+
+	var r0 []models.Order
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) ([]models.Order, error)); ok {
+		return rf(ctx, riderID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) []models.Order); ok {
+		r0 = rf(ctx, riderID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.Order)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, riderID)
 	} else {
 		r1 = ret.Error(1)
 	}

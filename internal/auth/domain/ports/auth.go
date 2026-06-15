@@ -10,6 +10,7 @@ import (
 type AuthApp interface {
 	SignInCustomer(ctx context.Context, phone, password string) (uuid.UUID, error)
 	SignInEmployee(ctx context.Context, phone, password string) (uuid.UUID, error)
+	SignInRider(ctx context.Context, phone, password string) (uuid.UUID, error)
 	SearchSessions(ctx context.Context, session_id uuid.UUID) (*models.ActiveSession, error)
 	DeleteSession(ctx context.Context, session_id uuid.UUID) error
 }

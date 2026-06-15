@@ -8,19 +8,20 @@ import (
 )
 
 var statusMap = map[error]int{
-	ErrNotFound:            http.StatusNotFound,
-	ErrUnexpectedError:     http.StatusInternalServerError,
-	ErrIncorrectAccessData: http.StatusUnprocessableEntity,
-	ErrPhoneAlreadyExist:   http.StatusConflict,
-	ErrUnautorized:         http.StatusUnauthorized,
-	ErrUploadingImage:      http.StatusUnprocessableEntity,
-	ErrConvertingImage:     http.StatusUnprocessableEntity,
-	ErrOrderAlreadyExists:  http.StatusConflict,
-	ErrItemsNotFound:       http.StatusUnprocessableEntity,
-	ErrBatchNotOpen:        http.StatusUnprocessableEntity,
-	ErrInvalidCode:         http.StatusBadRequest,
-	ErrCodeAlreadyUsed:     http.StatusConflict,
-	ErrInvalidTransition:   http.StatusUnprocessableEntity,
+	ErrNotFound:             http.StatusNotFound,
+	ErrUnexpectedError:      http.StatusInternalServerError,
+	ErrIncorrectAccessData:  http.StatusUnprocessableEntity,
+	ErrPhoneAlreadyExist:    http.StatusConflict,
+	ErrUnautorized:          http.StatusUnauthorized,
+	ErrUploadingImage:       http.StatusUnprocessableEntity,
+	ErrConvertingImage:      http.StatusUnprocessableEntity,
+	ErrOrderAlreadyExists:   http.StatusConflict,
+	ErrItemsNotFound:        http.StatusUnprocessableEntity,
+	ErrBatchNotOpen:         http.StatusUnprocessableEntity,
+	ErrInvalidCode:          http.StatusBadRequest,
+	ErrCodeAlreadyUsed:      http.StatusConflict,
+	ErrInvalidTransition:    http.StatusUnprocessableEntity,
+	ErrOrderAlreadyAssigned: http.StatusConflict,
 }
 
 func ToHTTPError(err error) error {

@@ -16,6 +16,7 @@ import (
 type Auth interface {
 	SignInCustomer(e echo.Context) error
 	SignInEmployee(e echo.Context) error
+	SignInRider(e echo.Context) error
 	Logout(e echo.Context) error
 }
 
@@ -99,6 +100,47 @@ func (a *auth) SignInEmployee(e echo.Context) error {
 	}
 
 	sessionID, err := a.svc.SignInEmployee(ctx, signIn.Phone, signIn.Password)
+	if err != nil {
+		return errcustom.ToHTTPError(err)
+	}
+
+	jwtSession, err := a.jwt.CreateSession(sessionID)
+	if err != nil {
+		return errcustom.ToHTTPError(errcustom.ErrUnexpectedError)
+	}
+
+	e.SetCookie(a.cookie.CreateCookieSession(jwtSession))
+
+	return e.JSON(http.StatusCreated, "session created")
+}
+
+// SignInRider godoc
+// @Summary      Iniciar sesión como rider
+// @Description  Autentica a un rider usando su número de teléfono y contraseña.
+// @Description  Si las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        body  body  request.SignInRequest  true  "Datos de inicio de sesión"
+// @Success      201    {string}  string  "session created"
+// @Failure      400    {object}  map[string]string  "Solicitud inválida (validación o JSON incorrecto)"
+// @Failure      422    {object}  map[string]string  "Credenciales incorrectas"
+// @Failure      500    {object}  map[string]string  "Error inesperado del servidor"
+// @Router       /auth/sign-in/riders [post]
+func (a *auth) SignInRider(e echo.Context) error {
+	ctx := e.Request().Context()
+
+	var signIn request.SignInRequest
+
+	if err := e.Bind(&signIn); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := signIn.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	sessionID, err := a.svc.SignInRider(ctx, signIn.Phone, signIn.Password)
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}

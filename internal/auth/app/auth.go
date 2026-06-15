@@ -7,11 +7,11 @@ import (
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/auth/domain/ports"
-	"Encargalo.app-api.go/internal/users/domain/dto"
-	portsCusto "Encargalo.app-api.go/internal/users/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/bycript"
 	"Encargalo.app-api.go/internal/pkg/logs"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/users/domain/dto"
+	portsCusto "Encargalo.app-api.go/internal/users/domain/ports"
 	"github.com/google/uuid"
 )
 
@@ -90,6 +90,29 @@ func (a *appAuth) SignInEmployee(ctx context.Context, phone, password string) (u
 
 	var session models.ActiveSession
 	session.BuildActiveSessionModel(empl.ID, empl.Role, roles, "", "", &empl.ShopID)
+
+	if err := a.repo.SaveSession(ctx, &session); err != nil {
+		return uuid.Nil, err
+	}
+
+	return session.ID, nil
+}
+
+func (a *appAuth) SignInRider(ctx context.Context, phone, password string) (uuid.UUID, error) {
+	rider, err := a.svc.SearchAccountByPhone(ctx, phone, []string{string(models.Rider)})
+	if err != nil {
+		if errors.Is(err, errcustom.ErrNotFound) {
+			return uuid.Nil, errcustom.ErrIncorrectAccessData
+		}
+		return uuid.Nil, errcustom.ErrUnexpectedError
+	}
+
+	if !a.bycript.CheckPasswordHash([]byte(rider.Password), password) {
+		return uuid.Nil, errcustom.ErrIncorrectAccessData
+	}
+
+	var session models.ActiveSession
+	session.BuildActiveSessionModel(rider.ID, string(models.Rider), []models.Role{models.Rider}, "", "", nil)
 
 	if err := a.repo.SaveSession(ctx, &session); err != nil {
 		return uuid.Nil, err

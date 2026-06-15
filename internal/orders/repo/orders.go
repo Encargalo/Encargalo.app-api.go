@@ -231,6 +231,41 @@ func (o *orders) MarkDeliveryCodeUsed(ctx context.Context, orderID uuid.UUID) er
 	return err
 }
 
+func (o *orders) AssignRider(ctx context.Context, orderID uuid.UUID, riderID uuid.UUID) error {
+	res, err := o.db.NewUpdate().Model(&models.Order{}).
+		Set("rider_id = ?", riderID).
+		Set("rider_accepted_at = NOW()").
+		Where("id = ? AND rider_id IS NULL", orderID).
+		Exec(ctx)
+	if err != nil {
+		return err
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return errcustom.ErrOrderAlreadyAssigned
+	}
+	return nil
+}
+
+func (o *orders) SearchActiveOrdersByRiderID(ctx context.Context, riderID uuid.UUID) ([]models.Order, error) {
+	var orders []models.Order
+	err := o.db.NewSelect().
+		Model(&orders).
+		Where("rider_id = ?", riderID).
+		Where("status IN (?)", bun.In([]string{"In Preparation", "Ready", "On The Way"})).
+		Scan(ctx)
+	if err != nil {
+		return nil, errcustom.ErrUnexpectedError
+	}
+	if len(orders) == 0 {
+		return nil, errcustom.ErrNotFound
+	}
+	return orders, nil
+}
+
 func getLastOrderNumber(ctx context.Context, tx bun.Tx, batchID uuid.UUID) (int, error) {
 	var number int
 	err := tx.NewSelect().

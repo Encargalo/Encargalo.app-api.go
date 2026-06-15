@@ -30,4 +30,13 @@ type OrdersRepo interface {
 	SaveDeliveryCode(ctx context.Context, orderID uuid.UUID, code string) error
 	MarkPickupCodeUsed(ctx context.Context, orderID uuid.UUID) error
 	MarkDeliveryCodeUsed(ctx context.Context, orderID uuid.UUID) error
+	AssignRider(ctx context.Context, orderID uuid.UUID, riderID uuid.UUID) error
+	SearchActiveOrdersByRiderID(ctx context.Context, riderID uuid.UUID) ([]models.Order, error)
+}
+
+// OrderRiderBroadcaster is implemented by the riders module to receive order lifecycle events.
+// Defined here so orders/app has no import dependency on riders/domain/ports.
+type OrderRiderBroadcaster interface {
+	BroadcastNewOrder(order models.Order)
+	BroadcastOrderUpdate(order models.Order)
 }

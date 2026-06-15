@@ -124,6 +124,36 @@ func (_m *AuthApp) SignInEmployee(ctx context.Context, phone string, password st
 	return r0, r1
 }
 
+// SignInRider provides a mock function with given fields: ctx, phone, password
+func (_m *AuthApp) SignInRider(ctx context.Context, phone string, password string) (uuid.UUID, error) {
+	ret := _m.Called(ctx, phone, password)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SignInRider")
+	}
+
+	var r0 uuid.UUID
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (uuid.UUID, error)); ok {
+		return rf(ctx, phone, password)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) uuid.UUID); ok {
+		r0 = rf(ctx, phone, password)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(uuid.UUID)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, phone, password)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // NewAuthApp creates a new instance of AuthApp. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewAuthApp(t interface {

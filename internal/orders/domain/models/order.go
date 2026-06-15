@@ -30,6 +30,8 @@ type Order struct {
 	DeliveryCode       *string         `bun:"delivery_code" json:"delivery_code,omitempty"`
 	PickupCodeUsedAt   *time.Time      `bun:"pickup_code_used_at" json:"-"`
 	DeliveryCodeUsedAt *time.Time      `bun:"delivery_code_used_at" json:"-"`
+	RiderID            *uuid.UUID      `bun:"rider_id,nullzero,type:uuid" json:"rider_id,omitempty"`
+	RiderAcceptedAt    *time.Time      `bun:"rider_accepted_at" json:"rider_accepted_at,omitempty"`
 
 	ItemsOrders []ItemsOrder `bun:"rel:has-many,join:id=order_id" json:"-"`
 }

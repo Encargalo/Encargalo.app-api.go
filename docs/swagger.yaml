@@ -635,6 +635,48 @@ paths:
       summary: Iniciar sesión como empleado
       tags:
       - Auth
+  /auth/sign-in/riders:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Autentica a un rider usando su número de teléfono y contraseña.
+        Si las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.
+      parameters:
+      - description: Datos de inicio de sesión
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_auth_handler_request.SignInRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: session created
+          schema:
+            type: string
+        "400":
+          description: Solicitud inválida (validación o JSON incorrecto)
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Credenciales incorrectas
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error inesperado del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Iniciar sesión como rider
+      tags:
+      - Auth
   /auth/sign-in/users:
     post:
       consumes:
@@ -997,6 +1039,31 @@ paths:
       summary: WebSocket de gestión de órdenes
       tags:
       - Orders WebSocket
+  /orders/rider:
+    get:
+      consumes:
+      - application/json
+      description: Establece una conexión WebSocket exclusiva para el rol Rider.
+      produces:
+      - application/json
+      responses:
+        "401":
+          description: Sesión no encontrada o inválida
+          schema:
+            type: string
+        "403":
+          description: Acceso denegado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: WebSocket de gestión de órdenes para riders
+      tags:
+      - Riders WebSocket
   /payment-methods:
     get:
       description: Retorna la lista de métodos de pago activos. Para PagoMovil se
