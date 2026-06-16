@@ -20,8 +20,12 @@
         "header": [],
         "url": {
           "raw": "{{base_url}}/payment-methods",
-          "host": ["{{base_url}}"],
-          "path": ["payment-methods"]
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "payment-methods"
+          ]
         },
         "description": "Retorna los métodos de pago activos. PagoMovil incluye `qr_url` y los campos requeridos. Requiere cookie `encargalo-session`."
       }
@@ -38,7 +42,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"shop_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa7\",\n  \"method_payment\": \"EfectivoBs\",\n  \"delivery_fee\": 5000,\n  \"address\": {\n    \"address\": \"Av. Principal, Caracas\",\n    \"latitude\": 10.488801,\n    \"longitude\": -66.879190\n  },\n  \"items\": [\n    {\n      \"item_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa8\",\n      \"amount\": 2,\n      \"observation\": \"Sin cebolla\",\n      \"flavors\": {},\n      \"additions\": []\n    }\n  ]\n}",
+          "raw": "{\n  \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"shop_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa7\",\n  \"method_payment\": \"EfectivoBs\",\n  \"address\": {\n    \"address\": \"Av. Principal, Caracas\",\n    \"latitude\": 10.488801,\n    \"longitude\": -66.879190\n  },\n  \"items\": [\n    {\n      \"item_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa8\",\n      \"amount\": 2,\n      \"observation\": \"Sin cebolla\",\n      \"flavors\": {},\n      \"additions\": []\n    }\n  ]\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -47,8 +51,12 @@
         },
         "url": {
           "raw": "{{base_url}}/orders",
-          "host": ["{{base_url}}"],
-          "path": ["orders"]
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "orders"
+          ]
         },
         "description": "Crea una orden en efectivo. `method_payment` acepta `EfectivoBs` o `EfectivoDolar`. Al aceptar pasa directo a In Preparation. Requiere cookie `encargalo-session`. Rol: Customer."
       }
@@ -65,7 +73,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"shop_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa7\",\n  \"method_payment\": \"PagoMovil\",\n  \"pago_movil_data\": {\n    \"nombre\": \"Juan Pérez\",\n    \"cedula\": \"V-12345678\",\n    \"telefono\": \"0412-1234567\",\n    \"banco\": \"Banco de Venezuela\"\n  },\n  \"payment_proof_image\": \"data:image/jpeg;base64,/9j/4AAQSkZJRgAB...\",\n  \"delivery_fee\": 5000,\n  \"address\": {\n    \"address\": \"Av. Principal, Caracas\",\n    \"latitude\": 10.488801,\n    \"longitude\": -66.879190\n  },\n  \"items\": [\n    {\n      \"item_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa8\",\n      \"amount\": 2,\n      \"observation\": \"\",\n      \"flavors\": {},\n      \"additions\": []\n    }\n  ]\n}",
+          "raw": "{\n  \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"shop_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa7\",\n  \"method_payment\": \"PagoMovil\",\n  \"pago_movil_data\": {\n    \"nombre\": \"Juan Pérez\",\n    \"cedula\": \"V-12345678\",\n    \"telefono\": \"0412-1234567\",\n    \"banco\": \"Banco de Venezuela\"\n  },\n  \"payment_proof_image\": \"data:image/jpeg;base64,/9j/4AAQSkZJRgAB...\",\n  \"address\": {\n    \"address\": \"Av. Principal, Caracas\",\n    \"latitude\": 10.488801,\n    \"longitude\": -66.879190\n  },\n  \"items\": [\n    {\n      \"item_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa8\",\n      \"amount\": 2,\n      \"observation\": \"\",\n      \"flavors\": {},\n      \"additions\": []\n    }\n  ]\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -74,8 +82,12 @@
         },
         "url": {
           "raw": "{{base_url}}/orders",
-          "host": ["{{base_url}}"],
-          "path": ["orders"]
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "orders"
+          ]
         },
         "description": "Crea una orden con Pago Móvil. Requiere `pago_movil_data` y `payment_proof_image` (base64). El comprobante se sube a Cloudinary. La respuesta incluye `payment_qr_url`. Requiere cookie `encargalo-session`. Rol: Customer."
       }
@@ -101,8 +113,14 @@
         },
         "url": {
           "raw": "{{base_url}}/orders/:id/confirm-pickup",
-          "host": ["{{base_url}}"],
-          "path": ["orders", ":id", "confirm-pickup"],
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "orders",
+            ":id",
+            "confirm-pickup"
+          ],
           "variable": [
             {
               "key": "id",
@@ -135,8 +153,14 @@
         },
         "url": {
           "raw": "{{base_url}}/orders/:id/confirm-delivery",
-          "host": ["{{base_url}}"],
-          "path": ["orders", ":id", "confirm-delivery"],
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "orders",
+            ":id",
+            "confirm-delivery"
+          ],
           "variable": [
             {
               "key": "id",
@@ -164,8 +188,13 @@
         ],
         "url": {
           "raw": "{{base_url}}/orders/manager",
-          "host": ["{{base_url}}"],
-          "path": ["orders", "manager"]
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "orders",
+            "manager"
+          ]
         },
         "description": "WebSocket para el gestor de órdenes en tiempo real. Conectar con ws:// en lugar de http://. Requiere cookie `encargalo-session`. Roles: Customer, Order Manager.\n\nNOTA: Para probar WebSockets en Postman, crea una nueva request de tipo WebSocket con la URL: ws://localhost:3000/orders/manager"
       }
@@ -186,11 +215,83 @@
         ],
         "url": {
           "raw": "{{base_url}}/orders/rider",
-          "host": ["{{base_url}}"],
-          "path": ["orders", "rider"]
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "orders",
+            "rider"
+          ]
         },
         "description": "WebSocket exclusivo para el rol Rider. Al conectar el rider entra al pool de disponibles y recibe sus órdenes activas con `pickup_code`.\n\nNOTA: Para probar, crea una request de tipo WebSocket con la URL: ws://localhost:3000/orders/rider\n\nMensajes entrantes:\n- accept_order: {\"type\":\"accept_order\",\"order_id\":\"<uuid>\"}\n\nMensajes salientes:\n- {\"type\":\"connected\"}\n- {\"type\":\"new_order\",\"order\":{...}} — orden disponible (sin códigos)\n- {\"type\":\"order_accepted\",\"order\":{...}} — asignación exitosa (con pickup_code)\n- {\"type\":\"order_taken\",\"order_id\":\"<uuid>\"} — otro rider se adelantó\n- {\"type\":\"order_update\",\"order\":{...}} — actualización de orden asignada (con pickup_code)\n- {\"type\":\"error\",\"message\":\"...\"}"
       }
+    },
+    {
+      "name": "GET /riders/balance",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/riders/balance",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "riders",
+            "balance"
+          ]
+        },
+        "description": "Retorna el balance actual del rider, su zona de control (risk/normal/withdrawal_available) y los últimos 10 movimientos."
+      },
+      "response": []
+    },
+    {
+      "name": "POST /riders/withdrawal",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/riders/withdrawal",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "riders",
+            "withdrawal"
+          ]
+        },
+        "description": "Solicita retiro del balance acumulado. Requiere balance >= +$15."
+      },
+      "response": []
+    },
+    {
+      "name": "GET /riders/transactions",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/riders/transactions?page=1&limit=20",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "riders",
+            "transactions"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "20"
+            }
+          ]
+        },
+        "description": "Historial paginado de movimientos de balance del rider."
+      },
+      "response": []
     }
   ]
 }

@@ -1182,6 +1182,137 @@ const docTemplate = `{
                 }
             }
         },
+        "/riders/balance": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna el balance actual del rider, su zona de control y los últimos 10 movimientos.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Finance"
+                ],
+                "summary": "Balance del rider",
+                "responses": {
+                    "200": {
+                        "description": "balance, zona y últimos 10 movimientos",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.BalanceResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/transactions": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna el historial paginado de movimientos de balance del rider.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Finance"
+                ],
+                "summary": "Historial de movimientos del rider",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Página (default 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Límite por página, máx 50 (default 20)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TransactionsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/withdrawal": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "El rider solicita retirar su balance acumulado. Requiere balance \u003e= +$15.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Finance"
+                ],
+                "summary": "Solicitar retiro de balance",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.WithdrawalResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "Balance insuficiente para retiro",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/shops": {
             "get": {
                 "security": [
@@ -1875,8 +2006,8 @@ const docTemplate = `{
                     "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.Address"
                 },
                 "delivery_fee": {
-                    "type": "integer",
-                    "example": 5000
+                    "type": "number",
+                    "example": 1.6
                 },
                 "id": {
                     "type": "string",
@@ -2249,6 +2380,90 @@ const docTemplate = `{
                 }
             }
         },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.BalanceResponse": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "number"
+                },
+                "transactions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO"
+                    }
+                },
+                "zone": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_models.Zone"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "distance_km": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "movement_type": {
+                    "type": "string"
+                },
+                "order_id": {
+                    "type": "string"
+                },
+                "payment_method": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.TransactionsResponse": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "transactions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO"
+                    }
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.WithdrawalResponse": {
+            "type": "object",
+            "properties": {
+                "amount_withdrawn": {
+                    "type": "number"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_models.Zone": {
+            "type": "string",
+            "enum": [
+                "risk",
+                "normal",
+                "withdrawal_available"
+            ],
+            "x-enum-varnames": [
+                "ZoneRisk",
+                "ZoneNormal",
+                "ZoneWithdrawalAvailable"
+            ]
+        },
         "Encargalo_app-api_go_internal_shops_domain_dtos.MatchedItemRule": {
             "type": "object",
             "properties": {
@@ -2314,7 +2529,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "delivery_fee": {
-                    "type": "integer"
+                    "type": "number"
                 },
                 "home_phone": {
                     "type": "string"
@@ -2367,7 +2582,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "delivery_fee": {
-                    "type": "integer"
+                    "type": "number"
                 },
                 "home_phone": {
                     "type": "string"

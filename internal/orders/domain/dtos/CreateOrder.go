@@ -22,14 +22,13 @@ type PagoMovilData struct {
 }
 
 type CreateOrder struct {
-	ID                  uuid.UUID      `json:"id" validate:"required,uuid4" example:"3fa85f64-5717-4562-b3fc-2c963f66afa6"`
-	ShopID              uuid.UUID      `json:"shop_id" validate:"required,uuid4" example:"3fa85f64-5717-4562-b3fc-2c963f66afa6"`
-	CustomerID          uuid.UUID      `json:"customer_id" swaggerignore:"true"`
-	MethodPayment       string         `json:"method_payment" validate:"required,oneof=EfectivoBs EfectivoDolar PagoMovil" example:"EfectivoBs"`
-	PagoMovilData       *PagoMovilData `json:"pago_movil_data,omitempty"`
-	PaymentProofImage   string         `json:"payment_proof_image,omitempty" example:"data:image/jpeg;base64,/9j/4AAQ..."`
-	DeliveryFee         int            `json:"delivery_fee" validate:"required" example:"5000"`
-	Address             Address        `json:"address" validate:"required"`
+	ID                uuid.UUID      `json:"id" validate:"required,uuid4" example:"3fa85f64-5717-4562-b3fc-2c963f66afa6"`
+	ShopID            uuid.UUID      `json:"shop_id" validate:"required,uuid4" example:"3fa85f64-5717-4562-b3fc-2c963f66afa6"`
+	CustomerID        uuid.UUID      `json:"customer_id" swaggerignore:"true"`
+	MethodPayment     string         `json:"method_payment" validate:"required,oneof=EfectivoBs EfectivoDolar PagoMovil" example:"EfectivoBs"`
+	PagoMovilData     *PagoMovilData `json:"pago_movil_data,omitempty"`
+	PaymentProofImage string         `json:"payment_proof_image,omitempty" example:"data:image/jpeg;base64,/9j/4AAQ..."`
+	Address           Address        `json:"address" validate:"required"`
 
 	CreateItemsOrder []CreateItemsOrder `json:"items" validate:"required,dive,required"`
 }

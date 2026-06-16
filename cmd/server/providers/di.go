@@ -109,9 +109,16 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(handOrders.NewOrderHandler)
 	_ = Container.Provide(handOrders.New)
 	_ = Container.Provide(handRiders.New)
+	_ = Container.Provide(handRiders.NewFinanceHandler)
 	_ = Container.Provide(repoRiders.NewRidersRepo)
+	_ = Container.Provide(repoRiders.NewFinanceRepo)
 	_ = Container.Provide(repoRiders.NewRidersStream)
-	_ = Container.Provide(func(mgr ridersPorts.RidersApp) ordersPorts.OrderRiderBroadcaster { return mgr })
+	_ = Container.Provide(func(mgr ridersPorts.RidersApp) ordersPorts.OrderRiderBroadcaster {
+		return mgr.(ordersPorts.OrderRiderBroadcaster)
+	})
+	_ = Container.Provide(func(fa ridersPorts.FinanceApp) ordersPorts.RideEarningRecorder {
+		return fa.(ordersPorts.RideEarningRecorder)
+	})
 
 	_ = Container.Provide(appCustomer.NewUserApp)
 	_ = Container.Provide(appAuth.NewAuthApp)
@@ -121,6 +128,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(appOrders.NewOrderApp)
 	_ = Container.Provide(appOrders.NewManagerOrderApp)
 	_ = Container.Provide(appRiders.New)
+	_ = Container.Provide(appRiders.NewFinanceApp)
 
 	_ = Container.Provide(repoAuth.NewAuthRepo)
 	_ = Container.Provide(repo.NewShopsRepository)

@@ -4,19 +4,18 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"sync"
 	"time"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/employee/domain/ports"
+	modelsOrder "Encargalo.app-api.go/internal/orders/domain/models"
 	portsOrder "Encargalo.app-api.go/internal/orders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
-
-	"Encargalo.app-api.go/internal/orders/app"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
-
-	modelsUpdateOrders "Encargalo.app-api.go/internal/orders/domain/models"
 )
 
 type ManagerOrder interface {
@@ -24,13 +23,13 @@ type ManagerOrder interface {
 }
 
 type managerOrder struct {
-	svc      app.AppManagerOrder
+	svc      portsOrder.AppManagerOrder
 	svc2     ports.EmployeeApp
 	svcOrder portsOrder.OrdersApp
 }
 
 func New(
-	svc app.AppManagerOrder,
+	svc portsOrder.AppManagerOrder,
 	svc2 ports.EmployeeApp,
 	svcOrder portsOrder.OrdersApp,
 ) ManagerOrder {
@@ -38,7 +37,17 @@ func New(
 }
 
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
+	CheckOrigin: func(r *http.Request) bool {
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			return true
+		}
+		u, err := url.Parse(origin)
+		if err != nil {
+			return false
+		}
+		return u.Host == r.Host
+	},
 }
 
 // HandleWebSocket godoc
@@ -110,8 +119,10 @@ func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 		return err
 	}
 
-	client, err := h.svc.Register(ctx, connectionID, conn, isShop)
-	if err != nil {
+	client := newManagerWSClient(conn)
+	go client.writePump()
+
+	if err := h.svc.Register(ctx, connectionID, client, isShop); err != nil {
 		_ = conn.Close()
 		return err
 	}
@@ -159,7 +170,7 @@ func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 		switch base.Type {
 
 		case "update_status":
-			var payload modelsUpdateOrders.UpdateStatusOrder
+			var payload modelsOrder.UpdateStatusOrder
 			if err := json.Unmarshal(msg, &payload); err != nil {
 				slog.Warn("Payload inválido update_status", "error", err)
 				client.Send([]byte(`{"type":"error","message":"payload inválido"}`))
@@ -185,6 +196,56 @@ func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 			}
 
 		default:
+		}
+	}
+}
+
+// managerWSClient is the WebSocket transport adapter for the ManagerConn port.
+type managerWSClient struct {
+	conn      *websocket.Conn
+	send      chan []byte
+	closeOnce sync.Once
+}
+
+func newManagerWSClient(conn *websocket.Conn) *managerWSClient {
+	return &managerWSClient{
+		conn: conn,
+		send: make(chan []byte, 256),
+	}
+}
+
+func (c *managerWSClient) Send(msg []byte) {
+	select {
+	case c.send <- msg:
+	default:
+		slog.Warn("manager client slow, message dropped")
+	}
+}
+
+func (c *managerWSClient) Close() {
+	c.closeOnce.Do(func() { close(c.send) })
+}
+
+func (c *managerWSClient) writePump() {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case msg, ok := <-c.send:
+			_ = c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if !ok {
+				_ = c.conn.WriteMessage(websocket.CloseMessage, nil)
+				return
+			}
+			if err := c.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+				return
+			}
+		case <-ticker.C:
+			_ = c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
 		}
 	}
 }

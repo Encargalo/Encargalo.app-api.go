@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -29,7 +30,17 @@ func New(svc ridersPorts.RidersApp) RiderHandler {
 }
 
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
+	CheckOrigin: func(r *http.Request) bool {
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			return true
+		}
+		u, err := url.Parse(origin)
+		if err != nil {
+			return false
+		}
+		return u.Host == r.Host
+	},
 }
 
 // HandleWebSocket godoc
@@ -158,6 +169,9 @@ func safeErrorMessage(err error) string {
 	}
 	if errors.Is(err, errcustom.ErrInvalidTransition) {
 		return "la orden no está disponible para aceptar"
+	}
+	if errors.Is(err, errcustom.ErrRiderInRiskZone) {
+		return "solo puedes aceptar carreras con pago bancario"
 	}
 	return "error interno"
 }

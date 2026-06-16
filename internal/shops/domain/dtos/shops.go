@@ -17,7 +17,7 @@ type ShopResponse struct {
 	Opened      bool      `json:"opened"`
 	Type        string    `json:"type"`
 	Score       float64   `json:"score"`
-	DeliveryFee int       `json:"delivery_fee"`
+	DeliveryFee float64   `json:"delivery_fee"`
 	Time        int       `json:"time"`
 }
 

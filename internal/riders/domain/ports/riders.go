@@ -3,7 +3,6 @@ package ports
 import (
 	"context"
 
-	ordersModels "Encargalo.app-api.go/internal/orders/domain/models"
 	"github.com/google/uuid"
 )
 
@@ -13,18 +12,13 @@ type RiderConn interface {
 	Close()
 }
 
+// RidersApp defines the operations exposed to the riders HTTP handler.
+// Broadcast methods are excluded here; they are accessed via
+// orders/domain/ports.OrderRiderBroadcaster by the orders domain.
 type RidersApp interface {
 	Register(ctx context.Context, riderID uuid.UUID, conn RiderConn) error
 	Unregister(riderID uuid.UUID, conn RiderConn)
-	BroadcastNewOrder(order ordersModels.Order)
-	BroadcastOrderUpdate(order ordersModels.Order)
 	AcceptOrder(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, conn RiderConn) error
-}
-
-type RidersRepo interface {
-	AssignRider(ctx context.Context, orderID uuid.UUID, riderID uuid.UUID) error
-	SearchActiveOrdersByRiderID(ctx context.Context, riderID uuid.UUID) ([]ordersModels.Order, error)
-	SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*ordersModels.Order, error)
 }
 
 type RidersStream interface {

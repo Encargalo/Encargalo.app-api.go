@@ -10,6 +10,7 @@ import (
 	"time"
 
 	ordersModels "Encargalo.app-api.go/internal/orders/domain/models"
+	riderModels "Encargalo.app-api.go/internal/riders/domain/models"
 	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
@@ -23,14 +24,16 @@ type appRidersManager struct {
 	assignedOrders  map[uuid.UUID][]uuid.UUID // riderID → []orderID
 	repo            ridersPorts.RidersRepo
 	stream          ridersPorts.RidersStream
+	financeRepo     ridersPorts.FinanceRepo
 }
 
-func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream) ridersPorts.RidersApp {
+func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, financeRepo ridersPorts.FinanceRepo) ridersPorts.RidersApp {
 	return &appRidersManager{
 		availableRiders: make(map[uuid.UUID]ridersPorts.RiderConn),
 		assignedOrders:  make(map[uuid.UUID][]uuid.UUID),
 		repo:            repo,
 		stream:          stream,
+		financeRepo:     financeRepo,
 	}
 }
 
@@ -76,7 +79,14 @@ func (r *appRidersManager) BroadcastNewOrder(order ordersModels.Order) {
 	stripped.PickupCode = nil
 	stripped.DeliveryCode = nil
 
-	data, err := json.Marshal(riderBroadcast{Type: "new_order", Order: stripped})
+	earning := RiderEarning(order.DeliveryFee)
+	msg := riderBroadcast{Type: "new_order", Order: stripped, RiderEarnings: &earning}
+	if isCashPayment(order.MethodPayment) {
+		total := order.TotalPrice
+		msg.CollectAmount = &total
+	}
+
+	data, err := json.Marshal(msg)
 	if err != nil {
 		slog.Error("error marshaling new_order broadcast", "error", err)
 		return
@@ -135,8 +145,16 @@ func (r *appRidersManager) AcceptOrder(ctx context.Context, riderID uuid.UUID, o
 		return err
 	}
 
-	if order.Status != "In Preparation" && order.Status != "Ready" {
+	if order.Status != string(ordersModels.StatusInPreparation) && order.Status != string(ordersModels.StatusReady) {
 		return errcustom.ErrInvalidTransition
+	}
+
+	balance, err := r.financeRepo.GetBalance(ctx, riderID, entityTypeRider)
+	if err != nil {
+		return err
+	}
+	if getZone(balance) == riderModels.ZoneRisk && isCashPayment(order.MethodPayment) {
+		return errcustom.ErrRiderInRiskZone
 	}
 
 	if err := r.repo.AssignRider(ctx, orderID, riderID); err != nil {
@@ -158,7 +176,13 @@ func (r *appRidersManager) AcceptOrder(ctx context.Context, riderID uuid.UUID, o
 	r.assignedOrders[riderID] = append(r.assignedOrders[riderID], orderID)
 	r.mu.Unlock()
 
-	accepted, _ := json.Marshal(riderBroadcast{Type: "order_accepted", Order: stripPickupOnly(*order)})
+	earning := RiderEarning(order.DeliveryFee)
+	acceptedMsg := riderBroadcast{Type: "order_accepted", Order: stripPickupOnly(*order), RiderEarnings: &earning}
+	if isCashPayment(order.MethodPayment) {
+		total := order.TotalPrice
+		acceptedMsg.CollectAmount = &total
+	}
+	accepted, _ := json.Marshal(acceptedMsg)
 	conn.Send(accepted)
 
 	return nil
@@ -170,6 +194,8 @@ func stripPickupOnly(order ordersModels.Order) ordersModels.Order {
 }
 
 type riderBroadcast struct {
-	Type  string             `json:"type"`
-	Order ordersModels.Order `json:"order"`
+	Type          string             `json:"type"`
+	Order         ordersModels.Order `json:"order"`
+	RiderEarnings *float64           `json:"rider_earnings,omitempty"`
+	CollectAmount *float64           `json:"collect_amount,omitempty"`
 }

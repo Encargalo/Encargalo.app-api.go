@@ -1,0 +1,39 @@
+package deliveryfee
+
+import (
+	"math"
+	"time"
+
+	"Encargalo.app-api.go/internal/shared/adapters/googlemaps"
+	"Encargalo.app-api.go/internal/shared/config"
+)
+
+const (
+	RateDay   = 0.40
+	RateNight = 0.60
+	NightHour = 22
+)
+
+// FromDistance convierte una distancia en metros a tarifa de entrega.
+// El cobro es por km completo redondeado hacia arriba (ej: 1001m = 2 km = $0.80 diurno).
+func FromDistance(distanceMeters float64) float64 {
+	km := math.Ceil(distanceMeters / 1000)
+	rate := float64(RateDay)
+	if time.Now().Hour() >= NightHour {
+		rate = RateNight
+	}
+	return km * rate
+}
+
+// Calculate obtiene la distancia vial entre tienda y dirección de entrega y retorna la tarifa.
+// En entornos distintos a production retorna 0 sin llamar a Google Maps.
+func Calculate(shopLat, shopLon, deliveryLat, deliveryLon float64) (float64, error) {
+	if config.Get().Environment.Current != "production" {
+		return 0, nil
+	}
+	distMeters, err := googlemaps.DistanceMeters(shopLat, shopLon, deliveryLat, deliveryLon)
+	if err != nil {
+		return 0, err
+	}
+	return FromDistance(distMeters), nil
+}
