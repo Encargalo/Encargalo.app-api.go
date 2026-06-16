@@ -24,6 +24,7 @@ var statusMap = map[error]int{
 	ErrOrderAlreadyAssigned: http.StatusConflict,
 	ErrRiderInRiskZone:      http.StatusForbidden,
 	ErrInsufficientBalance:  http.StatusUnprocessableEntity,
+	ErrInvalidStatus:        http.StatusBadRequest,
 }
 
 func ToHTTPError(err error) error {
