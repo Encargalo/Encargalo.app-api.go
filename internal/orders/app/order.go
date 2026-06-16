@@ -22,26 +22,53 @@ import (
 	"github.com/google/uuid"
 )
 
-type PaymentMethod string
+var allowedTransitionStatuses = map[models.OrderStatus]bool{
+	models.StatusAccepted:      true,
+	models.StatusInPreparation: true,
+	models.StatusReady:         true,
+	models.StatusOnTheWay:      true,
+	models.StatusCompleted:     true,
+	models.StatusCancelled:     true,
+	models.StatusRejected:      true,
+}
 
-const (
-	MethodCashBs    PaymentMethod = "EfectivoBs"
-	MethodCashUSD   PaymentMethod = "EfectivoDolar"
-	MethodPagoMovil PaymentMethod = "PagoMovil"
-)
+var paymentAutoTransitions = map[models.PaymentMethod]map[models.OrderStatus]models.OrderStatus{
+	models.MethodCashBs:    {models.StatusAccepted: models.StatusInPreparation},
+	models.MethodCashUSD:   {models.StatusAccepted: models.StatusInPreparation},
+	models.MethodPagoMovil: {models.StatusAccepted: models.StatusInPreparation},
+}
+
+type statusHandler func(ctx context.Context, order models.Order) error
 
 type orderApp struct {
-	repo        ports.OrdersRepo
-	shops       shops.ShopsRepo
-	custo       portsCustomers.UsersRepo
-	stream      ports.RedisStream
-	uploadImage uploadimage.UploadImage
-	riderMgr    ports.OrderRiderBroadcaster
-	finance     ports.RideEarningRecorder
+	repo           ports.OrdersRepo
+	shops          shops.ShopsRepo
+	custo          portsCustomers.UsersRepo
+	stream         ports.RedisStream
+	uploadImage    uploadimage.UploadImage
+	riderMgr       ports.OrderRiderBroadcaster
+	finance        ports.RideEarningRecorder
+	statusHandlers map[models.OrderStatus]statusHandler
 }
 
 func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.UsersRepo, stream ports.RedisStream, uploadImage uploadimage.UploadImage, riderMgr ports.OrderRiderBroadcaster, finance ports.RideEarningRecorder) ports.OrdersApp {
-	return &orderApp{repo, shops, custo, stream, uploadImage, riderMgr, finance}
+	o := &orderApp{
+		repo:        repo,
+		shops:       shops,
+		custo:       custo,
+		stream:      stream,
+		uploadImage: uploadImage,
+		riderMgr:    riderMgr,
+		finance:     finance,
+	}
+	o.statusHandlers = map[models.OrderStatus]statusHandler{
+		models.StatusInPreparation: func(ctx context.Context, order models.Order) error {
+			o.generateAndSavePickupCode(ctx, order.ID)
+			o.riderMgr.BroadcastNewOrder(order)
+			return nil
+		},
+	}
+	return o
 }
 
 func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*models.Order, error) {
@@ -62,6 +89,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		if errors.Is(err, errcustom.ErrNotFound) {
 			return &models.Order{}, errcustom.ErrBatchNotOpen
 		}
+		return &models.Order{}, err
 	}
 
 	shop, err := o.repo.SearchShopByID(ctx, order.ShopID)
@@ -111,7 +139,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 	if order.PagoMovilData != nil {
 		proofUpload, err := o.uploadImage.UploadImage(ctx, order.PaymentProofImage)
 		if err != nil {
-			return &models.Order{}, fmt.Errorf("error subiendo comprobante de pago: %w", err)
+			return &models.Order{}, errcustom.ErrUploadingImage
 		}
 		DetailsModel.PaymentDetails = &models.PaymentDetails{
 			Nombre:          order.PagoMovilData.Nombre,
@@ -167,21 +195,9 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 	}
 
 	newStatus := models.OrderStatus(strings.TrimSpace(status))
-	method := PaymentMethod(strings.TrimSpace(order.MethodPayment))
 
-	var allowedStatuses = map[models.OrderStatus]bool{
-		models.StatusAccepted:            true,
-		models.StatusWaitingPaymentProof: true,
-		models.StatusInPreparation:       true,
-		models.StatusReady:               true,
-		models.StatusOnTheWay:            true,
-		models.StatusCompleted:           true,
-		models.StatusCancelled:           true,
-		models.StatusRejected:            true,
-	}
-
-	if !allowedStatuses[newStatus] {
-		return models.Order{}, fmt.Errorf("invalid status: %s", newStatus)
+	if !allowedTransitionStatuses[newStatus] {
+		return models.Order{}, errcustom.ErrInvalidStatus
 	}
 
 	if !isShop && newStatus != models.StatusCancelled {
@@ -192,34 +208,35 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 		return models.Order{}, errcustom.ErrUnautorized
 	}
 
-	var transitionRules = map[PaymentMethod]map[models.OrderStatus]models.OrderStatus{
-		MethodCashBs:    {models.StatusAccepted: models.StatusInPreparation},
-		MethodCashUSD:   {models.StatusAccepted: models.StatusInPreparation},
-		MethodPagoMovil: {models.StatusAccepted: models.StatusInPreparation},
-	}
-
-	if methodRules, ok := transitionRules[method]; ok {
-		if autoStatus, ok := methodRules[newStatus]; ok {
-			newStatus = autoStatus
-		}
-	}
+	newStatus = resolveAutoTransition(models.PaymentMethod(strings.TrimSpace(order.MethodPayment)), newStatus)
 
 	if err := o.repo.UpdateOrderStatus(ctx, orderID, string(newStatus)); err != nil {
 		return models.Order{}, err
 	}
 
 	order.Status = string(newStatus)
-
-	if newStatus == models.StatusInPreparation {
-		o.generateAndSavePickupCode(ctx, orderID)
-		o.riderMgr.BroadcastNewOrder(*order)
-	}
-
-	if newStatus != models.StatusInPreparation {
-		o.riderMgr.BroadcastOrderUpdate(*order)
-	}
+	o.handleStatusTransition(ctx, newStatus, *order)
 
 	return *order, nil
+}
+
+func resolveAutoTransition(method models.PaymentMethod, status models.OrderStatus) models.OrderStatus {
+	if methodRules, ok := paymentAutoTransitions[method]; ok {
+		if auto, ok := methodRules[status]; ok {
+			return auto
+		}
+	}
+	return status
+}
+
+func (o *orderApp) handleStatusTransition(ctx context.Context, status models.OrderStatus, order models.Order) {
+	if h, ok := o.statusHandlers[status]; ok {
+		if err := h(ctx, order); err != nil {
+			slog.Error("status transition handler failed", "status", status, "orderID", order.ID, "error", err)
+		}
+		return
+	}
+	o.riderMgr.BroadcastOrderUpdate(order)
 }
 
 func (o *orderApp) generateAndSavePickupCode(ctx context.Context, orderID uuid.UUID) {
@@ -303,6 +320,10 @@ func (o *orderApp) ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code 
 		return err
 	}
 
+	if order.RiderID == nil {
+		slog.Error("order completed without rider assigned", "orderID", orderID)
+		return nil
+	}
 	if err := o.finance.RecordRideEarning(ctx, *order.RiderID, order.ID, order.DeliveryFee, order.TotalPrice, order.MethodPayment); err != nil {
 		slog.Error("error recording ride earning", "orderID", orderID, "error", err)
 	}

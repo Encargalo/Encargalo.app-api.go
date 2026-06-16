@@ -17,6 +17,7 @@ var (
 	ErrOrderAlreadyAssigned = errors.New("order already assigned to another rider")
 	ErrRiderInRiskZone      = errors.New("rider in risk zone: only bank payment orders allowed")
 	ErrInsufficientBalance  = errors.New("insufficient balance for withdrawal")
+	ErrInvalidStatus        = errors.New("invalid order status")
 )
 
 var (
