@@ -15,6 +15,8 @@ var (
 	ErrCodeAlreadyUsed      = errors.New("confirmation code already used")
 	ErrInvalidTransition    = errors.New("invalid order status for this operation")
 	ErrOrderAlreadyAssigned = errors.New("order already assigned to another rider")
+	ErrRiderInRiskZone      = errors.New("rider in risk zone: only bank payment orders allowed")
+	ErrInsufficientBalance  = errors.New("insufficient balance for withdrawal")
 )
 
 var (

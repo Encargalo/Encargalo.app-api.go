@@ -62,8 +62,8 @@ definitions:
       address:
         $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.Address'
       delivery_fee:
-        example: 5000
-        type: integer
+        example: 1.6
+        type: number
       id:
         example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
         type: string
@@ -330,6 +330,62 @@ definitions:
     - name
     - price
     type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.BalanceResponse:
+    properties:
+      balance:
+        type: number
+      transactions:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO'
+        type: array
+      zone:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_models.Zone'
+    type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO:
+    properties:
+      amount:
+        type: number
+      created_at:
+        type: string
+      distance_km:
+        type: number
+      id:
+        type: string
+      movement_type:
+        type: string
+      order_id:
+        type: string
+      payment_method:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.TransactionsResponse:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+      transactions:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO'
+        type: array
+    type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.WithdrawalResponse:
+    properties:
+      amount_withdrawn:
+        type: number
+    type: object
+  Encargalo_app-api_go_internal_riders_domain_models.Zone:
+    enum:
+    - risk
+    - normal
+    - withdrawal_available
+    type: string
+    x-enum-varnames:
+    - ZoneRisk
+    - ZoneNormal
+    - ZoneWithdrawalAvailable
   Encargalo_app-api_go_internal_shops_domain_dtos.MatchedItemRule:
     properties:
       id:
@@ -373,7 +429,7 @@ definitions:
       banner:
         type: string
       delivery_fee:
-        type: integer
+        type: number
       home_phone:
         type: string
       id:
@@ -408,7 +464,7 @@ definitions:
       banner:
         type: string
       delivery_fee:
-        type: integer
+        type: number
       home_phone:
         type: string
       id:
@@ -1336,6 +1392,90 @@ paths:
       summary: Productos más vendidos cerca del usuario
       tags:
       - Products
+  /riders/balance:
+    get:
+      description: Retorna el balance actual del rider, su zona de control y los últimos
+        10 movimientos.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: balance, zona y últimos 10 movimientos
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.BalanceResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Balance del rider
+      tags:
+      - Riders Finance
+  /riders/transactions:
+    get:
+      description: Retorna el historial paginado de movimientos de balance del rider.
+      parameters:
+      - description: Página (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Límite por página, máx 50 (default 20)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TransactionsResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Historial de movimientos del rider
+      tags:
+      - Riders Finance
+  /riders/withdrawal:
+    post:
+      description: El rider solicita retirar su balance acumulado. Requiere balance
+        >= +$15.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.WithdrawalResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "422":
+          description: Balance insuficiente para retiro
+          schema:
+            type: string
+        "500":
+          description: Error interno
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Solicitar retiro de balance
+      tags:
+      - Riders Finance
   /shops:
     get:
       description: 'Retorna la información de una tienda junto con sus productos.

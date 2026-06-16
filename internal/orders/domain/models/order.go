@@ -23,8 +23,8 @@ type Order struct {
 	Longitude          float64         `bun:"longitude" json:"longitude"`
 	MethodPayment      string          `bun:"method_payment" json:"method_payment"`
 	Status             string          `bun:"status" json:"status"`
-	DeliveryFee        int             `bun:"delivery_fee" json:"delivery_fee"`
-	TotalPrice         int             `bun:"total_price" json:"total_price"`
+	DeliveryFee        float64         `bun:"delivery_fee" json:"delivery_fee"`
+	TotalPrice         float64         `bun:"total_price" json:"total_price"`
 	Details            json.RawMessage `bun:"details,type:jsonb" json:"details"`
 	PickupCode         *string         `bun:"pickup_code" json:"pickup_code,omitempty"`
 	DeliveryCode       *string         `bun:"delivery_code" json:"delivery_code,omitempty"`
@@ -46,7 +46,6 @@ func (o *Order) BuildDtoToModel(dto dtos.CreateOrder, batchID uuid.UUID) {
 	o.Longitude = dto.Address.Longitude
 	o.MethodPayment = dto.MethodPayment
 	o.Status = "Pending"
-	o.DeliveryFee = dto.DeliveryFee
 	o.ItemsOrders = make([]ItemsOrder, len(dto.CreateItemsOrder))
 
 	for i := range dto.CreateItemsOrder {
@@ -111,7 +110,7 @@ func (o *Order) SetPrices(items models.Items) {
 		}
 	}
 
-	o.TotalPrice = total + o.DeliveryFee
+	o.TotalPrice = float64(total) + o.DeliveryFee
 }
 
 func (o *Order) SetAdditionalsName(additions []Addition) {
@@ -160,5 +159,5 @@ func (o *Order) SetAdditionalsPrices(addittions []Addition) {
 		totalAdd += subTotalAdd
 
 	}
-	o.TotalPrice += totalAdd
+	o.TotalPrice += float64(totalAdd)
 }

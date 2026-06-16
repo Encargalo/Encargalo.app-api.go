@@ -40,3 +40,21 @@ type OrderRiderBroadcaster interface {
 	BroadcastNewOrder(order models.Order)
 	BroadcastOrderUpdate(order models.Order)
 }
+
+// RideEarningRecorder is implemented by the finance module to record rider earnings on delivery.
+// Defined here to avoid a cross-domain import from orders → riders.
+type RideEarningRecorder interface {
+	RecordRideEarning(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee, totalPrice float64, method string) error
+}
+
+// ManagerConn abstracts the WebSocket transport for order-manager connections.
+type ManagerConn interface {
+	Send(msg []byte)
+	Close()
+}
+
+type AppManagerOrder interface {
+	Register(ctx context.Context, connectionID uuid.UUID, conn ManagerConn, isShop bool) error
+	Unregister(connectionID uuid.UUID, conn ManagerConn, isShop bool)
+	BroadcastOrder(order models.Order) error
+}

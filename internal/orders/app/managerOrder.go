@@ -4,33 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"sync"
-	"time"
 
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 )
-
-type AppManagerOrder interface {
-	Register(ctx context.Context, connectionID uuid.UUID, conn *websocket.Conn, isShop bool) (*WSClient, error)
-	Unregister(connectionID uuid.UUID, client *WSClient, isShop bool)
-	BroadcastOrder(order models.Order) error
-}
-
-type WSClient struct {
-	conn  *websocket.Conn
-	send  chan []byte
-	ready chan struct{}
-}
 
 type appManagerOrder struct {
 	mu                  sync.RWMutex
-	shopConnections     map[uuid.UUID][]*WSClient
-	customerConnections map[uuid.UUID][]*WSClient
+	shopConnections     map[uuid.UUID][]ports.ManagerConn
+	customerConnections map[uuid.UUID][]ports.ManagerConn
 	svc                 ports.OrdersApp
 }
 
@@ -39,10 +24,10 @@ type orderBroadcast struct {
 	Order models.Order `json:"order"`
 }
 
-func NewManagerOrderApp(svc ports.OrdersApp) AppManagerOrder {
+func NewManagerOrderApp(svc ports.OrdersApp) ports.AppManagerOrder {
 	return &appManagerOrder{
-		shopConnections:     make(map[uuid.UUID][]*WSClient),
-		customerConnections: make(map[uuid.UUID][]*WSClient),
+		shopConnections:     make(map[uuid.UUID][]ports.ManagerConn),
+		customerConnections: make(map[uuid.UUID][]ports.ManagerConn),
 		svc:                 svc,
 	}
 }
@@ -50,54 +35,43 @@ func NewManagerOrderApp(svc ports.OrdersApp) AppManagerOrder {
 func (s *appManagerOrder) Register(
 	ctx context.Context,
 	connectionID uuid.UUID,
-	conn *websocket.Conn,
+	conn ports.ManagerConn,
 	isShop bool,
-) (*WSClient, error) {
-
-	client := &WSClient{
-		conn:  conn,
-		send:  make(chan []byte, 256),
-		ready: make(chan struct{}),
-	}
-
+) error {
 	s.mu.Lock()
 	if isShop {
-		s.shopConnections[connectionID] = append(s.shopConnections[connectionID], client)
+		s.shopConnections[connectionID] = append(s.shopConnections[connectionID], conn)
 	} else {
-		s.customerConnections[connectionID] = append(s.customerConnections[connectionID], client)
+		s.customerConnections[connectionID] = append(s.customerConnections[connectionID], conn)
 	}
 	s.mu.Unlock()
 
-	go s.writePump(client)
-
 	orders, err := s.svc.SearchActiveOrdersByCriteria(ctx, connectionID, isShop)
 	if err != nil && !errors.Is(err, errcustom.ErrNotFound) {
-		return nil, err
+		return err
 	}
 
-	role := ClientRoleCustomer
+	role := models.ClientRoleCustomer
 	if isShop {
-		role = ClientRoleShop
+		role = models.ClientRoleShop
 	}
 	for _, order := range orders {
 		data, _ := json.Marshal(orderBroadcast{Type: "order_update", Order: stripCodes(order, role)})
-		client.send <- data
+		conn.Send(data)
 	}
 
-	close(client.ready)
-
-	return client, nil
+	return nil
 }
 
 func (s *appManagerOrder) Unregister(
 	connectionID uuid.UUID,
-	client *WSClient,
+	conn ports.ManagerConn,
 	isShop bool,
 ) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	var connections map[uuid.UUID][]*WSClient
+	var connections map[uuid.UUID][]ports.ManagerConn
 	if isShop {
 		connections = s.shopConnections
 	} else {
@@ -107,7 +81,7 @@ func (s *appManagerOrder) Unregister(
 	if list, ok := connections[connectionID]; ok {
 		filtered := list[:0]
 		for _, c := range list {
-			if c != client {
+			if c != conn {
 				filtered = append(filtered, c)
 			}
 		}
@@ -119,16 +93,16 @@ func (s *appManagerOrder) Unregister(
 		}
 	}
 
-	close(client.send)
+	conn.Close()
 }
 
 func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
-	shopData, err := json.Marshal(orderBroadcast{Type: "order_update", Order: stripCodes(order, ClientRoleShop)})
+	shopData, err := json.Marshal(orderBroadcast{Type: "order_update", Order: stripCodes(order, models.ClientRoleShop)})
 	if err != nil {
 		return err
 	}
 
-	customerData, err := json.Marshal(orderBroadcast{Type: "order_update", Order: stripCodes(order, ClientRoleCustomer)})
+	customerData, err := json.Marshal(orderBroadcast{Type: "order_update", Order: stripCodes(order, models.ClientRoleCustomer)})
 	if err != nil {
 		return err
 	}
@@ -138,81 +112,27 @@ func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
 	customerClients := s.customerConnections[order.CustomerID]
 	s.mu.RUnlock()
 
-	send := func(clients []*WSClient, data []byte) {
-		for _, c := range clients {
-			select {
-			case <-c.ready:
-				select {
-				case c.send <- data:
-				default:
-					slog.Warn("Cliente lento, mensaje descartado")
-				}
-			default:
-			}
-		}
+	for _, c := range shopClients {
+		c.Send(shopData)
 	}
-
-	send(shopClients, shopData)
-	send(customerClients, customerData)
+	for _, c := range customerClients {
+		c.Send(customerData)
+	}
 
 	return nil
 }
 
-type ClientRole string
-
-const (
-	ClientRoleShop     ClientRole = "shop"
-	ClientRoleCustomer ClientRole = "customer"
-	ClientRoleRider    ClientRole = "rider"
-)
-
-// stripCodes filtra los códigos de confirmación según el rol del destinatario:
+// stripCodes filtra los códigos de confirmación según el rol del destinatario.
 // Shop → ninguno; Customer → solo delivery_code; Rider → solo pickup_code.
-func stripCodes(order models.Order, role ClientRole) models.Order {
+func stripCodes(order models.Order, role models.ClientRole) models.Order {
 	switch role {
-	case ClientRoleShop:
+	case models.ClientRoleShop:
 		order.PickupCode = nil
 		order.DeliveryCode = nil
-	case ClientRoleCustomer:
+	case models.ClientRoleCustomer:
 		order.PickupCode = nil
-	case ClientRoleRider:
+	case models.ClientRoleRider:
 		order.DeliveryCode = nil
 	}
 	return order
-}
-
-func (s *appManagerOrder) writePump(c *WSClient) {
-	ticker := time.NewTicker(30 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case msg, ok := <-c.send:
-			_ = c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-			if !ok {
-				_ = c.conn.WriteMessage(websocket.CloseMessage, nil)
-				return
-			}
-			if err := c.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
-				return
-			}
-
-		case <-ticker.C:
-			_ = c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				return
-			}
-		}
-	}
-}
-
-func (c *WSClient) Send(msg []byte) {
-	select {
-	case <-c.ready:
-		select {
-		case c.send <- msg:
-		default:
-		}
-	default:
-	}
 }

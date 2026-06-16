@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
-	"Encargalo.app-api.go/internal/orders/app"
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
@@ -21,10 +20,10 @@ type OrderHandler interface {
 
 type orderHandler struct {
 	svc  ports.OrdersApp
-	svc2 app.AppManagerOrder
+	svc2 ports.AppManagerOrder
 }
 
-func NewOrderHandler(svc ports.OrdersApp, svc2 app.AppManagerOrder) OrderHandler {
+func NewOrderHandler(svc ports.OrdersApp, svc2 ports.AppManagerOrder) OrderHandler {
 	return &orderHandler{svc, svc2}
 }
 

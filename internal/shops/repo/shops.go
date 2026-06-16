@@ -70,7 +70,7 @@ func (s *shopsRepo) GetAllShops(ctx context.Context, coords shopsDTO.Coords) (sh
 			cos(radians(?)) * cos(radians(latitude)) *
 			cos(radians(longitude) - radians(?)) +
 			sin(radians(?)) * sin(radians(latitude))
-		) <= coverage
+		) <= 3
 	`, coords.Latitude, coords.Longitude, coords.Latitude)
 	}
 
@@ -148,7 +148,7 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 			cos(radians(?)) * cos(radians(latitude)) *
 			cos(radians(longitude) - radians(?)) +
 			sin(radians(?)) * sin(radians(latitude))
-		) <= coverage
+		) <= 3
 	`, coords.Latitude, coords.Longitude, coords.Latitude)
 	}
 
@@ -243,7 +243,7 @@ func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.Sea
 		SELECT
 			s.id, s.name, s.tag, s.address, s.latitude, s.longitude,
 			s.home_phone, s.logo_image, s.banner, s.opened, s.type,
-			s.score, s.coverage, s.minimum_delivery, s.maximum_delivery,
+			s.score,
 			(
 				to_tsvector('spanish', s.name) @@ plainto_tsquery('spanish', ?)
 				OR s.name ILIKE '%' || ? || '%'
@@ -295,21 +295,18 @@ func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.Sea
 	shopModels := make(shops.Shops, len(rows))
 	for i, row := range rows {
 		shopModels[i] = shops.Shop{
-			ID:              row.ID,
-			Name:            row.Name,
-			Tag:             row.Tag,
-			Address:         row.Address,
-			HomePhone:       row.HomePhone,
-			LogoImage:       row.LogoImage,
-			Banner:          row.Banner,
-			Opened:          row.Opened,
-			Type:            row.Type,
-			Score:           row.Score,
-			Latitude:        row.Latitude,
-			Longitude:       row.Longitude,
-			Coverage:        row.Coverage,
-			MinimunDelivery: row.MinimumDelivery,
-			MaximumDelivery: row.MaximumDelivery,
+			ID:        row.ID,
+			Name:      row.Name,
+			Tag:       row.Tag,
+			Address:   row.Address,
+			HomePhone: row.HomePhone,
+			LogoImage: row.LogoImage,
+			Banner:    row.Banner,
+			Opened:    row.Opened,
+			Type:      row.Type,
+			Score:     row.Score,
+			Latitude:  row.Latitude,
+			Longitude: row.Longitude,
 		}
 	}
 

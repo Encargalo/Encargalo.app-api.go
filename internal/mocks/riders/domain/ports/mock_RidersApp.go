@@ -5,10 +5,8 @@ package mocks
 import (
 	context "context"
 
-	models "Encargalo.app-api.go/internal/orders/domain/models"
-	mock "github.com/stretchr/testify/mock"
-
 	ports "Encargalo.app-api.go/internal/riders/domain/ports"
+	mock "github.com/stretchr/testify/mock"
 
 	uuid "github.com/google/uuid"
 )
@@ -34,16 +32,6 @@ func (_m *RidersApp) AcceptOrder(ctx context.Context, riderID uuid.UUID, orderID
 	}
 
 	return r0
-}
-
-// BroadcastNewOrder provides a mock function with given fields: order
-func (_m *RidersApp) BroadcastNewOrder(order models.Order) {
-	_m.Called(order)
-}
-
-// BroadcastOrderUpdate provides a mock function with given fields: order
-func (_m *RidersApp) BroadcastOrderUpdate(order models.Order) {
-	_m.Called(order)
 }
 
 // Register provides a mock function with given fields: ctx, riderID, conn
