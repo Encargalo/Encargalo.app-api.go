@@ -20,19 +20,20 @@ func Get() *Config {
 }
 
 type Config struct {
-	Server        Server        `env:"server"`
-	Postgres      Postgres      `env:"postgres"`
-	Redis         Redis         `env:"redis"`
-	RedisStream   RedisStream   `env:"redis_stream"`
-	JWT           JWT           `env:"jwt"`
-	Slack         Slack         `env:"slack"`
-	Environment   Environment   `env:"environment"`
-	Google        Google        `env:"google"`
-	Cloudinary    Cloudinary    `env:"cloudinary"`
+	Server      Server      `env:"server"`
+	Postgres    Postgres    `env:"postgres"`
+	Redis       Redis       `env:"redis"`
+	RedisStream RedisStream `env:"redis_stream"`
+	JWT         JWT         `env:"jwt"`
+	Slack       Slack       `env:"slack"`
+	Environment Environment `env:"environment"`
+	Google      Google      `env:"google"`
+	Cloudinary  Cloudinary  `env:"cloudinary"`
 }
 
 type Server struct {
-	Port int `validate:"required" env:"port"`
+	Port           int    `validate:"required" env:"port"`
+	AllowedOrigins string `env:"allowed_origins"`
 }
 
 type Postgres struct {

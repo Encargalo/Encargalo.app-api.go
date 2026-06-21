@@ -4,14 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
-	"net/http"
-	"net/url"
-	"sync"
-	"time"
 
 	authModels "Encargalo.app-api.go/internal/auth/domain/models"
 	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
+	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/shared/ws"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
@@ -22,25 +20,16 @@ type RiderHandler interface {
 }
 
 type riderHandler struct {
-	svc ridersPorts.RidersApp
+	svc      ridersPorts.RidersApp
+	upgrader websocket.Upgrader
 }
 
 func New(svc ridersPorts.RidersApp) RiderHandler {
-	return &riderHandler{svc}
-}
-
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		origin := r.Header.Get("Origin")
-		if origin == "" {
-			return true
-		}
-		u, err := url.Parse(origin)
-		if err != nil {
-			return false
-		}
-		return u.Host == r.Host
-	},
+	cfg := config.Get()
+	return &riderHandler{
+		svc:      svc,
+		upgrader: ws.BuildUpgrader(cfg.Environment.Current == "production", cfg.Server.AllowedOrigins),
+	}
 }
 
 // HandleWebSocket godoc
@@ -83,32 +72,27 @@ func (h *riderHandler) HandleWebSocket(c echo.Context) error {
 
 	riderID := session.UserID
 
-	conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
+	conn, err := h.upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
 		slog.Error("Error upgrading websocket for rider", "error", err)
 		return err
 	}
 
-	client := newRiderWSClient(conn)
-	go client.writePump()
+	client := ws.NewClient(conn)
+	go client.WritePump()
 
 	if err := h.svc.Register(ctx, riderID, client); err != nil {
 		_ = conn.Close()
 		return err
 	}
 
+	slog.Info("rider WebSocket connected", "riderID", riderID)
+
 	defer func() {
+		slog.Info("rider WebSocket disconnected", "riderID", riderID)
 		h.svc.Unregister(riderID, client)
 		_ = conn.Close()
 	}()
-
-	conn.SetReadLimit(4096)
-	_ = conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-
-	conn.SetPongHandler(func(string) error {
-		_ = conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-		return nil
-	})
 
 	client.Send([]byte(`{"type":"connected"}`))
 
@@ -162,7 +146,6 @@ func (h *riderHandler) HandleWebSocket(c echo.Context) error {
 	}
 }
 
-// safeErrorMessage maps domain errors to user-safe messages without exposing internals.
 func safeErrorMessage(err error) string {
 	if errors.Is(err, errcustom.ErrNotFound) {
 		return "orden no encontrada"
@@ -174,54 +157,4 @@ func safeErrorMessage(err error) string {
 		return "solo puedes aceptar carreras con pago bancario"
 	}
 	return "error interno"
-}
-
-// riderWSClient is the WebSocket transport adapter for the RiderConn port.
-type riderWSClient struct {
-	conn      *websocket.Conn
-	send      chan []byte
-	closeOnce sync.Once
-}
-
-func newRiderWSClient(conn *websocket.Conn) *riderWSClient {
-	return &riderWSClient{
-		conn: conn,
-		send: make(chan []byte, 256),
-	}
-}
-
-func (c *riderWSClient) Send(msg []byte) {
-	select {
-	case c.send <- msg:
-	default:
-		slog.Warn("rider client slow, message dropped")
-	}
-}
-
-func (c *riderWSClient) Close() {
-	c.closeOnce.Do(func() { close(c.send) })
-}
-
-func (c *riderWSClient) writePump() {
-	ticker := time.NewTicker(30 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case msg, ok := <-c.send:
-			_ = c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-			if !ok {
-				_ = c.conn.WriteMessage(websocket.CloseMessage, nil)
-				return
-			}
-			if err := c.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
-				return
-			}
-		case <-ticker.C:
-			_ = c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				return
-			}
-		}
-	}
 }

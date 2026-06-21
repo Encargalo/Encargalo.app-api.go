@@ -25,6 +25,10 @@ func (r *ridersRepoAdapter) SearchActiveOrdersByRiderID(ctx context.Context, rid
 	return r.orders.SearchActiveOrdersByRiderID(ctx, riderID)
 }
 
+func (r *ridersRepoAdapter) SearchAvailableOrders(ctx context.Context) ([]ordersModels.Order, error) {
+	return r.orders.SearchAvailableOrders(ctx)
+}
+
 func (r *ridersRepoAdapter) SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*ordersModels.Order, error) {
 	return r.orders.SearchOrdersByID(ctx, orderID)
 }

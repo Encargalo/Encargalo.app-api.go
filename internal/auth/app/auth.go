@@ -44,18 +44,8 @@ func (a *appAuth) SignInCustomer(ctx context.Context, phone, password string) (u
 		return uuid.Nil, errcustom.ErrIncorrectAccessData
 	}
 
-	roleStrs, err := a.svc.GetUserRoles(ctx, custo.ID)
-	if err != nil {
-		slog.Warn("could not fetch user roles, falling back to Customer", "user_id", custo.ID, "error", err)
-		roleStrs = []string{string(models.Customer)}
-	}
-	roles := make([]models.Role, len(roleStrs))
-	for i, r := range roleStrs {
-		roles[i] = models.Role(r)
-	}
-
 	var session models.ActiveSession
-	session.BuildActiveSessionModel(custo.ID, string(models.Customer), roles, "", "", nil)
+	session.BuildActiveSessionModel(custo.ID, string(models.Customer), []models.Role{models.Customer}, "", "", nil)
 
 	if err := a.repo.SaveSession(ctx, &session); err != nil {
 		return uuid.Nil, err
@@ -78,18 +68,8 @@ func (a *appAuth) SignInEmployee(ctx context.Context, phone, password string) (u
 		return uuid.Nil, errcustom.ErrIncorrectAccessData
 	}
 
-	roleStrs, err := a.svc.GetUserRoles(ctx, empl.ID)
-	if err != nil {
-		slog.Warn("could not fetch user roles, falling back to primary role", "user_id", empl.ID, "error", err)
-		roleStrs = []string{empl.Role}
-	}
-	roles := make([]models.Role, len(roleStrs))
-	for i, r := range roleStrs {
-		roles[i] = models.Role(r)
-	}
-
 	var session models.ActiveSession
-	session.BuildActiveSessionModel(empl.ID, empl.Role, roles, "", "", &empl.ShopID)
+	session.BuildActiveSessionModel(empl.ID, empl.Role, []models.Role{models.Role(empl.Role)}, "", "", &empl.ShopID)
 
 	if err := a.repo.SaveSession(ctx, &session); err != nil {
 		return uuid.Nil, err

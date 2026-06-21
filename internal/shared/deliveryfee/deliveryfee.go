@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"Encargalo.app-api.go/internal/shared/adapters/googlemaps"
-	"Encargalo.app-api.go/internal/shared/config"
 )
 
 const (
@@ -26,11 +25,7 @@ func FromDistance(distanceMeters float64) float64 {
 }
 
 // Calculate obtiene la distancia vial entre tienda y dirección de entrega y retorna la tarifa.
-// En entornos distintos a production retorna 0 sin llamar a Google Maps.
 func Calculate(shopLat, shopLon, deliveryLat, deliveryLon float64) (float64, error) {
-	if config.Get().Environment.Current != "production" {
-		return 0, nil
-	}
 	distMeters, err := googlemaps.DistanceMeters(shopLat, shopLon, deliveryLat, deliveryLon)
 	if err != nil {
 		return 0, err
