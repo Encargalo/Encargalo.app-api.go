@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"strings"
 
+	bcvPorts "Encargalo.app-api.go/internal/bcv/domain/ports"
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
@@ -48,18 +49,22 @@ type orderApp struct {
 	uploadImage    uploadimage.UploadImage
 	riderMgr       ports.OrderRiderBroadcaster
 	finance        ports.RideEarningRecorder
+	shopCommission ports.ShopCommissionRecorder
+	bcv            bcvPorts.BcvApp
 	statusHandlers map[models.OrderStatus]statusHandler
 }
 
-func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.UsersRepo, stream ports.RedisStream, uploadImage uploadimage.UploadImage, riderMgr ports.OrderRiderBroadcaster, finance ports.RideEarningRecorder) ports.OrdersApp {
+func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.UsersRepo, stream ports.RedisStream, uploadImage uploadimage.UploadImage, riderMgr ports.OrderRiderBroadcaster, finance ports.RideEarningRecorder, shopCommission ports.ShopCommissionRecorder, bcv bcvPorts.BcvApp) ports.OrdersApp {
 	o := &orderApp{
-		repo:        repo,
-		shops:       shops,
-		custo:       custo,
-		stream:      stream,
-		uploadImage: uploadImage,
-		riderMgr:    riderMgr,
-		finance:     finance,
+		repo:           repo,
+		shops:          shops,
+		custo:          custo,
+		stream:         stream,
+		uploadImage:    uploadImage,
+		riderMgr:       riderMgr,
+		finance:        finance,
+		shopCommission: shopCommission,
+		bcv:            bcv,
 	}
 	o.statusHandlers = map[models.OrderStatus]statusHandler{
 		models.StatusInPreparation: func(ctx context.Context, order models.Order) error {
@@ -162,6 +167,8 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		return &models.Order{}, err
 	}
 
+	deliveryfee.ApplyBsToOrder(ctx, o.bcv, orderDB)
+
 	if err := o.stream.PublisherEvent(ctx, buildToDataProduceOrder(*orderDB)); err != nil {
 		slog.Error("error producing order to stream", "error", err)
 	}
@@ -230,6 +237,7 @@ func resolveAutoTransition(method models.PaymentMethod, status models.OrderStatu
 }
 
 func (o *orderApp) handleStatusTransition(ctx context.Context, status models.OrderStatus, order models.Order) {
+	deliveryfee.ApplyBsToOrder(ctx, o.bcv, &order)
 	if h, ok := o.statusHandlers[status]; ok {
 		if err := h(ctx, order); err != nil {
 			slog.Error("status transition handler failed", "status", status, "orderID", order.ID, "error", err)
@@ -327,6 +335,14 @@ func (o *orderApp) ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code 
 	if err := o.finance.RecordRideEarning(ctx, *order.RiderID, order.ID, order.DeliveryFee, order.TotalPrice, order.MethodPayment); err != nil {
 		slog.Error("error recording ride earning", "orderID", orderID, "error", err)
 	}
+
+	if err := o.shopCommission.RecordSaleCommission(ctx, order.ShopID, order.ID, order.TotalPrice, order.DeliveryFee, order.MethodPayment); err != nil {
+		slog.Error("error recording shop commission", "orderID", orderID, "shopID", order.ShopID, "error", err)
+	}
+
+	order.Status = string(models.StatusCompleted)
+	deliveryfee.ApplyBsToOrder(ctx, o.bcv, order)
+	o.riderMgr.BroadcastOrderUpdate(*order)
 
 	return nil
 }

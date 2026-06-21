@@ -12,12 +12,13 @@ type ShopsGroup interface {
 }
 
 type shopGroup struct {
-	handlerShops handler.Shops
-	middleAuth   auth.AuthMiddleware
+	handlerShops   handler.Shops
+	handlerFinance handler.ShopFinanceHandler
+	middleAuth     auth.AuthMiddleware
 }
 
-func NewShopsGroup(handlerShops handler.Shops, middleAuth auth.AuthMiddleware) ShopsGroup {
-	return &shopGroup{handlerShops, middleAuth}
+func NewShopsGroup(handlerShops handler.Shops, handlerFinance handler.ShopFinanceHandler, middleAuth auth.AuthMiddleware) ShopsGroup {
+	return &shopGroup{handlerShops, handlerFinance, middleAuth}
 }
 
 func (s *shopGroup) Resource(g *echo.Echo) {
@@ -34,4 +35,6 @@ func (s *shopGroup) Resource(g *echo.Echo) {
 		s.middleAuth.Require(models.OrderManager, models.Owner),
 	)
 	businessRoutes.GET("/me", s.handlerShops.GetMyShop)
+	businessRoutes.GET("/balance", s.handlerFinance.GetBalance)
+	businessRoutes.GET("/transactions", s.handlerFinance.ListTransactions)
 }

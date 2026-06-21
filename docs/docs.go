@@ -427,6 +427,43 @@ const docTemplate = `{
                 }
             }
         },
+        "/business/shops/balance": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna el balance actual del local (90% acumulado de ventas completadas) y los últimos 10 movimientos.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Finance"
+                ],
+                "summary": "Balance del local",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopBalanceResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/business/shops/me": {
             "get": {
                 "security": [
@@ -469,6 +506,57 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/business/shops/transactions": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna el historial paginado de movimientos de balance del local (ventas completadas).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Finance"
+                ],
+                "summary": "Historial de movimientos del local",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Página (default 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Límite por página, máx 50 (default 20)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
                         "schema": {
                             "type": "string"
                         }
@@ -1995,7 +2083,6 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "address",
-                "delivery_fee",
                 "id",
                 "items",
                 "method_payment",
@@ -2004,10 +2091,6 @@ const docTemplate = `{
             "properties": {
                 "address": {
                     "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.Address"
-                },
-                "delivery_fee": {
-                    "type": "number",
-                    "example": 1.6
                 },
                 "id": {
                     "type": "string",
@@ -2572,6 +2655,20 @@ const docTemplate = `{
                 }
             }
         },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.ShopBalanceResponse": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "number"
+                },
+                "transactions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionDTO"
+                    }
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_shops_domain_dtos.ShopResponse": {
             "type": "object",
             "properties": {
@@ -2616,6 +2713,49 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionDTO": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "movement_type": {
+                    "type": "string"
+                },
+                "order_id": {
+                    "type": "string"
+                },
+                "payment_method": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionsResponse": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "transactions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionDTO"
+                    }
                 }
             }
         },

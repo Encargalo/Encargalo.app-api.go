@@ -16,9 +16,10 @@ import (
 	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shared/jwt"
-	"Encargalo.app-api.go/internal/shops/app"
-	"Encargalo.app-api.go/internal/shops/handler"
-	"Encargalo.app-api.go/internal/shops/repo"
+	appShops "Encargalo.app-api.go/internal/shops/app"
+	shopsPorts "Encargalo.app-api.go/internal/shops/domain/ports"
+	handShops "Encargalo.app-api.go/internal/shops/handler"
+	repoShops "Encargalo.app-api.go/internal/shops/repo"
 	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/dig"
@@ -103,7 +104,13 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(authMiddle.NewAuthMidlleware)
 	_ = Container.Provide(handAuth.NewAuthHandler)
 	_ = Container.Provide(handCustomer.NewUsersHandler)
-	_ = Container.Provide(handler.NewShopsHandler)
+	_ = Container.Provide(handShops.NewShopsHandler)
+	_ = Container.Provide(handShops.NewShopFinanceHandler)
+	_ = Container.Provide(repoShops.NewShopFinanceRepo)
+	_ = Container.Provide(appShops.NewShopFinanceApp)
+	_ = Container.Provide(func(fa shopsPorts.ShopFinanceApp) ordersPorts.ShopCommissionRecorder {
+		return fa.(ordersPorts.ShopCommissionRecorder)
+	})
 	_ = Container.Provide(handProducts.NewProducsHandler)
 	_ = Container.Provide(handCustomer.NewUsersAddressHandler)
 	_ = Container.Provide(handOrders.NewOrderHandler)
@@ -122,7 +129,7 @@ func BuildContainer() *dig.Container {
 
 	_ = Container.Provide(appCustomer.NewUserApp)
 	_ = Container.Provide(appAuth.NewAuthApp)
-	_ = Container.Provide(app.NewShopsApp)
+	_ = Container.Provide(appShops.NewShopsApp)
 	_ = Container.Provide(appProducts.NewProductsApp)
 	_ = Container.Provide(appCustomer.NewUsersAddressApp)
 	_ = Container.Provide(appOrders.NewOrderApp)
@@ -131,7 +138,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(appRiders.NewFinanceApp)
 
 	_ = Container.Provide(repoAuth.NewAuthRepo)
-	_ = Container.Provide(repo.NewShopsRepository)
+	_ = Container.Provide(repoShops.NewShopsRepository)
 	_ = Container.Provide(repoProducts.NewProductsRepo)
 	_ = Container.Provide(repoCustomer.NewUsersRepo)
 	_ = Container.Provide(repoCustomer.NewUsersAddressRepo)
