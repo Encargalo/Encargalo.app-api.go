@@ -61,9 +61,6 @@ definitions:
     properties:
       address:
         $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.Address'
-      delivery_fee:
-        example: 1.6
-        type: number
       id:
         example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
         type: string
@@ -88,7 +85,6 @@ definitions:
         type: string
     required:
     - address
-    - delivery_fee
     - id
     - items
     - method_payment
@@ -457,6 +453,15 @@ definitions:
       type:
         type: string
     type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.ShopBalanceResponse:
+    properties:
+      balance:
+        type: number
+      transactions:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionDTO'
+        type: array
+    type: object
   Encargalo_app-api_go_internal_shops_domain_dtos.ShopResponse:
     properties:
       address:
@@ -487,6 +492,34 @@ definitions:
         type: integer
       type:
         type: string
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionDTO:
+    properties:
+      amount:
+        type: number
+      created_at:
+        type: string
+      id:
+        type: string
+      movement_type:
+        type: string
+      order_id:
+        type: string
+      payment_method:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionsResponse:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+      transactions:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionDTO'
+        type: array
     type: object
   Encargalo_app-api_go_internal_users_domain_dto.Address:
     properties:
@@ -895,6 +928,30 @@ paths:
       summary: Registrar un nuevo producto
       tags:
       - Business
+  /business/shops/balance:
+    get:
+      description: Retorna el balance actual del local (90% acumulado de ventas completadas)
+        y los últimos 10 movimientos.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopBalanceResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Balance del local
+      tags:
+      - Shops Finance
   /business/shops/me:
     get:
       description: Retorna la información del negocio asociado a la sesión del empleado
@@ -927,6 +984,39 @@ paths:
       summary: Obtener información del negocio propio
       tags:
       - Business
+  /business/shops/transactions:
+    get:
+      description: Retorna el historial paginado de movimientos de balance del local
+        (ventas completadas).
+      parameters:
+      - description: Página (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Límite por página, máx 50 (default 20)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionsResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Historial de movimientos del local
+      tags:
+      - Shops Finance
   /orders:
     post:
       consumes:

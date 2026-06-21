@@ -250,6 +250,22 @@ func (o *orders) AssignRider(ctx context.Context, orderID uuid.UUID, riderID uui
 	return nil
 }
 
+func (o *orders) SearchAvailableOrders(ctx context.Context) ([]models.Order, error) {
+	var orders []models.Order
+	err := o.db.NewSelect().
+		Model(&orders).
+		Where("rider_id IS NULL").
+		Where("status IN (?)", bun.In([]string{"In Preparation", "Ready"})).
+		Scan(ctx)
+	if err != nil {
+		return nil, errcustom.ErrUnexpectedError
+	}
+	if len(orders) == 0 {
+		return nil, errcustom.ErrNotFound
+	}
+	return orders, nil
+}
+
 func (o *orders) SearchActiveOrdersByRiderID(ctx context.Context, riderID uuid.UUID) ([]models.Order, error) {
 	var orders []models.Order
 	err := o.db.NewSelect().

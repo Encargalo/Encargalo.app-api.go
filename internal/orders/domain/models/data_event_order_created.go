@@ -13,5 +13,5 @@ func (data *DataEventOrderCreated) BuidlToModelEvent(order Order) {
 	data.OrderID = order.ID.String()
 	data.ShopID = order.ShopID.String()
 	data.CustomerID = order.CustomerID.String()
-	data.Total = order.TotalPrice
+	data.Total = order.TotalPrice - order.DeliveryFee
 }

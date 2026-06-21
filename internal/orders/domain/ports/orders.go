@@ -26,6 +26,7 @@ type OrdersRepo interface {
 	SearchAdditionsByID(ctx context.Context, additionID []uuid.UUID) ([]models.Addition, error)
 	SearchActiveOrdersByCriteria(ctx context.Context, criteria uuid.UUID, isShop bool) ([]models.Order, error)
 	UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string) error
+	SearchAvailableOrders(ctx context.Context) ([]models.Order, error)
 	SavePickupCode(ctx context.Context, orderID uuid.UUID, code string) error
 	SaveDeliveryCode(ctx context.Context, orderID uuid.UUID, code string) error
 	MarkPickupCodeUsed(ctx context.Context, orderID uuid.UUID) error
@@ -45,6 +46,12 @@ type OrderRiderBroadcaster interface {
 // Defined here to avoid a cross-domain import from orders → riders.
 type RideEarningRecorder interface {
 	RecordRideEarning(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee, totalPrice float64, method string) error
+}
+
+// ShopCommissionRecorder is implemented by shops/finance to record the shop's 90% commission on delivery completion.
+// Defined here to avoid a cross-domain import from orders → shops.
+type ShopCommissionRecorder interface {
+	RecordSaleCommission(ctx context.Context, shopID uuid.UUID, orderID uuid.UUID, totalPrice, deliveryFee float64, method string) error
 }
 
 // ManagerConn abstracts the WebSocket transport for order-manager connections.

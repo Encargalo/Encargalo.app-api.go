@@ -25,6 +25,8 @@ type Order struct {
 	Status             string          `bun:"status" json:"status"`
 	DeliveryFee        float64         `bun:"delivery_fee" json:"delivery_fee"`
 	TotalPrice         float64         `bun:"total_price" json:"total_price"`
+	DeliveryFeeBs      float64         `bun:"-" json:"delivery_fee_bs"`
+	TotalPriceBs       float64         `bun:"-" json:"total_price_bs"`
 	Details            json.RawMessage `bun:"details,type:jsonb" json:"details"`
 	PickupCode         *string         `bun:"pickup_code" json:"pickup_code,omitempty"`
 	DeliveryCode       *string         `bun:"delivery_code" json:"delivery_code,omitempty"`
@@ -128,6 +130,11 @@ func (o *Order) SetAdditionalsName(additions []Addition) {
 		}
 	}
 
+}
+
+func (o *Order) ApplyBsPrice(rate float64) {
+	o.DeliveryFeeBs = o.DeliveryFee * rate
+	o.TotalPriceBs = o.TotalPrice * rate
 }
 
 func (o *Order) SetAdditionalsPrices(addittions []Addition) {

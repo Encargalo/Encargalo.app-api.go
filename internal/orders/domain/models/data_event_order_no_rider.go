@@ -13,5 +13,5 @@ func (d *DataEventOrderNoRider) BuildFromOrder(order Order) {
 	d.OrderID = order.ID.String()
 	d.ShopID = order.ShopID.String()
 	d.CustomerID = order.CustomerID.String()
-	d.Total = order.TotalPrice
+	d.Total = order.TotalPrice - order.DeliveryFee
 }

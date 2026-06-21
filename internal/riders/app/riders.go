@@ -9,9 +9,11 @@ import (
 	"sync"
 	"time"
 
+	bcvPorts "Encargalo.app-api.go/internal/bcv/domain/ports"
 	ordersModels "Encargalo.app-api.go/internal/orders/domain/models"
 	riderModels "Encargalo.app-api.go/internal/riders/domain/models"
 	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
+	"Encargalo.app-api.go/internal/shared/deliveryfee"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 )
@@ -25,15 +27,17 @@ type appRidersManager struct {
 	repo            ridersPorts.RidersRepo
 	stream          ridersPorts.RidersStream
 	financeRepo     ridersPorts.FinanceRepo
+	bcv             bcvPorts.BcvApp
 }
 
-func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, financeRepo ridersPorts.FinanceRepo) ridersPorts.RidersApp {
+func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, financeRepo ridersPorts.FinanceRepo, bcv bcvPorts.BcvApp) ridersPorts.RidersApp {
 	return &appRidersManager{
 		availableRiders: make(map[uuid.UUID]ridersPorts.RiderConn),
 		assignedOrders:  make(map[uuid.UUID][]uuid.UUID),
 		repo:            repo,
 		stream:          stream,
 		financeRepo:     financeRepo,
+		bcv:             bcv,
 	}
 }
 
@@ -58,6 +62,26 @@ func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn
 
 	for _, order := range activeOrders {
 		data, _ := json.Marshal(riderBroadcast{Type: "order_update", Order: stripPickupOnly(order)})
+		conn.Send(data)
+	}
+
+	availableOrders, err := r.repo.SearchAvailableOrders(ctx)
+	if err != nil && !errors.Is(err, errcustom.ErrNotFound) {
+		return err
+	}
+
+	for _, order := range availableOrders {
+		stripped := order
+		stripped.PickupCode = nil
+		stripped.DeliveryCode = nil
+		deliveryfee.ApplyBsToOrder(ctx, r.bcv, &stripped)
+		earning := RiderEarning(stripped.DeliveryFee)
+		msg := riderBroadcast{Type: "new_order", Order: stripped, RiderEarnings: &earning}
+		if isCashPayment(stripped.MethodPayment) {
+			total := stripped.TotalPrice
+			msg.CollectAmount = &total
+		}
+		data, _ := json.Marshal(msg)
 		conn.Send(data)
 	}
 
@@ -176,6 +200,7 @@ func (r *appRidersManager) AcceptOrder(ctx context.Context, riderID uuid.UUID, o
 	r.assignedOrders[riderID] = append(r.assignedOrders[riderID], orderID)
 	r.mu.Unlock()
 
+	deliveryfee.ApplyBsToOrder(ctx, r.bcv, order)
 	earning := RiderEarning(order.DeliveryFee)
 	acceptedMsg := riderBroadcast{Type: "order_accepted", Order: stripPickupOnly(*order), RiderEarnings: &earning}
 	if isCashPayment(order.MethodPayment) {
