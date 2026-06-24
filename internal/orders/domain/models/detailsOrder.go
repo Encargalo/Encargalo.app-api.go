@@ -15,10 +15,6 @@ type Details struct {
 }
 
 type PaymentDetails struct {
-	Nombre          string `json:"nombre"`
-	Cedula          string `json:"cedula"`
-	Telefono        string `json:"telefono"`
-	Banco           string `json:"banco"`
 	PaymentProofURL string `json:"payment_proof_url"`
 }
 

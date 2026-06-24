@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"log/slog"
+	"time"
 
 	"Encargalo.app-api.go/internal/riders/domain/models"
 	"Encargalo.app-api.go/internal/riders/domain/ports"
@@ -91,6 +92,24 @@ func (r *financeRepo) RecordMovement(ctx context.Context, entityID uuid.UUID, en
 	}
 
 	return newAmount, nil
+}
+
+func (r *financeRepo) GetLastWithdrawal(ctx context.Context, entityID uuid.UUID, entityType string) (*time.Time, error) {
+	var tx models.Transaction
+	err := r.db.NewSelect().
+		Model(&tx).
+		Where("entity_id = ? AND entity_type = ? AND movement_type = ?", entityID, entityType, models.MovementTypeWithdraw).
+		OrderExpr("created_at DESC").
+		Limit(1).
+		Scan(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		slog.Error("GetLastWithdrawal: failed", "entityID", entityID, "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+	return &tx.CreatedAt, nil
 }
 
 func (r *financeRepo) ListTransactions(ctx context.Context, entityID uuid.UUID, entityType string, page, limit int) ([]models.Transaction, int, error) {

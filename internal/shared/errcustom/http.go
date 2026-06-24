@@ -22,8 +22,8 @@ var statusMap = map[error]int{
 	ErrCodeAlreadyUsed:      http.StatusConflict,
 	ErrInvalidTransition:    http.StatusUnprocessableEntity,
 	ErrOrderAlreadyAssigned: http.StatusConflict,
-	ErrRiderInRiskZone:      http.StatusForbidden,
 	ErrInsufficientBalance:  http.StatusUnprocessableEntity,
+	ErrWithdrawalCooldown:   http.StatusTooManyRequests,
 	ErrInvalidStatus:        http.StatusBadRequest,
 }
 

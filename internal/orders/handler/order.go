@@ -29,7 +29,7 @@ func NewOrderHandler(svc ports.OrdersApp, svc2 ports.AppManagerOrder) OrderHandl
 
 // CreateOrder godoc
 // @Summary      Crear una nueva orden
-// @Description  Crea una nueva orden con los productos e información de entrega proporcionados. El customer_id se obtiene automáticamente del token de sesión. Si el método de pago es PagoMovil, se debe enviar `pago_movil_data` y `payment_proof_image` (base64).
+// @Description  Crea una nueva orden con los productos e información de entrega proporcionados. El customer_id se obtiene automáticamente del token de sesión. Se debe enviar `payment_proof_image` en base64.
 // @Tags         Orders
 // @Accept       json
 // @Produce      json

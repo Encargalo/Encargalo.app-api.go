@@ -7,6 +7,7 @@ import (
 	"Encargalo.app-api.go/internal/riders/domain/dtos"
 	"Encargalo.app-api.go/internal/riders/domain/models"
 	"Encargalo.app-api.go/internal/riders/domain/ports"
+	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 )
 
@@ -20,25 +21,14 @@ func NewFinanceApp(repo ports.FinanceRepo) ports.FinanceApp {
 	return &financeApp{repo}
 }
 
-// RecordRideEarning adjusts the rider's balance when an order is completed.
-// Cash orders: balance decreases (rider holds the cash).
-// Bank orders: balance increases (platform holds the cash and owes the rider).
-func (f *financeApp) RecordRideEarning(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee, totalPrice float64, method string) error {
-	var delta float64
-	var movType string
-
-	if isCashPayment(method) {
-		delta = -totalPrice
-		movType = string(models.MovementTypeRideCash)
-	} else {
-		delta = deliveryFee * models.RiderShare
-		movType = string(models.MovementTypeRideBank)
-	}
+// RecordRideEarning credits the rider's balance with 80% of the delivery fee.
+func (f *financeApp) RecordRideEarning(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee, _ float64, method string) error {
+	delta := deliveryFee * models.RiderShare
 
 	tx := models.Transaction{
 		ID:            uuid.New(),
 		OrderID:       &orderID,
-		MovementType:  movType,
+		MovementType:  string(models.MovementTypeRideBank),
 		PaymentMethod: &method,
 		CreatedAt:     time.Now(),
 	}
@@ -66,6 +56,14 @@ func (f *financeApp) GetBalance(ctx context.Context, riderID uuid.UUID) (dtos.Ba
 }
 
 func (f *financeApp) RequestWithdrawal(ctx context.Context, riderID uuid.UUID) (dtos.WithdrawalResponse, error) {
+	lastWithdrawal, err := f.repo.GetLastWithdrawal(ctx, riderID, entityTypeRider)
+	if err != nil {
+		return dtos.WithdrawalResponse{}, err
+	}
+	if lastWithdrawal != nil && time.Since(*lastWithdrawal) < models.WithdrawalCooldown {
+		return dtos.WithdrawalResponse{}, errcustom.ErrWithdrawalCooldown
+	}
+
 	balance, err := f.repo.GetBalance(ctx, riderID, entityTypeRider)
 	if err != nil {
 		return dtos.WithdrawalResponse{}, err
@@ -102,17 +100,10 @@ func (f *financeApp) ListTransactions(ctx context.Context, riderID uuid.UUID, pa
 }
 
 func getZone(balance float64) models.Zone {
-	if balance <= models.RiskThreshold {
-		return models.ZoneRisk
-	}
 	if balance >= models.WithdrawalMinBalance {
 		return models.ZoneWithdrawalAvailable
 	}
 	return models.ZoneNormal
-}
-
-func isCashPayment(method string) bool {
-	return method == "EfectivoBs" || method == "EfectivoDolar"
 }
 
 // RiderEarning returns the rider's net earning from a delivery fee (80%).

@@ -26,17 +26,15 @@ type appRidersManager struct {
 	assignedOrders  map[uuid.UUID][]uuid.UUID // riderID → []orderID
 	repo            ridersPorts.RidersRepo
 	stream          ridersPorts.RidersStream
-	financeRepo     ridersPorts.FinanceRepo
 	bcv             bcvPorts.BcvApp
 }
 
-func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, financeRepo ridersPorts.FinanceRepo, bcv bcvPorts.BcvApp) ridersPorts.RidersApp {
+func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPorts.BcvApp) ridersPorts.RidersApp {
 	return &appRidersManager{
 		availableRiders: make(map[uuid.UUID]ridersPorts.RiderConn),
 		assignedOrders:  make(map[uuid.UUID][]uuid.UUID),
 		repo:            repo,
 		stream:          stream,
-		financeRepo:     financeRepo,
 		bcv:             bcv,
 	}
 }
@@ -61,7 +59,7 @@ func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn
 	r.mu.Unlock()
 
 	for _, order := range activeOrders {
-		data, _ := json.Marshal(riderBroadcast{Type: "order_update", Order: stripPickupOnly(order)})
+		data, _ := json.Marshal(riderBroadcast{Type: "order_update", Order: stripForRider(order)})
 		conn.Send(data)
 	}
 
@@ -71,17 +69,9 @@ func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn
 	}
 
 	for _, order := range availableOrders {
-		stripped := order
-		stripped.PickupCode = nil
-		stripped.DeliveryCode = nil
+		stripped := stripForRider(order)
 		deliveryfee.ApplyBsToOrder(ctx, r.bcv, &stripped)
-		earning := RiderEarning(stripped.DeliveryFee)
-		msg := riderBroadcast{Type: "new_order", Order: stripped, RiderEarnings: &earning}
-		if isCashPayment(stripped.MethodPayment) {
-			total := stripped.TotalPrice
-			msg.CollectAmount = &total
-		}
-		data, _ := json.Marshal(msg)
+		data, _ := json.Marshal(riderBroadcast{Type: "new_order", Order: stripped})
 		conn.Send(data)
 	}
 
@@ -99,18 +89,8 @@ func (r *appRidersManager) Unregister(riderID uuid.UUID, conn ridersPorts.RiderC
 }
 
 func (r *appRidersManager) BroadcastNewOrder(order ordersModels.Order) {
-	stripped := order
-	stripped.PickupCode = nil
-	stripped.DeliveryCode = nil
-
-	earning := RiderEarning(order.DeliveryFee)
-	msg := riderBroadcast{Type: "new_order", Order: stripped, RiderEarnings: &earning}
-	if isCashPayment(order.MethodPayment) {
-		total := order.TotalPrice
-		msg.CollectAmount = &total
-	}
-
-	data, err := json.Marshal(msg)
+	stripped := stripForRider(order)
+	data, err := json.Marshal(riderBroadcast{Type: "new_order", Order: stripped})
 	if err != nil {
 		slog.Error("error marshaling new_order broadcast", "error", err)
 		return
@@ -144,7 +124,7 @@ func (r *appRidersManager) BroadcastNewOrder(order ordersModels.Order) {
 }
 
 func (r *appRidersManager) BroadcastOrderUpdate(order ordersModels.Order) {
-	data, err := json.Marshal(riderBroadcast{Type: "order_update", Order: stripPickupOnly(order)})
+	data, err := json.Marshal(riderBroadcast{Type: "order_update", Order: stripForRider(order)})
 	if err != nil {
 		slog.Error("error marshaling order_update for rider", "error", err)
 		return
@@ -173,14 +153,6 @@ func (r *appRidersManager) AcceptOrder(ctx context.Context, riderID uuid.UUID, o
 		return errcustom.ErrInvalidTransition
 	}
 
-	balance, err := r.financeRepo.GetBalance(ctx, riderID, entityTypeRider)
-	if err != nil {
-		return err
-	}
-	if getZone(balance) == riderModels.ZoneRisk && isCashPayment(order.MethodPayment) {
-		return errcustom.ErrRiderInRiskZone
-	}
-
 	if err := r.repo.AssignRider(ctx, orderID, riderID); err != nil {
 		if errors.Is(err, errcustom.ErrOrderAlreadyAssigned) {
 			msg, _ := json.Marshal(map[string]string{"type": "order_taken", "order_id": orderID.String()})
@@ -201,26 +173,23 @@ func (r *appRidersManager) AcceptOrder(ctx context.Context, riderID uuid.UUID, o
 	r.mu.Unlock()
 
 	deliveryfee.ApplyBsToOrder(ctx, r.bcv, order)
-	earning := RiderEarning(order.DeliveryFee)
-	acceptedMsg := riderBroadcast{Type: "order_accepted", Order: stripPickupOnly(*order), RiderEarnings: &earning}
-	if isCashPayment(order.MethodPayment) {
-		total := order.TotalPrice
-		acceptedMsg.CollectAmount = &total
-	}
-	accepted, _ := json.Marshal(acceptedMsg)
+	accepted, _ := json.Marshal(riderBroadcast{Type: "order_accepted", Order: stripForRider(*order)})
 	conn.Send(accepted)
 
 	return nil
 }
 
-func stripPickupOnly(order ordersModels.Order) ordersModels.Order {
+func stripForRider(order ordersModels.Order) ordersModels.Order {
 	order.DeliveryCode = nil
+	order.TotalPrice = 0
+	order.TotalPriceBs = 0
+	order.Details = nil
+	order.DeliveryFee = order.DeliveryFee * riderModels.RiderShare
+	order.DeliveryFeeBs = order.DeliveryFeeBs * riderModels.RiderShare
 	return order
 }
 
 type riderBroadcast struct {
-	Type          string             `json:"type"`
-	Order         ordersModels.Order `json:"order"`
-	RiderEarnings *float64           `json:"rider_earnings,omitempty"`
-	CollectAmount *float64           `json:"collect_amount,omitempty"`
+	Type  string             `json:"type"`
+	Order ordersModels.Order `json:"order"`
 }

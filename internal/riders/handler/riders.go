@@ -153,8 +153,5 @@ func safeErrorMessage(err error) string {
 	if errors.Is(err, errcustom.ErrInvalidTransition) {
 		return "la orden no está disponible para aceptar"
 	}
-	if errors.Is(err, errcustom.ErrRiderInRiskZone) {
-		return "solo puedes aceptar carreras con pago bancario"
-	}
 	return "error interno"
 }

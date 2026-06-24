@@ -70,13 +70,9 @@ definitions:
         type: array
       method_payment:
         enum:
-        - EfectivoBs
-        - EfectivoDolar
         - PagoMovil
-        example: EfectivoBs
+        example: PagoMovil
         type: string
-      pago_movil_data:
-        $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.PagoMovilData'
       payment_proof_image:
         example: data:image/jpeg;base64,/9j/4AAQ...
         type: string
@@ -103,22 +99,6 @@ definitions:
       message:
         example: invalid request
         type: string
-    type: object
-  Encargalo_app-api_go_internal_orders_domain_dtos.PagoMovilData:
-    properties:
-      banco:
-        type: string
-      cedula:
-        type: string
-      nombre:
-        type: string
-      telefono:
-        type: string
-    required:
-    - banco
-    - cedula
-    - nombre
-    - telefono
     type: object
   Encargalo_app-api_go_internal_payment_methods_domain_models.PaymentMethod:
     properties:
@@ -374,12 +354,10 @@ definitions:
     type: object
   Encargalo_app-api_go_internal_riders_domain_models.Zone:
     enum:
-    - risk
     - normal
     - withdrawal_available
     type: string
     x-enum-varnames:
-    - ZoneRisk
     - ZoneNormal
     - ZoneWithdrawalAvailable
   Encargalo_app-api_go_internal_shops_domain_dtos.MatchedItemRule:
@@ -1023,8 +1001,7 @@ paths:
       - application/json
       description: Crea una nueva orden con los productos e información de entrega
         proporcionados. El customer_id se obtiene automáticamente del token de sesión.
-        Si el método de pago es PagoMovil, se debe enviar `pago_movil_data` y `payment_proof_image`
-        (base64).
+        Se debe enviar `payment_proof_image` en base64.
       parameters:
       - description: Datos de la orden
         in: body

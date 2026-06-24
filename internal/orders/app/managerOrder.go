@@ -19,10 +19,7 @@ type appManagerOrder struct {
 	svc                 ports.OrdersApp
 }
 
-type orderBroadcast struct {
-	Type  string       `json:"type"`
-	Order models.Order `json:"order"`
-}
+const shopCommissionRate = 0.10
 
 func NewManagerOrderApp(svc ports.OrdersApp) ports.AppManagerOrder {
 	return &appManagerOrder{
@@ -51,12 +48,8 @@ func (s *appManagerOrder) Register(
 		return err
 	}
 
-	role := models.ClientRoleCustomer
-	if isShop {
-		role = models.ClientRoleShop
-	}
 	for _, order := range orders {
-		data, _ := json.Marshal(orderBroadcast{Type: "order_update", Order: stripCodes(order, role)})
+		data, _ := json.Marshal(buildBroadcast("order_update", order, isShop))
 		conn.Send(data)
 	}
 
@@ -97,12 +90,12 @@ func (s *appManagerOrder) Unregister(
 }
 
 func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
-	shopData, err := json.Marshal(orderBroadcast{Type: "order_update", Order: stripCodes(order, models.ClientRoleShop)})
+	shopData, err := json.Marshal(buildBroadcast("order_update", order, true))
 	if err != nil {
 		return err
 	}
 
-	customerData, err := json.Marshal(orderBroadcast{Type: "order_update", Order: stripCodes(order, models.ClientRoleCustomer)})
+	customerData, err := json.Marshal(buildBroadcast("order_update", order, false))
 	if err != nil {
 		return err
 	}
@@ -122,13 +115,29 @@ func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
 	return nil
 }
 
-// stripCodes filtra los códigos de confirmación según el rol del destinatario.
-// Shop → ninguno; Customer → solo delivery_code; Rider → solo pickup_code.
+func buildBroadcast(msgType string, order models.Order, isShop bool) models.OrderBroadcast {
+	b := models.OrderBroadcast{Type: msgType}
+	if isShop {
+		base := order.TotalPrice - order.DeliveryFee
+		commission := base * shopCommissionRate
+		net := base - commission
+		b.Order = stripCodes(order, models.ClientRoleShop)
+		b.SaleAmount = &base
+		b.Commission = &commission
+		b.NetAmount = &net
+	} else {
+		b.Order = stripCodes(order, models.ClientRoleCustomer)
+	}
+	return b
+}
+
 func stripCodes(order models.Order, role models.ClientRole) models.Order {
 	switch role {
 	case models.ClientRoleShop:
 		order.PickupCode = nil
 		order.DeliveryCode = nil
+		order.TotalPrice = order.TotalPrice - order.DeliveryFee
+		order.DeliveryFee = 0
 	case models.ClientRoleCustomer:
 		order.PickupCode = nil
 	case models.ClientRoleRider:
