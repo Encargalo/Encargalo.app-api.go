@@ -396,6 +396,49 @@ definitions:
       shop_id:
         type: string
     type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.PeriodMetrics:
+    properties:
+      orders_completed:
+        type: integer
+      orders_rejected:
+        type: integer
+      rejection_rate:
+        type: number
+      total_earned:
+        type: number
+      total_lost_rejections:
+        type: number
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.SalesDataPoint:
+    properties:
+      date:
+        type: string
+      earned:
+        type: number
+      lost:
+        type: number
+      orders_completed:
+        type: integer
+      orders_rejected:
+        type: integer
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.SalesOverTimeResponse:
+    properties:
+      current:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.SalesDataPoint'
+        type: array
+      granularity:
+        type: string
+      next_cursor:
+        type: string
+      period:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StatsPeriod'
+      previous:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.SalesDataPoint'
+        type: array
+    type: object
   Encargalo_app-api_go_internal_shops_domain_dtos.SearchShopResponse:
     properties:
       address:
@@ -497,6 +540,53 @@ definitions:
       transactions:
         items:
           $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionDTO'
+        type: array
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.StatsPeriod:
+    enum:
+    - day
+    - week
+    - month
+    type: string
+    x-enum-varnames:
+    - PeriodDay
+    - PeriodWeek
+    - PeriodMonth
+  Encargalo_app-api_go_internal_shops_domain_dtos.StatsSummaryResponse:
+    properties:
+      current:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.PeriodMetrics'
+      current_balance:
+        type: number
+      period:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StatsPeriod'
+      previous:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.PeriodMetrics'
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.TopProductItem:
+    properties:
+      image:
+        type: string
+      item_id:
+        type: string
+      name:
+        type: string
+      quantity_sold:
+        type: integer
+      total_revenue:
+        type: number
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.TopProductsResponse:
+    properties:
+      current:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.TopProductItem'
+        type: array
+      period:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StatsPeriod'
+      previous:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.TopProductItem'
         type: array
     type: object
   Encargalo_app-api_go_internal_users_domain_dto.Address:
@@ -962,6 +1052,130 @@ paths:
       summary: Obtener información del negocio propio
       tags:
       - Business
+  /business/shops/stats/sales-over-time:
+    get:
+      description: Retorna la serie temporal de ventas (ganadas y perdidas) del período
+        actual y anterior, con granularidad por hora (day) o por día (week/month).
+      parameters:
+      - description: 'Período: day, week, month (default: month)'
+        in: query
+        name: period
+        type: string
+      - description: Cursor de paginación (fecha ISO 8601)
+        in: query
+        name: cursor
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.SalesOverTimeResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Ventas en el tiempo
+      tags:
+      - Shops Stats
+  /business/shops/stats/summary:
+    get:
+      description: 'Retorna KPIs del período actual y anterior: total ganado, pérdidas
+        por rechazos, órdenes completadas/rechazadas y tasa de rechazo.'
+      parameters:
+      - description: 'Período: day, week, month (default: month)'
+        in: query
+        name: period
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StatsSummaryResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Resumen estadístico del local
+      tags:
+      - Shops Stats
+  /business/shops/stats/top-products:
+    get:
+      description: Retorna el ranking de productos más vendidos en el período actual
+        y anterior (solo órdenes Completed).
+      parameters:
+      - description: 'Período: day, week, month (default: month)'
+        in: query
+        name: period
+        type: string
+      - description: Cantidad de productos (max 20, default 10)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.TopProductsResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Productos más vendidos
+      tags:
+      - Shops Stats
+  /business/shops/stats/transactions/export:
+    get:
+      description: Descarga el historial completo de movimientos del período como
+        archivo CSV.
+      parameters:
+      - description: 'Período: day, week, month (default: month)'
+        in: query
+        name: period
+        type: string
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: Archivo CSV
+          schema:
+            type: file
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Exportar movimientos en CSV
+      tags:
+      - Shops Stats
   /business/shops/transactions:
     get:
       description: Retorna el historial paginado de movimientos de balance del local

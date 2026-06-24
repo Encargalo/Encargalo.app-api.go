@@ -15,7 +15,7 @@ type OrdersApp interface {
 	SearchActiveOrdersByCriteria(ctx context.Context, criteria uuid.UUID, isShop bool) ([]models.Order, error)
 	UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string, requesterID uuid.UUID, isShop bool) (models.Order, error)
 	ConfirmPickup(ctx context.Context, orderID uuid.UUID, code string) (models.Order, error)
-	ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code string) error
+	ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code string) (models.Order, error)
 }
 
 type OrdersRepo interface {

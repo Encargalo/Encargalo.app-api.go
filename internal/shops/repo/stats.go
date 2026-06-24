@@ -62,7 +62,7 @@ func (r *shopStatsRepo) GetPeriodMetrics(ctx context.Context, shopID uuid.UUID, 
 	}
 	err = r.db.NewSelect().
 		TableExpr("orders.orders").
-		ColumnExpr("COUNT(*) AS cnt, COALESCE(SUM(total_price), 0) AS lost").
+		ColumnExpr("COUNT(*) AS cnt, COALESCE(SUM((total_price - delivery_fee) * 0.9), 0) AS lost").
 		Where("shop_id = ? AND status = 'Rejected'", shopID).
 		Where("created_at >= ? AND created_at < ?", from, to).
 		Scan(ctx, &rejRow)
@@ -142,7 +142,7 @@ func (r *shopStatsRepo) GetSalesOverTime(ctx context.Context, shopID uuid.UUID, 
 		TableExpr("orders.orders o").
 		ColumnExpr(truncExpr+" AS date").
 		ColumnExpr("COALESCE(SUM(ft.amount), 0) AS earned").
-		ColumnExpr("COALESCE(SUM(CASE WHEN o.status = 'Rejected' THEN o.total_price ELSE 0 END), 0) AS lost").
+		ColumnExpr("COALESCE(SUM(CASE WHEN o.status = 'Rejected' THEN (o.total_price - o.delivery_fee) * 0.9 ELSE 0 END), 0) AS lost").
 		ColumnExpr("COUNT(CASE WHEN o.status = 'Completed' THEN 1 END) AS orders_completed").
 		ColumnExpr("COUNT(CASE WHEN o.status = 'Rejected' THEN 1 END) AS orders_rejected").
 		Join("LEFT JOIN finance.transactions ft ON ft.order_id = o.id AND ft.entity_type = ?", shopModels.EntityTypeShop).

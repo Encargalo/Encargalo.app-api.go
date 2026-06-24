@@ -152,8 +152,13 @@ func (o *orderHandler) ConfirmDelivery(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	if err := o.svc.ConfirmDelivery(ctx, orderID, req.Code); err != nil {
+	order, err := o.svc.ConfirmDelivery(ctx, orderID, req.Code)
+	if err != nil {
 		return err
+	}
+
+	if err := o.svc2.BroadcastOrder(order); err != nil {
+		slog.Error("error broadcasting order after confirm-delivery", "error", err)
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "Order delivered successfully"})
