@@ -106,8 +106,11 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(handCustomer.NewUsersHandler)
 	_ = Container.Provide(handShops.NewShopsHandler)
 	_ = Container.Provide(handShops.NewShopFinanceHandler)
+	_ = Container.Provide(handShops.NewShopStatsHandler)
 	_ = Container.Provide(repoShops.NewShopFinanceRepo)
+	_ = Container.Provide(repoShops.NewShopStatsRepo)
 	_ = Container.Provide(appShops.NewShopFinanceApp)
+	_ = Container.Provide(appShops.NewShopStatsApp)
 	_ = Container.Provide(func(fa shopsPorts.ShopFinanceApp) ordersPorts.ShopCommissionRecorder {
 		return fa.(ordersPorts.ShopCommissionRecorder)
 	})

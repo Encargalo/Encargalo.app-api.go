@@ -14,11 +14,12 @@ type ShopsGroup interface {
 type shopGroup struct {
 	handlerShops   handler.Shops
 	handlerFinance handler.ShopFinanceHandler
+	handlerStats   handler.ShopStatsHandler
 	middleAuth     auth.AuthMiddleware
 }
 
-func NewShopsGroup(handlerShops handler.Shops, handlerFinance handler.ShopFinanceHandler, middleAuth auth.AuthMiddleware) ShopsGroup {
-	return &shopGroup{handlerShops, handlerFinance, middleAuth}
+func NewShopsGroup(handlerShops handler.Shops, handlerFinance handler.ShopFinanceHandler, handlerStats handler.ShopStatsHandler, middleAuth auth.AuthMiddleware) ShopsGroup {
+	return &shopGroup{handlerShops, handlerFinance, handlerStats, middleAuth}
 }
 
 func (s *shopGroup) Resource(g *echo.Echo) {
@@ -37,4 +38,13 @@ func (s *shopGroup) Resource(g *echo.Echo) {
 	businessRoutes.GET("/me", s.handlerShops.GetMyShop)
 	businessRoutes.GET("/balance", s.handlerFinance.GetBalance)
 	businessRoutes.GET("/transactions", s.handlerFinance.ListTransactions)
+
+	statsRoutes := g.Group("/business/shops/stats",
+		s.middleAuth.Auth,
+		s.middleAuth.Require(models.OrderManager, models.Owner),
+	)
+	statsRoutes.GET("/summary", s.handlerStats.GetSummary)
+	statsRoutes.GET("/top-products", s.handlerStats.GetTopProducts)
+	statsRoutes.GET("/sales-over-time", s.handlerStats.GetSalesOverTime)
+	statsRoutes.GET("/transactions/export", s.handlerStats.ExportTransactions)
 }
