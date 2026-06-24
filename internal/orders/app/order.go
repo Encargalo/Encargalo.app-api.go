@@ -29,13 +29,10 @@ var allowedTransitionStatuses = map[models.OrderStatus]bool{
 	models.StatusReady:         true,
 	models.StatusOnTheWay:      true,
 	models.StatusCompleted:     true,
-	models.StatusCancelled:     true,
 	models.StatusRejected:      true,
 }
 
 var paymentAutoTransitions = map[models.PaymentMethod]map[models.OrderStatus]models.OrderStatus{
-	models.MethodCashBs:    {models.StatusAccepted: models.StatusInPreparation},
-	models.MethodCashUSD:   {models.StatusAccepted: models.StatusInPreparation},
 	models.MethodPagoMovil: {models.StatusAccepted: models.StatusInPreparation},
 }
 
@@ -141,16 +138,12 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 	DetailsModel := new(models.Details)
 	DetailsModel.BuildDetails(orderModel, shop, customer)
 
-	if order.PagoMovilData != nil {
+	if order.PaymentProofImage != "" {
 		proofUpload, err := o.uploadImage.UploadImage(ctx, order.PaymentProofImage)
 		if err != nil {
 			return &models.Order{}, errcustom.ErrUploadingImage
 		}
 		DetailsModel.PaymentDetails = &models.PaymentDetails{
-			Nombre:          order.PagoMovilData.Nombre,
-			Cedula:          order.PagoMovilData.Cedula,
-			Telefono:        order.PagoMovilData.Telefono,
-			Banco:           order.PagoMovilData.Banco,
 			PaymentProofURL: proofUpload.SecureURL,
 		}
 	}
@@ -207,7 +200,7 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 		return models.Order{}, errcustom.ErrInvalidStatus
 	}
 
-	if !isShop && newStatus != models.StatusCancelled {
+	if !isShop {
 		return models.Order{}, errcustom.ErrUnautorized
 	}
 
@@ -245,6 +238,11 @@ func (o *orderApp) handleStatusTransition(ctx context.Context, status models.Ord
 		return
 	}
 	o.riderMgr.BroadcastOrderUpdate(order)
+}
+
+func (o *orderApp) notifyRiderUpdate(ctx context.Context, order *models.Order) {
+	deliveryfee.ApplyBsToOrder(ctx, o.bcv, order)
+	o.riderMgr.BroadcastOrderUpdate(*order)
 }
 
 func (o *orderApp) generateAndSavePickupCode(ctx context.Context, orderID uuid.UUID) {
@@ -287,18 +285,21 @@ func (o *orderApp) ConfirmPickup(ctx context.Context, orderID uuid.UUID, code st
 			return models.Order{}, err
 		}
 		order.Status = string(models.StatusOnTheWay)
+		o.notifyRiderUpdate(ctx, order)
 		return *order, nil
 	}
 
 	if err := o.repo.SaveDeliveryCode(ctx, orderID, deliveryCode); err != nil {
 		slog.Error("error saving delivery code", "orderID", orderID, "error", err)
 	}
+	order.DeliveryCode = &deliveryCode
 
 	if err := o.repo.UpdateOrderStatus(ctx, orderID, string(models.StatusOnTheWay)); err != nil {
 		return models.Order{}, err
 	}
 
 	order.Status = string(models.StatusOnTheWay)
+	o.notifyRiderUpdate(ctx, order)
 	return *order, nil
 }
 
@@ -341,8 +342,7 @@ func (o *orderApp) ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code 
 	}
 
 	order.Status = string(models.StatusCompleted)
-	deliveryfee.ApplyBsToOrder(ctx, o.bcv, order)
-	o.riderMgr.BroadcastOrderUpdate(*order)
+	o.notifyRiderUpdate(ctx, order)
 
 	return nil
 }

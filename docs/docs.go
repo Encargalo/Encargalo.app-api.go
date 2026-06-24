@@ -571,7 +571,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Crea una nueva orden con los productos e información de entrega proporcionados. El customer_id se obtiene automáticamente del token de sesión. Si el método de pago es PagoMovil, se debe enviar ` + "`" + `pago_movil_data` + "`" + ` y ` + "`" + `payment_proof_image` + "`" + ` (base64).",
+                "description": "Crea una nueva orden con los productos e información de entrega proporcionados. El customer_id se obtiene automáticamente del token de sesión. Se debe enviar ` + "`" + `payment_proof_image` + "`" + ` en base64.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2105,14 +2105,9 @@ const docTemplate = `{
                 "method_payment": {
                     "type": "string",
                     "enum": [
-                        "EfectivoBs",
-                        "EfectivoDolar",
                         "PagoMovil"
                     ],
-                    "example": "EfectivoBs"
-                },
-                "pago_movil_data": {
-                    "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.PagoMovilData"
+                    "example": "PagoMovil"
                 },
                 "payment_proof_image": {
                     "type": "string",
@@ -2142,29 +2137,6 @@ const docTemplate = `{
                 "message": {
                     "type": "string",
                     "example": "invalid request"
-                }
-            }
-        },
-        "Encargalo_app-api_go_internal_orders_domain_dtos.PagoMovilData": {
-            "type": "object",
-            "required": [
-                "banco",
-                "cedula",
-                "nombre",
-                "telefono"
-            ],
-            "properties": {
-                "banco": {
-                    "type": "string"
-                },
-                "cedula": {
-                    "type": "string"
-                },
-                "nombre": {
-                    "type": "string"
-                },
-                "telefono": {
-                    "type": "string"
                 }
             }
         },
@@ -2537,12 +2509,10 @@ const docTemplate = `{
         "Encargalo_app-api_go_internal_riders_domain_models.Zone": {
             "type": "string",
             "enum": [
-                "risk",
                 "normal",
                 "withdrawal_available"
             ],
             "x-enum-varnames": [
-                "ZoneRisk",
                 "ZoneNormal",
                 "ZoneWithdrawalAvailable"
             ]

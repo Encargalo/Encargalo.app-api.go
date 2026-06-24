@@ -22,15 +22,10 @@ func (f *shopFinanceApp) RecordSaleCommission(ctx context.Context, shopID uuid.U
 	base := totalPrice - deliveryFee
 	delta := base * models.ShopShare
 
-	movType := string(models.MovementTypeSaleDeliveryBank)
-	if isCashPayment(method) {
-		movType = string(models.MovementTypeSaleDeliveryCash)
-	}
-
 	tx := models.ShopTransaction{
 		ID:            uuid.New(),
 		OrderID:       &orderID,
-		MovementType:  movType,
+		MovementType:  string(models.MovementTypeSaleDeliveryBank),
 		PaymentMethod: &method,
 		CreatedAt:     time.Now(),
 	}
@@ -72,10 +67,6 @@ func (f *shopFinanceApp) ListTransactions(ctx context.Context, shopID uuid.UUID,
 		Page:         page,
 		Limit:        limit,
 	}, nil
-}
-
-func isCashPayment(method string) bool {
-	return method == "EfectivoBs" || method == "EfectivoDolar"
 }
 
 func toShopTransactionDTOs(txs []models.ShopTransaction) []dtos.ShopTransactionDTO {

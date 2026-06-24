@@ -11,16 +11,14 @@ type MovementType string
 type Zone string
 
 const (
-	MovementTypeRideCash MovementType = "ride_cash"
 	MovementTypeRideBank MovementType = "ride_bank"
 	MovementTypeWithdraw MovementType = "withdrawal"
 
-	ZoneRisk                Zone = "risk"
 	ZoneNormal              Zone = "normal"
 	ZoneWithdrawalAvailable Zone = "withdrawal_available"
 
 	WithdrawalMinBalance float64 = 15.0
-	RiskThreshold        float64 = -15.0
+	WithdrawalCooldown           = 24 * time.Hour
 	RateDay              float64 = 0.40
 	RateNight            float64 = 0.60
 	RiderShare           float64 = 0.80
