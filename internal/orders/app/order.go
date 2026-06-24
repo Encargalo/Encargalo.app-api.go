@@ -303,35 +303,37 @@ func (o *orderApp) ConfirmPickup(ctx context.Context, orderID uuid.UUID, code st
 	return *order, nil
 }
 
-func (o *orderApp) ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code string) error {
+func (o *orderApp) ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code string) (models.Order, error) {
 	order, err := o.SearchOrdersByID(ctx, orderID)
 	if err != nil {
-		return err
+		return models.Order{}, err
 	}
 
 	if order.Status != string(models.StatusOnTheWay) {
-		return errcustom.ErrInvalidTransition
+		return models.Order{}, errcustom.ErrInvalidTransition
 	}
 
 	if order.DeliveryCode == nil || *order.DeliveryCode != code {
-		return errcustom.ErrInvalidCode
+		return models.Order{}, errcustom.ErrInvalidCode
 	}
 
 	if order.DeliveryCodeUsedAt != nil {
-		return errcustom.ErrCodeAlreadyUsed
+		return models.Order{}, errcustom.ErrCodeAlreadyUsed
 	}
 
 	if err := o.repo.MarkDeliveryCodeUsed(ctx, orderID); err != nil {
-		return err
+		return models.Order{}, err
 	}
 
 	if err := o.repo.UpdateOrderStatus(ctx, orderID, string(models.StatusCompleted)); err != nil {
-		return err
+		return models.Order{}, err
 	}
+
+	order.Status = string(models.StatusCompleted)
 
 	if order.RiderID == nil {
 		slog.Error("order completed without rider assigned", "orderID", orderID)
-		return nil
+		return *order, nil
 	}
 	if err := o.finance.RecordRideEarning(ctx, *order.RiderID, order.ID, order.DeliveryFee, order.TotalPrice, order.MethodPayment); err != nil {
 		slog.Error("error recording ride earning", "orderID", orderID, "error", err)
@@ -341,10 +343,9 @@ func (o *orderApp) ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code 
 		slog.Error("error recording shop commission", "orderID", orderID, "shopID", order.ShopID, "error", err)
 	}
 
-	order.Status = string(models.StatusCompleted)
 	o.notifyRiderUpdate(ctx, order)
 
-	return nil
+	return *order, nil
 }
 
 func buildToDataProduceOrder(items models.Order) []models.DataProduceOrder {

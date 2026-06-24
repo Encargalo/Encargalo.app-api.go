@@ -47,8 +47,8 @@ func session() authmodels.ActiveSession {
 
 // --- CreateOrder: Efectivo ---
 
-func TestCreateOrder_Success_EfectivoBs(t *testing.T) {
-	h, svc, mgr := newHandler(t)
+func TestCreateOrder_InvalidMethod_EfectivoBs(t *testing.T) {
+	h, _, _ := newHandler(t)
 
 	body := buildBody(t, map[string]any{
 		"id":             uuid.New().String(),
@@ -68,18 +68,17 @@ func TestCreateOrder_Success_EfectivoBs(t *testing.T) {
 	tc := buildhttptest.SetupControllerCase("/orders", http.MethodPost, body)
 	tc = withSession(tc, session())
 
-	order := &models.Order{ID: uuid.New()}
-	svc.On("CreateOrder", mock.Anything, mock.Anything).Return(order, nil)
-	mgr.On("BroadcastOrder", *order).Return(nil)
-
 	err := h.CreateOrder(tc.Ctx)
 
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusCreated, tc.Res.Code)
+	assert.Error(t, err)
+	he, ok := err.(*echo.HTTPError)
+	if assert.True(t, ok) {
+		assert.Equal(t, http.StatusBadRequest, he.Code)
+	}
 }
 
-func TestCreateOrder_Success_EfectivoDolar(t *testing.T) {
-	h, svc, mgr := newHandler(t)
+func TestCreateOrder_InvalidMethod_EfectivoDolar(t *testing.T) {
+	h, _, _ := newHandler(t)
 
 	body := buildBody(t, map[string]any{
 		"id":             uuid.New().String(),
@@ -99,14 +98,13 @@ func TestCreateOrder_Success_EfectivoDolar(t *testing.T) {
 	tc := buildhttptest.SetupControllerCase("/orders", http.MethodPost, body)
 	tc = withSession(tc, session())
 
-	order := &models.Order{ID: uuid.New()}
-	svc.On("CreateOrder", mock.Anything, mock.Anything).Return(order, nil)
-	mgr.On("BroadcastOrder", *order).Return(nil)
-
 	err := h.CreateOrder(tc.Ctx)
 
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusCreated, tc.Res.Code)
+	assert.Error(t, err)
+	he, ok := err.(*echo.HTTPError)
+	if assert.True(t, ok) {
+		assert.Equal(t, http.StatusBadRequest, he.Code)
+	}
 }
 
 func TestCreateOrder_Success_PagoMovil(t *testing.T) {
@@ -199,8 +197,8 @@ func TestCreateOrder_InvalidPaymentMethod(t *testing.T) {
 
 // --- CreateOrder: PagoMovil sin pago_movil_data ---
 
-func TestCreateOrder_PagoMovil_MissingData(t *testing.T) {
-	h, _, _ := newHandler(t)
+func TestCreateOrder_Success_PagoMovil_OnlyProof(t *testing.T) {
+	h, svc, mgr := newHandler(t)
 
 	body := buildBody(t, map[string]any{
 		"id":                  uuid.New().String(),
@@ -217,13 +215,14 @@ func TestCreateOrder_PagoMovil_MissingData(t *testing.T) {
 	tc := buildhttptest.SetupControllerCase("/orders", http.MethodPost, body)
 	tc = withSession(tc, session())
 
+	order := &models.Order{ID: uuid.New()}
+	svc.On("CreateOrder", mock.Anything, mock.Anything).Return(order, nil)
+	mgr.On("BroadcastOrder", *order).Return(nil)
+
 	err := h.CreateOrder(tc.Ctx)
 
-	assert.Error(t, err)
-	he, ok := err.(*echo.HTTPError)
-	if assert.True(t, ok) {
-		assert.Equal(t, http.StatusBadRequest, he.Code)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusCreated, tc.Res.Code)
 }
 
 // --- CreateOrder: PagoMovil sin comprobante ---

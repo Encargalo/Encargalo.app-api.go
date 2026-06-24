@@ -49,12 +49,8 @@ type Redis struct {
 }
 
 type RedisStream struct {
-	Host       string `validate:"required" env:"host"`
-	Port       int    `validate:"required" env:"port"`
 	StreamName string `validate:"required" env:"stream_name"`
 	Db         int    `validate:"min=0" env:"db"`
-	User       string `validate:"required" env:"user"`
-	Password   string `validate:"required" env:"password"`
 }
 
 type JWT struct {

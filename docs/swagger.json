@@ -502,6 +502,198 @@
                 }
             }
         },
+        "/business/shops/stats/sales-over-time": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna la serie temporal de ventas (ganadas y perdidas) del período actual y anterior, con granularidad por hora (day) o por día (week/month).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Stats"
+                ],
+                "summary": "Ventas en el tiempo",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Período: day, week, month (default: month)",
+                        "name": "period",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Cursor de paginación (fecha ISO 8601)",
+                        "name": "cursor",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.SalesOverTimeResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/business/shops/stats/summary": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna KPIs del período actual y anterior: total ganado, pérdidas por rechazos, órdenes completadas/rechazadas y tasa de rechazo.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Stats"
+                ],
+                "summary": "Resumen estadístico del local",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Período: day, week, month (default: month)",
+                        "name": "period",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StatsSummaryResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/business/shops/stats/top-products": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna el ranking de productos más vendidos en el período actual y anterior (solo órdenes Completed).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Stats"
+                ],
+                "summary": "Productos más vendidos",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Período: day, week, month (default: month)",
+                        "name": "period",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Cantidad de productos (max 20, default 10)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.TopProductsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/business/shops/stats/transactions/export": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Descarga el historial completo de movimientos del período como archivo CSV.",
+                "produces": [
+                    "text/csv"
+                ],
+                "tags": [
+                    "Shops Stats"
+                ],
+                "summary": "Exportar movimientos en CSV",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Período: day, week, month (default: month)",
+                        "name": "period",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Archivo CSV",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/business/shops/transactions": {
             "get": {
                 "security": [
@@ -2561,6 +2753,72 @@
                 }
             }
         },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.PeriodMetrics": {
+            "type": "object",
+            "properties": {
+                "orders_completed": {
+                    "type": "integer"
+                },
+                "orders_rejected": {
+                    "type": "integer"
+                },
+                "rejection_rate": {
+                    "type": "number"
+                },
+                "total_earned": {
+                    "type": "number"
+                },
+                "total_lost_rejections": {
+                    "type": "number"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.SalesDataPoint": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "earned": {
+                    "type": "number"
+                },
+                "lost": {
+                    "type": "number"
+                },
+                "orders_completed": {
+                    "type": "integer"
+                },
+                "orders_rejected": {
+                    "type": "integer"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.SalesOverTimeResponse": {
+            "type": "object",
+            "properties": {
+                "current": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.SalesDataPoint"
+                    }
+                },
+                "granularity": {
+                    "type": "string"
+                },
+                "next_cursor": {
+                    "type": "string"
+                },
+                "period": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StatsPeriod"
+                },
+                "previous": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.SalesDataPoint"
+                    }
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_shops_domain_dtos.SearchShopResponse": {
             "type": "object",
             "properties": {
@@ -2714,6 +2972,76 @@
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionDTO"
+                    }
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.StatsPeriod": {
+            "type": "string",
+            "enum": [
+                "day",
+                "week",
+                "month"
+            ],
+            "x-enum-varnames": [
+                "PeriodDay",
+                "PeriodWeek",
+                "PeriodMonth"
+            ]
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.StatsSummaryResponse": {
+            "type": "object",
+            "properties": {
+                "current": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.PeriodMetrics"
+                },
+                "current_balance": {
+                    "type": "number"
+                },
+                "period": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StatsPeriod"
+                },
+                "previous": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.PeriodMetrics"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.TopProductItem": {
+            "type": "object",
+            "properties": {
+                "image": {
+                    "type": "string"
+                },
+                "item_id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "quantity_sold": {
+                    "type": "integer"
+                },
+                "total_revenue": {
+                    "type": "number"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.TopProductsResponse": {
+            "type": "object",
+            "properties": {
+                "current": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.TopProductItem"
+                    }
+                },
+                "period": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StatsPeriod"
+                },
+                "previous": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.TopProductItem"
                     }
                 }
             }
