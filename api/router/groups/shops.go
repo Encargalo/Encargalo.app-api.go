@@ -39,6 +39,12 @@ func (s *shopGroup) Resource(g *echo.Echo) {
 	businessRoutes.GET("/balance", s.handlerFinance.GetBalance)
 	businessRoutes.GET("/transactions", s.handlerFinance.ListTransactions)
 
+	ownerRoutes := g.Group("/business/shops",
+		s.middleAuth.Auth,
+		s.middleAuth.Require(models.Owner),
+	)
+	ownerRoutes.PATCH("/me/status", s.handlerShops.SetOpenClose)
+
 	statsRoutes := g.Group("/business/shops/stats",
 		s.middleAuth.Auth,
 		s.middleAuth.Require(models.OrderManager, models.Owner),

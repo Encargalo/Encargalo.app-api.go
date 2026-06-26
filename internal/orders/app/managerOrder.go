@@ -89,6 +89,22 @@ func (s *appManagerOrder) Unregister(
 	conn.Close()
 }
 
+func (s *appManagerOrder) BroadcastShopStatus(shopID uuid.UUID, open bool) error {
+	data, err := json.Marshal(map[string]any{"type": "shop_status", "opened": open})
+	if err != nil {
+		return err
+	}
+
+	s.mu.RLock()
+	clients := s.shopConnections[shopID]
+	s.mu.RUnlock()
+
+	for _, c := range clients {
+		c.Send(data)
+	}
+	return nil
+}
+
 func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
 	shopData, err := json.Marshal(buildBroadcast("order_update", order, true))
 	if err != nil {

@@ -64,4 +64,5 @@ type AppManagerOrder interface {
 	Register(ctx context.Context, connectionID uuid.UUID, conn ManagerConn, isShop bool) error
 	Unregister(connectionID uuid.UUID, conn ManagerConn, isShop bool)
 	BroadcastOrder(order models.Order) error
+	BroadcastShopStatus(shopID uuid.UUID, open bool) error
 }

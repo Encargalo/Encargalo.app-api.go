@@ -36,6 +36,24 @@ func (_m *AppManagerOrder) BroadcastOrder(order models.Order) error {
 	return r0
 }
 
+// BroadcastShopStatus provides a mock function with given fields: shopID, open
+func (_m *AppManagerOrder) BroadcastShopStatus(shopID uuid.UUID, open bool) error {
+	ret := _m.Called(shopID, open)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BroadcastShopStatus")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(uuid.UUID, bool) error); ok {
+		r0 = rf(shopID, open)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // Register provides a mock function with given fields: ctx, connectionID, conn, isShop
 func (_m *AppManagerOrder) Register(ctx context.Context, connectionID uuid.UUID, conn ports.ManagerConn, isShop bool) error {
 	ret := _m.Called(ctx, connectionID, conn, isShop)

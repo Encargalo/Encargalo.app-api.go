@@ -109,4 +109,4 @@ A credit commission (10% of `totalPrice - deliveryFee`) is sent via HTTP to the 
 
 ## Environment
 
-Configuration is loaded from env vars at startup via `config.Environments()`. Required groups: `server`, `postgres`, `redis`, `redis_stream`, `jwt`, `environment`, `google`, `cloudinary`, `credit_manager`, `discord`. See [internal/shared/config/config.go](internal/shared/config/config.go) for all fields.
+Configuration is loaded from env vars at startup via `config.Environments()`. Required groups: `server`, `postgres`, `redis`, `redis_stream`, `jwt`, `environment`, `google`, `cloudinary`. See [internal/shared/config/config.go](internal/shared/config/config.go) for all fields.

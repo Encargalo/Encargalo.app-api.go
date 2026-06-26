@@ -15,6 +15,7 @@ type Shops interface {
 	GetShopsBy(c echo.Context) error
 	GetMyShop(c echo.Context) error
 	SearchShops(c echo.Context) error
+	SetOpenClose(c echo.Context) error
 }
 
 type shops struct {
@@ -23,6 +24,41 @@ type shops struct {
 
 func NewShopsHandler(app ports.ShopsApp) Shops {
 	return &shops{app}
+}
+
+// SetOpenClose godoc
+// @Summary      Abrir o cerrar el local
+// @Description  Cambia el estado de apertura del local asociado a la sesión del owner.
+// @Tags         Business
+// @Accept       json
+// @Produce      json
+// @Security     SessionCookie
+// @Param        body  body      object{open=bool}  true  "Estado deseado"
+// @Success      204  "Estado actualizado"
+// @Failure      400  {string}  string  "Body inválido"
+// @Failure      401  {string}  string  "No autorizado"
+// @Failure      500  {string}  string  "Error interno del servidor"
+// @Router       /business/shops/me/status [patch]
+func (s *shops) SetOpenClose(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
+	}
+
+	var req struct {
+		Open bool `json:"open"`
+	}
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := s.app.SetOpenClose(ctx, session.ShopID, req.Open); err != nil {
+		return err
+	}
+
+	return c.NoContent(http.StatusNoContent)
 }
 
 // GetMyShop godoc

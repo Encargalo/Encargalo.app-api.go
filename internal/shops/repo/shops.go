@@ -93,16 +93,15 @@ func (s *shopsRepo) GetAllShops(ctx context.Context, coords shopsDTO.Coords) (sh
 
 		resp = shops.ToDomainDTO(result)
 	} else {
-
 		dataDistance := make([]entity.ShopDistance, len(shops))
-
 		for i, v := range shops {
 			dataDistance[i].ShopID = v.ID
-			dataDistance[i].Distance = 0
-			dataDistance[i].Duration = 0
 		}
-
 		resp = shops.ToDomainDTO(dataDistance)
+		for i := range resp {
+			resp[i].DeliveryFee = 2.0
+			resp[i].Time = 12
+		}
 	}
 
 	if err := s.cache.Set(ctx, keyCache, resp, cacheTTL); err != nil {
@@ -171,16 +170,15 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 
 		resp = shops.ToDomainDTO(result)
 	} else {
-
 		dataDistance := make([]entity.ShopDistance, len(shops))
-
 		for i, v := range shops {
 			dataDistance[i].ShopID = v.ID
-			dataDistance[i].Distance = 0
-			dataDistance[i].Duration = 0
 		}
-
 		resp = shops.ToDomainDTO(dataDistance)
+		for i := range resp {
+			resp[i].DeliveryFee = 2.0
+			resp[i].Time = 12
+		}
 	}
 
 	if err := s.cache.Set(ctx, keyCache, resp, cacheTTL); err != nil {
@@ -330,14 +328,20 @@ func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.Sea
 		distMap[d.ShopID] = d
 	}
 
+	isProd := config.Get().Environment.Current == "production"
 	candidates := make([]shopsDTO.SearchShopCandidate, 0, len(rows))
 	for i, row := range rows {
 		dist, ok := distMap[row.ID]
 		if !ok {
 			continue
 		}
+		shopResp := shopModels[i].ToDomainDTO(dist)
+		if !isProd {
+			shopResp.DeliveryFee = 2.0
+			shopResp.Time = 12
+		}
 		candidates = append(candidates, shopsDTO.SearchShopCandidate{
-			ShopResponse:  shopModels[i].ToDomainDTO(dist),
+			ShopResponse:  shopResp,
 			MatchedByName: row.MatchedByName,
 		})
 	}
@@ -394,6 +398,19 @@ func (s *shopsRepo) FindMatchedProducts(ctx context.Context, shopIDs []uuid.UUID
 	}
 
 	return result, nil
+}
+
+func (s *shopsRepo) SetOpenClose(ctx context.Context, shopID *uuid.UUID, open bool) error {
+	_, err := s.db.NewUpdate().
+		TableExpr("business.shops").
+		Set("opened = ?", open).
+		Where("id = ?", shopID).
+		Exec(ctx)
+	if err != nil {
+		slog.Error("error al actualizar estado del local", "error", err, "shopID", shopID)
+		return errcustom.ErrUnexpectedError
+	}
+	return nil
 }
 
 func (s *shopsRepo) SearchBatchByShopID(ctx context.Context, shopID uuid.UUID) (uuid.UUID, error) {
