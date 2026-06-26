@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"time"
 
-	"Encargalo.app-api.go/internal/bcv/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/cache"
 	"Encargalo.app-api.go/internal/products/domain/dtos"
 	"Encargalo.app-api.go/internal/products/domain/models"
@@ -26,13 +25,12 @@ const (
 )
 
 type productsRepo struct {
-	db       *bun.DB
-	cache    cache.Cache
-	bcvCache ports.BcvCache
+	db    *bun.DB
+	cache cache.Cache
 }
 
-func NewProductsRepo(db *bun.DB, cache cache.Cache, bcvCache ports.BcvCache) productPorts.ProductsRepo {
-	return &productsRepo{db, cache, bcvCache}
+func NewProductsRepo(db *bun.DB, cache cache.Cache) productPorts.ProductsRepo {
+	return &productsRepo{db, cache}
 }
 
 func (p *productsRepo) RegisterItem(ctx context.Context, item *models.Item) error {
@@ -114,7 +112,6 @@ func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.U
 	if cached != "" {
 		var data dtos.CategoriesResponse
 		if err := json.Unmarshal([]byte(cached), &data); err == nil {
-			applyRateToCategories(p.bcvRate(ctx), &data)
 			return data, nil
 		}
 		slog.Error("error al hacer unmarshal de los productos", "key", cacheKey)
@@ -153,7 +150,6 @@ func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.U
 		slog.Error("error al guardar los productos en el cache", "error", err)
 	}
 
-	applyRateToCategories(p.bcvRate(ctx), &data)
 	return data, nil
 }
 
@@ -208,7 +204,6 @@ func (p *productsRepo) SearchAdditionsByShopID(ctx context.Context, categoryID u
 		slog.Error("error al guardar las adiciones en el cache", "error", err)
 	}
 
-	applyRateToAdditions(p.bcvRate(ctx), &data)
 	return data, nil
 }
 
@@ -314,7 +309,6 @@ func (p *productsRepo) SearchBestSellersByShopID(ctx context.Context, shopID uui
 	if cached != "" {
 		var data dtos.ItemsResponse
 		if err := json.Unmarshal([]byte(cached), &data); err == nil {
-			applyRateToItems(p.bcvRate(ctx), &data)
 			return data, nil
 		}
 		slog.Error("error al hacer unmarshal de los productos más vendidos", "key", cacheKey)
@@ -350,7 +344,6 @@ func (p *productsRepo) SearchBestSellersByShopID(ctx context.Context, shopID uui
 		slog.Error("error al guardar los productos mas vendidos en el cache", "error", err)
 	}
 
-	applyRateToItems(p.bcvRate(ctx), &data)
 	return data, nil
 }
 
@@ -374,7 +367,6 @@ func (p *productsRepo) GetTrendingByCoords(ctx context.Context, coords dtos.Tren
 	if cached, err := p.cache.Get(ctx, cacheKey); err == nil && cached != "" {
 		var data dtos.TrendingResponse
 		if err := json.Unmarshal([]byte(cached), &data); err == nil {
-			applyRateToTrending(p.bcvRate(ctx), &data)
 			return data, nil
 		}
 		slog.Error("error al deserializar trending del cache", "key", cacheKey)
@@ -449,41 +441,5 @@ func (p *productsRepo) GetTrendingByCoords(ctx context.Context, coords dtos.Tren
 		slog.Error("error al guardar trending en cache", "error", err)
 	}
 
-	applyRateToTrending(p.bcvRate(ctx), &data)
 	return data, nil
-}
-
-func applyRateToTrending(rate float64, data *dtos.TrendingResponse) {
-	for i := range *data {
-		(*data)[i].Product.Bs = (*data)[i].Product.Ref * rate
-	}
-}
-
-func (p *productsRepo) bcvRate(ctx context.Context) float64 {
-	rate, err := p.bcvCache.GetLatest(ctx)
-	if err != nil {
-		slog.Warn("bcv rate unavailable, bs prices will be 0", "error", err)
-		return 0
-	}
-	return rate.Rate
-}
-
-func applyRateToCategories(rate float64, data *dtos.CategoriesResponse) {
-	for i := range *data {
-		for j := range (*data)[i].Items {
-			(*data)[i].Items[j].Bs = (*data)[i].Items[j].Ref * rate
-		}
-	}
-}
-
-func applyRateToItems(rate float64, data *dtos.ItemsResponse) {
-	for i := range *data {
-		(*data)[i].Bs = (*data)[i].Ref * rate
-	}
-}
-
-func applyRateToAdditions(rate float64, data *dtos.AdditionsResponse) {
-	for i := range *data {
-		(*data)[i].Bs = (*data)[i].Ref * rate
-	}
 }

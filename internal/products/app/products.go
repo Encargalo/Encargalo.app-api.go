@@ -5,8 +5,10 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"log/slog"
 	"strings"
 
+	bcvPorts "Encargalo.app-api.go/internal/bcv/domain/ports"
 	emplService "Encargalo.app-api.go/internal/employee/domain/ports"
 	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
 	"Encargalo.app-api.go/internal/products/domain/dtos"
@@ -21,10 +23,46 @@ type productsApp struct {
 	repo        ports.ProductsRepo
 	uploadimage uploadimage.UploadImage
 	emplService emplService.EmployeeApp
+	bcv         bcvPorts.BcvApp
 }
 
-func NewProductsApp(repo ports.ProductsRepo, uploadimage uploadimage.UploadImage, emplService emplService.EmployeeApp) ports.ProductsApp {
-	return &productsApp{repo, uploadimage, emplService}
+func NewProductsApp(repo ports.ProductsRepo, uploadimage uploadimage.UploadImage, emplService emplService.EmployeeApp, bcv bcvPorts.BcvApp) ports.ProductsApp {
+	return &productsApp{repo, uploadimage, emplService, bcv}
+}
+
+func (p *productsApp) bcvRate(ctx context.Context) float64 {
+	rate, err := p.bcv.GetRate(ctx)
+	if err != nil {
+		slog.Warn("bcv rate unavailable, bs prices will be 0", "error", err)
+		return 0
+	}
+	return rate.Rate
+}
+
+func applyRateToCategories(rate float64, data *dtos.CategoriesResponse) {
+	for i := range *data {
+		for j := range (*data)[i].Items {
+			(*data)[i].Items[j].Bs = (*data)[i].Items[j].Ref * rate
+		}
+	}
+}
+
+func applyRateToItems(rate float64, data *dtos.ItemsResponse) {
+	for i := range *data {
+		(*data)[i].Bs = (*data)[i].Ref * rate
+	}
+}
+
+func applyRateToAdditions(rate float64, data *dtos.AdditionsResponse) {
+	for i := range *data {
+		(*data)[i].Bs = (*data)[i].Ref * rate
+	}
+}
+
+func applyRateToTrending(rate float64, data *dtos.TrendingResponse) {
+	for i := range *data {
+		(*data)[i].Product.Bs = (*data)[i].Product.Ref * rate
+	}
 }
 
 func (p *productsApp) RegisterItem(ctx context.Context, item dtos.RegisterItem) error {
@@ -125,11 +163,21 @@ func (p *productsApp) UpdateItem(ctx context.Context, item dtos.UpdateItem, item
 }
 
 func (p *productsApp) SearchProductsByShopID(ctx context.Context, shopID uuid.UUID) (dtos.CategoriesResponse, error) {
-	return p.repo.SearchProductsByShopID(ctx, shopID)
+	data, err := p.repo.SearchProductsByShopID(ctx, shopID)
+	if err != nil {
+		return nil, err
+	}
+	applyRateToCategories(p.bcvRate(ctx), &data)
+	return data, nil
 }
 
 func (p *productsApp) SearchAdditionsByShopID(ctx context.Context, categoryID uuid.UUID) (dtos.AdditionsResponse, error) {
-	return p.repo.SearchAdditionsByShopID(ctx, categoryID)
+	data, err := p.repo.SearchAdditionsByShopID(ctx, categoryID)
+	if err != nil {
+		return nil, err
+	}
+	applyRateToAdditions(p.bcvRate(ctx), &data)
+	return data, nil
 }
 
 func (p *productsApp) SearchFlavorsByItemID(ctx context.Context, itemID uuid.UUID) (dtos.FlavorsResponse, error) {
@@ -141,7 +189,12 @@ func (p *productsApp) SearchFlavorsByCategoryID(ctx context.Context, categoryID 
 }
 
 func (p *productsApp) SearchBestSellersByShopID(ctx context.Context, shopID uuid.UUID) (dtos.ItemsResponse, error) {
-	return p.repo.SearchBestSellersByShopID(ctx, shopID)
+	data, err := p.repo.SearchBestSellersByShopID(ctx, shopID)
+	if err != nil {
+		return nil, err
+	}
+	applyRateToItems(p.bcvRate(ctx), &data)
+	return data, nil
 }
 
 func (p *productsApp) AddSoldItem(ctx context.Context, item models.DataProduceOrder) error {
@@ -149,7 +202,12 @@ func (p *productsApp) AddSoldItem(ctx context.Context, item models.DataProduceOr
 }
 
 func (p *productsApp) GetTrendingByCoords(ctx context.Context, coords dtos.TrendingCoords) (dtos.TrendingResponse, error) {
-	return p.repo.GetTrendingByCoords(ctx, coords)
+	data, err := p.repo.GetTrendingByCoords(ctx, coords)
+	if err != nil {
+		return nil, err
+	}
+	applyRateToTrending(p.bcvRate(ctx), &data)
+	return data, nil
 }
 
 func base64ToBytes(b64 string) ([]byte, error) {

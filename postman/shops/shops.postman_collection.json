@@ -111,6 +111,33 @@
       }
     }
     ,{
+      "name": "Set Shop Open/Close (Owner)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"open\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/business/shops/me/status",
+          "host": ["{{base_url}}"],
+          "path": ["business", "shops", "me", "status"]
+        },
+        "description": "Abre o cierra el local del owner autenticado. Solo accesible con rol Owner. Retorna 204 sin cuerpo."
+      }
+    }
+    ,{
       "name": "Search Shops",
       "request": {
         "method": "GET",
