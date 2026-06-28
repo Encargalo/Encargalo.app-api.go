@@ -104,6 +104,36 @@ func (_m *OrdersApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (
 	return r0, r1
 }
 
+// GetOrderHistory provides a mock function with given fields: ctx, customerID
+func (_m *OrdersApp) GetOrderHistory(ctx context.Context, customerID uuid.UUID) (dtos.OrderHistoryResponse, error) {
+	ret := _m.Called(ctx, customerID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetOrderHistory")
+	}
+
+	var r0 dtos.OrderHistoryResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (dtos.OrderHistoryResponse, error)); ok {
+		return rf(ctx, customerID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) dtos.OrderHistoryResponse); ok {
+		r0 = rf(ctx, customerID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(dtos.OrderHistoryResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, customerID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // SearchActiveOrdersByCriteria provides a mock function with given fields: ctx, criteria, isShop
 func (_m *OrdersApp) SearchActiveOrdersByCriteria(ctx context.Context, criteria uuid.UUID, isShop bool) ([]models.Order, error) {
 	ret := _m.Called(ctx, criteria, isShop)

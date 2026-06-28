@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
+	"Encargalo.app-api.go/internal/pkg/money"
 	"Encargalo.app-api.go/internal/products/domain/models"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
@@ -34,6 +35,7 @@ type Order struct {
 	DeliveryCodeUsedAt *time.Time      `bun:"delivery_code_used_at" json:"-"`
 	RiderID            *uuid.UUID      `bun:"rider_id,nullzero,type:uuid" json:"rider_id,omitempty"`
 	RiderAcceptedAt    *time.Time      `bun:"rider_accepted_at" json:"rider_accepted_at,omitempty"`
+	CreatedAt          time.Time       `bun:"created_at" json:"created_at"`
 
 	ItemsOrders []ItemsOrder `bun:"rel:has-many,join:id=order_id" json:"-"`
 }
@@ -133,8 +135,8 @@ func (o *Order) SetAdditionalsName(additions []Addition) {
 }
 
 func (o *Order) ApplyBsPrice(rate float64) {
-	o.DeliveryFeeBs = o.DeliveryFee * rate
-	o.TotalPriceBs = o.TotalPrice * rate
+	o.DeliveryFeeBs = money.RoundBs(o.DeliveryFee * rate)
+	o.TotalPriceBs = money.RoundBs(o.TotalPrice * rate)
 }
 
 func (o *Order) SetAdditionalsPrices(addittions []Addition) {

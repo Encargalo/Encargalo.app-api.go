@@ -282,6 +282,19 @@ func (o *orders) SearchActiveOrdersByRiderID(ctx context.Context, riderID uuid.U
 	return orders, nil
 }
 
+func (o *orders) SearchOrderHistoryByCustomer(ctx context.Context, customerID uuid.UUID) ([]models.Order, error) {
+	var result []models.Order
+	err := o.db.NewSelect().
+		Model(&result).
+		Where("customer_id = ?", customerID).
+		OrderExpr("created_at DESC").
+		Scan(ctx)
+	if err != nil {
+		return nil, errcustom.ErrUnexpectedError
+	}
+	return result, nil
+}
+
 func getLastOrderNumber(ctx context.Context, tx bun.Tx, batchID uuid.UUID) (int, error) {
 	var number int
 	err := tx.NewSelect().

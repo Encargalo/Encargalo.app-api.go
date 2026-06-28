@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	bcvPorts "Encargalo.app-api.go/internal/bcv/domain/ports"
+	"Encargalo.app-api.go/internal/pkg/money"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shops/domain/dtos"
 	portsShops "Encargalo.app-api.go/internal/shops/domain/ports"
@@ -32,7 +33,7 @@ func (s *shopsApp) bcvRate(ctx context.Context) float64 {
 
 func applyBsRate(shops dtos.ShopsResponse, rate float64) {
 	for i := range shops {
-		shops[i].DeliveryFeeBs = shops[i].DeliveryFee * rate
+		shops[i].DeliveryFeeBs = money.RoundBs(shops[i].DeliveryFee * rate)
 	}
 }
 
@@ -94,7 +95,7 @@ func (s *shopsApp) SearchShops(ctx context.Context, query dtos.SearchShopsQuery)
 	rate := s.bcvRate(ctx)
 	result := make(dtos.SearchShopsResult, 0, len(candidates))
 	for _, c := range candidates {
-		c.DeliveryFeeBs = c.DeliveryFee * rate
+		c.DeliveryFeeBs = money.RoundBs(c.DeliveryFee * rate)
 		resp := dtos.SearchShopResponse{ShopResponse: c.ShopResponse}
 		resp.MatchedProducts = matchedItems[c.ID]
 		result = append(result, resp)

@@ -8,6 +8,8 @@ import (
 	models "Encargalo.app-api.go/internal/riders/domain/models"
 	mock "github.com/stretchr/testify/mock"
 
+	time "time"
+
 	uuid "github.com/google/uuid"
 )
 
@@ -33,6 +35,36 @@ func (_m *FinanceRepo) GetBalance(ctx context.Context, entityID uuid.UUID, entit
 		r0 = rf(ctx, entityID, entityType)
 	} else {
 		r0 = ret.Get(0).(float64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, string) error); ok {
+		r1 = rf(ctx, entityID, entityType)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetLastWithdrawal provides a mock function with given fields: ctx, entityID, entityType
+func (_m *FinanceRepo) GetLastWithdrawal(ctx context.Context, entityID uuid.UUID, entityType string) (*time.Time, error) {
+	ret := _m.Called(ctx, entityID, entityType)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetLastWithdrawal")
+	}
+
+	var r0 *time.Time
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) (*time.Time, error)); ok {
+		return rf(ctx, entityID, entityType)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) *time.Time); ok {
+		r0 = rf(ctx, entityID, entityType)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*time.Time)
+		}
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, string) error); ok {

@@ -28,6 +28,7 @@ func (o *ordersGroup) Resource(g *echo.Echo) {
 	group := g.Group("/orders")
 
 	group.POST("", o.handlerOrders.CreateOrder, o.middle.Auth, o.middle.Require(models.Customer))
+	group.GET("/history", o.handlerOrders.GetOrderHistory, o.middle.Auth, o.middle.Require(models.Customer))
 	group.GET("/manager", o.hanlderManagerOrders.HandleWebSocket, o.middle.Auth, o.middle.Require(models.Customer, models.OrderManager, models.Owner))
 	group.GET("/rider", o.handlerRiders.HandleWebSocket, o.middle.Auth, o.middle.Require(models.Rider))
 	group.POST("/:id/confirm-pickup", o.handlerOrders.ConfirmPickup, o.middle.Auth, o.middle.Require(models.OrderManager, models.Owner))

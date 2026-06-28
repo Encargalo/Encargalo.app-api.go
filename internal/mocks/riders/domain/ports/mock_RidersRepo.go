@@ -64,6 +64,36 @@ func (_m *RidersRepo) SearchActiveOrdersByRiderID(ctx context.Context, riderID u
 	return r0, r1
 }
 
+// SearchAvailableOrders provides a mock function with given fields: ctx
+func (_m *RidersRepo) SearchAvailableOrders(ctx context.Context) ([]models.Order, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SearchAvailableOrders")
+	}
+
+	var r0 []models.Order
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]models.Order, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []models.Order); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.Order)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // SearchOrdersByID provides a mock function with given fields: ctx, orderID
 func (_m *RidersRepo) SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*models.Order, error) {
 	ret := _m.Called(ctx, orderID)
