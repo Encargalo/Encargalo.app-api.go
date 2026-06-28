@@ -16,6 +16,7 @@ type OrderHandler interface {
 	CreateOrder(c echo.Context) error
 	ConfirmPickup(c echo.Context) error
 	ConfirmDelivery(c echo.Context) error
+	GetOrderHistory(c echo.Context) error
 }
 
 type orderHandler struct {
@@ -162,6 +163,33 @@ func (o *orderHandler) ConfirmDelivery(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "Order delivered successfully"})
+}
+
+// GetOrderHistory godoc
+// @Summary      Historial de órdenes del customer
+// @Description  Devuelve todas las órdenes del customer autenticado, incluyendo activas y completadas, ordenadas de más reciente a más antigua.
+// @Tags         Orders
+// @Produce      json
+// @Security     SessionCookie
+// @Success      200  {array}   dtos.OrderHistoryItem  "Historial de órdenes"
+// @Failure      401  {string}  string                 "No autorizado"
+// @Failure      500  {object}  dtos.ErrorResponse     "Error interno del servidor"
+// @Router       /orders/history [get]
+func (o *orderHandler) GetOrderHistory(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
+	if !ok {
+		slog.Error("No se encontró el usuario en el contexto")
+		return errcustom.ErrUnexpectedError
+	}
+
+	history, err := o.svc.GetOrderHistory(ctx, session.UserID)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, history)
 }
 
 func parseOrderID(c echo.Context) (uuid.UUID, error) {

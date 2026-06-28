@@ -11,6 +11,7 @@ import (
 
 	bcvPorts "Encargalo.app-api.go/internal/bcv/domain/ports"
 	ordersModels "Encargalo.app-api.go/internal/orders/domain/models"
+	"Encargalo.app-api.go/internal/pkg/money"
 	riderModels "Encargalo.app-api.go/internal/riders/domain/models"
 	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/deliveryfee"
@@ -185,7 +186,7 @@ func stripForRider(order ordersModels.Order) ordersModels.Order {
 	order.TotalPriceBs = 0
 	order.Details = nil
 	order.DeliveryFee = order.DeliveryFee * riderModels.RiderShare
-	order.DeliveryFeeBs = order.DeliveryFeeBs * riderModels.RiderShare
+	order.DeliveryFeeBs = money.RoundBs(order.DeliveryFeeBs * riderModels.RiderShare)
 	return order
 }
 

@@ -16,6 +16,7 @@ type OrdersApp interface {
 	UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string, requesterID uuid.UUID, isShop bool) (models.Order, error)
 	ConfirmPickup(ctx context.Context, orderID uuid.UUID, code string) (models.Order, error)
 	ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code string) (models.Order, error)
+	GetOrderHistory(ctx context.Context, customerID uuid.UUID) (dtos.OrderHistoryResponse, error)
 }
 
 type OrdersRepo interface {
@@ -33,6 +34,7 @@ type OrdersRepo interface {
 	MarkDeliveryCodeUsed(ctx context.Context, orderID uuid.UUID) error
 	AssignRider(ctx context.Context, orderID uuid.UUID, riderID uuid.UUID) error
 	SearchActiveOrdersByRiderID(ctx context.Context, riderID uuid.UUID) ([]models.Order, error)
+	SearchOrderHistoryByCustomer(ctx context.Context, customerID uuid.UUID) ([]models.Order, error)
 }
 
 // OrderRiderBroadcaster is implemented by the riders module to receive order lifecycle events.

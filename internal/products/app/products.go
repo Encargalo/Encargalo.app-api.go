@@ -10,6 +10,7 @@ import (
 
 	bcvPorts "Encargalo.app-api.go/internal/bcv/domain/ports"
 	emplService "Encargalo.app-api.go/internal/employee/domain/ports"
+	"Encargalo.app-api.go/internal/pkg/money"
 	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
 	"Encargalo.app-api.go/internal/products/domain/dtos"
 	"Encargalo.app-api.go/internal/products/domain/models"
@@ -42,26 +43,26 @@ func (p *productsApp) bcvRate(ctx context.Context) float64 {
 func applyRateToCategories(rate float64, data *dtos.CategoriesResponse) {
 	for i := range *data {
 		for j := range (*data)[i].Items {
-			(*data)[i].Items[j].Bs = (*data)[i].Items[j].Ref * rate
+			(*data)[i].Items[j].Bs = money.RoundBs((*data)[i].Items[j].Ref * rate)
 		}
 	}
 }
 
 func applyRateToItems(rate float64, data *dtos.ItemsResponse) {
 	for i := range *data {
-		(*data)[i].Bs = (*data)[i].Ref * rate
+		(*data)[i].Bs = money.RoundBs((*data)[i].Ref * rate)
 	}
 }
 
 func applyRateToAdditions(rate float64, data *dtos.AdditionsResponse) {
 	for i := range *data {
-		(*data)[i].Bs = (*data)[i].Ref * rate
+		(*data)[i].Bs = money.RoundBs((*data)[i].Ref * rate)
 	}
 }
 
 func applyRateToTrending(rate float64, data *dtos.TrendingResponse) {
 	for i := range *data {
-		(*data)[i].Product.Bs = (*data)[i].Product.Ref * rate
+		(*data)[i].Product.Bs = money.RoundBs((*data)[i].Product.Ref * rate)
 	}
 }
 

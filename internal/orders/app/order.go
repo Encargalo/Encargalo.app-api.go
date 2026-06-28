@@ -348,6 +348,30 @@ func (o *orderApp) ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code 
 	return *order, nil
 }
 
+func (o *orderApp) GetOrderHistory(ctx context.Context, customerID uuid.UUID) (dtos.OrderHistoryResponse, error) {
+	orders, err := o.repo.SearchOrderHistoryByCustomer(ctx, customerID)
+	if err != nil {
+		return nil, err
+	}
+
+	history := make(dtos.OrderHistoryResponse, len(orders))
+	for i, ord := range orders {
+		history[i] = dtos.OrderHistoryItem{
+			ID:            ord.ID,
+			Number:        ord.Number,
+			Status:        ord.Status,
+			TotalPrice:    ord.TotalPrice,
+			DeliveryFee:   ord.DeliveryFee,
+			MethodPayment: ord.MethodPayment,
+			Address:       ord.Address,
+			ShopID:        ord.ShopID,
+			CreatedAt:     ord.CreatedAt,
+		}
+	}
+
+	return history, nil
+}
+
 func buildToDataProduceOrder(items models.Order) []models.DataProduceOrder {
 	dataProduceOrder := []models.DataProduceOrder{}
 
