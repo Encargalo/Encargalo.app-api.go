@@ -63,6 +63,7 @@ func applyRateToAdditions(rate float64, data *dtos.AdditionsResponse) {
 func applyRateToTrending(rate float64, data *dtos.TrendingResponse) {
 	for i := range *data {
 		(*data)[i].Product.Bs = money.RoundBs((*data)[i].Product.Ref * rate)
+		(*data)[i].Shop.DeliveryFeeBs = money.RoundBs((*data)[i].Shop.DeliveryFee * rate)
 	}
 }
 

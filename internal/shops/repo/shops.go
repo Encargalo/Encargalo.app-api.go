@@ -3,11 +3,7 @@ package repo
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
 	"log/slog"
-	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +13,7 @@ import (
 
 	"Encargalo.app-api.go/internal/pkg/cache"
 	productModels "Encargalo.app-api.go/internal/products/domain/models"
+	"Encargalo.app-api.go/internal/shared/adapters/googlemaps"
 	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	shopsDTO "Encargalo.app-api.go/internal/shops/domain/dtos"
@@ -431,98 +428,31 @@ func (s *shopsRepo) SearchBatchByShopID(ctx context.Context, shopID uuid.UUID) (
 
 func calculateDistances(coords shopsDTO.Coords, shopsResult *shops.Shops) ([]entity.ShopDistance, error) {
 
-	origins := fmt.Sprintf("%f,%f", coords.Latitude, coords.Longitude)
-
 	var shopIDs []uuid.UUID
-	var destinationsRaw []string
+	var destinations [][2]float64
 
 	for _, shop := range *shopsResult {
 		if shop.Latitude != nil && shop.Longitude != nil {
 			shopIDs = append(shopIDs, shop.ID)
-			destinationsRaw = append(destinationsRaw, fmt.Sprintf("%f,%f", *shop.Latitude, *shop.Longitude))
+			destinations = append(destinations, [2]float64{*shop.Latitude, *shop.Longitude})
 		}
 	}
 
-	if len(destinationsRaw) == 0 {
+	if len(destinations) == 0 {
 		return nil, errors.New("no shops with valid coordinates")
 	}
 
-	if len(destinationsRaw) > 25 {
-		return nil, fmt.Errorf("too many destinations: %d (max 25)", len(destinationsRaw))
-	}
-
-	destinationsJoined := strings.Join(destinationsRaw, "|")
-
-	params := url.Values{}
-	params.Set("origins", origins)
-	params.Set("destinations", destinationsJoined)
-	params.Set("mode", "driving")
-	params.Set("key", config.Get().Google.Matrix)
-
-	fullURL := "https://maps.googleapis.com/maps/api/distancematrix/json?" + params.Encode()
-
-	resp, err := http.Get(fullURL)
+	elements, err := googlemaps.DistanceMatrix(coords.Latitude, coords.Longitude, destinations)
 	if err != nil {
-		return nil, fmt.Errorf("error calling google api: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("error reading response: %w", err)
+		return nil, err
 	}
 
-	if len(bodyBytes) == 0 {
-		return nil, errors.New("empty response from google")
-	}
-
-	// Decodificar JSON
-	var data struct {
-		Status string `json:"status"`
-		Rows   []struct {
-			Elements []struct {
-				Distance struct {
-					Value float64 `json:"value"`
-				} `json:"distance"`
-				Duration struct {
-					Value int64 `json:"value"`
-				} `json:"duration"`
-				Status string `json:"status"`
-			} `json:"elements"`
-		} `json:"rows"`
-	}
-
-	if err := json.Unmarshal(bodyBytes, &data); err != nil {
-		return nil, fmt.Errorf("decode json error: %w; body=%s", err, string(bodyBytes))
-	}
-
-	if data.Status != "OK" {
-		return nil, fmt.Errorf("google api status=%s", data.Status)
-	}
-
-	if len(data.Rows) == 0 || len(data.Rows[0].Elements) == 0 {
-		return nil, errors.New("invalid google matrix response")
-	}
-
-	elements := data.Rows[0].Elements
-
-	// Crear result, usando los IDs paralelos
-	result := make([]entity.ShopDistance, 0, len(shopIDs))
-
-	for i := range shopIDs {
-		if i >= len(elements) {
-			break
-		}
-		elem := elements[i]
-
-		if elem.Status != "OK" {
-			continue
-		}
-
+	result := make([]entity.ShopDistance, 0, len(elements))
+	for _, elem := range elements {
 		result = append(result, entity.ShopDistance{
-			ShopID:   shopIDs[i],
-			Distance: elem.Distance.Value,
-			Duration: elem.Duration.Value / 60,
+			ShopID:   shopIDs[elem.Index],
+			Distance: elem.DistanceMeters,
+			Duration: elem.DurationMin,
 		})
 	}
 

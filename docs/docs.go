@@ -513,6 +513,65 @@ const docTemplate = `{
                 }
             }
         },
+        "/business/shops/me/status": {
+            "patch": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Cambia el estado de apertura del local asociado a la sesión del owner.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Abrir o cerrar el local",
+                "parameters": [
+                    {
+                        "description": "Estado deseado",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "open": {
+                                    "type": "boolean"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Estado actualizado"
+                    },
+                    "400": {
+                        "description": "Body inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/business/shops/stats/sales-over-time": {
             "get": {
                 "security": [
@@ -825,6 +884,46 @@ const docTemplate = `{
                 }
             }
         },
+        "/orders/history": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Devuelve todas las órdenes del customer autenticado, incluyendo activas y completadas, ordenadas de más reciente a más antigua.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Historial de órdenes del customer",
+                "responses": {
+                    "200": {
+                        "description": "Historial de órdenes",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.OrderHistoryItem"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/orders/manager": {
             "get": {
                 "security": [
@@ -911,7 +1010,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "El rider introduce el código de 6 dígitos que le muestra el usuario para confirmar la entrega. Transiciona el pedido de \"On The Way\" a \"Completed\".",
+                "description": "El rider introduce el código de 4 dígitos que le muestra el usuario para confirmar la entrega. Transiciona el pedido de \"On The Way\" a \"Completed\".",
                 "consumes": [
                     "application/json"
                 ],
@@ -984,7 +1083,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "El local introduce el código de 6 dígitos que le muestra el rider para confirmar que está presente. Transiciona el pedido de \"In Preparation\" o \"Ready\" a \"On The Way\" y genera el código de entrega para el usuario.",
+                "description": "El local introduce el código de 4 dígitos que le muestra el rider para confirmar que está presente. Transiciona el pedido de \"In Preparation\" o \"Ready\" a \"On The Way\" y genera el código de entrega para el usuario.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2215,6 +2314,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Calle 123 # 45-67"
                 },
+                "instructions": {
+                    "type": "string",
+                    "example": "Piso 3, apto 301"
+                },
                 "latitude": {
                     "type": "number",
                     "example": 37.7749
@@ -2329,6 +2432,38 @@ const docTemplate = `{
                 "message": {
                     "type": "string",
                     "example": "invalid request"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_orders_domain_dtos.OrderHistoryItem": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "delivery_fee": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "method_payment": {
+                    "type": "string"
+                },
+                "number": {
+                    "type": "integer"
+                },
+                "shop_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "total_price": {
+                    "type": "number"
                 }
             }
         },
@@ -2572,6 +2707,12 @@ const docTemplate = `{
                 "address": {
                     "type": "string"
                 },
+                "delivery_fee": {
+                    "type": "number"
+                },
+                "delivery_fee_bs": {
+                    "type": "number"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -2586,6 +2727,9 @@ const docTemplate = `{
                 },
                 "tag": {
                     "type": "string"
+                },
+                "time": {
+                    "type": "integer"
                 },
                 "type": {
                     "type": "string"
@@ -2842,6 +2986,9 @@ const docTemplate = `{
                 "delivery_fee": {
                     "type": "number"
                 },
+                "delivery_fee_bs": {
+                    "type": "number"
+                },
                 "home_phone": {
                     "type": "string"
                 },
@@ -2907,6 +3054,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "delivery_fee": {
+                    "type": "number"
+                },
+                "delivery_fee_bs": {
                     "type": "number"
                 },
                 "home_phone": {
@@ -3138,7 +3288,6 @@ const docTemplate = `{
         "Encargalo_app-api_go_internal_users_domain_dto.RegisterCustomer": {
             "type": "object",
             "required": [
-                "birthday_date",
                 "name",
                 "password",
                 "phone",

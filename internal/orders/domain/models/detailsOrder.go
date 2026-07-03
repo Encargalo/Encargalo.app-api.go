@@ -1,8 +1,6 @@
 package models
 
 import (
-	"encoding/json"
-
 	"Encargalo.app-api.go/internal/users/domain/models"
 	"github.com/google/uuid"
 )
@@ -10,6 +8,7 @@ import (
 type Details struct {
 	CustomerDetails customerDetails `json:"customer"`
 	ShopDetails     shopDetails     `json:"shop"`
+	AddressDetails  addressDetails  `json:"address"`
 	ItemsDetails    []itemsDetails  `json:"items"`
 	PaymentDetails  *PaymentDetails `json:"payment,omitempty"`
 }
@@ -18,11 +17,14 @@ type PaymentDetails struct {
 	PaymentProofURL string `json:"payment_proof_url"`
 }
 
-func (d *Details) BuildDetails(order *Order, shop *ShopOrder, customer *models.Account) {
+func (d *Details) BuildDetails(order *Order, shop *ShopOrder, customer *models.Account, addressInstructions string) {
 
 	d.CustomerDetails.ID = customer.ID
 	d.CustomerDetails.Name = customer.Name
 	d.CustomerDetails.Phone = customer.Phone
+	if customer.SurName != nil {
+		d.CustomerDetails.LastName = *customer.SurName
+	}
 
 	d.ShopDetails.ID = shop.ID
 	d.ShopDetails.Name = shop.Name
@@ -31,6 +33,8 @@ func (d *Details) BuildDetails(order *Order, shop *ShopOrder, customer *models.A
 	d.ShopDetails.Address = shop.Address
 	d.ShopDetails.Latitude = shop.Latitude
 	d.ShopDetails.Longitude = shop.Longitude
+
+	d.AddressDetails.Instructions = addressInstructions
 
 	d.ItemsDetails = make([]itemsDetails, len(order.ItemsOrders))
 	for i := range order.ItemsOrders {
@@ -41,11 +45,7 @@ func (d *Details) BuildDetails(order *Order, shop *ShopOrder, customer *models.A
 		d.ItemsDetails[i].UnitPrice = order.ItemsOrders[i].UnitPrice
 		d.ItemsDetails[i].TotalPrice = order.ItemsOrders[i].TotalPrice
 		d.ItemsDetails[i].Observation = order.ItemsOrders[i].Observation
-		d.ItemsDetails[i].Flavors = make(map[string]int)
-		err := json.Unmarshal(order.ItemsOrders[i].Flavors, &d.ItemsDetails[i].Flavors)
-		if err != nil {
-			return
-		}
+		d.ItemsDetails[i].Flavors = order.ItemsOrders[i].FlavorsDetails
 		d.ItemsDetails[i].Additions = make([]additionsDetails, len(order.ItemsOrders[i].Additions))
 		for j := range order.ItemsOrders[i].Additions {
 			d.ItemsDetails[i].Additions[j].ID = order.ItemsOrders[i].Additions[j].AdditionID
@@ -59,9 +59,10 @@ func (d *Details) BuildDetails(order *Order, shop *ShopOrder, customer *models.A
 }
 
 type customerDetails struct {
-	ID    uuid.UUID `json:"id"`
-	Name  string    `json:"name"`
-	Phone string    `json:"phone"`
+	ID       uuid.UUID `json:"id"`
+	Name     string    `json:"name"`
+	LastName string    `json:"last_name,omitempty"`
+	Phone    string    `json:"phone"`
 }
 
 type shopDetails struct {
@@ -74,15 +75,19 @@ type shopDetails struct {
 	Longitude float64   `json:"longitude"`
 }
 
+type addressDetails struct {
+	Instructions string `json:"instructions,omitempty"`
+}
+
 type itemsDetails struct {
-	ID          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	Image       string    `json:"image"`
-	Amount      int       `json:"amount"`
-	UnitPrice   int       `json:"unit_price"`
-	TotalPrice  int       `json:"total_price"`
-	Observation string    `json:"observation"`
-	Flavors     map[string]int
+	ID          uuid.UUID          `json:"id"`
+	Name        string             `json:"name"`
+	Image       string             `json:"image"`
+	Amount      int                `json:"amount"`
+	UnitPrice   int                `json:"unit_price"`
+	TotalPrice  int                `json:"total_price"`
+	Observation string             `json:"observation"`
+	Flavors     []ItemFlavor       `json:"flavors"`
 	Additions   []additionsDetails `json:"additions"`
 }
 
