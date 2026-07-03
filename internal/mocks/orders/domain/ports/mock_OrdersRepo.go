@@ -258,6 +258,36 @@ func (_m *OrdersRepo) SearchAvailableOrders(ctx context.Context) ([]models.Order
 	return r0, r1
 }
 
+// SearchFlavorsByID provides a mock function with given fields: ctx, flavorID
+func (_m *OrdersRepo) SearchFlavorsByID(ctx context.Context, flavorID []uuid.UUID) ([]models.Flavor, error) {
+	ret := _m.Called(ctx, flavorID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SearchFlavorsByID")
+	}
+
+	var r0 []models.Flavor
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []uuid.UUID) ([]models.Flavor, error)); ok {
+		return rf(ctx, flavorID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []uuid.UUID) []models.Flavor); ok {
+		r0 = rf(ctx, flavorID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.Flavor)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []uuid.UUID) error); ok {
+		r1 = rf(ctx, flavorID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // SearchItemsByID provides a mock function with given fields: ctx, ItemsID
 func (_m *OrdersRepo) SearchItemsByID(ctx context.Context, ItemsID []uuid.UUID) (domainmodels.Items, error) {
 	ret := _m.Called(ctx, ItemsID)

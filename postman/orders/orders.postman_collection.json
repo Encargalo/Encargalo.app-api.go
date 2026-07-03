@@ -42,7 +42,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"shop_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa7\",\n  \"method_payment\": \"EfectivoBs\",\n  \"address\": {\n    \"address\": \"Av. Principal, Caracas\",\n    \"latitude\": 10.488801,\n    \"longitude\": -66.879190\n  },\n  \"items\": [\n    {\n      \"item_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa8\",\n      \"amount\": 2,\n      \"observation\": \"Sin cebolla\",\n      \"flavors\": {},\n      \"additions\": []\n    }\n  ]\n}",
+          "raw": "{\n  \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"shop_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa7\",\n  \"method_payment\": \"EfectivoBs\",\n  \"address\": {\n    \"address\": \"Av. Principal, Caracas\",\n    \"latitude\": 10.488801,\n    \"longitude\": -66.879190,\n    \"instructions\": \"Piso 3, apto 301\"\n  },\n  \"items\": [\n    {\n      \"item_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa8\",\n      \"amount\": 2,\n      \"observation\": \"Sin cebolla\",\n      \"flavors\": {},\n      \"additions\": []\n    }\n  ]\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -73,7 +73,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"shop_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa7\",\n  \"method_payment\": \"PagoMovil\",\n  \"pago_movil_data\": {\n    \"nombre\": \"Juan Pérez\",\n    \"cedula\": \"V-12345678\",\n    \"telefono\": \"0412-1234567\",\n    \"banco\": \"Banco de Venezuela\"\n  },\n  \"payment_proof_image\": \"data:image/jpeg;base64,/9j/4AAQSkZJRgAB...\",\n  \"address\": {\n    \"address\": \"Av. Principal, Caracas\",\n    \"latitude\": 10.488801,\n    \"longitude\": -66.879190\n  },\n  \"items\": [\n    {\n      \"item_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa8\",\n      \"amount\": 2,\n      \"observation\": \"\",\n      \"flavors\": {},\n      \"additions\": []\n    }\n  ]\n}",
+          "raw": "{\n  \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"shop_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa7\",\n  \"method_payment\": \"PagoMovil\",\n  \"pago_movil_data\": {\n    \"nombre\": \"Juan Pérez\",\n    \"cedula\": \"V-12345678\",\n    \"telefono\": \"0412-1234567\",\n    \"banco\": \"Banco de Venezuela\"\n  },\n  \"payment_proof_image\": \"data:image/jpeg;base64,/9j/4AAQSkZJRgAB...\",\n  \"address\": {\n    \"address\": \"Av. Principal, Caracas\",\n    \"latitude\": 10.488801,\n    \"longitude\": -66.879190,\n    \"instructions\": \"Piso 3, apto 301\"\n  },\n  \"items\": [\n    {\n      \"item_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa8\",\n      \"amount\": 2,\n      \"observation\": \"\",\n      \"flavors\": {},\n      \"additions\": []\n    }\n  ]\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -104,7 +104,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"code\": \"123456\"\n}",
+          "raw": "{\n  \"code\": \"1234\"\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -129,7 +129,7 @@
             }
           ]
         },
-        "description": "El local introduce el código de 6 dígitos que le muestra el rider. Si el código es válido, el pedido pasa de 'In Preparation' o 'Ready' a 'On The Way' y se genera el código de entrega para el usuario. Requiere cookie `encargalo-session`. Roles: Order Manager, Owner."
+        "description": "El local introduce el código de 4 dígitos que le muestra el rider. Si el código es válido, el pedido pasa de 'In Preparation' o 'Ready' a 'On The Way' y se genera el código de entrega para el usuario. Requiere cookie `encargalo-session`. Roles: Order Manager, Owner."
       }
     },
     {
@@ -144,7 +144,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"code\": \"654321\"\n}",
+          "raw": "{\n  \"code\": \"5678\"\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -169,7 +169,7 @@
             }
           ]
         },
-        "description": "El rider introduce el código de 6 dígitos que le muestra el usuario. Si el código es válido, el pedido pasa de 'On The Way' a 'Completed'. Requiere cookie `encargalo-session`. Rol: Rider."
+        "description": "El rider introduce el código de 4 dígitos que le muestra el usuario. Si el código es válido, el pedido pasa de 'On The Way' a 'Completed'. Requiere cookie `encargalo-session`. Rol: Rider."
       }
     },
     {
@@ -223,7 +223,7 @@
             "rider"
           ]
         },
-        "description": "WebSocket exclusivo para el rol Rider. Al conectar el rider entra al pool de disponibles y recibe sus órdenes activas con `pickup_code`.\n\nNOTA: Para probar, crea una request de tipo WebSocket con la URL: ws://localhost:3000/orders/rider\n\nMensajes entrantes:\n- accept_order: {\"type\":\"accept_order\",\"order_id\":\"<uuid>\"}\n\nMensajes salientes:\n- {\"type\":\"connected\"}\n- {\"type\":\"new_order\",\"order\":{...}} — orden disponible (sin códigos)\n- {\"type\":\"order_accepted\",\"order\":{...}} — asignación exitosa (con pickup_code)\n- {\"type\":\"order_taken\",\"order_id\":\"<uuid>\"} — otro rider se adelantó\n- {\"type\":\"order_update\",\"order\":{...}} — actualización de orden asignada (con pickup_code)\n- {\"type\":\"error\",\"message\":\"...\"}"
+        "description": "WebSocket exclusivo para el rol Rider. Al conectar el rider entra al pool de disponibles y recibe sus órdenes activas con `pickup_code`.\n\nNOTA: Para probar, crea una request de tipo WebSocket con la URL: ws://localhost:3000/orders/rider\n\nMensajes entrantes:\n- accept_order: {\"type\":\"accept_order\",\"order_id\":\"<uuid>\"}\n\nMensajes salientes (new_order, order_accepted, order_update) incluyen:\n- `order`: sin address/latitude/longitude/total_price/total_price_bs/details/delivery_code (delivery_code lo muestra el customer al rider en persona, nunca se envía al rider por este canal). `items[]` y `pickup_code` solo vienen en order_accepted y order_update; en new_order NO se incluyen (el rider aún no aceptó la orden)\n- `shop`: info completa del local (name, logo, phone, address, latitude, longitude)\n- `customer`: en new_order solo address/latitude/longitude/instructions; en order_accepted y order_update además incluye name, last_name y phone\n\n- {\"type\":\"connected\"}\n- {\"type\":\"new_order\",\"order\":{...},\"shop\":{...},\"customer\":{...}} — orden disponible (sin códigos, sin items, sin datos del customer)\n- {\"type\":\"order_accepted\",\"order\":{...},\"shop\":{...},\"customer\":{...}} — asignación exitosa (con pickup_code e items)\n- {\"type\":\"order_taken\",\"order_id\":\"<uuid>\"} — otro rider se adelantó\n- {\"type\":\"order_update\",\"order\":{...},\"shop\":{...},\"customer\":{...}} — actualización de orden asignada (con pickup_code e items)\n- {\"type\":\"error\",\"message\":\"...\"}"
       }
     },
     {

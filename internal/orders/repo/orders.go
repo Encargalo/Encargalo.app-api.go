@@ -141,6 +141,28 @@ func (o *orders) SearchAdditionsByID(ctx context.Context, additionID []uuid.UUID
 
 }
 
+func (o *orders) SearchFlavorsByID(ctx context.Context, flavorID []uuid.UUID) ([]models.Flavor, error) {
+
+	var flavors []models.Flavor
+
+	err := o.db.NewSelect().Model(&flavors).Where("id in (?)", bun.In(flavorID)).Scan(ctx, &flavors)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	uniqueIDs := make(map[uuid.UUID]struct{})
+	for _, id := range flavorID {
+		uniqueIDs[id] = struct{}{}
+	}
+
+	if len(flavors) != len(uniqueIDs) {
+		return nil, errcustom.ErrItemsNotFound
+	}
+
+	return flavors, err
+
+}
+
 func (o *orders) SearchActiveOrdersByCriteria(ctx context.Context, criteria uuid.UUID, isShop bool) ([]models.Order, error) {
 	var orders []models.Order
 

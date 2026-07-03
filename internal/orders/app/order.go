@@ -66,7 +66,7 @@ func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustom
 	o.statusHandlers = map[models.OrderStatus]statusHandler{
 		models.StatusInPreparation: func(ctx context.Context, order models.Order) error {
 			o.generateAndSavePickupCode(ctx, order.ID)
-			o.riderMgr.BroadcastNewOrder(order)
+			o.riderMgr.BroadcastNewOrder(ctx, order)
 			return nil
 		},
 	}
@@ -135,8 +135,16 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		}
 	}
 
+	if flavorIDs := orderModel.GetFlavorsID(); len(flavorIDs) > 0 {
+		flavors, err := o.repo.SearchFlavorsByID(ctx, flavorIDs)
+		if err != nil {
+			return &models.Order{}, err
+		}
+		orderModel.SetFlavorsName(flavors)
+	}
+
 	DetailsModel := new(models.Details)
-	DetailsModel.BuildDetails(orderModel, shop, customer)
+	DetailsModel.BuildDetails(orderModel, shop, customer, order.Address.Instructions)
 
 	if order.PaymentProofImage != "" {
 		proofUpload, err := o.uploadImage.UploadImage(ctx, order.PaymentProofImage)
@@ -215,7 +223,7 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 	}
 
 	order.Status = string(newStatus)
-	o.handleStatusTransition(ctx, newStatus, *order)
+	o.handleStatusTransition(ctx, newStatus, order)
 
 	return *order, nil
 }
@@ -229,20 +237,20 @@ func resolveAutoTransition(method models.PaymentMethod, status models.OrderStatu
 	return status
 }
 
-func (o *orderApp) handleStatusTransition(ctx context.Context, status models.OrderStatus, order models.Order) {
-	deliveryfee.ApplyBsToOrder(ctx, o.bcv, &order)
+func (o *orderApp) handleStatusTransition(ctx context.Context, status models.OrderStatus, order *models.Order) {
+	deliveryfee.ApplyBsToOrder(ctx, o.bcv, order)
 	if h, ok := o.statusHandlers[status]; ok {
-		if err := h(ctx, order); err != nil {
+		if err := h(ctx, *order); err != nil {
 			slog.Error("status transition handler failed", "status", status, "orderID", order.ID, "error", err)
 		}
 		return
 	}
-	o.riderMgr.BroadcastOrderUpdate(order)
+	o.riderMgr.BroadcastOrderUpdate(ctx, *order)
 }
 
 func (o *orderApp) notifyRiderUpdate(ctx context.Context, order *models.Order) {
 	deliveryfee.ApplyBsToOrder(ctx, o.bcv, order)
-	o.riderMgr.BroadcastOrderUpdate(*order)
+	o.riderMgr.BroadcastOrderUpdate(ctx, *order)
 }
 
 func (o *orderApp) generateAndSavePickupCode(ctx context.Context, orderID uuid.UUID) {
@@ -387,9 +395,9 @@ func buildToDataProduceOrder(items models.Order) []models.DataProduceOrder {
 }
 
 func generateCode() (string, error) {
-	n, err := rand.Int(rand.Reader, big.NewInt(1_000_000))
+	n, err := rand.Int(rand.Reader, big.NewInt(10_000))
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%06d", n.Int64()), nil
+	return fmt.Sprintf("%04d", n.Int64()), nil
 }

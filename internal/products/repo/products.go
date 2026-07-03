@@ -11,6 +11,9 @@ import (
 	"Encargalo.app-api.go/internal/products/domain/dtos"
 	"Encargalo.app-api.go/internal/products/domain/models"
 	productPorts "Encargalo.app-api.go/internal/products/domain/ports"
+	"Encargalo.app-api.go/internal/shared/adapters/googlemaps"
+	"Encargalo.app-api.go/internal/shared/config"
+	"Encargalo.app-api.go/internal/shared/deliveryfee"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
@@ -383,6 +386,8 @@ func (p *productsRepo) GetTrendingByCoords(ctx context.Context, coords dtos.Tren
 			s.address         AS shop_address,
 			s.score           AS shop_score,
 			s.type            AS shop_type,
+			s.latitude        AS shop_latitude,
+			s.longitude       AS shop_longitude,
 			i.id::text        AS item_id,
 			i.name            AS item_name,
 			i.price           AS item_price,
@@ -411,19 +416,23 @@ func (p *productsRepo) GetTrendingByCoords(ctx context.Context, coords dtos.Tren
 		return nil, errcustom.ErrUnexpectedError
 	}
 
+	fee, minutes := p.deliveryEstimatesByShop(coords, rows)
+
 	data := make(dtos.TrendingResponse, 0, len(rows))
 	for _, r := range rows {
 		shopID, _ := uuid.Parse(r.ShopID)
 		itemID, _ := uuid.Parse(r.ItemID)
 		data = append(data, dtos.TrendingEntry{
 			Shop: dtos.TrendingShop{
-				ID:      shopID,
-				Name:    r.ShopName,
-				Tag:     r.ShopTag,
-				Logo:    r.ShopLogo,
-				Address: r.ShopAddress,
-				Score:   r.ShopScore,
-				Type:    r.ShopType,
+				ID:          shopID,
+				Name:        r.ShopName,
+				Tag:         r.ShopTag,
+				Logo:        r.ShopLogo,
+				Address:     r.ShopAddress,
+				Score:       r.ShopScore,
+				Type:        r.ShopType,
+				DeliveryFee: fee[shopID],
+				Time:        minutes[shopID],
 			},
 			Product: dtos.TrendingProduct{
 				ID:          itemID,
@@ -442,4 +451,61 @@ func (p *productsRepo) GetTrendingByCoords(ctx context.Context, coords dtos.Tren
 	}
 
 	return data, nil
+}
+
+// deliveryEstimatesByShop returns delivery fee (USD) and estimated minutes
+// per distinct shop_id in rows, mirroring shops.Shop.ToDomainDTO's formula
+// (delivery fee from distance, time = driving minutes + 20 prep minutes).
+// Outside production it returns the same fixed placeholder shops/repo uses,
+// to avoid depending on the Google Maps API in dev/test.
+func (p *productsRepo) deliveryEstimatesByShop(coords dtos.TrendingCoords, rows []models.TrendingRow) (map[uuid.UUID]float64, map[uuid.UUID]int) {
+	fee := make(map[uuid.UUID]float64)
+	minutes := make(map[uuid.UUID]int)
+
+	if config.Get().Environment.Current != "production" {
+		for _, r := range rows {
+			shopID, err := uuid.Parse(r.ShopID)
+			if err != nil {
+				continue
+			}
+			fee[shopID] = 2.0
+			minutes[shopID] = 12
+		}
+		return fee, minutes
+	}
+
+	var shopIDs []uuid.UUID
+	var destinations [][2]float64
+	seen := make(map[uuid.UUID]struct{})
+
+	for _, r := range rows {
+		shopID, err := uuid.Parse(r.ShopID)
+		if err != nil {
+			continue
+		}
+		if _, ok := seen[shopID]; ok {
+			continue
+		}
+		seen[shopID] = struct{}{}
+		shopIDs = append(shopIDs, shopID)
+		destinations = append(destinations, [2]float64{r.ShopLatitude, r.ShopLongitude})
+	}
+
+	if len(destinations) == 0 {
+		return fee, minutes
+	}
+
+	elements, err := googlemaps.DistanceMatrix(coords.Latitude, coords.Longitude, destinations)
+	if err != nil {
+		slog.Error("error al calcular distancias para trending", "error", err)
+		return fee, minutes
+	}
+
+	for _, elem := range elements {
+		shopID := shopIDs[elem.Index]
+		fee[shopID] = deliveryfee.FromDistance(elem.DistanceMeters)
+		minutes[shopID] = int(elem.DurationMin) + 20
+	}
+
+	return fee, minutes
 }

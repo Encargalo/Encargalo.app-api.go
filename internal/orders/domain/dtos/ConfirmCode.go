@@ -7,8 +7,8 @@ type ConfirmCodeRequest struct {
 }
 
 func (r *ConfirmCodeRequest) Validate() error {
-	if len(r.Code) != 6 {
-		return fmt.Errorf("code must be exactly 6 digits")
+	if len(r.Code) != 4 {
+		return fmt.Errorf("code must be exactly 4 digits")
 	}
 	for _, c := range r.Code {
 		if c < '0' || c > '9' {

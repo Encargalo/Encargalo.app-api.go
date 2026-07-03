@@ -6,8 +6,10 @@ import (
 	"errors"
 	"sync"
 
+	bcvPorts "Encargalo.app-api.go/internal/bcv/domain/ports"
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
+	"Encargalo.app-api.go/internal/shared/deliveryfee"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 )
@@ -17,15 +19,17 @@ type appManagerOrder struct {
 	shopConnections     map[uuid.UUID][]ports.ManagerConn
 	customerConnections map[uuid.UUID][]ports.ManagerConn
 	svc                 ports.OrdersApp
+	bcv                 bcvPorts.BcvApp
 }
 
 const shopCommissionRate = 0.10
 
-func NewManagerOrderApp(svc ports.OrdersApp) ports.AppManagerOrder {
+func NewManagerOrderApp(svc ports.OrdersApp, bcv bcvPorts.BcvApp) ports.AppManagerOrder {
 	return &appManagerOrder{
 		shopConnections:     make(map[uuid.UUID][]ports.ManagerConn),
 		customerConnections: make(map[uuid.UUID][]ports.ManagerConn),
 		svc:                 svc,
+		bcv:                 bcv,
 	}
 }
 
@@ -49,6 +53,7 @@ func (s *appManagerOrder) Register(
 	}
 
 	for _, order := range orders {
+		deliveryfee.ApplyBsToOrder(ctx, s.bcv, &order)
 		data, _ := json.Marshal(buildBroadcast("order_update", order, isShop))
 		conn.Send(data)
 	}

@@ -15,4 +15,5 @@ type RidersRepo interface {
 	SearchActiveOrdersByRiderID(ctx context.Context, riderID uuid.UUID) ([]ordersModels.Order, error)
 	SearchAvailableOrders(ctx context.Context) ([]ordersModels.Order, error)
 	SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*ordersModels.Order, error)
+	SearchShopByID(ctx context.Context, shopID uuid.UUID) (*ordersModels.ShopOrder, error)
 }

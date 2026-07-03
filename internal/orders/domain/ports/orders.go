@@ -25,6 +25,7 @@ type OrdersRepo interface {
 	SearchItemsByID(ctx context.Context, ItemsID []uuid.UUID) (items.Items, error)
 	SearchShopByID(ctx context.Context, shopID uuid.UUID) (*models.ShopOrder, error)
 	SearchAdditionsByID(ctx context.Context, additionID []uuid.UUID) ([]models.Addition, error)
+	SearchFlavorsByID(ctx context.Context, flavorID []uuid.UUID) ([]models.Flavor, error)
 	SearchActiveOrdersByCriteria(ctx context.Context, criteria uuid.UUID, isShop bool) ([]models.Order, error)
 	UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string) error
 	SearchAvailableOrders(ctx context.Context) ([]models.Order, error)
@@ -40,8 +41,8 @@ type OrdersRepo interface {
 // OrderRiderBroadcaster is implemented by the riders module to receive order lifecycle events.
 // Defined here so orders/app has no import dependency on riders/domain/ports.
 type OrderRiderBroadcaster interface {
-	BroadcastNewOrder(order models.Order)
-	BroadcastOrderUpdate(order models.Order)
+	BroadcastNewOrder(ctx context.Context, order models.Order)
+	BroadcastOrderUpdate(ctx context.Context, order models.Order)
 }
 
 // RideEarningRecorder is implemented by the finance module to record rider earnings on delivery.

@@ -79,7 +79,7 @@ func (o *orderHandler) CreateOrder(c echo.Context) error {
 
 // ConfirmPickup godoc
 // @Summary      Confirmar recogida del pedido
-// @Description  El local introduce el código de 6 dígitos que le muestra el rider para confirmar que está presente. Transiciona el pedido de "In Preparation" o "Ready" a "On The Way" y genera el código de entrega para el usuario.
+// @Description  El local introduce el código de 4 dígitos que le muestra el rider para confirmar que está presente. Transiciona el pedido de "In Preparation" o "Ready" a "On The Way" y genera el código de entrega para el usuario.
 // @Tags         Orders
 // @Accept       json
 // @Produce      json
@@ -123,7 +123,7 @@ func (o *orderHandler) ConfirmPickup(c echo.Context) error {
 
 // ConfirmDelivery godoc
 // @Summary      Confirmar entrega del pedido
-// @Description  El rider introduce el código de 6 dígitos que le muestra el usuario para confirmar la entrega. Transiciona el pedido de "On The Way" a "Completed".
+// @Description  El rider introduce el código de 4 dígitos que le muestra el usuario para confirmar la entrega. Transiciona el pedido de "On The Way" a "Completed".
 // @Tags         Orders
 // @Accept       json
 // @Produce      json

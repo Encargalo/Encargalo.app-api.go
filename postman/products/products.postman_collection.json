@@ -119,7 +119,7 @@
             }
           ]
         },
-        "description": "Retorna el producto más vendido de cada local abierto dentro de un radio de 1 km. Máximo 10 resultados. Cacheado 15 minutos. Requiere cookie `encargalo-session`. Rol: Customer."
+        "description": "Retorna el producto más vendido de cada local abierto dentro de un radio de 1 km. Máximo 10 resultados. Cacheado 15 minutos. Cada `shop` incluye `delivery_fee`, `delivery_fee_bs` y `time` (minutos estimados) calculados con la distancia real entre `lat`/`lon` y el local, igual que en `/shops`. Requiere cookie `encargalo-session`. Rol: Customer."
       }
     },
     {

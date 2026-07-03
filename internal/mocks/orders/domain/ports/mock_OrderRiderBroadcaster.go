@@ -3,6 +3,8 @@
 package mocks
 
 import (
+	context "context"
+
 	models "Encargalo.app-api.go/internal/orders/domain/models"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -12,14 +14,14 @@ type OrderRiderBroadcaster struct {
 	mock.Mock
 }
 
-// BroadcastNewOrder provides a mock function with given fields: order
-func (_m *OrderRiderBroadcaster) BroadcastNewOrder(order models.Order) {
-	_m.Called(order)
+// BroadcastNewOrder provides a mock function with given fields: ctx, order
+func (_m *OrderRiderBroadcaster) BroadcastNewOrder(ctx context.Context, order models.Order) {
+	_m.Called(ctx, order)
 }
 
-// BroadcastOrderUpdate provides a mock function with given fields: order
-func (_m *OrderRiderBroadcaster) BroadcastOrderUpdate(order models.Order) {
-	_m.Called(order)
+// BroadcastOrderUpdate provides a mock function with given fields: ctx, order
+func (_m *OrderRiderBroadcaster) BroadcastOrderUpdate(ctx context.Context, order models.Order) {
+	_m.Called(ctx, order)
 }
 
 // NewOrderRiderBroadcaster creates a new instance of OrderRiderBroadcaster. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

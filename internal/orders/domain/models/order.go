@@ -70,6 +70,36 @@ func (o *Order) GetItemsID() []uuid.UUID {
 
 }
 
+func (o *Order) GetFlavorsID() []uuid.UUID {
+
+	idSet := make(map[uuid.UUID]struct{})
+	for i := range o.ItemsOrders {
+		var chosen map[string]int
+		if err := json.Unmarshal(o.ItemsOrders[i].Flavors, &chosen); err != nil {
+			continue
+		}
+		for idStr := range chosen {
+			if id, err := uuid.Parse(idStr); err == nil {
+				idSet[id] = struct{}{}
+			}
+		}
+	}
+
+	ids := make([]uuid.UUID, 0, len(idSet))
+	for id := range idSet {
+		ids = append(ids, id)
+	}
+
+	return ids
+
+}
+
+func (o *Order) SetFlavorsName(flavors []Flavor) {
+	for i := range o.ItemsOrders {
+		o.ItemsOrders[i].SetFlavorsDetails(flavors)
+	}
+}
+
 func (o *Order) SetItemName(items models.Items) {
 
 	nameMap := make(map[uuid.UUID]string, len(items))

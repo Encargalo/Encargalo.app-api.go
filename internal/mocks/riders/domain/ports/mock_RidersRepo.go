@@ -124,6 +124,36 @@ func (_m *RidersRepo) SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (
 	return r0, r1
 }
 
+// SearchShopByID provides a mock function with given fields: ctx, shopID
+func (_m *RidersRepo) SearchShopByID(ctx context.Context, shopID uuid.UUID) (*models.ShopOrder, error) {
+	ret := _m.Called(ctx, shopID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SearchShopByID")
+	}
+
+	var r0 *models.ShopOrder
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*models.ShopOrder, error)); ok {
+		return rf(ctx, shopID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) *models.ShopOrder); ok {
+		r0 = rf(ctx, shopID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.ShopOrder)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, shopID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // NewRidersRepo creates a new instance of RidersRepo. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewRidersRepo(t interface {

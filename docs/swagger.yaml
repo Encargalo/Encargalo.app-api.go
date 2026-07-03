@@ -16,6 +16,9 @@ definitions:
       address:
         example: 'Calle 123 # 45-67'
         type: string
+      instructions:
+        example: Piso 3, apto 301
+        type: string
       latitude:
         example: 37.7749
         type: number
@@ -99,6 +102,27 @@ definitions:
       message:
         example: invalid request
         type: string
+    type: object
+  Encargalo_app-api_go_internal_orders_domain_dtos.OrderHistoryItem:
+    properties:
+      address:
+        type: string
+      created_at:
+        type: string
+      delivery_fee:
+        type: number
+      id:
+        type: string
+      method_payment:
+        type: string
+      number:
+        type: integer
+      shop_id:
+        type: string
+      status:
+        type: string
+      total_price:
+        type: number
     type: object
   Encargalo_app-api_go_internal_payment_methods_domain_models.PaymentMethod:
     properties:
@@ -267,6 +291,10 @@ definitions:
     properties:
       address:
         type: string
+      delivery_fee:
+        type: number
+      delivery_fee_bs:
+        type: number
       id:
         type: string
       logo:
@@ -277,6 +305,8 @@ definitions:
         type: number
       tag:
         type: string
+      time:
+        type: integer
       type:
         type: string
     type: object
@@ -447,6 +477,8 @@ definitions:
         type: string
       delivery_fee:
         type: number
+      delivery_fee_bs:
+        type: number
       home_phone:
         type: string
       id:
@@ -490,6 +522,8 @@ definitions:
       banner:
         type: string
       delivery_fee:
+        type: number
+      delivery_fee_bs:
         type: number
       home_phone:
         type: string
@@ -671,7 +705,6 @@ definitions:
         minLength: 3
         type: string
     required:
-    - birthday_date
     - name
     - password
     - phone
@@ -1052,6 +1085,44 @@ paths:
       summary: Obtener información del negocio propio
       tags:
       - Business
+  /business/shops/me/status:
+    patch:
+      consumes:
+      - application/json
+      description: Cambia el estado de apertura del local asociado a la sesión del
+        owner.
+      parameters:
+      - description: Estado deseado
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            open:
+              type: boolean
+          type: object
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Estado actualizado
+        "400":
+          description: Body inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Abrir o cerrar el local
+      tags:
+      - Business
   /business/shops/stats/sales-over-time:
     get:
       description: Retorna la serie temporal de ventas (ganadas y perdidas) del período
@@ -1259,7 +1330,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: El rider introduce el código de 6 dígitos que le muestra el usuario
+      description: El rider introduce el código de 4 dígitos que le muestra el usuario
         para confirmar la entrega. Transiciona el pedido de "On The Way" a "Completed".
       parameters:
       - description: ID del pedido
@@ -1307,7 +1378,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: El local introduce el código de 6 dígitos que le muestra el rider
+      description: El local introduce el código de 4 dígitos que le muestra el rider
         para confirmar que está presente. Transiciona el pedido de "In Preparation"
         o "Ready" a "On The Way" y genera el código de entrega para el usuario.
       parameters:
@@ -1350,6 +1421,32 @@ paths:
       security:
       - SessionCookie: []
       summary: Confirmar recogida del pedido
+      tags:
+      - Orders
+  /orders/history:
+    get:
+      description: Devuelve todas las órdenes del customer autenticado, incluyendo
+        activas y completadas, ordenadas de más reciente a más antigua.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Historial de órdenes
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.OrderHistoryItem'
+            type: array
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+      security:
+      - SessionCookie: []
+      summary: Historial de órdenes del customer
       tags:
       - Orders
   /orders/manager:

@@ -32,3 +32,7 @@ func (r *ridersRepoAdapter) SearchAvailableOrders(ctx context.Context) ([]orders
 func (r *ridersRepoAdapter) SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*ordersModels.Order, error) {
 	return r.orders.SearchOrdersByID(ctx, orderID)
 }
+
+func (r *ridersRepoAdapter) SearchShopByID(ctx context.Context, shopID uuid.UUID) (*ordersModels.ShopOrder, error) {
+	return r.orders.SearchShopByID(ctx, shopID)
+}
