@@ -52,3 +52,14 @@ type SalesOverTimeResponse struct {
 	Current     []SalesDataPoint `json:"current"`
 	Previous    []SalesDataPoint `json:"previous"`
 }
+
+type CustomerMetrics struct {
+	NewCustomers       int `json:"new_customers"`
+	ReturningCustomers int `json:"returning_customers"`
+}
+
+type CustomerStatsResponse struct {
+	Period   StatsPeriod     `json:"period"`
+	Current  CustomerMetrics `json:"current"`
+	Previous CustomerMetrics `json:"previous"`
+}

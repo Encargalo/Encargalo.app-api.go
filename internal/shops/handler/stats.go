@@ -17,6 +17,7 @@ type ShopStatsHandler interface {
 	GetSummary(c echo.Context) error
 	GetTopProducts(c echo.Context) error
 	GetSalesOverTime(c echo.Context) error
+	GetCustomerStats(c echo.Context) error
 	ExportTransactions(c echo.Context) error
 }
 
@@ -130,6 +131,37 @@ func (h *shopStatsHandler) GetSalesOverTime(c echo.Context) error {
 	}
 
 	resp, err := h.svc.GetSalesOverTime(ctx, *session.ShopID, period, cursor)
+	if err != nil {
+		return errcustom.ToHTTPError(err)
+	}
+	return c.JSON(http.StatusOK, resp)
+}
+
+// GetCustomerStats godoc
+//
+// @Summary      Clientes nuevos vs recurrentes
+// @Description  Retorna la cantidad de clientes nuevos (primera compra Completed histórica dentro del período) y recurrentes (ya habían comprado antes del período) del período actual y anterior.
+// @Tags         Shops Stats
+// @Produce      json
+// @Security     SessionCookie
+// @Param        period  query  string  false  "Período: day, week, month (default: month)"
+// @Success      200  {object}  dtos.CustomerStatsResponse
+// @Failure      401  {string}  string  "No autorizado"
+// @Failure      500  {string}  string  "Error interno"
+// @Router       /business/shops/stats/customers [get]
+func (h *shopStatsHandler) GetCustomerStats(c echo.Context) error {
+	ctx := c.Request().Context()
+	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
+	if !ok || session.ShopID == nil {
+		return errcustom.ErrUnautorized
+	}
+
+	period := dtos.StatsPeriod(c.QueryParam("period"))
+	if !validStatsPeriod(period) {
+		period = dtos.PeriodMonth
+	}
+
+	resp, err := h.svc.GetCustomerStats(ctx, *session.ShopID, period)
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}

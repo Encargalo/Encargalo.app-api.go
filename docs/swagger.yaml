@@ -390,6 +390,22 @@ definitions:
     x-enum-varnames:
     - ZoneNormal
     - ZoneWithdrawalAvailable
+  Encargalo_app-api_go_internal_shops_domain_dtos.CustomerMetrics:
+    properties:
+      new_customers:
+        type: integer
+      returning_customers:
+        type: integer
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.CustomerStatsResponse:
+    properties:
+      current:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.CustomerMetrics'
+      period:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StatsPeriod'
+      previous:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.CustomerMetrics'
+    type: object
   Encargalo_app-api_go_internal_shops_domain_dtos.MatchedItemRule:
     properties:
       id:
@@ -1123,6 +1139,36 @@ paths:
       summary: Abrir o cerrar el local
       tags:
       - Business
+  /business/shops/stats/customers:
+    get:
+      description: Retorna la cantidad de clientes nuevos (primera compra Completed
+        histórica dentro del período) y recurrentes (ya habían comprado antes del
+        período) del período actual y anterior.
+      parameters:
+      - description: 'Período: day, week, month (default: month)'
+        in: query
+        name: period
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.CustomerStatsResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Clientes nuevos vs recurrentes
+      tags:
+      - Shops Stats
   /business/shops/stats/sales-over-time:
     get:
       description: Retorna la serie temporal de ventas (ganadas y perdidas) del período

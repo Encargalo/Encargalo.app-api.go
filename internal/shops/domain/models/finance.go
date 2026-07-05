@@ -40,3 +40,8 @@ type ShopTransaction struct {
 	PaymentMethod *string    `bun:"payment_method"`
 	CreatedAt     time.Time  `bun:"created_at"`
 }
+
+type CustomerMetricsRow struct {
+	NewCustomers       int `bun:"new_customers"`
+	ReturningCustomers int `bun:"returning_customers"`
+}
