@@ -138,6 +138,26 @@
       }
     }
     ,{
+      "name": "Get Customer Stats (OrderManager/Owner)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/business/shops/stats/customers?period=month",
+          "host": ["{{base_url}}"],
+          "path": ["business", "shops", "stats", "customers"],
+          "query": [
+            {
+              "key": "period",
+              "value": "month",
+              "description": "Período: day, week, month (default: month)"
+            }
+          ]
+        },
+        "description": "Retorna la cantidad de clientes nuevos (primera compra Completed histórica dentro del período) y recurrentes (ya habían comprado antes del período) del local, para el período actual y anterior. Requiere sesión con rol OrderManager u Owner."
+      }
+    }
+    ,{
       "name": "Search Shops",
       "request": {
         "method": "GET",

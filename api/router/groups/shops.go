@@ -52,5 +52,6 @@ func (s *shopGroup) Resource(g *echo.Echo) {
 	statsRoutes.GET("/summary", s.handlerStats.GetSummary)
 	statsRoutes.GET("/top-products", s.handlerStats.GetTopProducts)
 	statsRoutes.GET("/sales-over-time", s.handlerStats.GetSalesOverTime)
+	statsRoutes.GET("/customers", s.handlerStats.GetCustomerStats)
 	statsRoutes.GET("/transactions/export", s.handlerStats.ExportTransactions)
 }

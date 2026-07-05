@@ -180,6 +180,36 @@ func (r *shopStatsRepo) GetSalesOverTime(ctx context.Context, shopID uuid.UUID, 
 	return result, nil
 }
 
+func (r *shopStatsRepo) GetCustomerMetrics(ctx context.Context, shopID uuid.UUID, from, to time.Time) (dtos.CustomerMetrics, error) {
+	var row shopModels.CustomerMetricsRow
+
+	err := r.db.NewRaw(`
+		WITH customer_orders AS (
+			SELECT
+				o.customer_id,
+				MIN(ft.created_at) OVER (PARTITION BY o.customer_id) AS first_completed_at,
+				bool_or(ft.created_at >= ? AND ft.created_at < ?)
+					OVER (PARTITION BY o.customer_id) AS bought_in_period
+			FROM orders.orders o
+			JOIN finance.transactions ft ON ft.order_id = o.id AND ft.entity_type = ?
+			WHERE o.shop_id = ? AND o.status = 'Completed'
+		)
+		SELECT
+			COUNT(DISTINCT customer_id) FILTER (WHERE bought_in_period AND first_completed_at >= ?) AS new_customers,
+			COUNT(DISTINCT customer_id) FILTER (WHERE bought_in_period AND first_completed_at < ?) AS returning_customers
+		FROM customer_orders
+	`, from, to, shopModels.EntityTypeShop, shopID, from, from).Scan(ctx, &row)
+	if err != nil {
+		slog.Error("stats GetCustomerMetrics: query failed", "shopID", shopID, "error", err)
+		return dtos.CustomerMetrics{}, errcustom.ErrUnexpectedError
+	}
+
+	return dtos.CustomerMetrics{
+		NewCustomers:       row.NewCustomers,
+		ReturningCustomers: row.ReturningCustomers,
+	}, nil
+}
+
 func (r *shopStatsRepo) GetAllTransactionsInPeriod(ctx context.Context, shopID uuid.UUID, from, to time.Time) ([]dtos.ShopTransactionDTO, error) {
 	var txs []shopModels.ShopTransaction
 	err := r.db.NewSelect().

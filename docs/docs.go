@@ -572,6 +572,51 @@ const docTemplate = `{
                 }
             }
         },
+        "/business/shops/stats/customers": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna la cantidad de clientes nuevos (primera compra Completed histórica dentro del período) y recurrentes (ya habían comprado antes del período) del período actual y anterior.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Stats"
+                ],
+                "summary": "Clientes nuevos vs recurrentes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Período: day, week, month (default: month)",
+                        "name": "period",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.CustomerStatsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/business/shops/stats/sales-over-time": {
             "get": {
                 "security": [
@@ -2852,6 +2897,31 @@ const docTemplate = `{
                 "ZoneNormal",
                 "ZoneWithdrawalAvailable"
             ]
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.CustomerMetrics": {
+            "type": "object",
+            "properties": {
+                "new_customers": {
+                    "type": "integer"
+                },
+                "returning_customers": {
+                    "type": "integer"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.CustomerStatsResponse": {
+            "type": "object",
+            "properties": {
+                "current": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.CustomerMetrics"
+                },
+                "period": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StatsPeriod"
+                },
+                "previous": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.CustomerMetrics"
+                }
+            }
         },
         "Encargalo_app-api_go_internal_shops_domain_dtos.MatchedItemRule": {
             "type": "object",

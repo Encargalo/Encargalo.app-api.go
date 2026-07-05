@@ -98,6 +98,27 @@ func (a *shopStatsApp) GetSalesOverTime(ctx context.Context, shopID uuid.UUID, p
 	}, nil
 }
 
+func (a *shopStatsApp) GetCustomerStats(ctx context.Context, shopID uuid.UUID, period dtos.StatsPeriod) (dtos.CustomerStatsResponse, error) {
+	curFrom, curTo := currentPeriodRange(period)
+	prevFrom, prevTo := previousPeriodRange(period)
+
+	current, err := a.repo.GetCustomerMetrics(ctx, shopID, curFrom, curTo)
+	if err != nil {
+		return dtos.CustomerStatsResponse{}, err
+	}
+
+	previous, err := a.repo.GetCustomerMetrics(ctx, shopID, prevFrom, prevTo)
+	if err != nil {
+		return dtos.CustomerStatsResponse{}, err
+	}
+
+	return dtos.CustomerStatsResponse{
+		Period:   period,
+		Current:  current,
+		Previous: previous,
+	}, nil
+}
+
 func (a *shopStatsApp) ExportTransactions(ctx context.Context, shopID uuid.UUID, period dtos.StatsPeriod) ([]dtos.ShopTransactionDTO, error) {
 	from, to := currentPeriodRange(period)
 	return a.repo.GetAllTransactionsInPeriod(ctx, shopID, from, to)
