@@ -37,12 +37,14 @@ type TrendingShop struct {
 }
 
 type TrendingProduct struct {
-	ID          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	Ref         float64   `json:"ref"`
-	Bs          float64   `json:"bs"`
-	Image       string    `json:"image"`
-	Description string    `json:"description"`
-	Score       float32   `json:"score"`
-	Sold        int       `json:"sold"`
+	ID          uuid.UUID          `json:"id"`
+	CategoryID  uuid.UUID          `json:"category_id"`
+	Name        string             `json:"name"`
+	Ref         float64            `json:"ref"`
+	Bs          float64            `json:"bs"`
+	Image       string             `json:"image"`
+	Description string             `json:"description"`
+	Score       float32            `json:"score"`
+	Sold        int                `json:"sold"`
+	Schedules   []ScheduleResponse `json:"schedules,omitempty"`
 }

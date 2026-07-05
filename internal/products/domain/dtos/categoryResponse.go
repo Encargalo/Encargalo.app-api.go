@@ -9,7 +9,8 @@ type CategoryResponse struct {
 	ShopID uuid.UUID `json:"shop_id"`
 	Name   string    `json:"name"`
 
-	Items ItemsResponse `json:"items"`
+	Items     ItemsResponse      `json:"items"`
+	Schedules []ScheduleResponse `json:"schedules,omitempty"`
 }
 
 func (c *CategoriesResponse) Add(category CategoryResponse) {

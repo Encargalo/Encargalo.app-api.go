@@ -18,14 +18,16 @@ type Category struct {
 
 	Items         Items          `bun:"rel:has-many,join:id=category_id" json:"items"`
 	MacroCategory *MacroCategory `bun:"rel:belongs-to,join:macro_category_id=id" json:"macro_category,omitempty"`
+	Schedules     Schedules      `bun:"rel:has-many,join:id=category_id" json:"schedules,omitempty"`
 }
 
 func (c *Category) ToDomainDTO() dtos.CategoryResponse {
 	return dtos.CategoryResponse{
-		ID:     c.ID,
-		ShopID: c.ShopID,
-		Name:   c.Name,
-		Items:  c.Items.ToDomainDTO(),
+		ID:        c.ID,
+		ShopID:    c.ShopID,
+		Name:      c.Name,
+		Items:     c.Items.ToDomainDTO(),
+		Schedules: c.Schedules.ToDomainDTO(),
 	}
 }
 

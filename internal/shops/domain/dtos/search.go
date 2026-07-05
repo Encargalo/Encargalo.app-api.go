@@ -32,6 +32,13 @@ type MatchedItemRule struct {
 	SelectorType string    `json:"selector_type"`
 }
 
+type MatchedSchedule struct {
+	DayOfWeek *int16 `json:"day_of_week,omitempty"`
+	StartTime string `json:"start_time"`
+	EndTime   string `json:"end_time"`
+	Enabled   bool   `json:"enabled"`
+}
+
 type MatchedProductItem struct {
 	ID          uuid.UUID         `json:"id"`
 	ShopID      uuid.UUID         `json:"shop_id"`
@@ -42,6 +49,7 @@ type MatchedProductItem struct {
 	Score       float32           `json:"score"`
 	HasFlavors  bool              `json:"has_flavors"`
 	Rules       []MatchedItemRule `json:"rules,omitempty"`
+	Schedules   []MatchedSchedule `json:"schedules,omitempty"`
 }
 
 type SearchShopResponse struct {

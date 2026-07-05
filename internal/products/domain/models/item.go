@@ -30,6 +30,7 @@ type Item struct {
 	DeletedAt     *time.Time `bun:"deleted_at" json:"-"`
 
 	ItemRule ItemsRules `bun:"rel:has-many,join:id=item_id" json:"rules,omitempty"`
+	Category *Category  `bun:"rel:belongs-to,join:category_id=id" json:"-"`
 }
 
 func (i *Item) BuildToModel(item dtos.RegisterItem, imageURL, imgaePublicID, imageHash string) {
@@ -46,7 +47,7 @@ func (i *Item) BuildToModel(item dtos.RegisterItem, imageURL, imgaePublicID, ima
 }
 
 func (i *Item) ToDomainDTO() dtos.ItemResponse {
-	return dtos.ItemResponse{
+	resp := dtos.ItemResponse{
 		ID:          i.ID,
 		ShopID:      i.ShopID,
 		CategoryID:  i.CategoryID,
@@ -58,6 +59,12 @@ func (i *Item) ToDomainDTO() dtos.ItemResponse {
 		HasFlavors:  i.HasFlavors,
 		Rules:       i.ItemRule.ToDomainDTO(),
 	}
+
+	if i.Category != nil {
+		resp.Schedules = i.Category.Schedules.ToDomainDTO()
+	}
+
+	return resp
 }
 
 func (i *Items) ToDomainDTO() dtos.ItemsResponse {

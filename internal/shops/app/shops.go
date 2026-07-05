@@ -3,8 +3,10 @@ package app
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	bcvPorts "Encargalo.app-api.go/internal/bcv/domain/ports"
+	"Encargalo.app-api.go/internal/pkg/bizclock"
 	"Encargalo.app-api.go/internal/pkg/money"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shops/domain/dtos"
@@ -91,6 +93,7 @@ func (s *shopsApp) SearchShops(ctx context.Context, query dtos.SearchShopsQuery)
 		slog.Error("error al cargar productos para búsqueda, se devuelven tiendas sin productos", "error", err)
 		matchedItems = make(map[uuid.UUID][]dtos.MatchedProductItem)
 	}
+	matchedItems = filterMatchedItemsBySchedule(matchedItems, bizclock.Now())
 
 	rate := s.bcvRate(ctx)
 	result := make(dtos.SearchShopsResult, 0, len(candidates))
@@ -102,4 +105,34 @@ func (s *shopsApp) SearchShops(ctx context.Context, query dtos.SearchShopsQuery)
 	}
 
 	return result, nil
+}
+
+func filterMatchedItemsBySchedule(matched map[uuid.UUID][]dtos.MatchedProductItem, now time.Time) map[uuid.UUID][]dtos.MatchedProductItem {
+	filtered := make(map[uuid.UUID][]dtos.MatchedProductItem, len(matched))
+	for shopID, items := range matched {
+		kept := make([]dtos.MatchedProductItem, 0, len(items))
+		for _, item := range items {
+			if !bizclock.IsAvailableAt(toShopsWindows(item.Schedules), now) {
+				continue
+			}
+			kept = append(kept, item)
+		}
+		if len(kept) > 0 {
+			filtered[shopID] = kept
+		}
+	}
+	return filtered
+}
+
+func toShopsWindows(schedules []dtos.MatchedSchedule) []bizclock.Window {
+	windows := make([]bizclock.Window, len(schedules))
+	for i, s := range schedules {
+		windows[i] = bizclock.Window{
+			DayOfWeek: s.DayOfWeek,
+			StartTime: s.StartTime,
+			EndTime:   s.EndTime,
+			Enabled:   s.Enabled,
+		}
+	}
+	return windows
 }

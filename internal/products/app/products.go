@@ -7,9 +7,11 @@ import (
 	"encoding/hex"
 	"log/slog"
 	"strings"
+	"time"
 
 	bcvPorts "Encargalo.app-api.go/internal/bcv/domain/ports"
 	emplService "Encargalo.app-api.go/internal/employee/domain/ports"
+	"Encargalo.app-api.go/internal/pkg/bizclock"
 	"Encargalo.app-api.go/internal/pkg/money"
 	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
 	"Encargalo.app-api.go/internal/products/domain/dtos"
@@ -19,6 +21,8 @@ import (
 
 	"github.com/google/uuid"
 )
+
+const trendingResultLimit = 10
 
 type productsApp struct {
 	repo        ports.ProductsRepo
@@ -65,6 +69,52 @@ func applyRateToTrending(rate float64, data *dtos.TrendingResponse) {
 		(*data)[i].Product.Bs = money.RoundBs((*data)[i].Product.Ref * rate)
 		(*data)[i].Shop.DeliveryFeeBs = money.RoundBs((*data)[i].Shop.DeliveryFee * rate)
 	}
+}
+
+func toWindows(schedules []dtos.ScheduleResponse) []bizclock.Window {
+	windows := make([]bizclock.Window, len(schedules))
+	for i, s := range schedules {
+		windows[i] = bizclock.Window{
+			DayOfWeek: s.DayOfWeek,
+			StartTime: s.StartTime,
+			EndTime:   s.EndTime,
+			Enabled:   s.Enabled,
+		}
+	}
+	return windows
+}
+
+func filterCategoriesBySchedule(data dtos.CategoriesResponse, now time.Time) dtos.CategoriesResponse {
+	filtered := make(dtos.CategoriesResponse, 0, len(data))
+	for _, cat := range data {
+		if !bizclock.IsAvailableAt(toWindows(cat.Schedules), now) {
+			continue
+		}
+		filtered = append(filtered, cat)
+	}
+	return filtered
+}
+
+func filterItemsBySchedule(data dtos.ItemsResponse, now time.Time) dtos.ItemsResponse {
+	filtered := make(dtos.ItemsResponse, 0, len(data))
+	for _, item := range data {
+		if !bizclock.IsAvailableAt(toWindows(item.Schedules), now) {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	return filtered
+}
+
+func filterTrendingBySchedule(data dtos.TrendingResponse, now time.Time) dtos.TrendingResponse {
+	filtered := make(dtos.TrendingResponse, 0, len(data))
+	for _, entry := range data {
+		if !bizclock.IsAvailableAt(toWindows(entry.Product.Schedules), now) {
+			continue
+		}
+		filtered = append(filtered, entry)
+	}
+	return filtered
 }
 
 func (p *productsApp) RegisterItem(ctx context.Context, item dtos.RegisterItem) error {
@@ -169,6 +219,18 @@ func (p *productsApp) SearchProductsByShopID(ctx context.Context, shopID uuid.UU
 	if err != nil {
 		return nil, err
 	}
+	data = filterCategoriesBySchedule(data, bizclock.Now())
+	applyRateToCategories(p.bcvRate(ctx), &data)
+	return data, nil
+}
+
+// SearchProductsByShopIDForOwner es la versión sin filtrar por horario, usada por el
+// dashboard del dueño (GetMyProducts) para que siempre pueda ver y editar todo su catálogo.
+func (p *productsApp) SearchProductsByShopIDForOwner(ctx context.Context, shopID uuid.UUID) (dtos.CategoriesResponse, error) {
+	data, err := p.repo.SearchProductsByShopID(ctx, shopID)
+	if err != nil {
+		return nil, err
+	}
 	applyRateToCategories(p.bcvRate(ctx), &data)
 	return data, nil
 }
@@ -195,6 +257,7 @@ func (p *productsApp) SearchBestSellersByShopID(ctx context.Context, shopID uuid
 	if err != nil {
 		return nil, err
 	}
+	data = filterItemsBySchedule(data, bizclock.Now())
 	applyRateToItems(p.bcvRate(ctx), &data)
 	return data, nil
 }
@@ -208,8 +271,78 @@ func (p *productsApp) GetTrendingByCoords(ctx context.Context, coords dtos.Trend
 	if err != nil {
 		return nil, err
 	}
+	data = filterTrendingBySchedule(data, bizclock.Now())
+	if len(data) > trendingResultLimit {
+		data = data[:trendingResultLimit]
+	}
 	applyRateToTrending(p.bcvRate(ctx), &data)
 	return data, nil
+}
+
+func (p *productsApp) RegisterCategory(ctx context.Context, category dtos.RegisterCategory) error {
+	categoryModel := models.Category{
+		ShopID:          category.ShopID,
+		Name:            category.Name,
+		MacroCategoryID: category.MacroCategoryID,
+	}
+
+	if err := p.repo.RegisterCategory(ctx, &categoryModel); err != nil {
+		return err
+	}
+
+	if len(category.Schedules) == 0 {
+		return nil
+	}
+
+	schedules := buildScheduleModels(categoryModel.ID, category.Schedules)
+	return p.repo.ReplaceCategorySchedules(ctx, categoryModel.ID, categoryModel.ShopID, schedules)
+}
+
+func (p *productsApp) UpdateCategory(ctx context.Context, category dtos.UpdateCategory, categoryID, userID uuid.UUID) error {
+	categoryModel, err := p.repo.SearchCategoryByID(ctx, categoryID)
+	if err != nil {
+		return err
+	}
+
+	if categoryModel == nil {
+		return errcustom.ErrNotFound
+	}
+
+	empl, err := p.emplService.SearchEmployeeByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	if categoryModel.ShopID != empl.ShopID {
+		return errcustom.ErrUnautorized
+	}
+
+	var updateModel models.UpdateCategory
+	updateModel.BuildToModel(category, categoryID)
+
+	if err := p.repo.UpdateCategory(ctx, &updateModel, categoryModel.ShopID); err != nil {
+		return err
+	}
+
+	if category.Schedules == nil {
+		return nil
+	}
+
+	schedules := buildScheduleModels(categoryID, *category.Schedules)
+	return p.repo.ReplaceCategorySchedules(ctx, categoryID, categoryModel.ShopID, schedules)
+}
+
+func buildScheduleModels(categoryID uuid.UUID, inputs []dtos.ScheduleInput) []models.Schedule {
+	schedules := make([]models.Schedule, len(inputs))
+	for i, s := range inputs {
+		schedules[i] = models.Schedule{
+			CategoryID: &categoryID,
+			StartTime:  s.StartTime,
+			EndTime:    s.EndTime,
+			Enabled:    s.EnabledOrDefault(),
+		}
+	}
+	return schedules
 }
 
 func base64ToBytes(b64 string) ([]byte, error) {

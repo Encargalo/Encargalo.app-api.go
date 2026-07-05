@@ -293,6 +293,140 @@ const docTemplate = `{
                 }
             }
         },
+        "/business/products/categories": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Registra una nueva categoría (sección de menú) en el negocio asociado a la sesión autenticada, con horario opcional de disponibilidad. Si se omite ` + "`" + `schedules` + "`" + ` o se envía vacío, la categoría queda siempre disponible.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Registrar una nueva categoría",
+                "parameters": [
+                    {
+                        "description": "Datos de la categoría a registrar",
+                        "name": "category",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.RegisterCategory"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "category registered successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "JSON inválido o campos faltantes",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "El usuario no tiene un negocio asociado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/business/products/categories/{category_id}": {
+            "put": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Actualiza el nombre, macro-categoría y/o horario de una categoría existente del negocio autenticado. Enviar ` + "`" + `schedules` + "`" + ` reemplaza todo el horario configurado; omitirlo lo deja sin cambios; enviar ` + "`" + `[]` + "`" + ` elimina el horario (la categoría queda siempre disponible).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Actualizar una categoría",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID de la categoría",
+                        "name": "category_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos de la categoría a actualizar",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.UpdateCategory"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "category update success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "category_id inválido o JSON mal formado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Categoría no encontrada",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/business/products/items": {
             "post": {
                 "security": [
@@ -1241,7 +1375,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna todos los productos agrupados por categoría de una tienda. Solo incluye productos disponibles, ordenados por precio ascendente.",
+                "description": "Retorna todos los productos agrupados por categoría de una tienda. Solo incluye productos disponibles, ordenados por precio ascendente. Además, excluye productos cuya categoría tiene un horario configurado que no cubre la hora actual (America/Caracas).",
                 "produces": [
                     "application/json"
                 ],
@@ -1365,7 +1499,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna todos los productos más vendidos de una tienda específica, ordenados por ventas descendente.",
+                "description": "Retorna todos los productos más vendidos de una tienda específica, ordenados por ventas descendente. Excluye productos cuya categoría tiene un horario configurado que no cubre la hora actual (America/Caracas).",
                 "produces": [
                     "application/json"
                 ],
@@ -1551,7 +1685,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna el producto más vendido de cada local abierto dentro de un radio de 1 km de las coordenadas dadas. Máximo 10 resultados. Cacheado 15 minutos.",
+                "description": "Retorna el producto más vendido de cada local abierto dentro de un radio de 1 km de las coordenadas dadas. Máximo 10 resultados, excluyendo productos cuya categoría tiene un horario configurado que no cubre la hora actual (America/Caracas). Cacheado 15 minutos.",
                 "produces": [
                     "application/json"
                 ],
@@ -2573,6 +2707,12 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
+                "schedules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleResponse"
+                    }
+                },
                 "shop_id": {
                     "type": "string"
                 }
@@ -2630,6 +2770,12 @@ const docTemplate = `{
                         "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemRule"
                     }
                 },
+                "schedules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleResponse"
+                    }
+                },
                 "score": {
                     "type": "number",
                     "example": 4.7
@@ -2662,6 +2808,28 @@ const docTemplate = `{
                 "selector_type": {
                     "type": "string",
                     "example": "multi_select"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.RegisterCategory": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "macro_category_id": {
+                    "type": "string",
+                    "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Desayuno"
+                },
+                "schedules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleInput"
+                    }
                 }
             }
         },
@@ -2706,6 +2874,49 @@ const docTemplate = `{
                 }
             }
         },
+        "Encargalo_app-api_go_internal_products_domain_dtos.ScheduleInput": {
+            "type": "object",
+            "required": [
+                "end_time",
+                "start_time"
+            ],
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "end_time": {
+                    "type": "string",
+                    "example": "11:00:00"
+                },
+                "start_time": {
+                    "type": "string",
+                    "example": "06:00:00"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.ScheduleResponse": {
+            "type": "object",
+            "properties": {
+                "day_of_week": {
+                    "type": "integer"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "end_time": {
+                    "type": "string",
+                    "example": "02:00:00"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "start_time": {
+                    "type": "string",
+                    "example": "18:00:00"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_products_domain_dtos.TrendingEntry": {
             "type": "object",
             "properties": {
@@ -2723,6 +2934,9 @@ const docTemplate = `{
                 "bs": {
                     "type": "number"
                 },
+                "category_id": {
+                    "type": "string"
+                },
                 "description": {
                     "type": "string"
                 },
@@ -2737,6 +2951,12 @@ const docTemplate = `{
                 },
                 "ref": {
                     "type": "number"
+                },
+                "schedules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleResponse"
+                    }
                 },
                 "score": {
                     "type": "number"
@@ -2778,6 +2998,28 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.UpdateCategory": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "macro_category_id": {
+                    "type": "string",
+                    "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Desayuno"
+                },
+                "schedules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleInput"
+                    }
                 }
             }
         },
@@ -2970,10 +3212,33 @@ const docTemplate = `{
                         "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedItemRule"
                     }
                 },
+                "schedules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedSchedule"
+                    }
+                },
                 "score": {
                     "type": "number"
                 },
                 "shop_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.MatchedSchedule": {
+            "type": "object",
+            "properties": {
+                "day_of_week": {
+                    "type": "integer"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "start_time": {
                     "type": "string"
                 }
             }

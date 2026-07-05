@@ -33,9 +33,9 @@
           }
         },
         "url": {
-          "raw": "{{base_url}}/products/items",
+          "raw": "{{base_url}}/business/products/items",
           "host": ["{{base_url}}"],
-          "path": ["products", "items"]
+          "path": ["business", "products", "items"]
         },
         "description": "Registra un nuevo producto en la tienda del empleado autenticado. `shop_id` se obtiene automáticamente del empleado. Si se envía `flavor_ids`, el producto se marcará automáticamente como con sabores. Requiere cookie `encargalo-session`. Rol: Order Manager."
       }
@@ -60,11 +60,65 @@
           }
         },
         "url": {
-          "raw": "{{base_url}}/products/00000000-0000-0000-0000-000000000000",
+          "raw": "{{base_url}}/business/products/00000000-0000-0000-0000-000000000000",
           "host": ["{{base_url}}"],
-          "path": ["products", "00000000-0000-0000-0000-000000000000"]
+          "path": ["business", "products", "00000000-0000-0000-0000-000000000000"]
         },
         "description": "Actualiza un producto existente por su `item_id` (UUID en el path). Solo puede actualizarlo el Order Manager de la tienda propietaria.\n\n- `image`: opcional. Solo se sube a Cloudinary si es diferente a la imagen actual (comparación por hash).\n- `flavor_ids`: opcional. Si se envía (incluso `[]`), reemplaza todos los sabores. Si no se envía, los sabores no se modifican. `has_flavors` se deriva automáticamente.\n\nRequiere cookie `encargalo-session`. Rol: Order Manager."
+      }
+    },
+    {
+      "name": "Register Category",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Desayuno\",\n  \"macro_category_id\": null,\n  \"schedules\": [\n    {\n      \"start_time\": \"06:00:00\",\n      \"end_time\": \"11:00:00\"\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/business/products/categories",
+          "host": ["{{base_url}}"],
+          "path": ["business", "products", "categories"]
+        },
+        "description": "Registra una nueva categoría (sección de menú) en la tienda del empleado autenticado, con horario opcional de disponibilidad. `schedules` es un rango diario (mismo horario todos los días); si se omite o se envía vacío, la categoría queda siempre disponible. Requiere cookie `encargalo-session`. Rol: Order Manager / Owner."
+      }
+    },
+    {
+      "name": "Update Category",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Cena\",\n  \"macro_category_id\": null,\n  \"schedules\": [\n    {\n      \"start_time\": \"18:00:00\",\n      \"end_time\": \"02:00:00\"\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/business/products/categories/00000000-0000-0000-0000-000000000000",
+          "host": ["{{base_url}}"],
+          "path": ["business", "products", "categories", "00000000-0000-0000-0000-000000000000"]
+        },
+        "description": "Actualiza nombre, macro-categoría y/o horario de una categoría existente por su `category_id` (UUID en el path). Solo puede actualizarla el Order Manager/Owner de la tienda propietaria.\n\n- `schedules`: opcional. Si se envía (incluso `[]`), reemplaza todo el horario configurado. `[]` elimina el horario (la categoría queda siempre disponible). Si no se envía, el horario no se modifica.\n\nRequiere cookie `encargalo-session`. Rol: Order Manager / Owner."
       }
     },
     {
@@ -94,7 +148,7 @@
             }
           ]
         },
-        "description": "Retorna productos agrupados por categoría de una tienda, con paginación. Solo incluye productos disponibles, ordenados por precio ascendente. Respuesta incluye `data` (categorías con items) y `pagination` (page, limit, total, total_pages). Público."
+        "description": "Retorna productos agrupados por categoría de una tienda, con paginación. Solo incluye productos disponibles, ordenados por precio ascendente. Excluye categorías cuyo horario configurado no cubre la hora actual (America/Caracas). Respuesta incluye `data` (categorías con items) y `pagination` (page, limit, total, total_pages). Público."
       }
     },
     {
@@ -119,7 +173,7 @@
             }
           ]
         },
-        "description": "Retorna el producto más vendido de cada local abierto dentro de un radio de 1 km. Máximo 10 resultados. Cacheado 15 minutos. Cada `shop` incluye `delivery_fee`, `delivery_fee_bs` y `time` (minutos estimados) calculados con la distancia real entre `lat`/`lon` y el local, igual que en `/shops`. Requiere cookie `encargalo-session`. Rol: Customer."
+        "description": "Retorna el producto más vendido de cada local abierto dentro de un radio de 1 km. Máximo 10 resultados, excluyendo productos cuya categoría tiene un horario configurado que no cubre la hora actual (America/Caracas). Cacheado 15 minutos. Cada `shop` incluye `delivery_fee`, `delivery_fee_bs` y `time` (minutos estimados) calculados con la distancia real entre `lat`/`lon` y el local, igual que en `/shops`. Requiere cookie `encargalo-session`. Rol: Customer."
       }
     },
     {
@@ -149,7 +203,7 @@
             }
           ]
         },
-        "description": "Retorna los productos más vendidos de una tienda ordenados por ventas descendente, con paginación. Público."
+        "description": "Retorna los productos más vendidos de una tienda ordenados por ventas descendente, con paginación. Excluye productos cuya categoría tiene un horario configurado que no cubre la hora actual (America/Caracas). Público."
       }
     },
     {

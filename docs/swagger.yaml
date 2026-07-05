@@ -164,6 +164,10 @@ definitions:
         type: array
       name:
         type: string
+      schedules:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleResponse'
+        type: array
       shop_id:
         type: string
     type: object
@@ -205,6 +209,10 @@ definitions:
         items:
           $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemRule'
         type: array
+      schedules:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleResponse'
+        type: array
       score:
         example: 4.7
         type: number
@@ -229,6 +237,21 @@ definitions:
       selector_type:
         example: multi_select
         type: string
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.RegisterCategory:
+    properties:
+      macro_category_id:
+        example: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        type: string
+      name:
+        example: Desayuno
+        type: string
+      schedules:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleInput'
+        type: array
+    required:
+    - name
     type: object
   Encargalo_app-api_go_internal_products_domain_dtos.RegisterItem:
     properties:
@@ -261,6 +284,36 @@ definitions:
     - name
     - price
     type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.ScheduleInput:
+    properties:
+      enabled:
+        example: true
+        type: boolean
+      end_time:
+        example: "11:00:00"
+        type: string
+      start_time:
+        example: "06:00:00"
+        type: string
+    required:
+    - end_time
+    - start_time
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.ScheduleResponse:
+    properties:
+      day_of_week:
+        type: integer
+      enabled:
+        type: boolean
+      end_time:
+        example: "02:00:00"
+        type: string
+      id:
+        type: string
+      start_time:
+        example: "18:00:00"
+        type: string
+    type: object
   Encargalo_app-api_go_internal_products_domain_dtos.TrendingEntry:
     properties:
       product:
@@ -272,6 +325,8 @@ definitions:
     properties:
       bs:
         type: number
+      category_id:
+        type: string
       description:
         type: string
       id:
@@ -282,6 +337,10 @@ definitions:
         type: string
       ref:
         type: number
+      schedules:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleResponse'
+        type: array
       score:
         type: number
       sold:
@@ -309,6 +368,21 @@ definitions:
         type: integer
       type:
         type: string
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.UpdateCategory:
+    properties:
+      macro_category_id:
+        example: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        type: string
+      name:
+        example: Desayuno
+        type: string
+      schedules:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleInput'
+        type: array
+    required:
+    - name
     type: object
   Encargalo_app-api_go_internal_products_domain_dtos.UpdateItem:
     properties:
@@ -437,9 +511,24 @@ definitions:
         items:
           $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedItemRule'
         type: array
+      schedules:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedSchedule'
+        type: array
       score:
         type: number
       shop_id:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.MatchedSchedule:
+    properties:
+      day_of_week:
+        type: integer
+      enabled:
+        type: boolean
+      end_time:
+        type: string
+      start_time:
         type: string
     type: object
   Encargalo_app-api_go_internal_shops_domain_dtos.PeriodMetrics:
@@ -1003,6 +1092,97 @@ paths:
       security:
       - SessionCookie: []
       summary: Actualizar un producto
+      tags:
+      - Business
+  /business/products/categories:
+    post:
+      consumes:
+      - application/json
+      description: Registra una nueva categoría (sección de menú) en el negocio asociado
+        a la sesión autenticada, con horario opcional de disponibilidad. Si se omite
+        `schedules` o se envía vacío, la categoría queda siempre disponible.
+      parameters:
+      - description: Datos de la categoría a registrar
+        in: body
+        name: category
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.RegisterCategory'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: category registered successfully
+          schema:
+            type: string
+        "400":
+          description: JSON inválido o campos faltantes
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "422":
+          description: El usuario no tiene un negocio asociado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Registrar una nueva categoría
+      tags:
+      - Business
+  /business/products/categories/{category_id}:
+    put:
+      consumes:
+      - application/json
+      description: Actualiza el nombre, macro-categoría y/o horario de una categoría
+        existente del negocio autenticado. Enviar `schedules` reemplaza todo el horario
+        configurado; omitirlo lo deja sin cambios; enviar `[]` elimina el horario
+        (la categoría queda siempre disponible).
+      parameters:
+      - description: ID de la categoría
+        format: uuid
+        in: path
+        name: category_id
+        required: true
+        type: string
+      - description: Datos de la categoría a actualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.UpdateCategory'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: category update success
+          schema:
+            type: string
+        "400":
+          description: category_id inválido o JSON mal formado
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: Categoría no encontrada
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Actualizar una categoría
       tags:
       - Business
   /business/products/items:
@@ -1573,7 +1753,9 @@ paths:
   /products:
     get:
       description: Retorna todos los productos agrupados por categoría de una tienda.
-        Solo incluye productos disponibles, ordenados por precio ascendente.
+        Solo incluye productos disponibles, ordenados por precio ascendente. Además,
+        excluye productos cuya categoría tiene un horario configurado que no cubre
+        la hora actual (America/Caracas).
       parameters:
       - description: ID de la tienda
         format: uuid
@@ -1655,7 +1837,8 @@ paths:
   /products/best-sellers:
     get:
       description: Retorna todos los productos más vendidos de una tienda específica,
-        ordenados por ventas descendente.
+        ordenados por ventas descendente. Excluye productos cuya categoría tiene un
+        horario configurado que no cubre la hora actual (America/Caracas).
       parameters:
       - description: ID de la tienda
         format: uuid
@@ -1777,8 +1960,9 @@ paths:
   /products/trending:
     get:
       description: Retorna el producto más vendido de cada local abierto dentro de
-        un radio de 1 km de las coordenadas dadas. Máximo 10 resultados. Cacheado
-        15 minutos.
+        un radio de 1 km de las coordenadas dadas. Máximo 10 resultados, excluyendo
+        productos cuya categoría tiene un horario configurado que no cubre la hora
+        actual (America/Caracas). Cacheado 15 minutos.
       parameters:
       - description: Latitud del usuario
         in: query

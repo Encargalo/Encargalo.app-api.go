@@ -603,3 +603,256 @@ func TestSearchBestSellersByShopID_UnexpectedError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, errcustom.ErrUnexpectedError, err)
 }
+
+// --- RegisterCategory ---
+
+func TestRegisterCategory_Success(t *testing.T) {
+	h, svc := newHandler(t)
+
+	shopID := uuid.New()
+	session := authmodels.ActiveSession{UserID: uuid.New(), ShopID: &shopID}
+
+	body := buildBody(t, map[string]any{
+		"name": "Desayuno",
+		"schedules": []map[string]any{
+			{"start_time": "06:00:00", "end_time": "11:00:00"},
+		},
+	})
+	tc := buildhttptest.SetupControllerCase("/business/products/categories", http.MethodPost, body)
+	tc = withSession(tc, session)
+
+	svc.On("RegisterCategory", tc.Req.Context(), mock.AnythingOfType("dtos.RegisterCategory")).Return(nil)
+
+	err := h.RegisterCategory(tc.Ctx)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusCreated, tc.Res.Code)
+}
+
+func TestRegisterCategory_NoSession(t *testing.T) {
+	h, _ := newHandler(t)
+
+	body := buildBody(t, map[string]any{"name": "Desayuno"})
+	tc := buildhttptest.SetupControllerCase("/business/products/categories", http.MethodPost, body)
+
+	err := h.RegisterCategory(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusUnauthorized, httpCode(err))
+}
+
+func TestRegisterCategory_NoShopID(t *testing.T) {
+	h, _ := newHandler(t)
+
+	session := authmodels.ActiveSession{UserID: uuid.New(), ShopID: nil}
+	body := buildBody(t, map[string]any{"name": "Desayuno"})
+	tc := buildhttptest.SetupControllerCase("/business/products/categories", http.MethodPost, body)
+	tc = withSession(tc, session)
+
+	err := h.RegisterCategory(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusUnprocessableEntity, httpCode(err))
+}
+
+func TestRegisterCategory_InvalidBody(t *testing.T) {
+	h, _ := newHandler(t)
+
+	shopID := uuid.New()
+	session := authmodels.ActiveSession{UserID: uuid.New(), ShopID: &shopID}
+	tc := buildhttptest.SetupControllerCase("/business/products/categories", http.MethodPost, bytes.NewBufferString("{invalid}"))
+	tc = withSession(tc, session)
+
+	err := h.RegisterCategory(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusBadRequest, httpCode(err))
+}
+
+func TestRegisterCategory_ValidationFail(t *testing.T) {
+	h, _ := newHandler(t)
+
+	shopID := uuid.New()
+	session := authmodels.ActiveSession{UserID: uuid.New(), ShopID: &shopID}
+	body := buildBody(t, map[string]any{})
+	tc := buildhttptest.SetupControllerCase("/business/products/categories", http.MethodPost, body)
+	tc = withSession(tc, session)
+
+	err := h.RegisterCategory(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusBadRequest, httpCode(err))
+}
+
+func TestRegisterCategory_InvalidScheduleFormat(t *testing.T) {
+	h, _ := newHandler(t)
+
+	shopID := uuid.New()
+	session := authmodels.ActiveSession{UserID: uuid.New(), ShopID: &shopID}
+	body := buildBody(t, map[string]any{
+		"name": "Desayuno",
+		"schedules": []map[string]any{
+			{"start_time": "6pm", "end_time": "11:00:00"},
+		},
+	})
+	tc := buildhttptest.SetupControllerCase("/business/products/categories", http.MethodPost, body)
+	tc = withSession(tc, session)
+
+	err := h.RegisterCategory(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusBadRequest, httpCode(err))
+}
+
+func TestRegisterCategory_ServiceError(t *testing.T) {
+	h, svc := newHandler(t)
+
+	shopID := uuid.New()
+	session := authmodels.ActiveSession{UserID: uuid.New(), ShopID: &shopID}
+	body := buildBody(t, map[string]any{"name": "Desayuno"})
+	tc := buildhttptest.SetupControllerCase("/business/products/categories", http.MethodPost, body)
+	tc = withSession(tc, session)
+
+	svc.On("RegisterCategory", tc.Req.Context(), mock.AnythingOfType("dtos.RegisterCategory")).Return(errcustom.ErrUnexpectedError)
+
+	err := h.RegisterCategory(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, errcustom.ErrUnexpectedError, err)
+}
+
+// --- UpdateCategory ---
+
+func TestUpdateCategory_Success(t *testing.T) {
+	h, svc := newHandler(t)
+
+	userID := uuid.New()
+	categoryID := uuid.New()
+	session := authmodels.ActiveSession{UserID: userID}
+
+	body := buildBody(t, map[string]any{"name": "Cena"})
+	tc := buildhttptest.SetupControllerCase("/business/products/categories/"+categoryID.String(), http.MethodPut, body)
+	tc = withSession(tc, session)
+	tc.Ctx.SetParamNames("category_id")
+	tc.Ctx.SetParamValues(categoryID.String())
+
+	svc.On("UpdateCategory", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateCategory"), categoryID, userID).Return(nil)
+
+	err := h.UpdateCategory(tc.Ctx)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, tc.Res.Code)
+}
+
+func TestUpdateCategory_NoSession(t *testing.T) {
+	h, _ := newHandler(t)
+
+	categoryID := uuid.New()
+	body := buildBody(t, map[string]any{"name": "Cena"})
+	tc := buildhttptest.SetupControllerCase("/business/products/categories/"+categoryID.String(), http.MethodPut, body)
+	tc.Ctx.SetParamNames("category_id")
+	tc.Ctx.SetParamValues(categoryID.String())
+
+	err := h.UpdateCategory(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusUnauthorized, httpCode(err))
+}
+
+func TestUpdateCategory_InvalidCategoryID(t *testing.T) {
+	h, _ := newHandler(t)
+
+	session := authmodels.ActiveSession{UserID: uuid.New()}
+	body := buildBody(t, map[string]any{"name": "Cena"})
+	tc := buildhttptest.SetupControllerCase("/business/products/categories/not-a-uuid", http.MethodPut, body)
+	tc = withSession(tc, session)
+	tc.Ctx.SetParamNames("category_id")
+	tc.Ctx.SetParamValues("not-a-uuid")
+
+	err := h.UpdateCategory(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusBadRequest, httpCode(err))
+}
+
+func TestUpdateCategory_ValidationFail(t *testing.T) {
+	h, _ := newHandler(t)
+
+	userID := uuid.New()
+	categoryID := uuid.New()
+	session := authmodels.ActiveSession{UserID: userID}
+
+	body := buildBody(t, map[string]any{})
+	tc := buildhttptest.SetupControllerCase("/business/products/categories/"+categoryID.String(), http.MethodPut, body)
+	tc = withSession(tc, session)
+	tc.Ctx.SetParamNames("category_id")
+	tc.Ctx.SetParamValues(categoryID.String())
+
+	err := h.UpdateCategory(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusBadRequest, httpCode(err))
+}
+
+func TestUpdateCategory_NotFound(t *testing.T) {
+	h, svc := newHandler(t)
+
+	userID := uuid.New()
+	categoryID := uuid.New()
+	session := authmodels.ActiveSession{UserID: userID}
+
+	body := buildBody(t, map[string]any{"name": "Cena"})
+	tc := buildhttptest.SetupControllerCase("/business/products/categories/"+categoryID.String(), http.MethodPut, body)
+	tc = withSession(tc, session)
+	tc.Ctx.SetParamNames("category_id")
+	tc.Ctx.SetParamValues(categoryID.String())
+
+	svc.On("UpdateCategory", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateCategory"), categoryID, userID).Return(errcustom.ErrNotFound)
+
+	err := h.UpdateCategory(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, errcustom.ErrNotFound, err)
+}
+
+func TestUpdateCategory_Unauthorized(t *testing.T) {
+	h, svc := newHandler(t)
+
+	userID := uuid.New()
+	categoryID := uuid.New()
+	session := authmodels.ActiveSession{UserID: userID}
+
+	body := buildBody(t, map[string]any{"name": "Cena"})
+	tc := buildhttptest.SetupControllerCase("/business/products/categories/"+categoryID.String(), http.MethodPut, body)
+	tc = withSession(tc, session)
+	tc.Ctx.SetParamNames("category_id")
+	tc.Ctx.SetParamValues(categoryID.String())
+
+	svc.On("UpdateCategory", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateCategory"), categoryID, userID).Return(errcustom.ErrUnautorized)
+
+	err := h.UpdateCategory(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, errcustom.ErrUnautorized, err)
+}
+
+func TestUpdateCategory_UnexpectedError(t *testing.T) {
+	h, svc := newHandler(t)
+
+	userID := uuid.New()
+	categoryID := uuid.New()
+	session := authmodels.ActiveSession{UserID: userID}
+
+	body := buildBody(t, map[string]any{"name": "Cena"})
+	tc := buildhttptest.SetupControllerCase("/business/products/categories/"+categoryID.String(), http.MethodPut, body)
+	tc = withSession(tc, session)
+	tc.Ctx.SetParamNames("category_id")
+	tc.Ctx.SetParamValues(categoryID.String())
+
+	svc.On("UpdateCategory", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateCategory"), categoryID, userID).Return(errcustom.ErrUnexpectedError)
+
+	err := h.UpdateCategory(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, errcustom.ErrUnexpectedError, err)
+}

@@ -38,5 +38,7 @@ func (r *productsGroup) Resource(g *echo.Echo) {
 	)
 	businessRoutes.GET("", r.handlerProducts.GetMyProducts)
 	businessRoutes.POST("/items", r.handlerProducts.RegisterItem)
+	businessRoutes.POST("/categories", r.handlerProducts.RegisterCategory)
+	businessRoutes.PUT("/categories/:category_id", r.handlerProducts.UpdateCategory)
 	businessRoutes.PUT("/:item_id", r.handlerProducts.UpdateItem)
 }

@@ -66,6 +66,24 @@ func (_m *ProductsApp) GetTrendingByCoords(ctx context.Context, coords dtos.Tren
 	return r0, r1
 }
 
+// RegisterCategory provides a mock function with given fields: ctx, category
+func (_m *ProductsApp) RegisterCategory(ctx context.Context, category dtos.RegisterCategory) error {
+	ret := _m.Called(ctx, category)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RegisterCategory")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, dtos.RegisterCategory) error); ok {
+		r0 = rf(ctx, category)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // RegisterItem provides a mock function with given fields: ctx, item
 func (_m *ProductsApp) RegisterItem(ctx context.Context, item dtos.RegisterItem) error {
 	ret := _m.Called(ctx, item)
@@ -232,6 +250,54 @@ func (_m *ProductsApp) SearchProductsByShopID(ctx context.Context, shopID uuid.U
 	}
 
 	return r0, r1
+}
+
+// SearchProductsByShopIDForOwner provides a mock function with given fields: ctx, shopID
+func (_m *ProductsApp) SearchProductsByShopIDForOwner(ctx context.Context, shopID uuid.UUID) (dtos.CategoriesResponse, error) {
+	ret := _m.Called(ctx, shopID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SearchProductsByShopIDForOwner")
+	}
+
+	var r0 dtos.CategoriesResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (dtos.CategoriesResponse, error)); ok {
+		return rf(ctx, shopID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) dtos.CategoriesResponse); ok {
+		r0 = rf(ctx, shopID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(dtos.CategoriesResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, shopID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// UpdateCategory provides a mock function with given fields: ctx, category, categoryID, userID
+func (_m *ProductsApp) UpdateCategory(ctx context.Context, category dtos.UpdateCategory, categoryID uuid.UUID, userID uuid.UUID) error {
+	ret := _m.Called(ctx, category, categoryID, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateCategory")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, dtos.UpdateCategory, uuid.UUID, uuid.UUID) error); ok {
+		r0 = rf(ctx, category, categoryID, userID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // UpdateItem provides a mock function with given fields: ctx, item, itemID, userID

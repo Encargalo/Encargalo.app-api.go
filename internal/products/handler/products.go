@@ -19,6 +19,8 @@ type ProductsHandler interface {
 	GetMyProducts(e echo.Context) error
 	RegisterItem(e echo.Context) error
 	UpdateItem(e echo.Context) error
+	RegisterCategory(e echo.Context) error
+	UpdateCategory(e echo.Context) error
 	GetTrendingProducts(e echo.Context) error
 }
 
@@ -32,7 +34,7 @@ func NewProducsHandler(svc ports.ProductsApp) ProductsHandler {
 
 // SearchProductsByShopID godoc
 // @Summary      Obtener productos por tienda
-// @Description  Retorna todos los productos agrupados por categoría de una tienda. Solo incluye productos disponibles, ordenados por precio ascendente.
+// @Description  Retorna todos los productos agrupados por categoría de una tienda. Solo incluye productos disponibles, ordenados por precio ascendente. Además, excluye productos cuya categoría tiene un horario configurado que no cubre la hora actual (America/Caracas).
 // @Tags         Products
 // @Produce      json
 // @Security     SessionCookie
@@ -172,7 +174,7 @@ func (p *productsHandler) SearchFlavorsByCategoryID(e echo.Context) error {
 
 // SearchBestSellersByShopID godoc
 // @Summary      Obtener los productos mas vendidos por tienda
-// @Description  Retorna todos los productos más vendidos de una tienda específica, ordenados por ventas descendente.
+// @Description  Retorna todos los productos más vendidos de una tienda específica, ordenados por ventas descendente. Excluye productos cuya categoría tiene un horario configurado que no cubre la hora actual (America/Caracas).
 // @Tags         Products
 // @Produce      json
 // @Security     SessionCookie
@@ -229,12 +231,99 @@ func (p *productsHandler) GetMyProducts(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
 	}
 
-	items, err := p.svc.SearchProductsByShopID(ctx, *session.ShopID)
+	items, err := p.svc.SearchProductsByShopIDForOwner(ctx, *session.ShopID)
 	if err != nil {
 		return err
 	}
 
 	return e.JSON(http.StatusOK, items)
+}
+
+// RegisterCategory godoc
+// @Summary      Registrar una nueva categoría
+// @Description  Registra una nueva categoría (sección de menú) en el negocio asociado a la sesión autenticada, con horario opcional de disponibilidad. Si se omite `schedules` o se envía vacío, la categoría queda siempre disponible.
+// @Tags         Business
+// @Accept       json
+// @Produce      json
+// @Security     SessionCookie
+// @Param        category  body      dtos.RegisterCategory  true  "Datos de la categoría a registrar"
+// @Success      201       {string}  string                 "category registered successfully"
+// @Failure      400       {string}  string                 "JSON inválido o campos faltantes"
+// @Failure      401       {string}  string                 "No autorizado"
+// @Failure      422       {string}  string                 "El usuario no tiene un negocio asociado"
+// @Failure      500       {string}  string                 "Error interno del servidor"
+// @Router       /business/products/categories [post]
+func (p *productsHandler) RegisterCategory(e echo.Context) error {
+	ctx := e.Request().Context()
+
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
+	}
+
+	if session.ShopID == nil {
+		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
+	}
+
+	var category dtos.RegisterCategory
+	if err := e.Bind(&category); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := category.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	category.ShopID = *session.ShopID
+
+	if err := p.svc.RegisterCategory(ctx, category); err != nil {
+		return err
+	}
+
+	return e.JSON(http.StatusCreated, "category registered successfully")
+}
+
+// UpdateCategory godoc
+// @Summary      Actualizar una categoría
+// @Description  Actualiza el nombre, macro-categoría y/o horario de una categoría existente del negocio autenticado. Enviar `schedules` reemplaza todo el horario configurado; omitirlo lo deja sin cambios; enviar `[]` elimina el horario (la categoría queda siempre disponible).
+// @Tags         Business
+// @Accept       json
+// @Produce      json
+// @Security     SessionCookie
+// @Param        category_id  path      string               true  "ID de la categoría"  Format(uuid)
+// @Param        body         body      dtos.UpdateCategory  true  "Datos de la categoría a actualizar"
+// @Success      200          {string}  string               "category update success"
+// @Failure      400          {string}  string               "category_id inválido o JSON mal formado"
+// @Failure      401          {string}  string               "No autorizado"
+// @Failure      404          {string}  string               "Categoría no encontrada"
+// @Failure      500          {string}  string               "Error interno del servidor"
+// @Router       /business/products/categories/{category_id} [put]
+func (p *productsHandler) UpdateCategory(e echo.Context) error {
+	ctx := e.Request().Context()
+
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
+	}
+
+	categoryIDParam := e.Param("category_id")
+	categoryID, err := uuid.Parse(categoryIDParam)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "category_id inválido")
+	}
+
+	var category dtos.UpdateCategory
+	if err := e.Bind(&category); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := category.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := p.svc.UpdateCategory(ctx, category, categoryID, session.UserID); err != nil {
+		return err
+	}
+
+	return e.JSON(http.StatusOK, "category update success")
 }
 
 // RegisterItem godoc
@@ -282,7 +371,7 @@ func (p *productsHandler) RegisterItem(e echo.Context) error {
 
 // GetTrendingProducts godoc
 // @Summary      Productos más vendidos cerca del usuario
-// @Description  Retorna el producto más vendido de cada local abierto dentro de un radio de 1 km de las coordenadas dadas. Máximo 10 resultados. Cacheado 15 minutos.
+// @Description  Retorna el producto más vendido de cada local abierto dentro de un radio de 1 km de las coordenadas dadas. Máximo 10 resultados, excluyendo productos cuya categoría tiene un horario configurado que no cubre la hora actual (America/Caracas). Cacheado 15 minutos.
 // @Tags         Products
 // @Produce      json
 // @Security     SessionCookie

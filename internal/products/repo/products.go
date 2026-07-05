@@ -107,6 +107,76 @@ func (p *productsRepo) SearchItemByID(ctx context.Context, id uuid.UUID) (*model
 	return &item, nil
 }
 
+func (p *productsRepo) RegisterCategory(ctx context.Context, category *models.Category) error {
+	_, err := p.db.NewInsert().Model(category).Exec(ctx)
+	if err != nil {
+		slog.Error("error al registrar categoría", "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+
+	if err := p.cache.ClearByPrefix(ctx, prefix_shop_cashe+category.ShopID.String()); err != nil {
+		slog.Error("error al limpiar el cache", "error", err)
+	}
+
+	return nil
+}
+
+func (p *productsRepo) SearchCategoryByID(ctx context.Context, categoryID uuid.UUID) (*models.Category, error) {
+	var category models.Category
+
+	if err := p.db.NewSelect().
+		Model(&category).
+		Where("id = ?", categoryID).
+		Scan(ctx); err != nil {
+		slog.Error("error al obtener la categoría", "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	return &category, nil
+}
+
+func (p *productsRepo) UpdateCategory(ctx context.Context, category *models.UpdateCategory, shopID uuid.UUID) error {
+	_, err := p.db.NewUpdate().Model(category).WherePK().Exec(ctx)
+	if err != nil {
+		slog.Error("error al actualizar la categoría", "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+
+	if err := p.cache.ClearByPrefix(ctx, prefix_shop_cashe+shopID.String()); err != nil {
+		slog.Error("error al limpiar el cache", "error", err)
+	}
+
+	return nil
+}
+
+func (p *productsRepo) ReplaceCategorySchedules(ctx context.Context, categoryID, shopID uuid.UUID, schedules []models.Schedule) error {
+	err := p.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		if _, err := tx.NewDelete().
+			Model((*models.Schedule)(nil)).
+			Where("category_id = ?", categoryID).
+			Exec(ctx); err != nil {
+			return err
+		}
+
+		if len(schedules) == 0 {
+			return nil
+		}
+
+		_, err := tx.NewInsert().Model(&schedules).Exec(ctx)
+		return err
+	})
+	if err != nil {
+		slog.Error("error al reemplazar el horario de la categoría", "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+
+	if err := p.cache.ClearByPrefix(ctx, prefix_shop_cashe+shopID.String()); err != nil {
+		slog.Error("error al limpiar el cache", "error", err)
+	}
+
+	return nil
+}
+
 func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.UUID) (dtos.CategoriesResponse, error) {
 
 	cacheKey := prefix_shop_cashe + shopID.String()
@@ -142,6 +212,7 @@ func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.U
 			return sq.Where("is_available = ?", true).Order("price ASC")
 		}).
 		Relation("Items.ItemRule").
+		Relation("Schedules").
 		Scan(ctx); err != nil {
 		slog.Error("error al obtener los productos", "error", err)
 		return nil, errcustom.ErrUnexpectedError
@@ -335,6 +406,8 @@ func (p *productsRepo) SearchBestSellersByShopID(ctx context.Context, shopID uui
 	if err := p.db.NewSelect().
 		Model(&topSeller).
 		Where("shop_id = ?", shopID).
+		Where("is_available = ?", true).
+		Relation("Category.Schedules").
 		Order("sold desc").
 		Scan(ctx); err != nil {
 		slog.Error("error al obtener los productos mas vendidos", "error", err)
@@ -389,6 +462,7 @@ func (p *productsRepo) GetTrendingByCoords(ctx context.Context, coords dtos.Tren
 			s.latitude        AS shop_latitude,
 			s.longitude       AS shop_longitude,
 			i.id::text        AS item_id,
+			i.category_id::text AS item_category_id,
 			i.name            AS item_name,
 			i.price           AS item_price,
 			i.image           AS item_image,
@@ -409,7 +483,7 @@ func (p *productsRepo) GetTrendingByCoords(ctx context.Context, coords dtos.Tren
 				sin(radians(?)) * sin(radians(s.latitude))
 			) <= 1
 		ORDER BY i.sold DESC
-		LIMIT 10
+		LIMIT 30
 	`, lat, lon, lat).Scan(ctx, &rows)
 	if err != nil {
 		slog.Error("error al obtener trending products", "error", err)
@@ -417,11 +491,13 @@ func (p *productsRepo) GetTrendingByCoords(ctx context.Context, coords dtos.Tren
 	}
 
 	fee, minutes := p.deliveryEstimatesByShop(coords, rows)
+	schedulesByCategory := p.schedulesByCategory(ctx, rows)
 
 	data := make(dtos.TrendingResponse, 0, len(rows))
 	for _, r := range rows {
 		shopID, _ := uuid.Parse(r.ShopID)
 		itemID, _ := uuid.Parse(r.ItemID)
+		categoryID, _ := uuid.Parse(r.ItemCategoryID)
 		data = append(data, dtos.TrendingEntry{
 			Shop: dtos.TrendingShop{
 				ID:          shopID,
@@ -436,12 +512,14 @@ func (p *productsRepo) GetTrendingByCoords(ctx context.Context, coords dtos.Tren
 			},
 			Product: dtos.TrendingProduct{
 				ID:          itemID,
+				CategoryID:  categoryID,
 				Name:        r.ItemName,
 				Ref:         float64(r.ItemPrice),
 				Image:       r.ItemImage,
 				Description: r.ItemDesc,
 				Score:       r.ItemScore,
 				Sold:        r.ItemSold,
+				Schedules:   schedulesByCategory[categoryID],
 			},
 		})
 	}
@@ -451,6 +529,48 @@ func (p *productsRepo) GetTrendingByCoords(ctx context.Context, coords dtos.Tren
 	}
 
 	return data, nil
+}
+
+// schedulesByCategory carga en una sola query los horarios de todas las categorías
+// presentes en rows, agrupados por category_id, para evitar N+1 queries.
+func (p *productsRepo) schedulesByCategory(ctx context.Context, rows []models.TrendingRow) map[uuid.UUID][]dtos.ScheduleResponse {
+	result := make(map[uuid.UUID][]dtos.ScheduleResponse)
+
+	categoryIDs := make([]uuid.UUID, 0, len(rows))
+	seen := make(map[uuid.UUID]struct{})
+	for _, r := range rows {
+		categoryID, err := uuid.Parse(r.ItemCategoryID)
+		if err != nil {
+			continue
+		}
+		if _, ok := seen[categoryID]; ok {
+			continue
+		}
+		seen[categoryID] = struct{}{}
+		categoryIDs = append(categoryIDs, categoryID)
+	}
+
+	if len(categoryIDs) == 0 {
+		return result
+	}
+
+	var schedules models.Schedules
+	if err := p.db.NewSelect().
+		Model(&schedules).
+		Where("category_id IN (?)", bun.In(categoryIDs)).
+		Scan(ctx); err != nil {
+		slog.Error("error al obtener horarios para trending", "error", err)
+		return result
+	}
+
+	for _, s := range schedules {
+		if s.CategoryID == nil {
+			continue
+		}
+		result[*s.CategoryID] = append(result[*s.CategoryID], s.ToDomainDTO())
+	}
+
+	return result
 }
 
 // deliveryEstimatesByShop returns delivery fee (USD) and estimated minutes
