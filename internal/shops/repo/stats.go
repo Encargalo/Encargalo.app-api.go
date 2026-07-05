@@ -75,10 +75,11 @@ func (r *shopStatsRepo) GetPeriodMetrics(ctx context.Context, shopID uuid.UUID, 
 
 	var completed int
 	err = r.db.NewSelect().
-		TableExpr("orders.orders").
-		ColumnExpr("COUNT(*)").
-		Where("shop_id = ? AND status = 'Completed'", shopID).
-		Where("created_at >= ? AND created_at < ?", from, to).
+		TableExpr("orders.orders AS o").
+		ColumnExpr("COUNT(DISTINCT o.id)").
+		Join("JOIN finance.transactions ft ON ft.order_id = o.id AND ft.entity_type = ?", shopModels.EntityTypeShop).
+		Where("o.shop_id = ? AND o.status = 'Completed'", shopID).
+		Where("ft.created_at >= ? AND ft.created_at < ?", from, to).
 		Scan(ctx, &completed)
 	if err != nil {
 		slog.Error("stats GetPeriodMetrics: completed query failed", "shopID", shopID, "error", err)
@@ -102,8 +103,9 @@ func (r *shopStatsRepo) GetTopProducts(ctx context.Context, shopID uuid.UUID, fr
 		TableExpr("orders.order_items oi").
 		ColumnExpr("oi.item_id::text AS item_id, oi.name, oi.image, SUM(oi.amount) AS quantity_sold, SUM(oi.total_price)::float8 AS total_revenue").
 		Join("JOIN orders.orders o ON o.id = oi.order_id").
+		Join("JOIN finance.transactions ft ON ft.order_id = o.id AND ft.entity_type = ?", shopModels.EntityTypeShop).
 		Where("o.shop_id = ? AND o.status = 'Completed'", shopID).
-		Where("o.created_at >= ? AND o.created_at < ?", from, to).
+		Where("ft.created_at >= ? AND ft.created_at < ?", from, to).
 		GroupExpr("oi.item_id, oi.name, oi.image").
 		OrderExpr("quantity_sold DESC").
 		Limit(limit).
@@ -128,7 +130,11 @@ func (r *shopStatsRepo) GetTopProducts(ctx context.Context, shopID uuid.UUID, fr
 
 func (r *shopStatsRepo) GetSalesOverTime(ctx context.Context, shopID uuid.UUID, from, to time.Time, granularity string) ([]dtos.SalesDataPoint, error) {
 	// granularity is controlled internally ("hour" or "day") — safe to interpolate
-	truncExpr := fmt.Sprintf("DATE_TRUNC('%s', o.created_at)", granularity)
+	// Completed orders are bucketed by the settlement transaction date (when the
+	// sale was actually earned); Rejected orders have no transaction, so they
+	// fall back to the order's created_at.
+	dateExpr := "COALESCE(ft.created_at, o.created_at)"
+	truncExpr := fmt.Sprintf("DATE_TRUNC('%s', %s)", granularity, dateExpr)
 
 	var rows []struct {
 		Date            time.Time `bun:"date"`
@@ -147,7 +153,7 @@ func (r *shopStatsRepo) GetSalesOverTime(ctx context.Context, shopID uuid.UUID, 
 		ColumnExpr("COUNT(CASE WHEN o.status = 'Rejected' THEN 1 END) AS orders_rejected").
 		Join("LEFT JOIN finance.transactions ft ON ft.order_id = o.id AND ft.entity_type = ?", shopModels.EntityTypeShop).
 		Where("o.shop_id = ?", shopID).
-		Where("o.created_at >= ? AND o.created_at < ?", from, to).
+		Where(dateExpr+" >= ? AND "+dateExpr+" < ?", from, to).
 		GroupExpr(truncExpr).
 		OrderExpr("date ASC").
 		Scan(ctx, &rows)
