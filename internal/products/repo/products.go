@@ -433,8 +433,11 @@ func (p *productsRepo) SearchBestSellersByShopID(ctx context.Context, shopID uui
 
 	if err := p.db.NewSelect().
 		Model(&topSeller).
-		Where("shop_id = ?", shopID).
-		Where("is_available = ?", true).
+		// Calificadas con "item." porque el LEFT JOIN a item_discounts (alias
+		// "discount") también tiene columnas "shop_id"; sin calificar,
+		// Postgres reporta "column reference is ambiguous" (SQLSTATE=42702).
+		Where("item.shop_id = ?", shopID).
+		Where("item.is_available = ?", true).
 		Relation("Category.Schedules").
 		RelationWithOpts("Discount", bun.RelationOpts{
 			AdditionalJoinOnConditions: activeDiscountJoinConditions(),

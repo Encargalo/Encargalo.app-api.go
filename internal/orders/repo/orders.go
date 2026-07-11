@@ -104,7 +104,10 @@ func (o *orders) SearchItemsByID(ctx context.Context, ItemsID []uuid.UUID) (item
 	var items items.Items
 
 	err := o.db.NewSelect().Model(&items).
-		Where("id in (?)", bun.In(ItemsID)).
+		// Calificado con "item." porque el LEFT JOIN a item_discounts (alias
+		// "discount") también tiene columna "id"; sin calificar, Postgres
+		// reporta "column reference \"id\" is ambiguous" (SQLSTATE=42702).
+		Where("item.id in (?)", bun.In(ItemsID)).
 		// La condición de descuento activo debe ir en el ON del LEFT JOIN
 		// (AdditionalJoinOnConditions), no en un .Where() dentro del callback
 		// de Relation(): eso agrega la condición al WHERE de la consulta y,
