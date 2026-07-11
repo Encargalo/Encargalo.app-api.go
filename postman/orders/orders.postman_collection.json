@@ -42,7 +42,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"shop_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa7\",\n  \"method_payment\": \"EfectivoBs\",\n  \"address\": {\n    \"address\": \"Av. Principal, Caracas\",\n    \"latitude\": 10.488801,\n    \"longitude\": -66.879190,\n    \"instructions\": \"Piso 3, apto 301\"\n  },\n  \"items\": [\n    {\n      \"item_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa8\",\n      \"amount\": 2,\n      \"observation\": \"Sin cebolla\",\n      \"flavors\": {},\n      \"additions\": []\n    }\n  ]\n}",
+          "raw": "{\n  \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"shop_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa7\",\n  \"method_payment\": \"EfectivoBs\",\n  \"expected_total_price\": 65000,\n  \"address\": {\n    \"address\": \"Av. Principal, Caracas\",\n    \"latitude\": 10.488801,\n    \"longitude\": -66.879190,\n    \"instructions\": \"Piso 3, apto 301\"\n  },\n  \"items\": [\n    {\n      \"item_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa8\",\n      \"amount\": 2,\n      \"observation\": \"Sin cebolla\",\n      \"flavors\": {},\n      \"additions\": []\n    }\n  ]\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -58,7 +58,7 @@
             "orders"
           ]
         },
-        "description": "Crea una orden en efectivo. `method_payment` acepta `EfectivoBs` o `EfectivoDolar`. Al aceptar pasa directo a In Preparation. Requiere cookie `encargalo-session`. Rol: Customer."
+        "description": "Crea una orden en efectivo. `method_payment` acepta `EfectivoBs` o `EfectivoDolar`. Al aceptar pasa directo a In Preparation. `expected_total_price` es el total que el cliente vio en el catálogo (incluye delivery fee); si al recalcular en el servidor el total difiere (p. ej. cambió un descuento o la promo de lanzamiento venció), la orden se rechaza con 409. Requiere cookie `encargalo-session`. Rol: Customer."
       }
     },
     {
@@ -73,7 +73,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"shop_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa7\",\n  \"method_payment\": \"PagoMovil\",\n  \"pago_movil_data\": {\n    \"nombre\": \"Juan Pérez\",\n    \"cedula\": \"V-12345678\",\n    \"telefono\": \"0412-1234567\",\n    \"banco\": \"Banco de Venezuela\"\n  },\n  \"payment_proof_image\": \"data:image/jpeg;base64,/9j/4AAQSkZJRgAB...\",\n  \"address\": {\n    \"address\": \"Av. Principal, Caracas\",\n    \"latitude\": 10.488801,\n    \"longitude\": -66.879190,\n    \"instructions\": \"Piso 3, apto 301\"\n  },\n  \"items\": [\n    {\n      \"item_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa8\",\n      \"amount\": 2,\n      \"observation\": \"\",\n      \"flavors\": {},\n      \"additions\": []\n    }\n  ]\n}",
+          "raw": "{\n  \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"shop_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa7\",\n  \"method_payment\": \"PagoMovil\",\n  \"expected_total_price\": 65000,\n  \"pago_movil_data\": {\n    \"nombre\": \"Juan Pérez\",\n    \"cedula\": \"V-12345678\",\n    \"telefono\": \"0412-1234567\",\n    \"banco\": \"Banco de Venezuela\"\n  },\n  \"payment_proof_image\": \"data:image/jpeg;base64,/9j/4AAQSkZJRgAB...\",\n  \"address\": {\n    \"address\": \"Av. Principal, Caracas\",\n    \"latitude\": 10.488801,\n    \"longitude\": -66.879190,\n    \"instructions\": \"Piso 3, apto 301\"\n  },\n  \"items\": [\n    {\n      \"item_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa8\",\n      \"amount\": 2,\n      \"observation\": \"\",\n      \"flavors\": {},\n      \"additions\": []\n    }\n  ]\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -89,7 +89,7 @@
             "orders"
           ]
         },
-        "description": "Crea una orden con Pago Móvil. Requiere `pago_movil_data` y `payment_proof_image` (base64). El comprobante se sube a Cloudinary. La respuesta incluye `payment_qr_url`. Requiere cookie `encargalo-session`. Rol: Customer."
+        "description": "Crea una orden con Pago Móvil. Requiere `pago_movil_data` y `payment_proof_image` (base64). El comprobante se sube a Cloudinary. La respuesta incluye `payment_qr_url`. `expected_total_price` es el total que el cliente vio en el catálogo (incluye delivery fee); si al recalcular en el servidor el total difiere, la orden se rechaza con 409. Requiere cookie `encargalo-session`. Rol: Customer."
       }
     },
     {

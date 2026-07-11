@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"Encargalo.app-api.go/internal/shops/domain/dtos"
@@ -18,9 +19,23 @@ func NewShopFinanceApp(repo ports.ShopFinanceRepo) ports.ShopFinanceApp {
 	return &shopFinanceApp{repo}
 }
 
-func (f *shopFinanceApp) RecordSaleCommission(ctx context.Context, shopID uuid.UUID, orderID uuid.UUID, totalPrice, deliveryFee float64, method string) error {
+// RecordSaleCommission liquida la venta al negocio. Durante los primeros 8
+// días de vida del negocio (isZeroCommission) recibe el 100% del subtotal en
+// vez del 90% habitual. El día 1 (isLaunchPromo), además, la plataforma
+// desembolsa promoSubsidyAmount (el 50% que le restó al cliente) para que el
+// negocio siga recibiendo el subtotal completo: base reconstruye ese
+// subtotal original sumando de vuelta lo que el cliente no pagó.
+func (f *shopFinanceApp) RecordSaleCommission(ctx context.Context, shopID uuid.UUID, orderID uuid.UUID, totalPrice, deliveryFee float64, method string, isLaunchPromo, isZeroCommission bool, promoSubsidyAmount float64) error {
 	base := totalPrice - deliveryFee
-	delta := base * models.ShopShare
+	if isLaunchPromo {
+		base += promoSubsidyAmount
+	}
+
+	share := models.ShopShare
+	if isZeroCommission {
+		share = models.ZeroCommissionShare
+	}
+	delta := base * share
 
 	tx := models.ShopTransaction{
 		ID:            uuid.New(),
@@ -30,8 +45,24 @@ func (f *shopFinanceApp) RecordSaleCommission(ctx context.Context, shopID uuid.U
 		CreatedAt:     time.Now(),
 	}
 
-	_, err := f.repo.RecordMovement(ctx, shopID, models.EntityTypeShop, delta, 0, tx)
-	return err
+	if _, err := f.repo.RecordMovement(ctx, shopID, models.EntityTypeShop, delta, 0, tx); err != nil {
+		return err
+	}
+
+	if isLaunchPromo && promoSubsidyAmount > 0 {
+		subsidyTx := models.ShopTransaction{
+			ID:            uuid.New(),
+			OrderID:       &orderID,
+			MovementType:  string(models.MovementTypeLaunchPromoSubsidy),
+			PaymentMethod: &method,
+			CreatedAt:     time.Now(),
+		}
+		if _, err := f.repo.RecordMovement(ctx, shopID, models.EntityTypePlatformSubsidy, -promoSubsidyAmount, 0, subsidyTx); err != nil {
+			slog.Error("error recording platform subsidy movement", "shopID", shopID, "orderID", orderID, "error", err)
+		}
+	}
+
+	return nil
 }
 
 func (f *shopFinanceApp) GetBalance(ctx context.Context, shopID uuid.UUID) (dtos.ShopBalanceResponse, error) {

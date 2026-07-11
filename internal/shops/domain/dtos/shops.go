@@ -20,6 +20,9 @@ type ShopResponse struct {
 	DeliveryFee   float64   `json:"delivery_fee"`
 	DeliveryFeeBs float64   `json:"delivery_fee_bs"`
 	Time          int       `json:"time"`
+	// HasLaunchPromo indica si el negocio está dentro de su ventana de
+	// lanzamiento (día 1): los productos se muestran con 50% de descuento.
+	HasLaunchPromo bool `json:"has_launch_promo"`
 }
 
 func (s *ShopsResponse) Add(shop ShopResponse) {

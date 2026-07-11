@@ -64,6 +64,15 @@ definitions:
     properties:
       address:
         $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.Address'
+      expected_total_price:
+        description: |-
+          ExpectedTotalPrice es el total que el front mostró al cliente justo
+          antes de confirmar (catálogo/carrito). El backend siempre recalcula el
+          cobro real desde la base de datos; este campo solo sirve para detectar
+          si el precio quedó desactualizado (ver ErrPriceChanged, 409) y nunca se
+          usa para fijar el monto cobrado.
+        example: 18.5
+        type: number
       id:
         example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
         type: string
@@ -84,6 +93,7 @@ definitions:
         type: string
     required:
     - address
+    - expected_total_price
     - id
     - items
     - method_payment
@@ -91,8 +101,14 @@ definitions:
     type: object
   Encargalo_app-api_go_internal_orders_domain_dtos.CreateOrderResponse:
     properties:
+      is_launch_promo:
+        type: boolean
       message:
         type: string
+      promo_subsidy_amount:
+        type: number
+      total_price:
+        type: number
     type: object
   Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse:
     properties:
@@ -190,8 +206,25 @@ definitions:
         example: Pizza mediana con jamón, piña y queso mozzarella sobre una base de
           salsa napolitana.
         type: string
+      effective_bs:
+        example: 7000
+        type: number
+      effective_ref:
+        description: |-
+          EffectiveRef/EffectiveBs son el precio final que paga el cliente tras
+          aplicar, en orden, el descuento propio del negocio y luego la promo de
+          lanzamiento (día 1). Ref/Bs siempre muestran el precio de catálogo
+          original, sin descuentos, para no romper compatibilidad.
+        example: 14
+        type: number
       has_flavors:
         example: true
+        type: boolean
+      has_launch_promo:
+        example: false
+        type: boolean
+      has_shop_discount:
+        example: false
         type: boolean
       id:
         example: 7e441237-a818-42d2-bb54-9b8747198305
@@ -238,6 +271,15 @@ definitions:
         example: multi_select
         type: string
     type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.MacroCategoryResponse:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      slug:
+        type: string
+    type: object
   Encargalo_app-api_go_internal_products_domain_dtos.RegisterCategory:
     properties:
       macro_category_id:
@@ -251,6 +293,21 @@ definitions:
           $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleInput'
         type: array
     required:
+    - name
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.RegisterFlavor:
+    properties:
+      category_id:
+        example: b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2
+        type: string
+      description:
+        example: Con salsa picante casera
+        type: string
+      name:
+        example: Picante
+        type: string
+    required:
+    - category_id
     - name
     type: object
   Encargalo_app-api_go_internal_products_domain_dtos.RegisterItem:
@@ -283,6 +340,31 @@ definitions:
     - image
     - name
     - price
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.RegisterItemDiscount:
+    properties:
+      discount_type:
+        enum:
+        - percentage
+        - fixed
+        example: percentage
+        type: string
+      ends_at:
+        example: "2026-07-18T00:00:00Z"
+        type: string
+      item_id:
+        example: 7e441237-a818-42d2-bb54-9b8747198305
+        type: string
+      starts_at:
+        example: "2026-07-11T00:00:00Z"
+        type: string
+      value:
+        example: 20
+        type: number
+    required:
+    - discount_type
+    - item_id
+    - value
     type: object
   Encargalo_app-api_go_internal_products_domain_dtos.ScheduleInput:
     properties:
@@ -329,6 +411,12 @@ definitions:
         type: string
       description:
         type: string
+      effective_bs:
+        type: number
+      effective_ref:
+        type: number
+      has_launch_promo:
+        type: boolean
       id:
         type: string
       image:
@@ -384,6 +472,17 @@ definitions:
     required:
     - name
     type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.UpdateFlavor:
+    properties:
+      description:
+        example: Con salsa picante casera
+        type: string
+      name:
+        example: Picante
+        type: string
+    required:
+    - name
+    type: object
   Encargalo_app-api_go_internal_products_domain_dtos.UpdateItem:
     properties:
       description:
@@ -409,6 +508,30 @@ definitions:
     - description
     - name
     - price
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.UpdateItemDiscount:
+    properties:
+      discount_type:
+        enum:
+        - percentage
+        - fixed
+        example: percentage
+        type: string
+      ends_at:
+        example: "2026-07-18T00:00:00Z"
+        type: string
+      is_active:
+        example: true
+        type: boolean
+      starts_at:
+        example: "2026-07-11T00:00:00Z"
+        type: string
+      value:
+        example: 20
+        type: number
+    required:
+    - discount_type
+    - value
     type: object
   Encargalo_app-api_go_internal_riders_domain_dtos.BalanceResponse:
     properties:
@@ -584,6 +707,11 @@ definitions:
         type: number
       delivery_fee_bs:
         type: number
+      has_launch_promo:
+        description: |-
+          HasLaunchPromo indica si el negocio está dentro de su ventana de
+          lanzamiento (día 1): los productos se muestran con 50% de descuento.
+        type: boolean
       home_phone:
         type: string
       id:
@@ -630,6 +758,11 @@ definitions:
         type: number
       delivery_fee_bs:
         type: number
+      has_launch_promo:
+        description: |-
+          HasLaunchPromo indica si el negocio está dentro de su ventana de
+          lanzamiento (día 1): los productos se muestran con 50% de descuento.
+        type: boolean
       home_phone:
         type: string
       id:
@@ -1185,6 +1318,271 @@ paths:
       summary: Actualizar una categoría
       tags:
       - Business
+  /business/products/discounts:
+    post:
+      consumes:
+      - application/json
+      description: 'Registra un descuento (porcentaje o monto fijo) sobre un producto
+        del negocio autenticado. Solo puede existir un descuento activo por producto.
+        Este descuento se compone con la promo de lanzamiento de la plataforma: se
+        aplica primero sobre el precio de catálogo, y luego, si el negocio está en
+        su ventana de día 1, la promo se aplica sobre ese precio ya rebajado.'
+      parameters:
+      - description: Datos del descuento a registrar
+        in: body
+        name: discount
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.RegisterItemDiscount'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: item discount registered successfully
+          schema:
+            type: string
+        "400":
+          description: JSON inválido, campos faltantes o valor de descuento inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: Producto no encontrado
+          schema:
+            type: string
+        "422":
+          description: El usuario no tiene un negocio asociado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Registrar un descuento propio del negocio
+      tags:
+      - Business
+  /business/products/discounts/{discount_id}:
+    delete:
+      description: Elimina (soft delete) un descuento de producto del negocio autenticado.
+      parameters:
+      - description: ID del descuento
+        format: uuid
+        in: path
+        name: discount_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: item discount deleted successfully
+          schema:
+            type: string
+        "400":
+          description: discount_id inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: Descuento no encontrado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Eliminar un descuento propio del negocio
+      tags:
+      - Business
+    put:
+      consumes:
+      - application/json
+      description: Actualiza el tipo, valor, vigencia o estado activo de un descuento
+        existente del negocio autenticado.
+      parameters:
+      - description: ID del descuento
+        format: uuid
+        in: path
+        name: discount_id
+        required: true
+        type: string
+      - description: Datos del descuento a actualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.UpdateItemDiscount'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: item discount update success
+          schema:
+            type: string
+        "400":
+          description: discount_id inválido, JSON mal formado o valor de descuento
+            inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: Descuento no encontrado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Actualizar un descuento propio del negocio
+      tags:
+      - Business
+  /business/products/flavors:
+    post:
+      consumes:
+      - application/json
+      description: Registra un nuevo sabor asociado a una categoría del negocio autenticado.
+        Un sabor solo puede asignarse a productos que pertenezcan a esa misma categoría.
+      parameters:
+      - description: Datos del sabor a registrar
+        in: body
+        name: flavor
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.RegisterFlavor'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: flavor registered successfully
+          schema:
+            type: string
+        "400":
+          description: JSON inválido o campos faltantes
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: Categoría no encontrada
+          schema:
+            type: string
+        "422":
+          description: El usuario no tiene un negocio asociado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Registrar un nuevo sabor
+      tags:
+      - Business
+  /business/products/flavors/{flavor_id}:
+    delete:
+      description: Elimina (soft delete) un sabor del negocio autenticado y lo desasocia
+        de todos los productos que lo tenían asignado. Si un producto queda sin sabores
+        tras la eliminación, su indicador has_flavors se actualiza automáticamente
+        a false.
+      parameters:
+      - description: ID del sabor
+        format: uuid
+        in: path
+        name: flavor_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: flavor deleted successfully
+          schema:
+            type: string
+        "400":
+          description: flavor_id inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: Sabor no encontrado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Eliminar un sabor
+      tags:
+      - Business
+    put:
+      consumes:
+      - application/json
+      description: Actualiza el nombre y/o la descripción de un sabor existente del
+        negocio autenticado.
+      parameters:
+      - description: ID del sabor
+        format: uuid
+        in: path
+        name: flavor_id
+        required: true
+        type: string
+      - description: Datos del sabor a actualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.UpdateFlavor'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: flavor update success
+          schema:
+            type: string
+        "400":
+          description: flavor_id inválido o JSON mal formado
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: Sabor no encontrado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Actualizar un sabor
+      tags:
+      - Business
   /business/products/items:
     post:
       consumes:
@@ -1223,6 +1621,32 @@ paths:
       security:
       - SessionCookie: []
       summary: Registrar un nuevo producto
+      tags:
+      - Business
+  /business/products/macro-categories:
+    get:
+      description: Retorna el catálogo de macro categorías (Pizza, Parrilla, Pollo,
+        etc.) usado para clasificar las categorías del negocio autenticado.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.MacroCategoryResponse'
+            type: array
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Obtener macro categorías
       tags:
       - Business
   /business/shops/balance:
@@ -1285,8 +1709,10 @@ paths:
     patch:
       consumes:
       - application/json
-      description: Cambia el estado de apertura del local asociado a la sesión del
-        owner.
+      description: 'Cambia el estado de apertura del local asociado a la sesión del
+        owner. La primera vez que un local se abre (open=true) se activan automáticamente
+        sus ventanas de promoción de lanzamiento: 24h con 50% de descuento subsidiado
+        por la plataforma y 192h (8 días) con comisión 0%.'
       parameters:
       - description: Estado deseado
         in: body
@@ -1510,9 +1936,13 @@ paths:
     post:
       consumes:
       - application/json
-      description: Crea una nueva orden con los productos e información de entrega
-        proporcionados. El customer_id se obtiene automáticamente del token de sesión.
-        Se debe enviar `payment_proof_image` en base64.
+      description: 'Crea una nueva orden con los productos e informacion de entrega
+        proporcionados. El customer_id se obtiene automaticamente del token de sesion.
+        Se debe enviar `payment_proof_image` en base64. `expected_total_price` debe
+        ser el total que el front mostro al cliente antes de confirmar: si no coincide
+        con el total recalculado en el servidor (por un descuento vencido, promo de
+        lanzamiento, etc.), la orden se rechaza con 409 y el cliente debe refrescar
+        su carrito.'
       parameters:
       - description: Datos de la orden
         in: body
@@ -1528,7 +1958,7 @@ paths:
           schema:
             $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.CreateOrderResponse'
         "400":
-          description: Body inválido o validación fallida
+          description: Body invalido o validacion fallida
           schema:
             $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
         "401":
@@ -1536,11 +1966,12 @@ paths:
           schema:
             type: string
         "409":
-          description: La orden ya existe
+          description: La orden ya existe, o el precio cambio desde que se mostro
+            al cliente
           schema:
             $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
         "422":
-          description: Uno o más productos/adiciones no encontrados
+          description: Uno o mas productos/adiciones no encontrados
           schema:
             $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
         "500":
@@ -1556,7 +1987,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: El rider introduce el código de 4 dígitos que le muestra el usuario
+      description: El rider introduce el codigo de 4 digitos que le muestra el usuario
         para confirmar la entrega. Transiciona el pedido de "On The Way" a "Completed".
       parameters:
       - description: ID del pedido
@@ -1564,7 +1995,7 @@ paths:
         name: id
         required: true
         type: string
-      - description: Código de entrega
+      - description: Codigo de entrega
         in: body
         name: body
         required: true
@@ -1580,7 +2011,7 @@ paths:
               type: string
             type: object
         "400":
-          description: Código inválido
+          description: Codigo invalido
           schema:
             $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
         "404":
@@ -1588,7 +2019,7 @@ paths:
           schema:
             $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
         "409":
-          description: Código ya utilizado
+          description: Codigo ya utilizado
           schema:
             $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
         "422":
@@ -1604,16 +2035,16 @@ paths:
     post:
       consumes:
       - application/json
-      description: El local introduce el código de 4 dígitos que le muestra el rider
-        para confirmar que está presente. Transiciona el pedido de "In Preparation"
-        o "Ready" a "On The Way" y genera el código de entrega para el usuario.
+      description: El local introduce el codigo de 4 digitos que le muestra el rider
+        para confirmar que esta presente. Transiciona el pedido de "In Preparation"
+        o "Ready" a "On The Way" y genera el codigo de entrega para el usuario.
       parameters:
       - description: ID del pedido
         in: path
         name: id
         required: true
         type: string
-      - description: Código de recogida
+      - description: Codigo de recogida
         in: body
         name: body
         required: true
@@ -1629,7 +2060,7 @@ paths:
               type: string
             type: object
         "400":
-          description: Código inválido
+          description: Codigo invalido
           schema:
             $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
         "404":
@@ -1637,7 +2068,7 @@ paths:
           schema:
             $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
         "409":
-          description: Código ya utilizado
+          description: Codigo ya utilizado
           schema:
             $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
         "422":
@@ -1651,13 +2082,13 @@ paths:
       - Orders
   /orders/history:
     get:
-      description: Devuelve todas las órdenes del customer autenticado, incluyendo
-        activas y completadas, ordenadas de más reciente a más antigua.
+      description: Devuelve todas las ordenes del customer autenticado, incluyendo
+        activas y completadas, ordenadas de mas reciente a mas antigua.
       produces:
       - application/json
       responses:
         "200":
-          description: Historial de órdenes
+          description: Historial de ordenes
           schema:
             items:
               $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.OrderHistoryItem'
@@ -1672,7 +2103,7 @@ paths:
             $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
       security:
       - SessionCookie: []
-      summary: Historial de órdenes del customer
+      summary: Historial de ordenes del customer
       tags:
       - Orders
   /orders/manager:

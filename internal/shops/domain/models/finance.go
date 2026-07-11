@@ -8,15 +8,20 @@ import (
 )
 
 const (
-	EntityTypeShop = "shop"
-	ShopShare      = 0.90
+	EntityTypeShop            = "shop"
+	EntityTypePlatformSubsidy = "platform_subsidy"
+	ShopShare                 = 0.90
+	// ZeroCommissionShare es el share que recibe el negocio durante sus
+	// primeros 8 días de vida (comisión 0% en vez del 10% habitual).
+	ZeroCommissionShare = 1.0
 )
 
 type ShopMovementType string
 
 const (
-	MovementTypeSaleDeliveryBank ShopMovementType = "sale_delivery_bank"
-	MovementTypeSaleDeliveryCash ShopMovementType = "sale_delivery_cash"
+	MovementTypeSaleDeliveryBank   ShopMovementType = "sale_delivery_bank"
+	MovementTypeSaleDeliveryCash   ShopMovementType = "sale_delivery_cash"
+	MovementTypeLaunchPromoSubsidy ShopMovementType = "launch_promo_subsidy"
 )
 
 type ShopBalance struct {

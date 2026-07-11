@@ -22,6 +22,13 @@ type ProductsHandler interface {
 	RegisterCategory(e echo.Context) error
 	UpdateCategory(e echo.Context) error
 	GetTrendingProducts(e echo.Context) error
+	RegisterFlavor(e echo.Context) error
+	UpdateFlavor(e echo.Context) error
+	DeleteFlavor(e echo.Context) error
+	SearchMacroCategories(e echo.Context) error
+	RegisterItemDiscount(e echo.Context) error
+	UpdateItemDiscount(e echo.Context) error
+	DeleteItemDiscount(e echo.Context) error
 }
 
 type productsHandler struct {
@@ -443,4 +450,269 @@ func (p *productsHandler) UpdateItem(e echo.Context) error {
 	}
 
 	return e.JSON(http.StatusOK, "item update success")
+}
+
+// RegisterFlavor godoc
+// @Summary      Registrar un nuevo sabor
+// @Description  Registra un nuevo sabor asociado a una categoría del negocio autenticado. Un sabor solo puede asignarse a productos que pertenezcan a esa misma categoría.
+// @Tags         Business
+// @Accept       json
+// @Produce      json
+// @Security     SessionCookie
+// @Param        flavor  body      dtos.RegisterFlavor  true  "Datos del sabor a registrar"
+// @Success      201     {string}  string                "flavor registered successfully"
+// @Failure      400     {string}  string                "JSON inválido o campos faltantes"
+// @Failure      401     {string}  string                "No autorizado"
+// @Failure      404     {string}  string                "Categoría no encontrada"
+// @Failure      422     {string}  string                "El usuario no tiene un negocio asociado"
+// @Failure      500     {string}  string                "Error interno del servidor"
+// @Router       /business/products/flavors [post]
+func (p *productsHandler) RegisterFlavor(e echo.Context) error {
+	ctx := e.Request().Context()
+
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
+	}
+
+	if session.ShopID == nil {
+		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
+	}
+
+	var flavor dtos.RegisterFlavor
+	if err := e.Bind(&flavor); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := flavor.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	flavor.ShopID = *session.ShopID
+
+	if err := p.svc.RegisterFlavor(ctx, flavor); err != nil {
+		return err
+	}
+
+	return e.JSON(http.StatusCreated, "flavor registered successfully")
+}
+
+// UpdateFlavor godoc
+// @Summary      Actualizar un sabor
+// @Description  Actualiza el nombre y/o la descripción de un sabor existente del negocio autenticado.
+// @Tags         Business
+// @Accept       json
+// @Produce      json
+// @Security     SessionCookie
+// @Param        flavor_id  path      string             true  "ID del sabor"  Format(uuid)
+// @Param        body       body      dtos.UpdateFlavor  true  "Datos del sabor a actualizar"
+// @Success      200        {string}  string             "flavor update success"
+// @Failure      400        {string}  string             "flavor_id inválido o JSON mal formado"
+// @Failure      401        {string}  string             "No autorizado"
+// @Failure      404        {string}  string             "Sabor no encontrado"
+// @Failure      500        {string}  string             "Error interno del servidor"
+// @Router       /business/products/flavors/{flavor_id} [put]
+func (p *productsHandler) UpdateFlavor(e echo.Context) error {
+	ctx := e.Request().Context()
+
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
+	}
+
+	flavorIDParam := e.Param("flavor_id")
+	flavorID, err := uuid.Parse(flavorIDParam)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "flavor_id inválido")
+	}
+
+	var flavor dtos.UpdateFlavor
+	if err := e.Bind(&flavor); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := flavor.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := p.svc.UpdateFlavor(ctx, flavor, flavorID, session.UserID); err != nil {
+		return err
+	}
+
+	return e.JSON(http.StatusOK, "flavor update success")
+}
+
+// DeleteFlavor godoc
+// @Summary      Eliminar un sabor
+// @Description  Elimina (soft delete) un sabor del negocio autenticado y lo desasocia de todos los productos que lo tenían asignado. Si un producto queda sin sabores tras la eliminación, su indicador has_flavors se actualiza automáticamente a false.
+// @Tags         Business
+// @Produce      json
+// @Security     SessionCookie
+// @Param        flavor_id  path      string  true  "ID del sabor"  Format(uuid)
+// @Success      200        {string}  string  "flavor deleted successfully"
+// @Failure      400        {string}  string  "flavor_id inválido"
+// @Failure      401        {string}  string  "No autorizado"
+// @Failure      404        {string}  string  "Sabor no encontrado"
+// @Failure      500        {string}  string  "Error interno del servidor"
+// @Router       /business/products/flavors/{flavor_id} [delete]
+func (p *productsHandler) DeleteFlavor(e echo.Context) error {
+	ctx := e.Request().Context()
+
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
+	}
+
+	flavorIDParam := e.Param("flavor_id")
+	flavorID, err := uuid.Parse(flavorIDParam)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "flavor_id inválido")
+	}
+
+	if err := p.svc.DeleteFlavor(ctx, flavorID, session.UserID); err != nil {
+		return err
+	}
+
+	return e.JSON(http.StatusOK, "flavor deleted successfully")
+}
+
+// SearchMacroCategories godoc
+// @Summary      Obtener macro categorías
+// @Description  Retorna el catálogo de macro categorías (Pizza, Parrilla, Pollo, etc.) usado para clasificar las categorías del negocio autenticado.
+// @Tags         Business
+// @Produce      json
+// @Security     SessionCookie
+// @Success      200  {object}  dtos.MacroCategoriesResponse
+// @Failure      401  {string}  string  "No autorizado"
+// @Failure      500  {string}  string  "Error interno del servidor"
+// @Router       /business/products/macro-categories [get]
+func (p *productsHandler) SearchMacroCategories(e echo.Context) error {
+	ctx := e.Request().Context()
+
+	macroCategories, err := p.svc.SearchMacroCategories(ctx)
+	if err != nil {
+		return err
+	}
+
+	return e.JSON(http.StatusOK, macroCategories)
+}
+
+// RegisterItemDiscount godoc
+// @Summary      Registrar un descuento propio del negocio
+// @Description  Registra un descuento (porcentaje o monto fijo) sobre un producto del negocio autenticado. Solo puede existir un descuento activo por producto. Este descuento se compone con la promo de lanzamiento de la plataforma: se aplica primero sobre el precio de catálogo, y luego, si el negocio está en su ventana de día 1, la promo se aplica sobre ese precio ya rebajado.
+// @Tags         Business
+// @Accept       json
+// @Produce      json
+// @Security     SessionCookie
+// @Param        discount  body      dtos.RegisterItemDiscount  true  "Datos del descuento a registrar"
+// @Success      201       {string}  string                     "item discount registered successfully"
+// @Failure      400       {string}  string                     "JSON inválido, campos faltantes o valor de descuento inválido"
+// @Failure      401       {string}  string                     "No autorizado"
+// @Failure      404       {string}  string                     "Producto no encontrado"
+// @Failure      422       {string}  string                     "El usuario no tiene un negocio asociado"
+// @Failure      500       {string}  string                     "Error interno del servidor"
+// @Router       /business/products/discounts [post]
+func (p *productsHandler) RegisterItemDiscount(e echo.Context) error {
+	ctx := e.Request().Context()
+
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
+	}
+
+	if session.ShopID == nil {
+		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
+	}
+
+	var discount dtos.RegisterItemDiscount
+	if err := e.Bind(&discount); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := discount.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	discount.ShopID = *session.ShopID
+
+	if err := p.svc.RegisterItemDiscount(ctx, discount); err != nil {
+		return err
+	}
+
+	return e.JSON(http.StatusCreated, "item discount registered successfully")
+}
+
+// UpdateItemDiscount godoc
+// @Summary      Actualizar un descuento propio del negocio
+// @Description  Actualiza el tipo, valor, vigencia o estado activo de un descuento existente del negocio autenticado.
+// @Tags         Business
+// @Accept       json
+// @Produce      json
+// @Security     SessionCookie
+// @Param        discount_id  path      string                   true  "ID del descuento"  Format(uuid)
+// @Param        body         body      dtos.UpdateItemDiscount  true  "Datos del descuento a actualizar"
+// @Success      200          {string}  string                   "item discount update success"
+// @Failure      400          {string}  string                   "discount_id inválido, JSON mal formado o valor de descuento inválido"
+// @Failure      401          {string}  string                   "No autorizado"
+// @Failure      404          {string}  string                   "Descuento no encontrado"
+// @Failure      500          {string}  string                   "Error interno del servidor"
+// @Router       /business/products/discounts/{discount_id} [put]
+func (p *productsHandler) UpdateItemDiscount(e echo.Context) error {
+	ctx := e.Request().Context()
+
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
+	}
+
+	discountIDParam := e.Param("discount_id")
+	discountID, err := uuid.Parse(discountIDParam)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "discount_id inválido")
+	}
+
+	var discount dtos.UpdateItemDiscount
+	if err := e.Bind(&discount); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := discount.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := p.svc.UpdateItemDiscount(ctx, discount, discountID, session.UserID); err != nil {
+		return err
+	}
+
+	return e.JSON(http.StatusOK, "item discount update success")
+}
+
+// DeleteItemDiscount godoc
+// @Summary      Eliminar un descuento propio del negocio
+// @Description  Elimina (soft delete) un descuento de producto del negocio autenticado.
+// @Tags         Business
+// @Produce      json
+// @Security     SessionCookie
+// @Param        discount_id  path      string  true  "ID del descuento"  Format(uuid)
+// @Success      200          {string}  string  "item discount deleted successfully"
+// @Failure      400          {string}  string  "discount_id inválido"
+// @Failure      401          {string}  string  "No autorizado"
+// @Failure      404          {string}  string  "Descuento no encontrado"
+// @Failure      500          {string}  string  "Error interno del servidor"
+// @Router       /business/products/discounts/{discount_id} [delete]
+func (p *productsHandler) DeleteItemDiscount(e echo.Context) error {
+	ctx := e.Request().Context()
+
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
+	}
+
+	discountIDParam := e.Param("discount_id")
+	discountID, err := uuid.Parse(discountIDParam)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "discount_id inválido")
+	}
+
+	if err := p.svc.DeleteItemDiscount(ctx, discountID, session.UserID); err != nil {
+		return err
+	}
+
+	return e.JSON(http.StatusOK, "item discount deleted successfully")
 }

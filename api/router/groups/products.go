@@ -40,5 +40,12 @@ func (r *productsGroup) Resource(g *echo.Echo) {
 	businessRoutes.POST("/items", r.handlerProducts.RegisterItem)
 	businessRoutes.POST("/categories", r.handlerProducts.RegisterCategory)
 	businessRoutes.PUT("/categories/:category_id", r.handlerProducts.UpdateCategory)
+	businessRoutes.GET("/macro-categories", r.handlerProducts.SearchMacroCategories)
+	businessRoutes.POST("/flavors", r.handlerProducts.RegisterFlavor)
+	businessRoutes.PUT("/flavors/:flavor_id", r.handlerProducts.UpdateFlavor)
+	businessRoutes.DELETE("/flavors/:flavor_id", r.handlerProducts.DeleteFlavor)
+	businessRoutes.POST("/discounts", r.handlerProducts.RegisterItemDiscount)
+	businessRoutes.PUT("/discounts/:discount_id", r.handlerProducts.UpdateItemDiscount)
+	businessRoutes.DELETE("/discounts/:discount_id", r.handlerProducts.DeleteItemDiscount)
 	businessRoutes.PUT("/:item_id", r.handlerProducts.UpdateItem)
 }

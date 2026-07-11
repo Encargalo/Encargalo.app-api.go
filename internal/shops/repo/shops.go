@@ -26,6 +26,14 @@ import (
 
 const (
 	shops_all = "shops:"
+
+	// launchPromoWindow y zeroCommissionWindow son horas corridas desde la
+	// primera apertura del negocio (sin días calendario ni zona horaria):
+	// día 1 con 50% de descuento al cliente, y comisión 0% durante 8 días
+	// (192h = 8 x 24h). La ventana de día 1 siempre queda anidada dentro de
+	// la de 8 días porque parten del mismo instante.
+	launchPromoWindow    = 24 * time.Hour
+	zeroCommissionWindow = 192 * time.Hour
 )
 
 type shopsRepo struct {
@@ -413,16 +421,50 @@ func (s *shopsRepo) FindMatchedProducts(ctx context.Context, shopIDs []uuid.UUID
 }
 
 func (s *shopsRepo) SetOpenClose(ctx context.Context, shopID *uuid.UUID, open bool) error {
-	_, err := s.db.NewUpdate().
+	q := s.db.NewUpdate().
 		TableExpr("business.shops").
 		Set("opened = ?", open).
-		Where("id = ?", shopID).
-		Exec(ctx)
-	if err != nil {
+		Set("updated_at = now()").
+		Where("id = ?", shopID)
+
+	if open {
+		// Si es la primera vez que el negocio abre, ancla las dos ventanas de
+		// lanzamiento (día 1 al 50% y comisión 0% por 8 días) al instante
+		// exacto de esta apertura. El CASE WHEN ... IS NULL evita que
+		// aperturas posteriores reinicien las ventanas, sin necesitar un
+		// SELECT ... FOR UPDATE aparte.
+		now := time.Now()
+		launchPromoEndsAt := now.Add(launchPromoWindow)
+		zeroCommissionEndsAt := now.Add(zeroCommissionWindow)
+
+		q = q.
+			Set("first_opened_at = CASE WHEN first_opened_at IS NULL THEN ? ELSE first_opened_at END", now).
+			Set("launch_promo_ends_at = CASE WHEN launch_promo_ends_at IS NULL THEN ? ELSE launch_promo_ends_at END", launchPromoEndsAt).
+			Set("zero_commission_ends_at = CASE WHEN zero_commission_ends_at IS NULL THEN ? ELSE zero_commission_ends_at END", zeroCommissionEndsAt)
+	}
+
+	if _, err := q.Exec(ctx); err != nil {
 		slog.Error("error al actualizar estado del local", "error", err, "shopID", shopID)
 		return errcustom.ErrUnexpectedError
 	}
 	return nil
+}
+
+func (s *shopsRepo) GetLaunchPromoEndsAt(ctx context.Context, shopID uuid.UUID) (*time.Time, error) {
+	var endsAt *time.Time
+	err := s.db.NewSelect().
+		TableExpr("business.shops").
+		Column("launch_promo_ends_at").
+		Where("id = ?", shopID).
+		Scan(ctx, &endsAt)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		slog.Error("error al obtener la ventana de promo de lanzamiento", "error", err, "shopID", shopID)
+		return nil, errcustom.ErrUnexpectedError
+	}
+	return endsAt, nil
 }
 
 func (s *shopsRepo) SearchBatchByShopID(ctx context.Context, shopID uuid.UUID) (uuid.UUID, error) {

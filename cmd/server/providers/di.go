@@ -29,6 +29,7 @@ import (
 	repoAuth "Encargalo.app-api.go/internal/auth/repo"
 
 	appProducts "Encargalo.app-api.go/internal/products/app"
+	productsPorts "Encargalo.app-api.go/internal/products/domain/ports"
 	handProducts "Encargalo.app-api.go/internal/products/handler"
 	repoProducts "Encargalo.app-api.go/internal/products/repo"
 
@@ -116,6 +117,14 @@ func BuildContainer() *dig.Container {
 	})
 	_ = Container.Provide(func(mgr ordersPorts.AppManagerOrder) shopsPorts.ShopStatusBroadcaster {
 		return mgr
+	})
+	// ShopsApp ya declara GetLaunchPromoEndsAt con la misma firma que
+	// ShopLaunchPromoProvider, así que esta es una conversión de interfaz
+	// implícita verificada en tiempo de compilación (no un type assertion en
+	// runtime): si algún día las firmas divergen, esto deja de compilar aquí
+	// mismo en vez de fallar al construir el contenedor DI.
+	_ = Container.Provide(func(sa shopsPorts.ShopsApp) productsPorts.ShopLaunchPromoProvider {
+		return sa
 	})
 	_ = Container.Provide(handProducts.NewProducsHandler)
 	_ = Container.Provide(handCustomer.NewUsersAddressHandler)
