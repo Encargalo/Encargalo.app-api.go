@@ -25,6 +25,9 @@ var statusMap = map[error]int{
 	ErrInsufficientBalance:  http.StatusUnprocessableEntity,
 	ErrWithdrawalCooldown:   http.StatusTooManyRequests,
 	ErrInvalidStatus:        http.StatusBadRequest,
+	ErrInvalidFlavors:       http.StatusBadRequest,
+	ErrInvalidDiscountValue: http.StatusBadRequest,
+	ErrPriceChanged:         http.StatusConflict,
 }
 
 func ToHTTPError(err error) error {

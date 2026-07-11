@@ -74,6 +74,10 @@ func (s *shopsApp) SetOpenClose(ctx context.Context, shopID *uuid.UUID, open boo
 	return nil
 }
 
+func (s *shopsApp) GetLaunchPromoEndsAt(ctx context.Context, shopID uuid.UUID) (*time.Time, error) {
+	return s.repo.GetLaunchPromoEndsAt(ctx, shopID)
+}
+
 func (s *shopsApp) SearchShops(ctx context.Context, query dtos.SearchShopsQuery) (dtos.SearchShopsResult, error) {
 	candidates, err := s.repo.SearchShopCandidates(ctx, query)
 	if err != nil {

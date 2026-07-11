@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"math/big"
 	"strings"
 
@@ -22,6 +23,20 @@ import (
 	portsCustomers "Encargalo.app-api.go/internal/users/domain/ports"
 	"github.com/google/uuid"
 )
+
+// priceTolerance absorbe errores de redondeo de flotantes al comparar el
+// total recalculado en el servidor contra lo que el front mostró al cliente.
+const priceTolerance = 0.01
+
+// PriceMismatch indica si el total recalculado en el servidor difiere del
+// que el front mostró al cliente más allá de lo que puede explicar el
+// redondeo de flotantes (ver priceTolerance). Exportada como función pura
+// para poder testearla sin depender de red (deliveryfee.Calculate, más
+// arriba en CreateOrder, hace una llamada real a Google Maps que no se
+// puede mockear sin refactorizarla a un port inyectable).
+func PriceMismatch(actual, expected float64) bool {
+	return math.Abs(actual-expected) > priceTolerance
+}
 
 var allowedTransitionStatuses = map[models.OrderStatus]bool{
 	models.StatusAccepted:      true,
@@ -141,6 +156,15 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 			return &models.Order{}, err
 		}
 		orderModel.SetFlavorsName(flavors)
+	}
+
+	orderModel.ApplyLaunchPromo(shop.HasActiveLaunchPromo())
+	orderModel.ApplyZeroCommission(shop.HasActiveZeroCommission())
+
+	if PriceMismatch(orderModel.TotalPrice, order.ExpectedTotalPrice) {
+		slog.Warn("price mismatch detected at checkout", "shopID", shop.ID, "customerID", order.CustomerID,
+			"expected", order.ExpectedTotalPrice, "actual", orderModel.TotalPrice)
+		return &models.Order{}, errcustom.ErrPriceChanged
 	}
 
 	DetailsModel := new(models.Details)
@@ -347,7 +371,7 @@ func (o *orderApp) ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code 
 		slog.Error("error recording ride earning", "orderID", orderID, "error", err)
 	}
 
-	if err := o.shopCommission.RecordSaleCommission(ctx, order.ShopID, order.ID, order.TotalPrice, order.DeliveryFee, order.MethodPayment); err != nil {
+	if err := o.shopCommission.RecordSaleCommission(ctx, order.ShopID, order.ID, order.TotalPrice, order.DeliveryFee, order.MethodPayment, order.IsLaunchPromo, order.IsZeroCommission, order.PromoSubsidyAmount); err != nil {
 		slog.Error("error recording shop commission", "orderID", orderID, "shopID", order.ShopID, "error", err)
 	}
 

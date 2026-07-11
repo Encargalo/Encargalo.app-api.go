@@ -29,8 +29,19 @@ type Item struct {
 	UpdatedAt     time.Time  `bun:"updated_at,default:now()" json:"-"`
 	DeletedAt     *time.Time `bun:"deleted_at" json:"-"`
 
-	ItemRule ItemsRules `bun:"rel:has-many,join:id=item_id" json:"rules,omitempty"`
-	Category *Category  `bun:"rel:belongs-to,join:category_id=id" json:"-"`
+	ItemRule ItemsRules    `bun:"rel:has-many,join:id=item_id" json:"rules,omitempty"`
+	Category *Category     `bun:"rel:belongs-to,join:category_id=id" json:"-"`
+	Discount *ItemDiscount `bun:"rel:has-one,join:id=item_id" json:"-"`
+}
+
+// ShopPrice devuelve el precio que realmente cobra el negocio, tras aplicar
+// su propio descuento (si tiene uno activo). Es el precio base sobre el que
+// luego se compone la promo de lanzamiento de la plataforma (día 1).
+func (i *Item) ShopPrice() int {
+	if i.Discount == nil || !i.Discount.IsCurrentlyActive() {
+		return i.Price
+	}
+	return i.Discount.Apply(i.Price)
 }
 
 func (i *Item) BuildToModel(item dtos.RegisterItem, imageURL, imgaePublicID, imageHash string) {
@@ -47,17 +58,20 @@ func (i *Item) BuildToModel(item dtos.RegisterItem, imageURL, imgaePublicID, ima
 }
 
 func (i *Item) ToDomainDTO() dtos.ItemResponse {
+	shopPrice := i.ShopPrice()
 	resp := dtos.ItemResponse{
-		ID:          i.ID,
-		ShopID:      i.ShopID,
-		CategoryID:  i.CategoryID,
-		Name:        i.Name,
-		Ref:         float64(i.Price),
-		Image:       i.Image,
-		Description: i.Description,
-		Score:       i.Score,
-		HasFlavors:  i.HasFlavors,
-		Rules:       i.ItemRule.ToDomainDTO(),
+		ID:              i.ID,
+		ShopID:          i.ShopID,
+		CategoryID:      i.CategoryID,
+		Name:            i.Name,
+		Ref:             float64(i.Price),
+		EffectiveRef:    float64(shopPrice),
+		HasShopDiscount: i.Discount != nil && i.Discount.IsCurrentlyActive(),
+		Image:           i.Image,
+		Description:     i.Description,
+		Score:           i.Score,
+		HasFlavors:      i.HasFlavors,
+		Rules:           i.ItemRule.ToDomainDTO(),
 	}
 
 	if i.Category != nil {

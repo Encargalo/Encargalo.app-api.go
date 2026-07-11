@@ -9,7 +9,7 @@ import (
 )
 
 type ShopFinanceApp interface {
-	RecordSaleCommission(ctx context.Context, shopID uuid.UUID, orderID uuid.UUID, totalPrice, deliveryFee float64, method string) error
+	RecordSaleCommission(ctx context.Context, shopID uuid.UUID, orderID uuid.UUID, totalPrice, deliveryFee float64, method string, isLaunchPromo, isZeroCommission bool, promoSubsidyAmount float64) error
 	GetBalance(ctx context.Context, shopID uuid.UUID) (dtos.ShopBalanceResponse, error)
 	ListTransactions(ctx context.Context, shopID uuid.UUID, page, limit int) (dtos.ShopTransactionsResponse, error)
 }

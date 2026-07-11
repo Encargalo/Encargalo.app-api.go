@@ -23,6 +23,15 @@ type Flavor struct {
 	DeletedAt   *time.Time `bun:"deleted_at,nullzero" json:"deleted_at,omitempty"`
 }
 
+func (f *Flavor) BuildToModel(flavor dtos.RegisterFlavor) {
+	f.ShopID = flavor.ShopID
+	f.CategoryID = flavor.CategoryID
+	f.Name = flavor.Name
+	if flavor.Description != "" {
+		f.Description = &flavor.Description
+	}
+}
+
 func (f *Flavor) ToDomainDTO() dtos.FlavorResponse {
 	return dtos.FlavorResponse{
 		ID:   f.ID,

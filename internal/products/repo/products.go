@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"Encargalo.app-api.go/internal/pkg/cache"
+	"Encargalo.app-api.go/internal/pkg/money"
 	"Encargalo.app-api.go/internal/products/domain/dtos"
 	"Encargalo.app-api.go/internal/products/domain/models"
 	productPorts "Encargalo.app-api.go/internal/products/domain/ports"
@@ -25,11 +26,19 @@ const (
 	prefix_additions_cache    = "products:additions:"
 	prefix_flavors_item_cache = "products:flavors:item:"
 	prefix_flavors_cat_cache  = "products:flavors:cat:"
+	prefix_macro_categories   = "products:macro-categories"
 )
 
 type productsRepo struct {
 	db    *bun.DB
 	cache cache.Cache
+}
+
+// activeDiscountRelation filtra la relación Item.Discount al único descuento
+// activo y vigente del producto (el índice único parcial garantiza que a lo
+// sumo una fila cumple is_active = true AND deleted_at IS NULL por item).
+func activeDiscountRelation(sq *bun.SelectQuery) *bun.SelectQuery {
+	return sq.Where("is_active = ? AND deleted_at IS NULL", true)
 }
 
 func NewProductsRepo(db *bun.DB, cache cache.Cache) productPorts.ProductsRepo {
@@ -212,6 +221,7 @@ func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.U
 			return sq.Where("is_available = ?", true).Order("price ASC")
 		}).
 		Relation("Items.ItemRule").
+		Relation("Items.Discount", activeDiscountRelation).
 		Relation("Schedules").
 		Scan(ctx); err != nil {
 		slog.Error("error al obtener los productos", "error", err)
@@ -408,6 +418,7 @@ func (p *productsRepo) SearchBestSellersByShopID(ctx context.Context, shopID uui
 		Where("shop_id = ?", shopID).
 		Where("is_available = ?", true).
 		Relation("Category.Schedules").
+		Relation("Discount", activeDiscountRelation).
 		Order("sold desc").
 		Scan(ctx); err != nil {
 		slog.Error("error al obtener los productos mas vendidos", "error", err)
@@ -436,14 +447,27 @@ func (p *productsRepo) AddSoldItem(ctx context.Context, item models.DataProduceO
 
 const prefix_trending_cache = "products:trending:"
 
+// trendingCacheBundle es lo que realmente se cachea 15 minutos: la fila cruda
+// de BD más los cálculos costosos (Google Maps, horarios). Deliberadamente NO
+// incluye EffectiveRef/HasLaunchPromo: esos se recalculan en cada request
+// (hit o miss) a partir de ShopLaunchPromoEndsAt, para que el badge de la
+// promo día 1 nunca quede desfasado más de lo que tarda una comparación de
+// timestamps en memoria.
+type trendingCacheBundle struct {
+	Rows      []models.TrendingRow
+	Fee       map[uuid.UUID]float64
+	Minutes   map[uuid.UUID]int
+	Schedules map[uuid.UUID][]dtos.ScheduleResponse
+}
+
 func (p *productsRepo) GetTrendingByCoords(ctx context.Context, coords dtos.TrendingCoords) (dtos.TrendingResponse, error) {
 	lat, lon := coords.Latitude, coords.Longitude
 	cacheKey := fmt.Sprintf("%s%v_%v", prefix_trending_cache, lat, lon)
 
 	if cached, err := p.cache.Get(ctx, cacheKey); err == nil && cached != "" {
-		var data dtos.TrendingResponse
-		if err := json.Unmarshal([]byte(cached), &data); err == nil {
-			return data, nil
+		var bundle trendingCacheBundle
+		if err := json.Unmarshal([]byte(cached), &bundle); err == nil {
+			return buildTrendingResponse(bundle), nil
 		}
 		slog.Error("error al deserializar trending del cache", "key", cacheKey)
 	}
@@ -461,6 +485,7 @@ func (p *productsRepo) GetTrendingByCoords(ctx context.Context, coords dtos.Tren
 			s.type            AS shop_type,
 			s.latitude        AS shop_latitude,
 			s.longitude       AS shop_longitude,
+			s.launch_promo_ends_at AS shop_launch_promo_ends_at,
 			i.id::text        AS item_id,
 			i.category_id::text AS item_category_id,
 			i.name            AS item_name,
@@ -491,13 +516,36 @@ func (p *productsRepo) GetTrendingByCoords(ctx context.Context, coords dtos.Tren
 	}
 
 	fee, minutes := p.deliveryEstimatesByShop(coords, rows)
-	schedulesByCategory := p.schedulesByCategory(ctx, rows)
+	bundle := trendingCacheBundle{
+		Rows:      rows,
+		Fee:       fee,
+		Minutes:   minutes,
+		Schedules: p.schedulesByCategory(ctx, rows),
+	}
 
-	data := make(dtos.TrendingResponse, 0, len(rows))
-	for _, r := range rows {
+	if err := p.cache.Set(ctx, cacheKey, bundle, 15*time.Minute); err != nil {
+		slog.Error("error al guardar trending en cache", "error", err)
+	}
+
+	return buildTrendingResponse(bundle), nil
+}
+
+// buildTrendingResponse arma la respuesta pública a partir del bundle
+// (cacheado o recién consultado), calculando EffectiveRef/HasLaunchPromo en
+// vivo contra la hora actual en vez de contra el momento en que se cacheó.
+func buildTrendingResponse(bundle trendingCacheBundle) dtos.TrendingResponse {
+	data := make(dtos.TrendingResponse, 0, len(bundle.Rows))
+	for _, r := range bundle.Rows {
 		shopID, _ := uuid.Parse(r.ShopID)
 		itemID, _ := uuid.Parse(r.ItemID)
 		categoryID, _ := uuid.Parse(r.ItemCategoryID)
+		ref := float64(r.ItemPrice)
+		effectiveRef := ref
+		hasLaunchPromo := r.HasActiveLaunchPromo()
+		if hasLaunchPromo {
+			effectiveRef = money.RoundBs(ref * 0.5)
+		}
+
 		data = append(data, dtos.TrendingEntry{
 			Shop: dtos.TrendingShop{
 				ID:          shopID,
@@ -507,28 +555,25 @@ func (p *productsRepo) GetTrendingByCoords(ctx context.Context, coords dtos.Tren
 				Address:     r.ShopAddress,
 				Score:       r.ShopScore,
 				Type:        r.ShopType,
-				DeliveryFee: fee[shopID],
-				Time:        minutes[shopID],
+				DeliveryFee: bundle.Fee[shopID],
+				Time:        bundle.Minutes[shopID],
 			},
 			Product: dtos.TrendingProduct{
-				ID:          itemID,
-				CategoryID:  categoryID,
-				Name:        r.ItemName,
-				Ref:         float64(r.ItemPrice),
-				Image:       r.ItemImage,
-				Description: r.ItemDesc,
-				Score:       r.ItemScore,
-				Sold:        r.ItemSold,
-				Schedules:   schedulesByCategory[categoryID],
+				ID:             itemID,
+				CategoryID:     categoryID,
+				Name:           r.ItemName,
+				Ref:            ref,
+				EffectiveRef:   effectiveRef,
+				HasLaunchPromo: hasLaunchPromo,
+				Image:          r.ItemImage,
+				Description:    r.ItemDesc,
+				Score:          r.ItemScore,
+				Sold:           r.ItemSold,
+				Schedules:      bundle.Schedules[categoryID],
 			},
 		})
 	}
-
-	if err := p.cache.Set(ctx, cacheKey, data, 15*time.Minute); err != nil {
-		slog.Error("error al guardar trending en cache", "error", err)
-	}
-
-	return data, nil
+	return data
 }
 
 // schedulesByCategory carga en una sola query los horarios de todas las categorías
@@ -628,4 +673,234 @@ func (p *productsRepo) deliveryEstimatesByShop(coords dtos.TrendingCoords, rows 
 	}
 
 	return fee, minutes
+}
+
+func (p *productsRepo) RegisterFlavor(ctx context.Context, flavor *models.Flavor) error {
+	_, err := p.db.NewInsert().Model(flavor).Exec(ctx)
+	if err != nil {
+		slog.Error("error al registrar sabor", "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+
+	if err := p.cache.ClearByPrefix(ctx, prefix_flavors_cat_cache+flavor.CategoryID.String()); err != nil {
+		slog.Error("error al limpiar el cache", "error", err)
+	}
+
+	return nil
+}
+
+func (p *productsRepo) SearchFlavorByID(ctx context.Context, flavorID uuid.UUID) (*models.Flavor, error) {
+	var flavor models.Flavor
+
+	if err := p.db.NewSelect().
+		Model(&flavor).
+		Where("id = ?", flavorID).
+		Where("deleted_at IS NULL").
+		Scan(ctx); err != nil {
+		slog.Error("error al obtener el sabor", "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	return &flavor, nil
+}
+
+func (p *productsRepo) SearchFlavorsByIDs(ctx context.Context, flavorIDs []uuid.UUID) (models.Flavors, error) {
+	var flavors models.Flavors
+
+	if err := p.db.NewSelect().
+		Model(&flavors).
+		Where("id IN (?)", bun.In(flavorIDs)).
+		Where("deleted_at IS NULL").
+		Scan(ctx); err != nil {
+		slog.Error("error al obtener sabores por ids", "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	return flavors, nil
+}
+
+func (p *productsRepo) UpdateFlavor(ctx context.Context, flavor *models.UpdateFlavor, shopID, categoryID uuid.UUID) error {
+	_, err := p.db.NewUpdate().Model(flavor).WherePK().Exec(ctx)
+	if err != nil {
+		slog.Error("error al actualizar el sabor", "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+
+	itemIDs, err := p.itemIDsByFlavor(ctx, flavor.ID)
+	if err != nil {
+		return err
+	}
+
+	p.clearFlavorRelatedCaches(ctx, shopID, categoryID, itemIDs)
+
+	return nil
+}
+
+func (p *productsRepo) DeleteFlavor(ctx context.Context, flavor *models.Flavor) error {
+	itemIDs, err := p.itemIDsByFlavor(ctx, flavor.ID)
+	if err != nil {
+		return err
+	}
+
+	err = p.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		if _, err := tx.NewUpdate().
+			Model((*models.Flavor)(nil)).
+			Set("deleted_at = ?", time.Now()).
+			Where("id = ?", flavor.ID).
+			Exec(ctx); err != nil {
+			return err
+		}
+
+		if _, err := tx.NewDelete().
+			Model((*models.ItemsFlavor)(nil)).
+			Where("flavor_id = ?", flavor.ID).
+			Exec(ctx); err != nil {
+			return err
+		}
+
+		if len(itemIDs) == 0 {
+			return nil
+		}
+
+		_, err := tx.NewUpdate().
+			Model((*models.Item)(nil)).
+			Set("has_flavors = EXISTS (SELECT 1 FROM products.items_flavors WHERE item_id = items.id)").
+			Where("id IN (?)", bun.In(itemIDs)).
+			Exec(ctx)
+		return err
+	})
+	if err != nil {
+		slog.Error("error al eliminar el sabor", "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+
+	p.clearFlavorRelatedCaches(ctx, flavor.ShopID, flavor.CategoryID, itemIDs)
+
+	return nil
+}
+
+// itemIDsByFlavor devuelve los items actualmente asociados a un sabor, usado
+// para saber qué cachés de sabores por item invalidar y qué items recalcular
+// has_flavors al eliminar el sabor.
+func (p *productsRepo) itemIDsByFlavor(ctx context.Context, flavorID uuid.UUID) ([]uuid.UUID, error) {
+	var itemIDs []uuid.UUID
+
+	if err := p.db.NewSelect().
+		Model((*models.ItemsFlavor)(nil)).
+		Column("item_id").
+		Where("flavor_id = ?", flavorID).
+		Scan(ctx, &itemIDs); err != nil {
+		slog.Error("error al obtener items por sabor", "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	return itemIDs, nil
+}
+
+func (p *productsRepo) clearFlavorRelatedCaches(ctx context.Context, shopID, categoryID uuid.UUID, itemIDs []uuid.UUID) {
+	if err := p.cache.ClearByPrefix(ctx, prefix_flavors_cat_cache+categoryID.String()); err != nil {
+		slog.Error("error al limpiar el cache", "error", err)
+	}
+
+	if err := p.cache.ClearByPrefix(ctx, prefix_shop_cashe+shopID.String()); err != nil {
+		slog.Error("error al limpiar el cache", "error", err)
+	}
+
+	for _, itemID := range itemIDs {
+		if err := p.cache.ClearByPrefix(ctx, prefix_flavors_item_cache+itemID.String()); err != nil {
+			slog.Error("error al limpiar el cache", "error", err)
+		}
+	}
+}
+
+func (p *productsRepo) SearchMacroCategories(ctx context.Context) (models.MacroCategories, error) {
+	cached, _ := p.cache.Get(ctx, prefix_macro_categories)
+	if cached != "" {
+		var data models.MacroCategories
+		if err := json.Unmarshal([]byte(cached), &data); err == nil {
+			return data, nil
+		}
+		slog.Error("error al hacer unmarshal de las macro categorías", "key", prefix_macro_categories)
+	}
+
+	var macroCategories models.MacroCategories
+
+	if err := p.db.NewSelect().
+		Model(&macroCategories).
+		Order("name ASC").
+		Scan(ctx); err != nil {
+		slog.Error("error al obtener las macro categorías", "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	if err := p.cache.Set(ctx, prefix_macro_categories, macroCategories, 24*time.Hour); err != nil {
+		slog.Error("error al guardar las macro categorías en el cache", "error", err)
+	}
+
+	return macroCategories, nil
+}
+
+func (p *productsRepo) RegisterItemDiscount(ctx context.Context, discount *models.ItemDiscount) error {
+	_, err := p.db.NewInsert().Model(discount).Exec(ctx)
+	if err != nil {
+		slog.Error("error al registrar el descuento del producto", "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+
+	p.clearItemDiscountCaches(ctx, discount.ShopID)
+
+	return nil
+}
+
+func (p *productsRepo) SearchItemDiscountByID(ctx context.Context, discountID uuid.UUID) (*models.ItemDiscount, error) {
+	var discount models.ItemDiscount
+
+	if err := p.db.NewSelect().
+		Model(&discount).
+		Where("id = ?", discountID).
+		Where("deleted_at IS NULL").
+		Scan(ctx); err != nil {
+		slog.Error("error al obtener el descuento del producto", "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	return &discount, nil
+}
+
+func (p *productsRepo) UpdateItemDiscount(ctx context.Context, discount *models.UpdateItemDiscount, shopID, itemID uuid.UUID) error {
+	_, err := p.db.NewUpdate().Model(discount).WherePK().Exec(ctx)
+	if err != nil {
+		slog.Error("error al actualizar el descuento del producto", "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+
+	p.clearItemDiscountCaches(ctx, shopID)
+
+	return nil
+}
+
+func (p *productsRepo) DeleteItemDiscount(ctx context.Context, discount *models.ItemDiscount) error {
+	_, err := p.db.NewUpdate().
+		Model((*models.ItemDiscount)(nil)).
+		Set("is_active = ?", false).
+		Set("deleted_at = ?", time.Now()).
+		Where("id = ?", discount.ID).
+		Exec(ctx)
+	if err != nil {
+		slog.Error("error al eliminar el descuento del producto", "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+
+	p.clearItemDiscountCaches(ctx, discount.ShopID)
+
+	return nil
+}
+
+func (p *productsRepo) clearItemDiscountCaches(ctx context.Context, shopID uuid.UUID) {
+	if err := p.cache.ClearByPrefix(ctx, prefix_shop_cashe+shopID.String()); err != nil {
+		slog.Error("error al limpiar el cache", "error", err)
+	}
+	if err := p.cache.ClearByPrefix(ctx, prefix_best_sellers_cache+shopID.String()); err != nil {
+		slog.Error("error al limpiar el cache", "error", err)
+	}
 }

@@ -120,8 +120,9 @@ func TestCreateOrder_Success_PagoMovil(t *testing.T) {
 			"telefono": "0412-1234567",
 			"banco":    "Banco de Venezuela",
 		},
-		"payment_proof_image": "data:image/jpeg;base64,/9j/abc123",
-		"delivery_fee":        5000,
+		"payment_proof_image":  "data:image/jpeg;base64,/9j/abc123",
+		"delivery_fee":         5000,
+		"expected_total_price": 18.5,
 		"address": map[string]any{
 			"address":   "Av. Principal",
 			"latitude":  10.48,
@@ -201,12 +202,13 @@ func TestCreateOrder_Success_PagoMovil_OnlyProof(t *testing.T) {
 	h, svc, mgr := newHandler(t)
 
 	body := buildBody(t, map[string]any{
-		"id":                  uuid.New().String(),
-		"shop_id":             uuid.New().String(),
-		"method_payment":      "PagoMovil",
-		"payment_proof_image": "data:image/jpeg;base64,/9j/abc",
-		"delivery_fee":        5000,
-		"address":             map[string]any{"address": "x", "latitude": 1.0, "longitude": 1.0},
+		"id":                   uuid.New().String(),
+		"shop_id":              uuid.New().String(),
+		"method_payment":       "PagoMovil",
+		"payment_proof_image":  "data:image/jpeg;base64,/9j/abc",
+		"delivery_fee":         5000,
+		"expected_total_price": 18.5,
+		"address":              map[string]any{"address": "x", "latitude": 1.0, "longitude": 1.0},
 		"items": []map[string]any{
 			{"item_id": uuid.New().String(), "amount": 1, "observation": "", "flavors": map[string]any{}, "additions": []any{}},
 		},

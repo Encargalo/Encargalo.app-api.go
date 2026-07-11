@@ -18,6 +18,9 @@ var (
 	ErrInsufficientBalance  = errors.New("insufficient balance for withdrawal")
 	ErrWithdrawalCooldown   = errors.New("withdrawal not allowed: must wait 24 hours between withdrawals")
 	ErrInvalidStatus        = errors.New("invalid order status")
+	ErrInvalidFlavors       = errors.New("one or more flavors do not belong to the item category")
+	ErrInvalidDiscountValue = errors.New("invalid discount value for the given discount type")
+	ErrPriceChanged         = errors.New("order price changed since it was last shown to the customer")
 )
 
 var (

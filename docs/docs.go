@@ -427,6 +427,400 @@ const docTemplate = `{
                 }
             }
         },
+        "/business/products/discounts": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Registra un descuento (porcentaje o monto fijo) sobre un producto del negocio autenticado. Solo puede existir un descuento activo por producto. Este descuento se compone con la promo de lanzamiento de la plataforma: se aplica primero sobre el precio de catálogo, y luego, si el negocio está en su ventana de día 1, la promo se aplica sobre ese precio ya rebajado.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Registrar un descuento propio del negocio",
+                "parameters": [
+                    {
+                        "description": "Datos del descuento a registrar",
+                        "name": "discount",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.RegisterItemDiscount"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "item discount registered successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "JSON inválido, campos faltantes o valor de descuento inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Producto no encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "El usuario no tiene un negocio asociado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/business/products/discounts/{discount_id}": {
+            "put": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Actualiza el tipo, valor, vigencia o estado activo de un descuento existente del negocio autenticado.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Actualizar un descuento propio del negocio",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID del descuento",
+                        "name": "discount_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos del descuento a actualizar",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.UpdateItemDiscount"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "item discount update success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "discount_id inválido, JSON mal formado o valor de descuento inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Descuento no encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Elimina (soft delete) un descuento de producto del negocio autenticado.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Eliminar un descuento propio del negocio",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID del descuento",
+                        "name": "discount_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "item discount deleted successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "discount_id inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Descuento no encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/business/products/flavors": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Registra un nuevo sabor asociado a una categoría del negocio autenticado. Un sabor solo puede asignarse a productos que pertenezcan a esa misma categoría.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Registrar un nuevo sabor",
+                "parameters": [
+                    {
+                        "description": "Datos del sabor a registrar",
+                        "name": "flavor",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.RegisterFlavor"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "flavor registered successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "JSON inválido o campos faltantes",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Categoría no encontrada",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "El usuario no tiene un negocio asociado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/business/products/flavors/{flavor_id}": {
+            "put": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Actualiza el nombre y/o la descripción de un sabor existente del negocio autenticado.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Actualizar un sabor",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID del sabor",
+                        "name": "flavor_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos del sabor a actualizar",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.UpdateFlavor"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "flavor update success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "flavor_id inválido o JSON mal formado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Sabor no encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Elimina (soft delete) un sabor del negocio autenticado y lo desasocia de todos los productos que lo tenían asignado. Si un producto queda sin sabores tras la eliminación, su indicador has_flavors se actualiza automáticamente a false.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Eliminar un sabor",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID del sabor",
+                        "name": "flavor_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "flavor deleted successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "flavor_id inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Sabor no encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/business/products/items": {
             "post": {
                 "security": [
@@ -477,6 +871,46 @@ const docTemplate = `{
                     },
                     "422": {
                         "description": "El usuario no tiene un negocio asociado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/business/products/macro-categories": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna el catálogo de macro categorías (Pizza, Parrilla, Pollo, etc.) usado para clasificar las categorías del negocio autenticado.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Obtener macro categorías",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.MacroCategoryResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
                         "schema": {
                             "type": "string"
                         }
@@ -654,7 +1088,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Cambia el estado de apertura del local asociado a la sesión del owner.",
+                "description": "Cambia el estado de apertura del local asociado a la sesión del owner. La primera vez que un local se abre (open=true) se activan automáticamente sus ventanas de promoción de lanzamiento: 24h con 50% de descuento subsidiado por la plataforma y 192h (8 días) con comisión 0%.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1001,7 +1435,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Crea una nueva orden con los productos e información de entrega proporcionados. El customer_id se obtiene automáticamente del token de sesión. Se debe enviar ` + "`" + `payment_proof_image` + "`" + ` en base64.",
+                "description": "Crea una nueva orden con los productos e informacion de entrega proporcionados. El customer_id se obtiene automaticamente del token de sesion. Se debe enviar ` + "`" + `payment_proof_image` + "`" + ` en base64. ` + "`" + `expected_total_price` + "`" + ` debe ser el total que el front mostro al cliente antes de confirmar: si no coincide con el total recalculado en el servidor (por un descuento vencido, promo de lanzamiento, etc.), la orden se rechaza con 409 y el cliente debe refrescar su carrito.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1031,7 +1465,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Body inválido o validación fallida",
+                        "description": "Body invalido o validacion fallida",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
@@ -1043,13 +1477,13 @@ const docTemplate = `{
                         }
                     },
                     "409": {
-                        "description": "La orden ya existe",
+                        "description": "La orden ya existe, o el precio cambio desde que se mostro al cliente",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
                     },
                     "422": {
-                        "description": "Uno o más productos/adiciones no encontrados",
+                        "description": "Uno o mas productos/adiciones no encontrados",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
@@ -1070,17 +1504,17 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Devuelve todas las órdenes del customer autenticado, incluyendo activas y completadas, ordenadas de más reciente a más antigua.",
+                "description": "Devuelve todas las ordenes del customer autenticado, incluyendo activas y completadas, ordenadas de mas reciente a mas antigua.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Orders"
                 ],
-                "summary": "Historial de órdenes del customer",
+                "summary": "Historial de ordenes del customer",
                 "responses": {
                     "200": {
-                        "description": "Historial de órdenes",
+                        "description": "Historial de ordenes",
                         "schema": {
                             "type": "array",
                             "items": {
@@ -1189,7 +1623,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "El rider introduce el código de 4 dígitos que le muestra el usuario para confirmar la entrega. Transiciona el pedido de \"On The Way\" a \"Completed\".",
+                "description": "El rider introduce el codigo de 4 digitos que le muestra el usuario para confirmar la entrega. Transiciona el pedido de \"On The Way\" a \"Completed\".",
                 "consumes": [
                     "application/json"
                 ],
@@ -1209,7 +1643,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Código de entrega",
+                        "description": "Codigo de entrega",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -1229,7 +1663,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Código inválido",
+                        "description": "Codigo invalido",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
@@ -1241,7 +1675,7 @@ const docTemplate = `{
                         }
                     },
                     "409": {
-                        "description": "Código ya utilizado",
+                        "description": "Codigo ya utilizado",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
@@ -1262,7 +1696,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "El local introduce el código de 4 dígitos que le muestra el rider para confirmar que está presente. Transiciona el pedido de \"In Preparation\" o \"Ready\" a \"On The Way\" y genera el código de entrega para el usuario.",
+                "description": "El local introduce el codigo de 4 digitos que le muestra el rider para confirmar que esta presente. Transiciona el pedido de \"In Preparation\" o \"Ready\" a \"On The Way\" y genera el codigo de entrega para el usuario.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1282,7 +1716,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Código de recogida",
+                        "description": "Codigo de recogida",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -1302,7 +1736,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Código inválido",
+                        "description": "Codigo invalido",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
@@ -1314,7 +1748,7 @@ const docTemplate = `{
                         }
                     },
                     "409": {
-                        "description": "Código ya utilizado",
+                        "description": "Codigo ya utilizado",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
@@ -2557,6 +2991,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "address",
+                "expected_total_price",
                 "id",
                 "items",
                 "method_payment",
@@ -2565,6 +3000,11 @@ const docTemplate = `{
             "properties": {
                 "address": {
                     "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.Address"
+                },
+                "expected_total_price": {
+                    "description": "ExpectedTotalPrice es el total que el front mostró al cliente justo\nantes de confirmar (catálogo/carrito). El backend siempre recalcula el\ncobro real desde la base de datos; este campo solo sirve para detectar\nsi el precio quedó desactualizado (ver ErrPriceChanged, 409) y nunca se\nusa para fijar el monto cobrado.",
+                    "type": "number",
+                    "example": 18.5
                 },
                 "id": {
                     "type": "string",
@@ -2596,8 +3036,17 @@ const docTemplate = `{
         "Encargalo_app-api_go_internal_orders_domain_dtos.CreateOrderResponse": {
             "type": "object",
             "properties": {
+                "is_launch_promo": {
+                    "type": "boolean"
+                },
                 "message": {
                     "type": "string"
+                },
+                "promo_subsidy_amount": {
+                    "type": "number"
+                },
+                "total_price": {
+                    "type": "number"
                 }
             }
         },
@@ -2744,9 +3193,26 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Pizza mediana con jamón, piña y queso mozzarella sobre una base de salsa napolitana."
                 },
+                "effective_bs": {
+                    "type": "number",
+                    "example": 7000
+                },
+                "effective_ref": {
+                    "description": "EffectiveRef/EffectiveBs son el precio final que paga el cliente tras\naplicar, en orden, el descuento propio del negocio y luego la promo de\nlanzamiento (día 1). Ref/Bs siempre muestran el precio de catálogo\noriginal, sin descuentos, para no romper compatibilidad.",
+                    "type": "number",
+                    "example": 14
+                },
                 "has_flavors": {
                     "type": "boolean",
                     "example": true
+                },
+                "has_launch_promo": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "has_shop_discount": {
+                    "type": "boolean",
+                    "example": false
                 },
                 "id": {
                     "type": "string",
@@ -2811,6 +3277,20 @@ const docTemplate = `{
                 }
             }
         },
+        "Encargalo_app-api_go_internal_products_domain_dtos.MacroCategoryResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_products_domain_dtos.RegisterCategory": {
             "type": "object",
             "required": [
@@ -2830,6 +3310,27 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleInput"
                     }
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.RegisterFlavor": {
+            "type": "object",
+            "required": [
+                "category_id",
+                "name"
+            ],
+            "properties": {
+                "category_id": {
+                    "type": "string",
+                    "example": "b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Con salsa picante casera"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Picante"
                 }
             }
         },
@@ -2871,6 +3372,40 @@ const docTemplate = `{
                 "price": {
                     "type": "integer",
                     "example": 32000
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.RegisterItemDiscount": {
+            "type": "object",
+            "required": [
+                "discount_type",
+                "item_id",
+                "value"
+            ],
+            "properties": {
+                "discount_type": {
+                    "type": "string",
+                    "enum": [
+                        "percentage",
+                        "fixed"
+                    ],
+                    "example": "percentage"
+                },
+                "ends_at": {
+                    "type": "string",
+                    "example": "2026-07-18T00:00:00Z"
+                },
+                "item_id": {
+                    "type": "string",
+                    "example": "7e441237-a818-42d2-bb54-9b8747198305"
+                },
+                "starts_at": {
+                    "type": "string",
+                    "example": "2026-07-11T00:00:00Z"
+                },
+                "value": {
+                    "type": "number",
+                    "example": 20
                 }
             }
         },
@@ -2939,6 +3474,15 @@ const docTemplate = `{
                 },
                 "description": {
                     "type": "string"
+                },
+                "effective_bs": {
+                    "type": "number"
+                },
+                "effective_ref": {
+                    "type": "number"
+                },
+                "has_launch_promo": {
+                    "type": "boolean"
                 },
                 "id": {
                     "type": "string"
@@ -3023,6 +3567,22 @@ const docTemplate = `{
                 }
             }
         },
+        "Encargalo_app-api_go_internal_products_domain_dtos.UpdateFlavor": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "Con salsa picante casera"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Picante"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_products_domain_dtos.UpdateItem": {
             "type": "object",
             "required": [
@@ -3055,6 +3615,39 @@ const docTemplate = `{
                 "price": {
                     "type": "integer",
                     "example": 32000
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.UpdateItemDiscount": {
+            "type": "object",
+            "required": [
+                "discount_type",
+                "value"
+            ],
+            "properties": {
+                "discount_type": {
+                    "type": "string",
+                    "enum": [
+                        "percentage",
+                        "fixed"
+                    ],
+                    "example": "percentage"
+                },
+                "ends_at": {
+                    "type": "string",
+                    "example": "2026-07-18T00:00:00Z"
+                },
+                "is_active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "starts_at": {
+                    "type": "string",
+                    "example": "2026-07-11T00:00:00Z"
+                },
+                "value": {
+                    "type": "number",
+                    "example": 20
                 }
             }
         },
@@ -3324,6 +3917,10 @@ const docTemplate = `{
                 "delivery_fee_bs": {
                     "type": "number"
                 },
+                "has_launch_promo": {
+                    "description": "HasLaunchPromo indica si el negocio está dentro de su ventana de\nlanzamiento (día 1): los productos se muestran con 50% de descuento.",
+                    "type": "boolean"
+                },
                 "home_phone": {
                     "type": "string"
                 },
@@ -3393,6 +3990,10 @@ const docTemplate = `{
                 },
                 "delivery_fee_bs": {
                     "type": "number"
+                },
+                "has_launch_promo": {
+                    "description": "HasLaunchPromo indica si el negocio está dentro de su ventana de\nlanzamiento (día 1): los productos se muestran con 50% de descuento.",
+                    "type": "boolean"
                 },
                 "home_phone": {
                     "type": "string"

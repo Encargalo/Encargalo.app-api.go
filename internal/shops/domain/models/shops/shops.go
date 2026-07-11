@@ -35,24 +35,38 @@ type Shop struct {
 	CreatedAt     time.Time  `bun:"created_at,default:current_timestamp"`
 	UpdatedAt     time.Time  `bun:"updated_at,default:current_timestamp"`
 	DeletedAt     *time.Time `bun:"deleted_at,nullzero"`
+
+	// FirstOpenedAt es el instante exacto en que el negocio se marcó como
+	// abierto por primera vez; ancla las dos promos de lanzamiento (día 1 y
+	// comisión 0% durante 8 días). Nil hasta la primera apertura.
+	FirstOpenedAt        *time.Time `bun:"first_opened_at,nullzero"`
+	LaunchPromoEndsAt    *time.Time `bun:"launch_promo_ends_at,nullzero"`
+	ZeroCommissionEndsAt *time.Time `bun:"zero_commission_ends_at,nullzero"`
+}
+
+// HasActiveLaunchPromo indica si el descuento del 50% al cliente (día 1)
+// sigue vigente para este negocio en este instante.
+func (s *Shop) HasActiveLaunchPromo() bool {
+	return s.LaunchPromoEndsAt != nil && time.Now().Before(*s.LaunchPromoEndsAt)
 }
 
 func (s *Shop) ToDomainDTO(distance entity.ShopDistance) dtos.ShopResponse {
 	return dtos.ShopResponse{
-		ID:          s.ID,
-		Name:        s.Name,
-		Tag:         s.Tag,
-		Address:     s.Address,
-		Latitude:    *s.Latitude,
-		Longitude:   *s.Longitude,
-		HomePhone:   s.HomePhone,
-		Logo:        s.LogoImage,
-		Banner:      s.Banner,
-		Opened:      s.Opened,
-		Type:        s.Type,
-		Score:       s.Score,
-		DeliveryFee: deliveryfee.FromDistance(distance.Distance),
-		Time:        int(distance.Duration) + 20,
+		ID:             s.ID,
+		Name:           s.Name,
+		Tag:            s.Tag,
+		Address:        s.Address,
+		Latitude:       *s.Latitude,
+		Longitude:      *s.Longitude,
+		HomePhone:      s.HomePhone,
+		Logo:           s.LogoImage,
+		Banner:         s.Banner,
+		Opened:         s.Opened,
+		Type:           s.Type,
+		Score:          s.Score,
+		DeliveryFee:    deliveryfee.FromDistance(distance.Distance),
+		Time:           int(distance.Duration) + 20,
+		HasLaunchPromo: s.HasActiveLaunchPromo(),
 	}
 }
 

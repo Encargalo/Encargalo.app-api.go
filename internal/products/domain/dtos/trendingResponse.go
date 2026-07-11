@@ -37,14 +37,17 @@ type TrendingShop struct {
 }
 
 type TrendingProduct struct {
-	ID          uuid.UUID          `json:"id"`
-	CategoryID  uuid.UUID          `json:"category_id"`
-	Name        string             `json:"name"`
-	Ref         float64            `json:"ref"`
-	Bs          float64            `json:"bs"`
-	Image       string             `json:"image"`
-	Description string             `json:"description"`
-	Score       float32            `json:"score"`
-	Sold        int                `json:"sold"`
-	Schedules   []ScheduleResponse `json:"schedules,omitempty"`
+	ID             uuid.UUID          `json:"id"`
+	CategoryID     uuid.UUID          `json:"category_id"`
+	Name           string             `json:"name"`
+	Ref            float64            `json:"ref"`
+	Bs             float64            `json:"bs"`
+	EffectiveRef   float64            `json:"effective_ref"`
+	EffectiveBs    float64            `json:"effective_bs"`
+	HasLaunchPromo bool               `json:"has_launch_promo"`
+	Image          string             `json:"image"`
+	Description    string             `json:"description"`
+	Score          float32            `json:"score"`
+	Sold           int                `json:"sold"`
+	Schedules      []ScheduleResponse `json:"schedules,omitempty"`
 }

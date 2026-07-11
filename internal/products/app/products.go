@@ -29,10 +29,22 @@ type productsApp struct {
 	uploadimage uploadimage.UploadImage
 	emplService emplService.EmployeeApp
 	bcv         bcvPorts.BcvApp
+	shopPromo   ports.ShopLaunchPromoProvider
 }
 
-func NewProductsApp(repo ports.ProductsRepo, uploadimage uploadimage.UploadImage, emplService emplService.EmployeeApp, bcv bcvPorts.BcvApp) ports.ProductsApp {
-	return &productsApp{repo, uploadimage, emplService, bcv}
+func NewProductsApp(repo ports.ProductsRepo, uploadimage uploadimage.UploadImage, emplService emplService.EmployeeApp, bcv bcvPorts.BcvApp, shopPromo ports.ShopLaunchPromoProvider) ports.ProductsApp {
+	return &productsApp{repo, uploadimage, emplService, bcv, shopPromo}
+}
+
+// launchPromoEndsAt resuelve la ventana de promo día 1 del negocio; si el
+// puerto cross-domain falla, se ignora la promo en vez de romper el catálogo.
+func (p *productsApp) launchPromoEndsAt(ctx context.Context, shopID uuid.UUID) *time.Time {
+	endsAt, err := p.shopPromo.GetLaunchPromoEndsAt(ctx, shopID)
+	if err != nil {
+		slog.Warn("launch promo window unavailable, catalog shown without discount", "shopID", shopID, "error", err)
+		return nil
+	}
+	return endsAt
 }
 
 func (p *productsApp) bcvRate(ctx context.Context) float64 {
@@ -47,14 +59,41 @@ func (p *productsApp) bcvRate(ctx context.Context) float64 {
 func applyRateToCategories(rate float64, data *dtos.CategoriesResponse) {
 	for i := range *data {
 		for j := range (*data)[i].Items {
-			(*data)[i].Items[j].Bs = money.RoundBs((*data)[i].Items[j].Ref * rate)
+			item := &(*data)[i].Items[j]
+			item.Bs = money.RoundBs(item.Ref * rate)
+			item.EffectiveBs = money.RoundBs(item.EffectiveRef * rate)
 		}
 	}
 }
 
 func applyRateToItems(rate float64, data *dtos.ItemsResponse) {
 	for i := range *data {
-		(*data)[i].Bs = money.RoundBs((*data)[i].Ref * rate)
+		item := &(*data)[i]
+		item.Bs = money.RoundBs(item.Ref * rate)
+		item.EffectiveBs = money.RoundBs(item.EffectiveRef * rate)
+	}
+}
+
+// applyLaunchDiscount aplica, sobre el precio ya rebajado por el descuento
+// propio del negocio (EffectiveRef), el 50% de la promo de lanzamiento del
+// día 1 si la ventana sigue vigente. Devuelve si se aplicó o no.
+func applyLaunchDiscount(item *dtos.ItemResponse, endsAt *time.Time) {
+	if endsAt == nil || !time.Now().Before(*endsAt) {
+		return
+	}
+	item.EffectiveRef = money.RoundBs(item.EffectiveRef * 0.5)
+	item.HasLaunchPromo = true
+}
+
+func applyLaunchDiscountToItems(items *dtos.ItemsResponse, endsAt *time.Time) {
+	for i := range *items {
+		applyLaunchDiscount(&(*items)[i], endsAt)
+	}
+}
+
+func applyLaunchDiscountToCategories(data *dtos.CategoriesResponse, endsAt *time.Time) {
+	for i := range *data {
+		applyLaunchDiscountToItems(&(*data)[i].Items, endsAt)
 	}
 }
 
@@ -67,6 +106,7 @@ func applyRateToAdditions(rate float64, data *dtos.AdditionsResponse) {
 func applyRateToTrending(rate float64, data *dtos.TrendingResponse) {
 	for i := range *data {
 		(*data)[i].Product.Bs = money.RoundBs((*data)[i].Product.Ref * rate)
+		(*data)[i].Product.EffectiveBs = money.RoundBs((*data)[i].Product.EffectiveRef * rate)
 		(*data)[i].Shop.DeliveryFeeBs = money.RoundBs((*data)[i].Shop.DeliveryFee * rate)
 	}
 }
@@ -131,6 +171,10 @@ func (p *productsApp) RegisterItem(ctx context.Context, item dtos.RegisterItem) 
 
 	publicID := strings.ReplaceAll(resp.PublicID, "\\", "/")
 
+	if err := p.validateFlavorsBelongToCategory(ctx, item.CategoryID, item.FlavorIDs); err != nil {
+		return err
+	}
+
 	itemModel := models.Item{}
 	itemModel.BuildToModel(item, resp.SecureURL, publicID, sha256Hash(imageBytes))
 
@@ -141,6 +185,35 @@ func (p *productsApp) RegisterItem(ctx context.Context, item dtos.RegisterItem) 
 	if item.HasFlavors && len(item.FlavorIDs) > 0 {
 		if err := p.repo.RegisterItemFlavors(ctx, itemModel.ID, item.FlavorIDs); err != nil {
 			return err
+		}
+	}
+
+	return nil
+}
+
+// validateFlavorsBelongToCategory asegura que un producto solo pueda tener
+// asignados sabores que pertenezcan a su propia categoría.
+func (p *productsApp) validateFlavorsBelongToCategory(ctx context.Context, categoryID uuid.UUID, flavorIDs []uuid.UUID) error {
+	if len(flavorIDs) == 0 {
+		return nil
+	}
+
+	flavors, err := p.repo.SearchFlavorsByIDs(ctx, flavorIDs)
+	if err != nil {
+		return err
+	}
+
+	found := make(map[uuid.UUID]bool, len(flavors))
+	for _, flavor := range flavors {
+		if flavor.CategoryID != categoryID {
+			return errcustom.ErrInvalidFlavors
+		}
+		found[flavor.ID] = true
+	}
+
+	for _, id := range flavorIDs {
+		if !found[id] {
+			return errcustom.ErrInvalidFlavors
 		}
 	}
 
@@ -190,6 +263,9 @@ func (p *productsApp) UpdateItem(ctx context.Context, item dtos.UpdateItem, item
 	hasFlavors := itemModel.HasFlavors
 	if item.FlavorIDs != nil {
 		hasFlavors = len(*item.FlavorIDs) > 0
+		if err := p.validateFlavorsBelongToCategory(ctx, itemModel.CategoryID, *item.FlavorIDs); err != nil {
+			return err
+		}
 	}
 
 	var ItemUpdateModel models.UpdateItem
@@ -220,6 +296,7 @@ func (p *productsApp) SearchProductsByShopID(ctx context.Context, shopID uuid.UU
 		return nil, err
 	}
 	data = filterCategoriesBySchedule(data, bizclock.Now())
+	applyLaunchDiscountToCategories(&data, p.launchPromoEndsAt(ctx, shopID))
 	applyRateToCategories(p.bcvRate(ctx), &data)
 	return data, nil
 }
@@ -258,6 +335,7 @@ func (p *productsApp) SearchBestSellersByShopID(ctx context.Context, shopID uuid
 		return nil, err
 	}
 	data = filterItemsBySchedule(data, bizclock.Now())
+	applyLaunchDiscountToItems(&data, p.launchPromoEndsAt(ctx, shopID))
 	applyRateToItems(p.bcvRate(ctx), &data)
 	return data, nil
 }
@@ -355,4 +433,178 @@ func base64ToBytes(b64 string) ([]byte, error) {
 func sha256Hash(data []byte) string {
 	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:])
+}
+
+func (p *productsApp) RegisterFlavor(ctx context.Context, flavor dtos.RegisterFlavor) error {
+	categoryModel, err := p.repo.SearchCategoryByID(ctx, flavor.CategoryID)
+	if err != nil {
+		return err
+	}
+
+	if categoryModel == nil {
+		return errcustom.ErrNotFound
+	}
+
+	if categoryModel.ShopID != flavor.ShopID {
+		return errcustom.ErrUnautorized
+	}
+
+	flavorModel := models.Flavor{}
+	flavorModel.BuildToModel(flavor)
+
+	return p.repo.RegisterFlavor(ctx, &flavorModel)
+}
+
+func (p *productsApp) UpdateFlavor(ctx context.Context, flavor dtos.UpdateFlavor, flavorID, userID uuid.UUID) error {
+	flavorModel, err := p.repo.SearchFlavorByID(ctx, flavorID)
+	if err != nil {
+		return err
+	}
+
+	if flavorModel == nil {
+		return errcustom.ErrNotFound
+	}
+
+	empl, err := p.emplService.SearchEmployeeByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	if flavorModel.ShopID != empl.ShopID {
+		return errcustom.ErrUnautorized
+	}
+
+	var updateModel models.UpdateFlavor
+	updateModel.BuildToModel(flavor, flavorID)
+
+	return p.repo.UpdateFlavor(ctx, &updateModel, flavorModel.ShopID, flavorModel.CategoryID)
+}
+
+func (p *productsApp) DeleteFlavor(ctx context.Context, flavorID, userID uuid.UUID) error {
+	flavorModel, err := p.repo.SearchFlavorByID(ctx, flavorID)
+	if err != nil {
+		return err
+	}
+
+	if flavorModel == nil {
+		return errcustom.ErrNotFound
+	}
+
+	empl, err := p.emplService.SearchEmployeeByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	if flavorModel.ShopID != empl.ShopID {
+		return errcustom.ErrUnautorized
+	}
+
+	return p.repo.DeleteFlavor(ctx, flavorModel)
+}
+
+func (p *productsApp) SearchMacroCategories(ctx context.Context) (dtos.MacroCategoriesResponse, error) {
+	macroCategories, err := p.repo.SearchMacroCategories(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return macroCategories.ToDomainDTO(), nil
+}
+
+// validateDiscountValue asegura que el valor del descuento tenga sentido
+// según su tipo: porcentaje entre 1 y 99, o monto fijo positivo y menor al
+// precio del producto (nunca puede dejarlo en 0 o negativo).
+func validateDiscountValue(discountType string, value float64, itemPrice int) error {
+	switch discountType {
+	case models.DiscountTypePercentage:
+		if value < 1 || value > 99 {
+			return errcustom.ErrInvalidDiscountValue
+		}
+	case models.DiscountTypeFixed:
+		if value <= 0 || value >= float64(itemPrice) {
+			return errcustom.ErrInvalidDiscountValue
+		}
+	default:
+		return errcustom.ErrInvalidDiscountValue
+	}
+	return nil
+}
+
+func (p *productsApp) RegisterItemDiscount(ctx context.Context, discount dtos.RegisterItemDiscount) error {
+	itemModel, err := p.repo.SearchItemByID(ctx, discount.ItemID)
+	if err != nil {
+		return err
+	}
+
+	if itemModel == nil {
+		return errcustom.ErrNotFound
+	}
+
+	if itemModel.ShopID != discount.ShopID {
+		return errcustom.ErrUnautorized
+	}
+
+	if err := validateDiscountValue(discount.DiscountType, discount.Value, itemModel.Price); err != nil {
+		return err
+	}
+
+	discountModel := models.ItemDiscount{}
+	discountModel.BuildToModel(discount)
+
+	return p.repo.RegisterItemDiscount(ctx, &discountModel)
+}
+
+func (p *productsApp) UpdateItemDiscount(ctx context.Context, discount dtos.UpdateItemDiscount, discountID, userID uuid.UUID) error {
+	discountModel, err := p.repo.SearchItemDiscountByID(ctx, discountID)
+	if err != nil {
+		return err
+	}
+
+	if discountModel == nil {
+		return errcustom.ErrNotFound
+	}
+
+	empl, err := p.emplService.SearchEmployeeByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	if discountModel.ShopID != empl.ShopID {
+		return errcustom.ErrUnautorized
+	}
+
+	itemModel, err := p.repo.SearchItemByID(ctx, discountModel.ItemID)
+	if err != nil {
+		return err
+	}
+
+	if err := validateDiscountValue(discount.DiscountType, discount.Value, itemModel.Price); err != nil {
+		return err
+	}
+
+	var updateModel models.UpdateItemDiscount
+	updateModel.BuildToModel(discount, discountID)
+
+	return p.repo.UpdateItemDiscount(ctx, &updateModel, discountModel.ShopID, discountModel.ItemID)
+}
+
+func (p *productsApp) DeleteItemDiscount(ctx context.Context, discountID, userID uuid.UUID) error {
+	discountModel, err := p.repo.SearchItemDiscountByID(ctx, discountID)
+	if err != nil {
+		return err
+	}
+
+	if discountModel == nil {
+		return errcustom.ErrNotFound
+	}
+
+	empl, err := p.emplService.SearchEmployeeByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	if discountModel.ShopID != empl.ShopID {
+		return errcustom.ErrUnautorized
+	}
+
+	return p.repo.DeleteItemDiscount(ctx, discountModel)
 }

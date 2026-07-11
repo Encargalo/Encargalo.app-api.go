@@ -37,6 +37,13 @@ type Order struct {
 	RiderAcceptedAt    *time.Time      `bun:"rider_accepted_at" json:"rider_accepted_at,omitempty"`
 	CreatedAt          time.Time       `bun:"created_at" json:"created_at"`
 
+	// IsLaunchPromo: 50% de descuento al cliente aplicado (día 1 de vida del negocio).
+	IsLaunchPromo bool `bun:"is_launch_promo" json:"is_launch_promo"`
+	// IsZeroCommission: comisión 0% aplicada al liquidar (días 1-8 de vida del negocio).
+	IsZeroCommission bool `bun:"is_zero_commission" json:"-"`
+	// PromoSubsidyAmount es lo que puso la plataforma para cubrir el 50% del día 1 (0 el resto de los días).
+	PromoSubsidyAmount float64 `bun:"promo_subsidy_amount" json:"promo_subsidy_amount"`
+
 	ItemsOrders []ItemsOrder `bun:"rel:has-many,join:id=order_id" json:"-"`
 }
 
@@ -132,7 +139,10 @@ func (o *Order) SetPrices(items models.Items) {
 
 	priceMap := make(map[uuid.UUID]int, len(items))
 	for _, item := range items {
-		priceMap[item.ID] = item.Price
+		// ShopPrice ya refleja el descuento propio del negocio (si tiene uno
+		// activo), así el subtotal de la orden nace con ese descuento
+		// aplicado y todo lo demás (promo día 1, comisión 0%) opera sobre él.
+		priceMap[item.ID] = item.ShopPrice()
 	}
 
 	var total int
@@ -145,6 +155,27 @@ func (o *Order) SetPrices(items models.Items) {
 	}
 
 	o.TotalPrice = float64(total) + o.DeliveryFee
+}
+
+// ApplyLaunchPromo, si active, subsidia el 50% del subtotal (items +
+// adiciones, sin delivery_fee) del pedido: el cliente paga la mitad y la
+// plataforma cubre la otra mitad. Debe llamarse después de SetPrices y
+// SetAdditionalsPrices, cuando TotalPrice ya incluye items + adiciones + delivery_fee.
+func (o *Order) ApplyLaunchPromo(active bool) {
+	if !active {
+		return
+	}
+	subtotal := o.TotalPrice - o.DeliveryFee
+	o.PromoSubsidyAmount = subtotal * 0.5
+	o.IsLaunchPromo = true
+	o.TotalPrice -= o.PromoSubsidyAmount
+}
+
+// ApplyZeroCommission marca el pedido para que, al liquidar, el negocio
+// reciba el 100% del subtotal en vez del 90% habitual. No cambia el precio
+// que paga el cliente, solo la comisión que retiene la plataforma.
+func (o *Order) ApplyZeroCommission(active bool) {
+	o.IsZeroCommission = active
 }
 
 func (o *Order) SetAdditionalsName(additions []Addition) {

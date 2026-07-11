@@ -15,17 +15,17 @@ type ShopCommissionRecorder struct {
 	mock.Mock
 }
 
-// RecordSaleCommission provides a mock function with given fields: ctx, shopID, orderID, totalPrice, deliveryFee, method
-func (_m *ShopCommissionRecorder) RecordSaleCommission(ctx context.Context, shopID uuid.UUID, orderID uuid.UUID, totalPrice float64, deliveryFee float64, method string) error {
-	ret := _m.Called(ctx, shopID, orderID, totalPrice, deliveryFee, method)
+// RecordSaleCommission provides a mock function with given fields: ctx, shopID, orderID, totalPrice, deliveryFee, method, isLaunchPromo, isZeroCommission, promoSubsidyAmount
+func (_m *ShopCommissionRecorder) RecordSaleCommission(ctx context.Context, shopID uuid.UUID, orderID uuid.UUID, totalPrice float64, deliveryFee float64, method string, isLaunchPromo bool, isZeroCommission bool, promoSubsidyAmount float64) error {
+	ret := _m.Called(ctx, shopID, orderID, totalPrice, deliveryFee, method, isLaunchPromo, isZeroCommission, promoSubsidyAmount)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RecordSaleCommission")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64, string) error); ok {
-		r0 = rf(ctx, shopID, orderID, totalPrice, deliveryFee, method)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64, string, bool, bool, float64) error); ok {
+		r0 = rf(ctx, shopID, orderID, totalPrice, deliveryFee, method, isLaunchPromo, isZeroCommission, promoSubsidyAmount)
 	} else {
 		r0 = ret.Error(0)
 	}

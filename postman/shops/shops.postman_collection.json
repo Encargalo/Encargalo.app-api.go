@@ -134,7 +134,7 @@
           "host": ["{{base_url}}"],
           "path": ["business", "shops", "me", "status"]
         },
-        "description": "Abre o cierra el local del owner autenticado. Solo accesible con rol Owner. Retorna 204 sin cuerpo."
+        "description": "Abre o cierra el local del owner autenticado. Solo accesible con rol Owner. Retorna 204 sin cuerpo. La primera vez que el local se abre (`open: true`) se activan automáticamente sus ventanas de promoción de lanzamiento: 24h con 50% de descuento subsidiado por la plataforma y 192h (8 días) con comisión 0% para el negocio. Aperturas/cierres posteriores no vuelven a activarlas."
       }
     }
     ,{

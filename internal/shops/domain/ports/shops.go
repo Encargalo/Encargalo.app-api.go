@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"Encargalo.app-api.go/internal/shops/domain/dtos"
 	"github.com/google/uuid"
@@ -19,6 +20,9 @@ type ShopsApp interface {
 	GetShopByID(ctx context.Context, shopID uuid.UUID) (dtos.ShopResponse, error)
 	SearchShops(ctx context.Context, query dtos.SearchShopsQuery) (dtos.SearchShopsResult, error)
 	SetOpenClose(ctx context.Context, shopID *uuid.UUID, open bool) error
+	// GetLaunchPromoEndsAt expone la ventana de descuento día 1 a otros dominios
+	// (products) sin que estos dependan de shops/domain/ports en general.
+	GetLaunchPromoEndsAt(ctx context.Context, shopID uuid.UUID) (*time.Time, error)
 }
 
 type ShopsRepo interface {
@@ -29,4 +33,5 @@ type ShopsRepo interface {
 	SearchShopCandidates(ctx context.Context, query dtos.SearchShopsQuery) ([]dtos.SearchShopCandidate, error)
 	FindMatchedProducts(ctx context.Context, shopIDs []uuid.UUID, q string) (map[uuid.UUID][]dtos.MatchedProductItem, error)
 	SetOpenClose(ctx context.Context, shopID *uuid.UUID, open bool) error
+	GetLaunchPromoEndsAt(ctx context.Context, shopID uuid.UUID) (*time.Time, error)
 }
