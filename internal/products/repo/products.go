@@ -37,8 +37,12 @@ type productsRepo struct {
 // activeDiscountRelation filtra la relación Item.Discount al único descuento
 // activo y vigente del producto (el índice único parcial garantiza que a lo
 // sumo una fila cumple is_active = true AND deleted_at IS NULL por item).
+//
+// El alias del JOIN generado por bun para una relación se deriva del nombre
+// del campo Go de la relación (Discount -> discount), no del nombre de la
+// tabla ni del tipo del modelo (item_discounts / ItemDiscount).
 func activeDiscountRelation(sq *bun.SelectQuery) *bun.SelectQuery {
-	return sq.Where("item_discount.is_active = ? AND item_discount.deleted_at IS NULL", true)
+	return sq.Where("discount.is_active = ? AND discount.deleted_at IS NULL", true)
 }
 
 func NewProductsRepo(db *bun.DB, cache cache.Cache) productPorts.ProductsRepo {
