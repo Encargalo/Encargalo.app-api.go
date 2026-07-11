@@ -18,6 +18,7 @@ import (
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/schema"
 )
 
 const (
@@ -34,15 +35,26 @@ type productsRepo struct {
 	cache cache.Cache
 }
 
-// activeDiscountRelation filtra la relación Item.Discount al único descuento
-// activo y vigente del producto (el índice único parcial garantiza que a lo
-// sumo una fila cumple is_active = true AND deleted_at IS NULL por item).
+// activeDiscountJoinConditions filtra la relación Item.Discount al único
+// descuento activo y vigente del producto (el índice único parcial garantiza
+// que a lo sumo una fila cumple is_active = true AND deleted_at IS NULL por
+// item).
 //
 // El alias del JOIN generado por bun para una relación se deriva del nombre
 // del campo Go de la relación (Discount -> discount), no del nombre de la
 // tabla ni del tipo del modelo (item_discounts / ItemDiscount).
-func activeDiscountRelation(sq *bun.SelectQuery) *bun.SelectQuery {
-	return sq.Where("discount.is_active = ? AND discount.deleted_at IS NULL", true)
+//
+// IMPORTANTE: esta condición debe ir en el ON del LEFT JOIN vía
+// RelationWithOpts/AdditionalJoinOnConditions, NUNCA como Relation(name, func(sq)
+// sq.Where(...)). Un callback con .Where() en una relación has-one/belongs-to
+// agrega la condición al WHERE de la consulta (no al ON), y como NULL = true
+// es falso en SQL, eso convierte el LEFT JOIN en un INNER JOIN de facto: todo
+// item SIN descuento activo (la mayoría) queda excluido del resultado entero,
+// no solo su descuento.
+func activeDiscountJoinConditions() []schema.QueryWithArgs {
+	return []schema.QueryWithArgs{
+		bun.SafeQuery("discount.is_active = ? AND discount.deleted_at IS NULL", true),
+	}
 }
 
 func NewProductsRepo(db *bun.DB, cache cache.Cache) productPorts.ProductsRepo {
@@ -225,7 +237,9 @@ func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.U
 			return sq.Where("is_available = ?", true).Order("price ASC")
 		}).
 		Relation("Items.ItemRule").
-		Relation("Items.Discount", activeDiscountRelation).
+		RelationWithOpts("Items.Discount", bun.RelationOpts{
+			AdditionalJoinOnConditions: activeDiscountJoinConditions(),
+		}).
 		Relation("Schedules").
 		Scan(ctx); err != nil {
 		slog.Error("error al obtener los productos", "error", err)
@@ -422,7 +436,9 @@ func (p *productsRepo) SearchBestSellersByShopID(ctx context.Context, shopID uui
 		Where("shop_id = ?", shopID).
 		Where("is_available = ?", true).
 		Relation("Category.Schedules").
-		Relation("Discount", activeDiscountRelation).
+		RelationWithOpts("Discount", bun.RelationOpts{
+			AdditionalJoinOnConditions: activeDiscountJoinConditions(),
+		}).
 		Order("sold desc").
 		Scan(ctx); err != nil {
 		slog.Error("error al obtener los productos mas vendidos", "error", err)

@@ -13,6 +13,7 @@ import (
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/schema"
 
 	items "Encargalo.app-api.go/internal/products/domain/models"
 )
@@ -104,10 +105,17 @@ func (o *orders) SearchItemsByID(ctx context.Context, ItemsID []uuid.UUID) (item
 
 	err := o.db.NewSelect().Model(&items).
 		Where("id in (?)", bun.In(ItemsID)).
-		Relation("Discount", func(sq *bun.SelectQuery) *bun.SelectQuery {
-			// El alias del JOIN es el nombre del campo Go de la relación
-			// (Discount -> discount), no el nombre de la tabla.
-			return sq.Where("discount.is_active = ? AND discount.deleted_at IS NULL", true)
+		// La condición de descuento activo debe ir en el ON del LEFT JOIN
+		// (AdditionalJoinOnConditions), no en un .Where() dentro del callback
+		// de Relation(): eso agrega la condición al WHERE de la consulta y,
+		// como NULL = true es falso, convierte el LEFT JOIN en INNER JOIN de
+		// facto, excluyendo del resultado a todo item SIN descuento activo
+		// (el alias del JOIN es el nombre del campo Go de la relación
+		// Discount -> discount, no el nombre de la tabla).
+		RelationWithOpts("Discount", bun.RelationOpts{
+			AdditionalJoinOnConditions: []schema.QueryWithArgs{
+				bun.SafeQuery("discount.is_active = ? AND discount.deleted_at IS NULL", true),
+			},
 		}).
 		Scan(ctx, &items)
 	if err != nil {
