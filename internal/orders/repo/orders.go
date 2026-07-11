@@ -105,7 +105,7 @@ func (o *orders) SearchItemsByID(ctx context.Context, ItemsID []uuid.UUID) (item
 	err := o.db.NewSelect().Model(&items).
 		Where("id in (?)", bun.In(ItemsID)).
 		Relation("Discount", func(sq *bun.SelectQuery) *bun.SelectQuery {
-			return sq.Where("is_active = ? AND deleted_at IS NULL", true)
+			return sq.Where("item_discount.is_active = ? AND item_discount.deleted_at IS NULL", true)
 		}).
 		Scan(ctx, &items)
 	if err != nil {

@@ -38,7 +38,7 @@ type productsRepo struct {
 // activo y vigente del producto (el índice único parcial garantiza que a lo
 // sumo una fila cumple is_active = true AND deleted_at IS NULL por item).
 func activeDiscountRelation(sq *bun.SelectQuery) *bun.SelectQuery {
-	return sq.Where("is_active = ? AND deleted_at IS NULL", true)
+	return sq.Where("item_discount.is_active = ? AND item_discount.deleted_at IS NULL", true)
 }
 
 func NewProductsRepo(db *bun.DB, cache cache.Cache) productPorts.ProductsRepo {
