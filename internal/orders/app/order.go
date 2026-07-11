@@ -16,6 +16,7 @@ import (
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
 	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
+	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/deliveryfee"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	shops "Encargalo.app-api.go/internal/shops/domain/ports"
@@ -117,10 +118,20 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 	orderModel := new(models.Order)
 	orderModel.BuildDtoToModel(*order, batchID)
 
-	fee, err := deliveryfee.Calculate(shop.Latitude, shop.Longitude, order.Address.Latitude, order.Address.Longitude)
-	if err != nil {
-		slog.Error("calcDeliveryFee: google maps failed", "shopID", shop.ID, "error", err)
-		return &models.Order{}, errcustom.ErrUnexpectedError
+	// Fuera de production, el listado de tiendas le muestra al cliente un
+	// delivery fee fijo (deliveryfee.DevPlaceholderFee) para no gastar cuota
+	// de Google Maps. Si aquí recalculáramos el fee real, el total que ve el
+	// cliente en el carrito casi nunca coincidiría con el que se cobra al
+	// confirmar, disparando ErrPriceChanged en cada checkout de desarrollo.
+	var fee float64
+	if config.Get().Environment.Current == "production" {
+		fee, err = deliveryfee.Calculate(shop.Latitude, shop.Longitude, order.Address.Latitude, order.Address.Longitude)
+		if err != nil {
+			slog.Error("calcDeliveryFee: google maps failed", "shopID", shop.ID, "error", err)
+			return &models.Order{}, errcustom.ErrUnexpectedError
+		}
+	} else {
+		fee = deliveryfee.DevPlaceholderFee
 	}
 	orderModel.DeliveryFee = fee
 

@@ -15,6 +15,7 @@ import (
 	productModels "Encargalo.app-api.go/internal/products/domain/models"
 	"Encargalo.app-api.go/internal/shared/adapters/googlemaps"
 	"Encargalo.app-api.go/internal/shared/config"
+	"Encargalo.app-api.go/internal/shared/deliveryfee"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	shopsDTO "Encargalo.app-api.go/internal/shops/domain/dtos"
 	"Encargalo.app-api.go/internal/shops/domain/entity"
@@ -104,7 +105,7 @@ func (s *shopsRepo) GetAllShops(ctx context.Context, coords shopsDTO.Coords) (sh
 		}
 		resp = shops.ToDomainDTO(dataDistance)
 		for i := range resp {
-			resp[i].DeliveryFee = 2.0
+			resp[i].DeliveryFee = deliveryfee.DevPlaceholderFee
 			resp[i].Time = 12
 		}
 	}
@@ -181,7 +182,7 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 		}
 		resp = shops.ToDomainDTO(dataDistance)
 		for i := range resp {
-			resp[i].DeliveryFee = 2.0
+			resp[i].DeliveryFee = deliveryfee.DevPlaceholderFee
 			resp[i].Time = 12
 		}
 	}
@@ -342,7 +343,7 @@ func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.Sea
 		}
 		shopResp := shopModels[i].ToDomainDTO(dist)
 		if !isProd {
-			shopResp.DeliveryFee = 2.0
+			shopResp.DeliveryFee = deliveryfee.DevPlaceholderFee
 			shopResp.Time = 12
 		}
 		candidates = append(candidates, shopsDTO.SearchShopCandidate{

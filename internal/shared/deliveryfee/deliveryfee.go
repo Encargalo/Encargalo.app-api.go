@@ -11,6 +11,14 @@ const (
 	RateDay   = 0.40
 	RateNight = 0.60
 	NightHour = 22
+
+	// DevPlaceholderFee es el delivery fee fijo que se muestra/cobra fuera de
+	// production, para no gastar cuota de la API de Google Maps en desarrollo.
+	// Debe usarse consistentemente en todo lugar donde se calcule o se le
+	// muestre al cliente un delivery fee (listados de tiendas, creación de
+	// órdenes, etc.), para que el monto que ve el cliente antes de pagar
+	// coincida con el que el backend cobra al confirmar.
+	DevPlaceholderFee = 2.0
 )
 
 // FromDistance convierte una distancia en metros a tarifa de entrega.

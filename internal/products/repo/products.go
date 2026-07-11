@@ -656,7 +656,7 @@ func (p *productsRepo) deliveryEstimatesByShop(coords dtos.TrendingCoords, rows 
 			if err != nil {
 				continue
 			}
-			fee[shopID] = 2.0
+			fee[shopID] = deliveryfee.DevPlaceholderFee
 			minutes[shopID] = 12
 		}
 		return fee, minutes
