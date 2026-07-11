@@ -12,8 +12,14 @@ var location = loadLocation()
 func loadLocation() *time.Location {
 	loc, err := time.LoadLocation(zoneName)
 	if err != nil {
-		slog.Error("no se pudo cargar zona horaria de negocio, se usa UTC", "zone", zoneName, "error", err)
-		return time.UTC
+		// Fallback a UTC-4 fijo (Venezuela no usa horario de verano, así que
+		// esto es exactamente correcto, no solo una aproximación). Caer a
+		// UTC en vez de esto desfasaría los horarios de los locales 4h.
+		// Esto solo debería ocurrir si el binario no se compiló con
+		// `-tags timetzdata` (ver Dockerfile) en una imagen sin
+		// /usr/share/zoneinfo.
+		slog.Error("no se pudo cargar zona horaria de negocio, se usa UTC-4 fijo", "zone", zoneName, "error", err)
+		return time.FixedZone("VET", -4*60*60)
 	}
 	return loc
 }
