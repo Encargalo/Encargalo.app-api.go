@@ -120,6 +120,7 @@ func (o *orders) SearchItemsByID(ctx context.Context, ItemsID []uuid.UUID) (item
 				bun.SafeQuery("discount.is_active = ? AND discount.deleted_at IS NULL", true),
 			},
 		}).
+		Relation("Category").
 		Scan(ctx, &items)
 	if err != nil {
 		fmt.Println(err)
@@ -138,12 +139,22 @@ func (o *orders) SearchItemsByID(ctx context.Context, ItemsID []uuid.UUID) (item
 }
 
 func (o *orders) SearchAdditionsByID(ctx context.Context, additionID []uuid.UUID) ([]models.Addition, error) {
+	if len(additionID) == 0 {
+		return nil, nil
+	}
 
-	var additions []models.Addition
-
-	err := o.db.NewSelect().Model(&additions).Where("id in (?)", bun.In(additionID)).Scan(ctx, &additions)
-	if err != nil {
-		fmt.Println(err)
+	var rows []models.Addition
+	if err := o.db.NewSelect().
+		TableExpr("products.items i").
+		ColumnExpr("i.id").
+		ColumnExpr("i.shop_id").
+		ColumnExpr("i.name").
+		ColumnExpr("i.price").
+		Where("i.id IN (?)", bun.In(additionID)).
+		Where("i.deleted_at IS NULL").
+		Scan(ctx, &rows); err != nil {
+		slog.Error("SearchAdditionsByID: failed to load additions from items", "error", err)
+		return nil, errcustom.ErrUnexpectedError
 	}
 
 	uniqueIDs := make(map[uuid.UUID]struct{})
@@ -151,34 +162,34 @@ func (o *orders) SearchAdditionsByID(ctx context.Context, additionID []uuid.UUID
 		uniqueIDs[id] = struct{}{}
 	}
 
-	if len(additions) != len(uniqueIDs) {
+	if len(rows) != len(uniqueIDs) {
 		return nil, errcustom.ErrItemsNotFound
 	}
 
-	return additions, err
-
+	return rows, nil
 }
 
-func (o *orders) SearchFlavorsByID(ctx context.Context, flavorID []uuid.UUID) ([]models.Flavor, error) {
-
-	var flavors []models.Flavor
-
-	err := o.db.NewSelect().Model(&flavors).Where("id in (?)", bun.In(flavorID)).Scan(ctx, &flavors)
-	if err != nil {
-		fmt.Println(err)
+func (o *orders) SearchFlavorsForItem(ctx context.Context, itemID uuid.UUID) ([]models.Flavor, error) {
+	var row struct {
+		Details struct {
+			Flavors []models.Flavor `json:"flavors"`
+		} `bun:"details,type:jsonb"`
 	}
 
-	uniqueIDs := make(map[uuid.UUID]struct{})
-	for _, id := range flavorID {
-		uniqueIDs[id] = struct{}{}
+	if err := o.db.NewSelect().
+		TableExpr("products.items").
+		Column("details").
+		Where("id = ?", itemID).
+		Scan(ctx, &row); err != nil {
+		slog.Error("SearchFlavorsForItem: failed to load item flavors", "itemID", itemID, "error", err)
+		return nil, errcustom.ErrUnexpectedError
 	}
 
-	if len(flavors) != len(uniqueIDs) {
+	if len(row.Details.Flavors) == 0 {
 		return nil, errcustom.ErrItemsNotFound
 	}
 
-	return flavors, err
-
+	return row.Details.Flavors, nil
 }
 
 func (o *orders) SearchActiveOrdersByCriteria(ctx context.Context, criteria uuid.UUID, isShop bool) ([]models.Order, error) {

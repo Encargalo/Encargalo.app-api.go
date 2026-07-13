@@ -161,6 +161,8 @@ definitions:
     type: object
   Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse:
     properties:
+      available:
+        type: boolean
       bs:
         type: number
       id:
@@ -170,14 +172,46 @@ definitions:
       ref:
         type: number
     type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.AdditionSelectionResponse:
+    properties:
+      max_selection:
+        example: 5
+        type: integer
+      min_selection:
+        example: 0
+        type: integer
+      selector_type:
+        example: multi_select
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.CategoryDetailsResponse:
+    properties:
+      flavors:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse'
+        type: array
+      selector_type:
+        example: multi_select
+        type: string
+    type: object
   Encargalo_app-api_go_internal_products_domain_dtos.CategoryResponse:
     properties:
+      availability_status:
+        example: active
+        type: string
+      can_order:
+        example: true
+        type: boolean
+      details:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategoryDetailsResponse'
       id:
         type: string
       items:
         items:
           $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse'
         type: array
+      macro_category_id:
+        type: string
       name:
         type: string
       schedules:
@@ -187,18 +221,78 @@ definitions:
       shop_id:
         type: string
     type: object
-  Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse:
+  Encargalo_app-api_go_internal_products_domain_dtos.CategorySummaryResponse:
     properties:
       id:
         type: string
       name:
         type: string
     type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.FlavorInput:
+    properties:
+      description:
+        example: Con jamón ahumado
+        type: string
+      name:
+        example: Jamón
+        type: string
+    required:
+    - name
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse:
+    properties:
+      available:
+        type: boolean
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.FlavorSelectionResponse:
+    properties:
+      max_selection:
+        example: 1
+        type: integer
+      min_selection:
+        example: 1
+        type: integer
+      selector_type:
+        example: single_select
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.ItemDetailsResponse:
+    properties:
+      additions:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse'
+        type: array
+      flavors:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse'
+        type: array
+      max_additions_selection:
+        example: 5
+        type: integer
+      max_selection:
+        example: 2
+        type: integer
+      min_selection:
+        example: 1
+        type: integer
+    type: object
   Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse:
     properties:
+      addition_selection:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.AdditionSelectionResponse'
+      availability_status:
+        example: active
+        type: string
       bs:
         example: 7000
         type: number
+      can_order:
+        example: true
+        type: boolean
       category_id:
         example: b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2
         type: string
@@ -206,6 +300,8 @@ definitions:
         example: Pizza mediana con jamón, piña y queso mozzarella sobre una base de
           salsa napolitana.
         type: string
+      details:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemDetailsResponse'
       effective_bs:
         example: 7000
         type: number
@@ -217,6 +313,14 @@ definitions:
           original, sin descuentos, para no romper compatibilidad.
         example: 14
         type: number
+      effective_status:
+        example: active
+        type: string
+      flavor_selection:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorSelectionResponse'
+      has_additions:
+        example: false
+        type: boolean
       has_flavors:
         example: true
         type: boolean
@@ -238,10 +342,6 @@ definitions:
       ref:
         example: 14
         type: number
-      rules:
-        items:
-          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemRule'
-        type: array
       schedules:
         items:
           $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleResponse'
@@ -251,24 +351,6 @@ definitions:
         type: number
       shop_id:
         example: d33aaf08-2c43-41c4-b2e7-882b019edb1e
-        type: string
-    type: object
-  Encargalo_app-api_go_internal_products_domain_dtos.ItemRule:
-    properties:
-      id:
-        example: 71c62783-820d-46f8-957d-c8d02db97264
-        type: string
-      item_id:
-        example: 7e441237-a818-42d2-bb54-9b8747198305
-        type: string
-      rule_key:
-        example: max_flavors
-        type: string
-      rule_value:
-        example: 2
-        type: integer
-      selector_type:
-        example: multi_select
         type: string
     type: object
   Encargalo_app-api_go_internal_products_domain_dtos.MacroCategoryResponse:
@@ -282,6 +364,10 @@ definitions:
     type: object
   Encargalo_app-api_go_internal_products_domain_dtos.RegisterCategory:
     properties:
+      flavors:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorInput'
+        type: array
       macro_category_id:
         example: a1b2c3d4-e5f6-7890-abcd-ef1234567890
         type: string
@@ -292,7 +378,15 @@ definitions:
         items:
           $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleInput'
         type: array
+      selector_type:
+        enum:
+        - none
+        - single_select
+        - multi_select
+        example: single_select
+        type: string
     required:
+    - macro_category_id
     - name
     type: object
   Encargalo_app-api_go_internal_products_domain_dtos.RegisterFlavor:
@@ -312,6 +406,12 @@ definitions:
     type: object
   Encargalo_app-api_go_internal_products_domain_dtos.RegisterItem:
     properties:
+      addition_ids:
+        example:
+        - '["a1b2c3d4-e5f6-7890-abcd-ef1234567890"]'
+        items:
+          type: string
+        type: array
       category_id:
         example: b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2
         type: string
@@ -328,6 +428,12 @@ definitions:
       image:
         example: data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEBLAEsAAD/4QC8RXhpZgAASUkqAAgAAAAGABIBAwABAAAAAQAAABoBBQABAAAAVgAAABsBBQABAAAAXgAAACgBAwABAAAAAgAAABMCAwABAAAA
         type: string
+      max_selection:
+        example: 2
+        type: integer
+      min_selection:
+        example: 1
+        type: integer
       name:
         example: Pizza Hawaiana Mediana
         type: string
@@ -459,6 +565,13 @@ definitions:
     type: object
   Encargalo_app-api_go_internal_products_domain_dtos.UpdateCategory:
     properties:
+      availability_status:
+        enum:
+        - active
+        - hidden
+        - out_of_stock
+        example: active
+        type: string
       macro_category_id:
         example: a1b2c3d4-e5f6-7890-abcd-ef1234567890
         type: string
@@ -469,11 +582,22 @@ definitions:
         items:
           $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleInput'
         type: array
+      selector_type:
+        enum:
+        - none
+        - single_select
+        - multi_select
+        example: single_select
+        type: string
     required:
+    - macro_category_id
     - name
     type: object
   Encargalo_app-api_go_internal_products_domain_dtos.UpdateFlavor:
     properties:
+      available:
+        example: true
+        type: boolean
       description:
         example: Con salsa picante casera
         type: string
@@ -485,6 +609,19 @@ definitions:
     type: object
   Encargalo_app-api_go_internal_products_domain_dtos.UpdateItem:
     properties:
+      addition_ids:
+        example:
+        - '["a1b2c3d4-e5f6-7890-abcd-ef1234567890"]'
+        items:
+          type: string
+        type: array
+      availability_status:
+        enum:
+        - active
+        - hidden
+        - out_of_stock
+        example: active
+        type: string
       description:
         example: Pizza mediana con jamón, piña y queso mozzarella sobre una base de
           salsa napolitana.
@@ -498,6 +635,12 @@ definitions:
       image:
         example: data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ...
         type: string
+      max_selection:
+        example: 2
+        type: integer
+      min_selection:
+        example: 1
+        type: integer
       name:
         example: Pizza Hawaiana Mediana
         type: string
@@ -603,15 +746,11 @@ definitions:
       previous:
         $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.CustomerMetrics'
     type: object
-  Encargalo_app-api_go_internal_shops_domain_dtos.MatchedItemRule:
+  Encargalo_app-api_go_internal_shops_domain_dtos.MatchedFlavorSelection:
     properties:
-      id:
-        type: string
-      item_id:
-        type: string
-      rule_key:
-        type: string
-      rule_value:
+      max_selection:
+        type: integer
+      min_selection:
         type: integer
       selector_type:
         type: string
@@ -620,6 +759,8 @@ definitions:
     properties:
       description:
         type: string
+      flavor_selection:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedFlavorSelection'
       has_flavors:
         type: boolean
       id:
@@ -630,10 +771,6 @@ definitions:
         type: string
       ref:
         type: number
-      rules:
-        items:
-          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedItemRule'
-        type: array
       schedules:
         items:
           $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedSchedule'
@@ -1185,7 +1322,10 @@ paths:
     put:
       consumes:
       - application/json
-      description: Actualiza la información de un producto existente del negocio autenticado.
+      description: 'Actualiza un producto. `availability_status`: active|hidden|out_of_stock.
+        Si es un item de la macro Adiciones, sincroniza name/price/available en los
+        productos que lo referencian. `addition_ids` asigna adiciones (max selección
+        5).'
       parameters:
       - description: ID del producto
         format: uuid
@@ -1227,13 +1367,74 @@ paths:
       summary: Actualizar un producto
       tags:
       - Business
+  /business/products/additions/catalog:
+    get:
+      description: Retorna los items del negocio cuya categoría tiene macro `adiciones`.
+        Usar al crear/editar un producto para seleccionar `addition_ids`.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse'
+            type: array
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Catálogo de adiciones del negocio
+      tags:
+      - Business
   /business/products/categories:
+    get:
+      description: Retorna todas las categorías del negocio autenticado con `details`
+        (flavors, selector_type), `availability_status`, `macro_category_id` y `schedules`.
+        No incluye items (usar `GET /business/products` para el catálogo con productos).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategoryResponse'
+            type: array
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: Categorías no encontradas
+          schema:
+            type: string
+        "422":
+          description: El usuario no tiene un negocio asociado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Listar categorías completas del negocio
+      tags:
+      - Business
     post:
       consumes:
       - application/json
-      description: Registra una nueva categoría (sección de menú) en el negocio asociado
-        a la sesión autenticada, con horario opcional de disponibilidad. Si se omite
-        `schedules` o se envía vacío, la categoría queda siempre disponible.
+      description: Registra una nueva categoría. Puede incluir `flavors` (name/description);
+        el backend genera el `id` de cada sabor y lo guarda en `details.flavors`.
+        Si hay sabores, `selector_type` debe ser `single_select` (cantidad 1 por sabor;
+        min/max = sabores distintos) o `multi_select` (cantidad N del mismo sabor).
       parameters:
       - description: Datos de la categoría a registrar
         in: body
@@ -1273,10 +1474,10 @@ paths:
     put:
       consumes:
       - application/json
-      description: Actualiza el nombre, macro-categoría y/o horario de una categoría
-        existente del negocio autenticado. Enviar `schedules` reemplaza todo el horario
-        configurado; omitirlo lo deja sin cambios; enviar `[]` elimina el horario
-        (la categoría queda siempre disponible).
+      description: Actualiza el nombre, macro-categoría, `availability_status` (`active`
+        | `hidden` | `out_of_stock`) y/o horario de una categoría existente. Enviar
+        `schedules` reemplaza todo el horario; omitirlo lo deja sin cambios; `[]`
+        elimina el horario.
       parameters:
       - description: ID de la categoría
         format: uuid
@@ -1316,6 +1517,44 @@ paths:
       security:
       - SessionCookie: []
       summary: Actualizar una categoría
+      tags:
+      - Business
+  /business/products/categories/summary:
+    get:
+      description: Retorna solo id y nombre de cada micro categoría del negocio. Use
+        `for=flavors` o `for=additions` (macro Adiciones).
+      parameters:
+      - description: Filtrar categorías elegibles
+        enum:
+        - flavors
+        - additions
+        in: query
+        name: for
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategorySummaryResponse'
+            type: array
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "422":
+          description: El usuario no tiene un negocio asociado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Listar categorías del negocio (resumen)
       tags:
       - Business
   /business/products/discounts:
@@ -1498,10 +1737,9 @@ paths:
       - Business
   /business/products/flavors/{flavor_id}:
     delete:
-      description: Elimina (soft delete) un sabor del negocio autenticado y lo desasocia
-        de todos los productos que lo tenían asignado. Si un producto queda sin sabores
-        tras la eliminación, su indicador has_flavors se actualiza automáticamente
-        a false.
+      description: Elimina un sabor del catálogo JSONB de la categoría y lo quita
+        de todos los productos de esa categoría que lo tenían asignado. Si un producto
+        queda sin sabores, has_flavors pasa a false.
       parameters:
       - description: ID del sabor
         format: uuid
@@ -1540,8 +1778,10 @@ paths:
     put:
       consumes:
       - application/json
-      description: Actualiza el nombre y/o la descripción de un sabor existente del
-        negocio autenticado.
+      description: Actualiza el nombre, descripción y/o disponibilidad (`available`)
+        de un sabor existente del negocio autenticado. Si desactivar sabores deja
+        al item con menos opciones que `min_selection`, el item pasa a no ser pedible
+        automáticamente.
       parameters:
       - description: ID del sabor
         format: uuid
@@ -1583,11 +1823,56 @@ paths:
       summary: Actualizar un sabor
       tags:
       - Business
+  /business/products/flavors/category:
+    get:
+      description: Retorna todos los sabores del catálogo JSONB de una categoría (`details.flavors`).
+        Disponible para Customer y para Owner/Order Manager.
+      parameters:
+      - description: ID de la categoría
+        format: uuid
+        in: query
+        name: category_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse'
+            type: array
+        "400":
+          description: category_id es requerido o inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: Sabores no encontrados
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Obtener sabores por categoría
+      tags:
+      - Products
   /business/products/items:
     post:
       consumes:
       - application/json
-      description: Registra un nuevo producto en el negocio asociado a la sesión autenticada.
+      description: 'Registra un nuevo producto. Con sabores: `flavor_ids` + opcional
+        `min_selection`/`max_selection` (defaults 1 y cantidad de sabores). `single_select`
+        = sabores distintos (cantidad 1 c/u); `multi_select` = cantidad N del mismo
+        sabor. `addition_ids` opcional: items de la macro Adiciones; selección fija
+        multi_select max 5.'
       parameters:
       - description: Datos del producto a registrar
         in: body
@@ -2183,10 +2468,11 @@ paths:
       - Payment Methods
   /products:
     get:
-      description: Retorna todos los productos agrupados por categoría de una tienda.
-        Solo incluye productos disponibles, ordenados por precio ascendente. Además,
-        excluye productos cuya categoría tiene un horario configurado que no cubre
-        la hora actual (America/Caracas).
+      description: 'Retorna productos agrupados por categoría para clientes. Excluye
+        categorías `hidden`, items `hidden`, sabores/adiciones no disponibles, y aplica
+        horario de categoría (America/Caracas). Items con `effective_status: out_of_stock`
+        o `can_order: false` se muestran pero no se pueden pedir (p. ej. cuando los
+        sabores activos son menos que `min_selection`).'
       parameters:
       - description: ID de la tienda
         format: uuid
@@ -2226,13 +2512,13 @@ paths:
       - Products
   /products/additions:
     get:
-      description: Retorna todas las adiciones disponibles de una categoría, ordenadas
-        por precio ascendente.
+      description: Retorna las adiciones asignadas a un producto específico (subset
+        del catálogo de la categoría), ordenadas como están en items.details.additions.
       parameters:
-      - description: ID de la categoría
+      - description: ID del producto
         format: uuid
         in: query
-        name: category_id
+        name: item_id
         required: true
         type: string
       produces:
@@ -2245,7 +2531,7 @@ paths:
               $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse'
             type: array
         "400":
-          description: category_id es requerido o inválido
+          description: item_id es requerido o inválido
           schema:
             type: string
         "401":
@@ -2262,7 +2548,7 @@ paths:
             type: string
       security:
       - SessionCookie: []
-      summary: Obtener adiciones por categoría
+      summary: Obtener adiciones por producto
       tags:
       - Products
   /products/best-sellers:
@@ -2349,8 +2635,8 @@ paths:
       - Products
   /products/flavors/category:
     get:
-      description: Retorna todos los sabores disponibles asociados a una categoría
-        específica.
+      description: Retorna todos los sabores del catálogo JSONB de una categoría (`details.flavors`).
+        Disponible para Customer y para Owner/Order Manager.
       parameters:
       - description: ID de la categoría
         format: uuid

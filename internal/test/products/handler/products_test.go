@@ -308,7 +308,7 @@ func TestSearchProductsByShopID_Success(t *testing.T) {
 	tc := buildhttptest.SetupControllerCase("/products?shop_id="+shopID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("shop_id", shopID.String())
 
-	svc.On("SearchProductsByShopID", tc.Req.Context(), shopID).Return(dtos.CategoriesResponse{}, nil)
+	svc.On("SearchProductsByShopID", tc.Req.Context(), shopID, true).Return(dtos.CategoriesResponse{}, nil)
 
 	err := h.SearchProductsByShopID(tc.Ctx)
 
@@ -346,7 +346,7 @@ func TestSearchProductsByShopID_NotFound(t *testing.T) {
 	tc := buildhttptest.SetupControllerCase("/products?shop_id="+shopID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("shop_id", shopID.String())
 
-	svc.On("SearchProductsByShopID", tc.Req.Context(), shopID).Return(dtos.CategoriesResponse(nil), errcustom.ErrNotFound)
+	svc.On("SearchProductsByShopID", tc.Req.Context(), shopID, true).Return(dtos.CategoriesResponse(nil), errcustom.ErrNotFound)
 
 	err := h.SearchProductsByShopID(tc.Ctx)
 
@@ -361,7 +361,7 @@ func TestSearchProductsByShopID_UnexpectedError(t *testing.T) {
 	tc := buildhttptest.SetupControllerCase("/products?shop_id="+shopID.String(), http.MethodGet, nil)
 	tc.Ctx.QueryParams().Set("shop_id", shopID.String())
 
-	svc.On("SearchProductsByShopID", tc.Req.Context(), shopID).Return(dtos.CategoriesResponse(nil), errcustom.ErrUnexpectedError)
+	svc.On("SearchProductsByShopID", tc.Req.Context(), shopID, true).Return(dtos.CategoriesResponse(nil), errcustom.ErrUnexpectedError)
 
 	err := h.SearchProductsByShopID(tc.Ctx)
 
@@ -369,56 +369,56 @@ func TestSearchProductsByShopID_UnexpectedError(t *testing.T) {
 	assert.Equal(t, errcustom.ErrUnexpectedError, err)
 }
 
-// --- SearchAdditionsByShopID ---
+// --- SearchAdditionsByItemID ---
 
-func TestSearchAdditionsByShopID_Success(t *testing.T) {
+func TestSearchAdditionsByItemID_Success(t *testing.T) {
 	h, svc := newHandler(t)
 
-	categoryID := uuid.New()
-	tc := buildhttptest.SetupControllerCase("/products/additions?category_id="+categoryID.String(), http.MethodGet, nil)
-	tc.Ctx.QueryParams().Set("category_id", categoryID.String())
+	itemID := uuid.New()
+	tc := buildhttptest.SetupControllerCase("/products/additions?item_id="+itemID.String(), http.MethodGet, nil)
+	tc.Ctx.QueryParams().Set("item_id", itemID.String())
 
-	svc.On("SearchAdditionsByShopID", tc.Req.Context(), categoryID).Return(dtos.AdditionsResponse{}, nil)
+	svc.On("SearchAdditionsByItemID", tc.Req.Context(), itemID).Return(dtos.AdditionsResponse{}, nil)
 
-	err := h.SearchAdditionsByShopID(tc.Ctx)
+	err := h.SearchAdditionsByItemID(tc.Ctx)
 
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, tc.Res.Code)
 }
 
-func TestSearchAdditionsByShopID_MissingCategoryID(t *testing.T) {
+func TestSearchAdditionsByItemID_MissingItemID(t *testing.T) {
 	h, _ := newHandler(t)
 
 	tc := buildhttptest.SetupControllerCase("/products/additions", http.MethodGet, nil)
 
-	err := h.SearchAdditionsByShopID(tc.Ctx)
+	err := h.SearchAdditionsByItemID(tc.Ctx)
 
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusBadRequest, httpCode(err))
 }
 
-func TestSearchAdditionsByShopID_InvalidCategoryID(t *testing.T) {
+func TestSearchAdditionsByItemID_InvalidItemID(t *testing.T) {
 	h, _ := newHandler(t)
 
-	tc := buildhttptest.SetupControllerCase("/products/additions?category_id=bad", http.MethodGet, nil)
-	tc.Ctx.QueryParams().Set("category_id", "bad")
+	tc := buildhttptest.SetupControllerCase("/products/additions?item_id=bad", http.MethodGet, nil)
+	tc.Ctx.QueryParams().Set("item_id", "bad")
 
-	err := h.SearchAdditionsByShopID(tc.Ctx)
+	err := h.SearchAdditionsByItemID(tc.Ctx)
 
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusBadRequest, httpCode(err))
 }
 
-func TestSearchAdditionsByShopID_NotFound(t *testing.T) {
+func TestSearchAdditionsByItemID_NotFound(t *testing.T) {
 	h, svc := newHandler(t)
 
-	categoryID := uuid.New()
-	tc := buildhttptest.SetupControllerCase("/products/additions?category_id="+categoryID.String(), http.MethodGet, nil)
-	tc.Ctx.QueryParams().Set("category_id", categoryID.String())
+	itemID := uuid.New()
+	tc := buildhttptest.SetupControllerCase("/products/additions?item_id="+itemID.String(), http.MethodGet, nil)
+	tc.Ctx.QueryParams().Set("item_id", itemID.String())
 
-	svc.On("SearchAdditionsByShopID", tc.Req.Context(), categoryID).Return(dtos.AdditionsResponse(nil), errcustom.ErrNotFound)
+	svc.On("SearchAdditionsByItemID", tc.Req.Context(), itemID).Return(dtos.AdditionsResponse(nil), errcustom.ErrNotFound)
 
-	err := h.SearchAdditionsByShopID(tc.Ctx)
+	err := h.SearchAdditionsByItemID(tc.Ctx)
 
 	assert.Error(t, err)
 	assert.Equal(t, errcustom.ErrNotFound, err)
@@ -613,7 +613,8 @@ func TestRegisterCategory_Success(t *testing.T) {
 	session := authmodels.ActiveSession{UserID: uuid.New(), ShopID: &shopID}
 
 	body := buildBody(t, map[string]any{
-		"name": "Desayuno",
+		"name":              "Desayuno",
+		"macro_category_id": uuid.New().String(),
 		"schedules": []map[string]any{
 			{"start_time": "06:00:00", "end_time": "11:00:00"},
 		},
@@ -632,7 +633,10 @@ func TestRegisterCategory_Success(t *testing.T) {
 func TestRegisterCategory_NoSession(t *testing.T) {
 	h, _ := newHandler(t)
 
-	body := buildBody(t, map[string]any{"name": "Desayuno"})
+	body := buildBody(t, map[string]any{
+		"name":              "Desayuno",
+		"macro_category_id": uuid.New().String(),
+	})
 	tc := buildhttptest.SetupControllerCase("/business/products/categories", http.MethodPost, body)
 
 	err := h.RegisterCategory(tc.Ctx)
@@ -645,7 +649,10 @@ func TestRegisterCategory_NoShopID(t *testing.T) {
 	h, _ := newHandler(t)
 
 	session := authmodels.ActiveSession{UserID: uuid.New(), ShopID: nil}
-	body := buildBody(t, map[string]any{"name": "Desayuno"})
+	body := buildBody(t, map[string]any{
+		"name":              "Desayuno",
+		"macro_category_id": uuid.New().String(),
+	})
 	tc := buildhttptest.SetupControllerCase("/business/products/categories", http.MethodPost, body)
 	tc = withSession(tc, session)
 
@@ -690,7 +697,8 @@ func TestRegisterCategory_InvalidScheduleFormat(t *testing.T) {
 	shopID := uuid.New()
 	session := authmodels.ActiveSession{UserID: uuid.New(), ShopID: &shopID}
 	body := buildBody(t, map[string]any{
-		"name": "Desayuno",
+		"name":              "Desayuno",
+		"macro_category_id": uuid.New().String(),
 		"schedules": []map[string]any{
 			{"start_time": "6pm", "end_time": "11:00:00"},
 		},
@@ -709,7 +717,10 @@ func TestRegisterCategory_ServiceError(t *testing.T) {
 
 	shopID := uuid.New()
 	session := authmodels.ActiveSession{UserID: uuid.New(), ShopID: &shopID}
-	body := buildBody(t, map[string]any{"name": "Desayuno"})
+	body := buildBody(t, map[string]any{
+		"name":              "Desayuno",
+		"macro_category_id": uuid.New().String(),
+	})
 	tc := buildhttptest.SetupControllerCase("/business/products/categories", http.MethodPost, body)
 	tc = withSession(tc, session)
 
@@ -730,7 +741,10 @@ func TestUpdateCategory_Success(t *testing.T) {
 	categoryID := uuid.New()
 	session := authmodels.ActiveSession{UserID: userID}
 
-	body := buildBody(t, map[string]any{"name": "Cena"})
+	body := buildBody(t, map[string]any{
+		"name":              "Cena",
+		"macro_category_id": uuid.New().String(),
+	})
 	tc := buildhttptest.SetupControllerCase("/business/products/categories/"+categoryID.String(), http.MethodPut, body)
 	tc = withSession(tc, session)
 	tc.Ctx.SetParamNames("category_id")
@@ -748,7 +762,10 @@ func TestUpdateCategory_NoSession(t *testing.T) {
 	h, _ := newHandler(t)
 
 	categoryID := uuid.New()
-	body := buildBody(t, map[string]any{"name": "Cena"})
+	body := buildBody(t, map[string]any{
+		"name":              "Cena",
+		"macro_category_id": uuid.New().String(),
+	})
 	tc := buildhttptest.SetupControllerCase("/business/products/categories/"+categoryID.String(), http.MethodPut, body)
 	tc.Ctx.SetParamNames("category_id")
 	tc.Ctx.SetParamValues(categoryID.String())
@@ -763,7 +780,10 @@ func TestUpdateCategory_InvalidCategoryID(t *testing.T) {
 	h, _ := newHandler(t)
 
 	session := authmodels.ActiveSession{UserID: uuid.New()}
-	body := buildBody(t, map[string]any{"name": "Cena"})
+	body := buildBody(t, map[string]any{
+		"name":              "Cena",
+		"macro_category_id": uuid.New().String(),
+	})
 	tc := buildhttptest.SetupControllerCase("/business/products/categories/not-a-uuid", http.MethodPut, body)
 	tc = withSession(tc, session)
 	tc.Ctx.SetParamNames("category_id")
@@ -801,7 +821,10 @@ func TestUpdateCategory_NotFound(t *testing.T) {
 	categoryID := uuid.New()
 	session := authmodels.ActiveSession{UserID: userID}
 
-	body := buildBody(t, map[string]any{"name": "Cena"})
+	body := buildBody(t, map[string]any{
+		"name":              "Cena",
+		"macro_category_id": uuid.New().String(),
+	})
 	tc := buildhttptest.SetupControllerCase("/business/products/categories/"+categoryID.String(), http.MethodPut, body)
 	tc = withSession(tc, session)
 	tc.Ctx.SetParamNames("category_id")
@@ -822,7 +845,10 @@ func TestUpdateCategory_Unauthorized(t *testing.T) {
 	categoryID := uuid.New()
 	session := authmodels.ActiveSession{UserID: userID}
 
-	body := buildBody(t, map[string]any{"name": "Cena"})
+	body := buildBody(t, map[string]any{
+		"name":              "Cena",
+		"macro_category_id": uuid.New().String(),
+	})
 	tc := buildhttptest.SetupControllerCase("/business/products/categories/"+categoryID.String(), http.MethodPut, body)
 	tc = withSession(tc, session)
 	tc.Ctx.SetParamNames("category_id")
@@ -843,7 +869,10 @@ func TestUpdateCategory_UnexpectedError(t *testing.T) {
 	categoryID := uuid.New()
 	session := authmodels.ActiveSession{UserID: userID}
 
-	body := buildBody(t, map[string]any{"name": "Cena"})
+	body := buildBody(t, map[string]any{
+		"name":              "Cena",
+		"macro_category_id": uuid.New().String(),
+	})
 	tc := buildhttptest.SetupControllerCase("/business/products/categories/"+categoryID.String(), http.MethodPut, body)
 	tc = withSession(tc, session)
 	tc.Ctx.SetParamNames("category_id")
@@ -1533,4 +1562,66 @@ func TestDeleteItemDiscount_Unauthorized(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Equal(t, errcustom.ErrUnautorized, err)
+}
+
+// --- SearchCategorySummariesByShopID ---
+
+func TestSearchCategorySummariesByShopID_Success(t *testing.T) {
+	h, svc := newHandler(t)
+
+	shopID := uuid.New()
+	session := authmodels.ActiveSession{UserID: uuid.New(), ShopID: &shopID}
+
+	tc := buildhttptest.SetupControllerCase("/business/products/categories/summary", http.MethodGet, nil)
+	tc = withSession(tc, session)
+
+	svc.On("SearchCategorySummariesByShopID", tc.Req.Context(), shopID, "").Return(dtos.CategorySummariesResponse{
+		{ID: uuid.New(), Name: "Parrillas"},
+	}, nil)
+
+	err := h.SearchCategorySummariesByShopID(tc.Ctx)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, tc.Res.Code)
+}
+
+func TestSearchCategorySummariesByShopID_NoSession(t *testing.T) {
+	h, _ := newHandler(t)
+
+	tc := buildhttptest.SetupControllerCase("/business/products/categories/summary", http.MethodGet, nil)
+
+	err := h.SearchCategorySummariesByShopID(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusUnauthorized, httpCode(err))
+}
+
+func TestSearchCategorySummariesByShopID_NoShopID(t *testing.T) {
+	h, _ := newHandler(t)
+
+	session := authmodels.ActiveSession{UserID: uuid.New(), ShopID: nil}
+	tc := buildhttptest.SetupControllerCase("/business/products/categories/summary", http.MethodGet, nil)
+	tc = withSession(tc, session)
+
+	err := h.SearchCategorySummariesByShopID(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusUnprocessableEntity, httpCode(err))
+}
+
+func TestSearchCategorySummariesByShopID_ServiceError(t *testing.T) {
+	h, svc := newHandler(t)
+
+	shopID := uuid.New()
+	session := authmodels.ActiveSession{UserID: uuid.New(), ShopID: &shopID}
+
+	tc := buildhttptest.SetupControllerCase("/business/products/categories/summary", http.MethodGet, nil)
+	tc = withSession(tc, session)
+
+	svc.On("SearchCategorySummariesByShopID", tc.Req.Context(), shopID, "").Return(nil, errcustom.ErrUnexpectedError)
+
+	err := h.SearchCategorySummariesByShopID(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, errcustom.ErrUnexpectedError, err)
 }

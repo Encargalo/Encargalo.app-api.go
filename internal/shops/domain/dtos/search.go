@@ -39,17 +39,23 @@ type MatchedSchedule struct {
 	Enabled   bool   `json:"enabled"`
 }
 
+type MatchedFlavorSelection struct {
+	SelectorType string `json:"selector_type"`
+	MinSelection int    `json:"min_selection"`
+	MaxSelection int    `json:"max_selection"`
+}
+
 type MatchedProductItem struct {
-	ID          uuid.UUID         `json:"id"`
-	ShopID      uuid.UUID         `json:"shop_id"`
-	Name        string            `json:"name"`
-	Ref         float64           `json:"ref"`
-	Image       string            `json:"image"`
-	Description string            `json:"description"`
-	Score       float32           `json:"score"`
-	HasFlavors  bool              `json:"has_flavors"`
-	Rules       []MatchedItemRule `json:"rules,omitempty"`
-	Schedules   []MatchedSchedule `json:"schedules,omitempty"`
+	ID          uuid.UUID               `json:"id"`
+	ShopID      uuid.UUID               `json:"shop_id"`
+	Name        string                  `json:"name"`
+	Ref         float64                 `json:"ref"`
+	Image       string                  `json:"image"`
+	Description string                  `json:"description"`
+	Score       float32                 `json:"score"`
+	HasFlavors  bool                    `json:"has_flavors"`
+	Selection   *MatchedFlavorSelection `json:"flavor_selection,omitempty"`
+	Schedules   []MatchedSchedule       `json:"schedules,omitempty"`
 }
 
 type SearchShopResponse struct {

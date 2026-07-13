@@ -258,29 +258,29 @@ func (_m *OrdersRepo) SearchAvailableOrders(ctx context.Context) ([]models.Order
 	return r0, r1
 }
 
-// SearchFlavorsByID provides a mock function with given fields: ctx, flavorID
-func (_m *OrdersRepo) SearchFlavorsByID(ctx context.Context, flavorID []uuid.UUID) ([]models.Flavor, error) {
-	ret := _m.Called(ctx, flavorID)
+// SearchFlavorsForItem provides a mock function with given fields: ctx, itemID
+func (_m *OrdersRepo) SearchFlavorsForItem(ctx context.Context, itemID uuid.UUID) ([]models.Flavor, error) {
+	ret := _m.Called(ctx, itemID)
 
 	if len(ret) == 0 {
-		panic("no return value specified for SearchFlavorsByID")
+		panic("no return value specified for SearchFlavorsForItem")
 	}
 
 	var r0 []models.Flavor
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, []uuid.UUID) ([]models.Flavor, error)); ok {
-		return rf(ctx, flavorID)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) ([]models.Flavor, error)); ok {
+		return rf(ctx, itemID)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, []uuid.UUID) []models.Flavor); ok {
-		r0 = rf(ctx, flavorID)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) []models.Flavor); ok {
+		r0 = rf(ctx, itemID)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]models.Flavor)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, []uuid.UUID) error); ok {
-		r1 = rf(ctx, flavorID)
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, itemID)
 	} else {
 		r1 = ret.Error(1)
 	}

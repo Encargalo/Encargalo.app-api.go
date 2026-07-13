@@ -365,7 +365,7 @@ func (s *shopsRepo) FindMatchedProducts(ctx context.Context, shopIDs []uuid.UUID
 	var items []productModels.Item
 	if err := s.db.NewSelect().
 		Model(&items).
-		Relation("ItemRule").
+		Relation("Category").
 		Relation("Category.Schedules").
 		Join("JOIN products.categories AS cat ON cat.id = item.category_id").
 		Join("LEFT JOIN products.macro_categories AS mc ON mc.id = cat.macro_category_id").
@@ -381,15 +381,13 @@ func (s *shopsRepo) FindMatchedProducts(ctx context.Context, shopIDs []uuid.UUID
 
 	result := make(map[uuid.UUID][]shopsDTO.MatchedProductItem, len(shopIDs))
 	for _, item := range items {
-		rules := make([]shopsDTO.MatchedItemRule, 0, len(item.ItemRule))
-		for _, r := range item.ItemRule {
-			rules = append(rules, shopsDTO.MatchedItemRule{
-				ID:           r.ID,
-				ItemID:       r.ItemID,
-				RuleKey:      r.RuleKey,
-				RuleValue:    r.RuleValue,
-				SelectorType: r.SelectorType,
-			})
+		var selection *shopsDTO.MatchedFlavorSelection
+		if item.HasFlavors && item.Category != nil {
+			selection = &shopsDTO.MatchedFlavorSelection{
+				SelectorType: item.Category.Details.SelectorType,
+				MinSelection: item.Details.MinSelection,
+				MaxSelection: item.Details.MaxSelection,
+			}
 		}
 		var schedules []shopsDTO.MatchedSchedule
 		if item.Category != nil {
@@ -413,7 +411,7 @@ func (s *shopsRepo) FindMatchedProducts(ctx context.Context, shopIDs []uuid.UUID
 			Description: item.Description,
 			Score:       item.Score,
 			HasFlavors:  item.HasFlavors,
-			Rules:       rules,
+			Selection:   selection,
 			Schedules:   schedules,
 		})
 	}

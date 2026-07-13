@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
+	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/users/domain/dto"
 	"Encargalo.app-api.go/internal/users/domain/ports"
-	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/labstack/echo/v4"
 )
 
@@ -116,7 +116,7 @@ func (c *customersAddrssHandler) DeleteAddress(e echo.Context) error {
 	address_id := e.QueryParam("address_id")
 
 	if address_id == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "address id is required")
+		return echo.NewHTTPError(http.StatusBadRequest, "address_id es requerido")
 	}
 
 	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)

@@ -44,7 +44,7 @@ func (s *shops) SetOpenClose(c echo.Context) error {
 
 	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
 	if !ok {
-		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
+		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
 	}
 
 	var req struct {
@@ -78,7 +78,7 @@ func (s *shops) GetMyShop(c echo.Context) error {
 
 	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
 	if !ok {
-		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
+		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
 	}
 
 	if session.ShopID == nil {

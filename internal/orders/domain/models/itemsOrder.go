@@ -64,6 +64,22 @@ func (io *ItemsOrder) SetFlavorsDetails(flavors []Flavor) {
 	}
 }
 
+func (io *ItemsOrder) GetFlavorIDs() []uuid.UUID {
+	var chosen map[string]int
+	if err := json.Unmarshal(io.Flavors, &chosen); err != nil {
+		return nil
+	}
+
+	ids := make([]uuid.UUID, 0, len(chosen))
+	for idStr := range chosen {
+		if id, err := uuid.Parse(idStr); err == nil {
+			ids = append(ids, id)
+		}
+	}
+
+	return ids
+}
+
 func (io *ItemsOrder) BuildDtoToModel(dto dtos.CreateItemsOrder, orderID uuid.UUID) {
 	io.ID = uuid.New()
 	io.OrderID = orderID

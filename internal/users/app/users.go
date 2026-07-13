@@ -107,7 +107,7 @@ func (c *customersApp) UpdatePassword(ctx context.Context, customer_id uuid.UUID
 	}
 
 	if customer == nil {
-		return errors.New("not found")
+		return errors.New("no encontrado")
 	}
 
 	customerModel := models.Account{}

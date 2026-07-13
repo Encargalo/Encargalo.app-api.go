@@ -25,7 +25,7 @@ type OrdersRepo interface {
 	SearchItemsByID(ctx context.Context, ItemsID []uuid.UUID) (items.Items, error)
 	SearchShopByID(ctx context.Context, shopID uuid.UUID) (*models.ShopOrder, error)
 	SearchAdditionsByID(ctx context.Context, additionID []uuid.UUID) ([]models.Addition, error)
-	SearchFlavorsByID(ctx context.Context, flavorID []uuid.UUID) ([]models.Flavor, error)
+	SearchFlavorsForItem(ctx context.Context, itemID uuid.UUID) ([]models.Flavor, error)
 	SearchActiveOrdersByCriteria(ctx context.Context, criteria uuid.UUID, isShop bool) ([]models.Order, error)
 	UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string) error
 	SearchAvailableOrders(ctx context.Context) ([]models.Order, error)

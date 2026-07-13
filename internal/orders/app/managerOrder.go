@@ -139,8 +139,22 @@ func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
 func buildBroadcast(msgType string, order models.Order, isShop bool) models.OrderBroadcast {
 	b := models.OrderBroadcast{Type: msgType}
 	if isShop {
+		// Debe reflejar exactamente la misma cuenta que shopFinanceApp.
+		// RecordSaleCommission (internal/shops/app/finance.go) usa al liquidar,
+		// para que lo que ve el negocio en tiempo real coincida con lo que
+		// realmente se le acredita: durante la promo día 1 la plataforma
+		// repone el 50% subsidiado (PromoSubsidyAmount) y durante la ventana
+		// de comisión 0% (IsZeroCommission) el negocio se queda con el 100%
+		// en vez del 90% habitual.
 		base := order.TotalPrice - order.DeliveryFee
-		commission := base * shopCommissionRate
+		if order.IsLaunchPromo {
+			base += order.PromoSubsidyAmount
+		}
+		rate := shopCommissionRate
+		if order.IsZeroCommission {
+			rate = 0
+		}
+		commission := base * rate
 		net := base - commission
 		b.Order = stripCodes(order, models.ClientRoleShop)
 		b.SaleAmount = &base

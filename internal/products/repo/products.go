@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -68,39 +69,9 @@ func (p *productsRepo) RegisterItem(ctx context.Context, item *models.Item) erro
 		return errcustom.ErrUnexpectedError
 	}
 
-	if err := p.cache.ClearByPrefix(ctx, prefix_shop_cashe+item.ShopID.String()); err != nil {
-		slog.Error("error al limpiar el cache", "error", err)
-	}
+	p.clearItemCaches(ctx, item.ShopID, item.ID)
 
 	return err
-}
-
-func (p *productsRepo) DeleteItemFlavors(ctx context.Context, itemID uuid.UUID) error {
-	if _, err := p.db.NewDelete().
-		Model((*models.ItemsFlavor)(nil)).
-		Where("item_id = ?", itemID).
-		Exec(ctx); err != nil {
-		slog.Error("Error al eliminar sabores del producto", "error", err)
-		return errcustom.ErrUnexpectedError
-	}
-	return nil
-}
-
-func (p *productsRepo) RegisterItemFlavors(ctx context.Context, itemID uuid.UUID, flavorIDs []uuid.UUID) error {
-	itemsFlavors := make([]models.ItemsFlavor, len(flavorIDs))
-	for i, flavorID := range flavorIDs {
-		itemsFlavors[i] = models.ItemsFlavor{
-			ItemID:   itemID,
-			FlavorID: flavorID,
-		}
-	}
-
-	if _, err := p.db.NewInsert().Model(&itemsFlavors).Exec(ctx); err != nil {
-		slog.Error("Error al registrar sabores del producto", "error", err)
-		return errcustom.ErrUnexpectedError
-	}
-
-	return nil
 }
 
 func (p *productsRepo) UpdateItem(ctx context.Context, item *models.UpdateItem, shopID uuid.UUID) error {
@@ -110,9 +81,7 @@ func (p *productsRepo) UpdateItem(ctx context.Context, item *models.UpdateItem, 
 		return errcustom.ErrUnexpectedError
 	}
 
-	if err := p.cache.ClearByPrefix(ctx, prefix_shop_cashe+shopID.String()); err != nil {
-		slog.Error("error al limpiar el cache", "error", err)
-	}
+	p.clearItemCaches(ctx, shopID, item.ID)
 
 	return err
 }
@@ -202,9 +171,12 @@ func (p *productsRepo) ReplaceCategorySchedules(ctx context.Context, categoryID,
 	return nil
 }
 
-func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.UUID) (dtos.CategoriesResponse, error) {
+func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.UUID, forCustomer bool) (dtos.CategoriesResponse, error) {
 
 	cacheKey := prefix_shop_cashe + shopID.String()
+	if forCustomer {
+		cacheKey += ":customer"
+	}
 
 	cached, _ := p.cache.Get(ctx, cacheKey)
 	if cached != "" {
@@ -215,10 +187,15 @@ func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.U
 		slog.Error("error al hacer unmarshal de los productos", "key", cacheKey)
 	}
 
-	total, err := p.db.NewSelect().
+	q := p.db.NewSelect().
 		Model((*models.Category)(nil)).
-		Where("shop_id = ?", shopID).
-		Count(ctx)
+		Where("shop_id = ?", shopID)
+
+	if forCustomer {
+		q = q.Where("availability_status != ?", models.AvailabilityHidden)
+	}
+
+	total, err := q.Count(ctx)
 	if err != nil {
 		slog.Error("error al contar categorías", "error", err)
 		return nil, errcustom.ErrUnexpectedError
@@ -230,13 +207,24 @@ func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.U
 
 	var categories models.Categories
 
-	if err := p.db.NewSelect().
+	categoryQuery := p.db.NewSelect().
 		Model(&categories).
-		Where("shop_id = ?", shopID).
+		Where("shop_id = ?", shopID)
+
+	if forCustomer {
+		categoryQuery = categoryQuery.Where("availability_status != ?", models.AvailabilityHidden)
+	}
+
+	if err := categoryQuery.
 		Relation("Items", func(sq *bun.SelectQuery) *bun.SelectQuery {
-			return sq.Where("is_available = ?", true).Order("price ASC")
+			if forCustomer {
+				return sq.Where("availability_status IN (?)", bun.In([]models.AvailabilityStatus{
+					models.AvailabilityActive,
+					models.AvailabilityOutOfStock,
+				})).Order("price ASC")
+			}
+			return sq.Order("price ASC")
 		}).
-		Relation("Items.ItemRule").
 		RelationWithOpts("Items.Discount", bun.RelationOpts{
 			AdditionalJoinOnConditions: activeDiscountJoinConditions(),
 		}).
@@ -246,7 +234,12 @@ func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.U
 		return nil, errcustom.ErrUnexpectedError
 	}
 
-	data := categories.ToDomainDTO()
+	var data dtos.CategoriesResponse
+	if forCustomer {
+		data = categories.ToCustomerDTO()
+	} else {
+		data = categories.ToDomainDTO()
+	}
 
 	if err := p.cache.Set(ctx, cacheKey, data, 1*time.Hour); err != nil {
 		slog.Error("error al guardar los productos en el cache", "error", err)
@@ -255,9 +248,8 @@ func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.U
 	return data, nil
 }
 
-func (p *productsRepo) SearchAdditionsByShopID(ctx context.Context, categoryID uuid.UUID) (dtos.AdditionsResponse, error) {
-
-	cacheKey := prefix_additions_cache + categoryID.String()
+func (p *productsRepo) SearchAdditionsByItemID(ctx context.Context, itemID uuid.UUID) (dtos.AdditionsResponse, error) {
+	cacheKey := prefix_additions_cache + "item:" + itemID.String()
 
 	cached, _ := p.cache.Get(ctx, cacheKey)
 	if cached != "" {
@@ -265,48 +257,144 @@ func (p *productsRepo) SearchAdditionsByShopID(ctx context.Context, categoryID u
 		if err := json.Unmarshal([]byte(cached), &data); err == nil {
 			return data, nil
 		}
-		slog.Error("error al hacer unmarshal de las adiciones", "key", cacheKey)
+		slog.Error("error al hacer unmarshal de las adiciones del item", "key", cacheKey)
 	}
 
-	total, err := p.db.NewSelect().
-		Model((*models.CategoryAddition)(nil)).
-		Where("category_id = ?", categoryID).
-		Count(ctx)
-	if err != nil {
-		slog.Error("error al contar adiciones", "error", err)
+	var item models.Item
+	if err := p.db.NewSelect().
+		Model(&item).
+		Where("id = ?", itemID).
+		Scan(ctx); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errcustom.ErrNotFound
+		}
+		slog.Error("error al obtener el item de adiciones", "error", err)
 		return nil, errcustom.ErrUnexpectedError
 	}
 
-	if total == 0 {
+	if !item.Details.HasAdditions() {
 		return nil, errcustom.ErrNotFound
 	}
 
-	var categoryAdditions []models.CategoryAddition
-
-	if err := p.db.NewSelect().
-		Model(&categoryAdditions).
-		Relation("Addition").
-		Order("price ASC").
-		Where("category_id = ?", categoryID).
-		Scan(ctx); err != nil {
-		fmt.Println(err.Error())
-		return nil, errcustom.ErrUnexpectedError
-	}
-
-	var additions models.Additions
-	for _, ca := range categoryAdditions {
-		if ca.Addition != nil {
-			additions = append(additions, *ca.Addition)
-		}
-	}
-
-	data := additions.ToDomainDTO()
+	data := item.Details.Additions.ToCustomerDTO()
 
 	if err := p.cache.Set(ctx, cacheKey, data, 1*time.Hour); err != nil {
-		slog.Error("error al guardar las adiciones en el cache", "error", err)
+		slog.Error("error al guardar las adiciones del item en el cache", "error", err)
 	}
 
 	return data, nil
+}
+
+func (p *productsRepo) SearchAdditionsCatalogByShopID(ctx context.Context, shopID uuid.UUID) (dtos.AdditionsResponse, error) {
+	cacheKey := prefix_additions_cache + "catalog:shop:" + shopID.String()
+
+	cached, _ := p.cache.Get(ctx, cacheKey)
+	if cached != "" {
+		var data dtos.AdditionsResponse
+		if err := json.Unmarshal([]byte(cached), &data); err == nil {
+			return data, nil
+		}
+		slog.Error("error al hacer unmarshal del catálogo de adiciones", "key", cacheKey)
+	}
+
+	var items models.Items
+	if err := p.db.NewSelect().
+		Model(&items).
+		Join("JOIN products.categories AS category ON category.id = item.category_id").
+		Join("JOIN products.macro_categories AS macro_category ON macro_category.id = category.macro_category_id").
+		Where("item.shop_id = ?", shopID).
+		Where("item.deleted_at IS NULL").
+		Where("macro_category.slug = ?", models.MacroSlugAdiciones).
+		Order("item.name ASC").
+		Scan(ctx); err != nil {
+		slog.Error("error al obtener catálogo de adiciones", "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	data := make(dtos.AdditionsResponse, 0, len(items))
+	for _, item := range items {
+		entry := models.AdditionEntryFromItem(item)
+		data = append(data, dtos.AdditionResponse{
+			ID:        entry.ID,
+			Name:      entry.Name,
+			Ref:       float64(entry.Price),
+			Available: entry.IsAvailable(),
+		})
+	}
+
+	if err := p.cache.Set(ctx, cacheKey, data, 1*time.Hour); err != nil {
+		slog.Error("error al guardar el catálogo de adiciones en el cache", "error", err)
+	}
+
+	return data, nil
+}
+
+func (p *productsRepo) SearchAdditionItemsByIDs(ctx context.Context, shopID uuid.UUID, additionIDs []uuid.UUID) (models.Items, error) {
+	if len(additionIDs) == 0 {
+		return nil, nil
+	}
+
+	var items models.Items
+	if err := p.db.NewSelect().
+		Model(&items).
+		Join("JOIN products.categories AS category ON category.id = item.category_id").
+		Join("JOIN products.macro_categories AS macro_category ON macro_category.id = category.macro_category_id").
+		Where("item.shop_id = ?", shopID).
+		Where("item.id IN (?)", bun.In(additionIDs)).
+		Where("item.deleted_at IS NULL").
+		Where("macro_category.slug = ?", models.MacroSlugAdiciones).
+		Scan(ctx); err != nil {
+		slog.Error("error al obtener items de adiciones por ids", "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	return items, nil
+}
+
+func (p *productsRepo) IsAdditionItem(ctx context.Context, itemID uuid.UUID) (bool, error) {
+	count, err := p.db.NewSelect().
+		Model((*models.Item)(nil)).
+		Join("JOIN products.categories AS category ON category.id = item.category_id").
+		Join("JOIN products.macro_categories AS macro_category ON macro_category.id = category.macro_category_id").
+		Where("item.id = ?", itemID).
+		Where("macro_category.slug = ?", models.MacroSlugAdiciones).
+		Count(ctx)
+	if err != nil {
+		slog.Error("error al verificar si el item es adición", "error", err)
+		return false, errcustom.ErrUnexpectedError
+	}
+	return count > 0, nil
+}
+
+func (p *productsRepo) SyncAdditionSnapshots(ctx context.Context, shopID uuid.UUID, entry models.AdditionEntry) error {
+	var items []models.Item
+	if err := p.db.NewSelect().
+		Model(&items).
+		Column("id", "details").
+		Where("shop_id = ?", shopID).
+		Where("EXISTS (SELECT 1 FROM jsonb_array_elements(details->'additions') elem WHERE (elem->>'id')::uuid = ?)", entry.ID).
+		Scan(ctx); err != nil {
+		slog.Error("error al buscar items con la adición", "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+
+	itemIDs := make([]uuid.UUID, 0, len(items))
+	for _, item := range items {
+		details := item.Details
+		details.Additions = details.Additions.Upsert(entry)
+		if _, err := p.db.NewUpdate().
+			Model((*models.Item)(nil)).
+			Set("details = ?", details).
+			Where("id = ?", item.ID).
+			Exec(ctx); err != nil {
+			slog.Error("error al sincronizar snapshot de adición", "error", err)
+			return errcustom.ErrUnexpectedError
+		}
+		itemIDs = append(itemIDs, item.ID)
+	}
+
+	p.clearAdditionCaches(ctx, shopID, itemIDs)
+	return nil
 }
 
 func (p *productsRepo) SearchFlavorsByItemID(ctx context.Context, itemID uuid.UUID) (dtos.FlavorsResponse, error) {
@@ -322,32 +410,16 @@ func (p *productsRepo) SearchFlavorsByItemID(ctx context.Context, itemID uuid.UU
 		slog.Error("error al hacer unmarshal de los sabores por item", "key", cacheKey)
 	}
 
-	total, err := p.db.NewSelect().
-		Model((*models.ItemsFlavor)(nil)).
-		Where("item_id = ?", itemID).
-		Count(ctx)
+	item, err := p.SearchItemByID(ctx, itemID)
 	if err != nil {
-		slog.Error("error al contar sabores por item", "error", err)
-		return nil, errcustom.ErrUnexpectedError
+		return nil, err
 	}
 
-	if total == 0 {
+	if len(item.Details.Flavors) == 0 {
 		return nil, errcustom.ErrNotFound
 	}
 
-	var flavors models.Flavors
-
-	if err := p.db.NewSelect().
-		Model((*models.ItemsFlavor)(nil)).
-		ColumnExpr("f.*").
-		Join("JOIN products.flavors AS f ON f.id = if.flavor_id").
-		Where("if.item_id = ?", itemID).
-		Scan(ctx, &flavors); err != nil {
-		fmt.Println(err.Error())
-		return nil, errcustom.ErrUnexpectedError
-	}
-
-	data := flavors.ToDomainDTO()
+	data := item.Details.Flavors.ToCustomerDTO()
 
 	if err := p.cache.Set(ctx, cacheKey, data, 1*time.Hour); err != nil {
 		slog.Error("error al guardar los sabores por item en el cache", "error", err)
@@ -369,32 +441,20 @@ func (p *productsRepo) SearchFlavorsByCategoryID(ctx context.Context, categoryID
 		slog.Error("error al hacer unmarshal de los sabores por categoría", "key", cacheKey)
 	}
 
-	total, err := p.db.NewSelect().
-		Model((*models.Flavor)(nil)).
-		Where("category_id = ?", categoryID).
-		Where("deleted_at IS NULL").
-		Count(ctx)
+	category, err := p.SearchCategoryByID(ctx, categoryID)
 	if err != nil {
-		slog.Error("error al contar sabores por categoría", "error", err)
-		return nil, errcustom.ErrUnexpectedError
+		return nil, err
 	}
 
-	if total == 0 {
+	if !models.SupportsFlavorSelection(category.Details.SelectorType) {
+		return nil, errcustom.ErrCategoryWithoutFlavors
+	}
+
+	if len(category.Details.Flavors) == 0 {
 		return nil, errcustom.ErrNotFound
 	}
 
-	var flavors models.Flavors
-
-	if err := p.db.NewSelect().
-		Model(&flavors).
-		Where("category_id = ?", categoryID).
-		Where("deleted_at IS NULL").
-		Scan(ctx); err != nil {
-		slog.Error("error al obtener los sabores por categoría", "error", err)
-		return nil, errcustom.ErrUnexpectedError
-	}
-
-	data := flavors.ToDomainDTO()
+	data := category.Details.Flavors.ToDomainDTO()
 
 	if err := p.cache.Set(ctx, cacheKey, data, 1*time.Hour); err != nil {
 		slog.Error("error al guardar los sabores por categoría en el cache", "error", err)
@@ -438,6 +498,7 @@ func (p *productsRepo) SearchBestSellersByShopID(ctx context.Context, shopID uui
 		// Postgres reporta "column reference is ambiguous" (SQLSTATE=42702).
 		Where("item.shop_id = ?", shopID).
 		Where("item.is_available = ?", true).
+		Relation("Category").
 		Relation("Category.Schedules").
 		RelationWithOpts("Discount", bun.RelationOpts{
 			AdditionalJoinOnConditions: activeDiscountJoinConditions(),
@@ -448,7 +509,7 @@ func (p *productsRepo) SearchBestSellersByShopID(ctx context.Context, shopID uui
 		return nil, errcustom.ErrUnexpectedError
 	}
 
-	data := topSeller.ToDomainDTO()
+	data := topSeller.ToDomainDTOWithCategory()
 
 	if err := p.cache.Set(ctx, cacheKey, data, 1*time.Hour); err != nil {
 		slog.Error("error al guardar los productos mas vendidos en el cache", "error", err)
@@ -698,9 +759,19 @@ func (p *productsRepo) deliveryEstimatesByShop(coords dtos.TrendingCoords, rows 
 	return fee, minutes
 }
 
-func (p *productsRepo) RegisterFlavor(ctx context.Context, flavor *models.Flavor) error {
-	_, err := p.db.NewInsert().Model(flavor).Exec(ctx)
+func (p *productsRepo) RegisterFlavor(ctx context.Context, flavor models.CatalogFlavor) error {
+	category, err := p.SearchCategoryByID(ctx, flavor.CategoryID)
 	if err != nil {
+		return err
+	}
+
+	category.Details.Flavors = append(category.Details.Flavors, flavor.Entry)
+
+	if _, err := p.db.NewUpdate().
+		Model(category).
+		Column("details").
+		WherePK().
+		Exec(ctx); err != nil {
 		slog.Error("error al registrar sabor", "error", err)
 		return errcustom.ErrUnexpectedError
 	}
@@ -709,88 +780,117 @@ func (p *productsRepo) RegisterFlavor(ctx context.Context, flavor *models.Flavor
 		slog.Error("error al limpiar el cache", "error", err)
 	}
 
+	if err := p.cache.ClearByPrefix(ctx, prefix_shop_cashe+flavor.ShopID.String()); err != nil {
+		slog.Error("error al limpiar el cache", "error", err)
+	}
+
 	return nil
 }
 
-func (p *productsRepo) SearchFlavorByID(ctx context.Context, flavorID uuid.UUID) (*models.Flavor, error) {
-	var flavor models.Flavor
+func (p *productsRepo) SearchFlavorByID(ctx context.Context, flavorID uuid.UUID) (*models.CatalogFlavor, error) {
+	var category models.Category
 
 	if err := p.db.NewSelect().
-		Model(&flavor).
-		Where("id = ?", flavorID).
-		Where("deleted_at IS NULL").
+		Model(&category).
+		Where("EXISTS (SELECT 1 FROM jsonb_array_elements(details->'flavors') elem WHERE (elem->>'id')::uuid = ?)", flavorID).
 		Scan(ctx); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errcustom.ErrNotFound
+		}
 		slog.Error("error al obtener el sabor", "error", err)
 		return nil, errcustom.ErrUnexpectedError
 	}
 
-	return &flavor, nil
-}
-
-func (p *productsRepo) SearchFlavorsByIDs(ctx context.Context, flavorIDs []uuid.UUID) (models.Flavors, error) {
-	var flavors models.Flavors
-
-	if err := p.db.NewSelect().
-		Model(&flavors).
-		Where("id IN (?)", bun.In(flavorIDs)).
-		Where("deleted_at IS NULL").
-		Scan(ctx); err != nil {
-		slog.Error("error al obtener sabores por ids", "error", err)
-		return nil, errcustom.ErrUnexpectedError
+	entry, ok := category.Details.Flavors.FindByID(flavorID)
+	if !ok {
+		return nil, errcustom.ErrNotFound
 	}
 
-	return flavors, nil
+	return &models.CatalogFlavor{
+		ID:         flavorID,
+		ShopID:     category.ShopID,
+		CategoryID: category.ID,
+		Entry:      entry,
+	}, nil
 }
 
-func (p *productsRepo) UpdateFlavor(ctx context.Context, flavor *models.UpdateFlavor, shopID, categoryID uuid.UUID) error {
-	_, err := p.db.NewUpdate().Model(flavor).WherePK().Exec(ctx)
-	if err != nil {
-		slog.Error("error al actualizar el sabor", "error", err)
-		return errcustom.ErrUnexpectedError
-	}
-
-	itemIDs, err := p.itemIDsByFlavor(ctx, flavor.ID)
-	if err != nil {
-		return err
-	}
-
-	p.clearFlavorRelatedCaches(ctx, shopID, categoryID, itemIDs)
-
-	return nil
-}
-
-func (p *productsRepo) DeleteFlavor(ctx context.Context, flavor *models.Flavor) error {
-	itemIDs, err := p.itemIDsByFlavor(ctx, flavor.ID)
+func (p *productsRepo) UpdateFlavor(ctx context.Context, flavorID uuid.UUID, entry models.FlavorEntry, shopID, categoryID uuid.UUID) error {
+	itemIDs, err := p.itemIDsByFlavor(ctx, categoryID, flavorID)
 	if err != nil {
 		return err
 	}
 
 	err = p.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		category, err := p.searchCategoryByIDTx(ctx, tx, categoryID)
+		if err != nil {
+			return err
+		}
+
+		category.Details.Flavors = category.Details.Flavors.Upsert(entry)
 		if _, err := tx.NewUpdate().
-			Model((*models.Flavor)(nil)).
-			Set("deleted_at = ?", time.Now()).
-			Where("id = ?", flavor.ID).
+			Model(category).
+			Column("details").
+			WherePK().
 			Exec(ctx); err != nil {
 			return err
 		}
 
-		if _, err := tx.NewDelete().
-			Model((*models.ItemsFlavor)(nil)).
-			Where("flavor_id = ?", flavor.ID).
-			Exec(ctx); err != nil {
-			return err
-		}
+		return p.syncItemFlavorsTx(ctx, tx, categoryID, flavorID, entry)
+	})
+	if err != nil {
+		slog.Error("error al actualizar el sabor", "error", err)
+		return errcustom.ErrUnexpectedError
+	}
 
-		if len(itemIDs) == 0 {
-			return nil
-		}
+	p.clearFlavorRelatedCaches(ctx, shopID, categoryID, itemIDs)
+	return nil
+}
 
-		_, err := tx.NewUpdate().
-			Model((*models.Item)(nil)).
-			Set("has_flavors = EXISTS (SELECT 1 FROM products.items_flavors WHERE item_id = items.id)").
-			Where("id IN (?)", bun.In(itemIDs)).
-			Exec(ctx)
+func (p *productsRepo) DeleteFlavor(ctx context.Context, flavor models.CatalogFlavor) error {
+	itemIDs, err := p.itemIDsByFlavor(ctx, flavor.CategoryID, flavor.ID)
+	if err != nil {
 		return err
+	}
+
+	err = p.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		category, err := p.searchCategoryByIDTx(ctx, tx, flavor.CategoryID)
+		if err != nil {
+			return err
+		}
+
+		category.Details.Flavors = category.Details.Flavors.RemoveByID(flavor.ID)
+		if _, err := tx.NewUpdate().
+			Model(category).
+			Column("details").
+			WherePK().
+			Exec(ctx); err != nil {
+			return err
+		}
+
+		var items []models.Item
+		if err := tx.NewSelect().
+			Model(&items).
+			Column("id", "details").
+			Where("category_id = ?", flavor.CategoryID).
+			Where("EXISTS (SELECT 1 FROM jsonb_array_elements(details->'flavors') elem WHERE (elem->>'id')::uuid = ?)", flavor.ID).
+			Scan(ctx); err != nil {
+			return err
+		}
+
+		for _, item := range items {
+			details := item.Details
+			details.Flavors = details.Flavors.RemoveByID(flavor.ID)
+			if _, err := tx.NewUpdate().
+				Model((*models.Item)(nil)).
+				Set("details = ?", details).
+				Set("has_flavors = ?", details.HasFlavors()).
+				Where("id = ?", item.ID).
+				Exec(ctx); err != nil {
+				return err
+			}
+		}
+
+		return nil
 	})
 	if err != nil {
 		slog.Error("error al eliminar el sabor", "error", err)
@@ -798,20 +898,58 @@ func (p *productsRepo) DeleteFlavor(ctx context.Context, flavor *models.Flavor) 
 	}
 
 	p.clearFlavorRelatedCaches(ctx, flavor.ShopID, flavor.CategoryID, itemIDs)
+	return nil
+}
+
+func (p *productsRepo) searchCategoryByIDTx(ctx context.Context, tx bun.Tx, categoryID uuid.UUID) (*models.Category, error) {
+	var category models.Category
+	if err := tx.NewSelect().
+		Model(&category).
+		Where("id = ?", categoryID).
+		Scan(ctx); err != nil {
+		return nil, err
+	}
+	return &category, nil
+}
+
+func (p *productsRepo) syncItemFlavorsTx(ctx context.Context, tx bun.Tx, categoryID, flavorID uuid.UUID, entry models.FlavorEntry) error {
+	var items []models.Item
+	if err := tx.NewSelect().
+		Model(&items).
+		Column("id", "details", "availability_status").
+		Where("category_id = ?", categoryID).
+		Where("EXISTS (SELECT 1 FROM jsonb_array_elements(details->'flavors') elem WHERE (elem->>'id')::uuid = ?)", flavorID).
+		Scan(ctx); err != nil {
+		return err
+	}
+
+	for _, item := range items {
+		details := item.Details
+		details.Flavors = details.Flavors.Upsert(entry)
+		effective := models.EffectiveItemAvailability(item.AvailabilityStatus, details)
+		if _, err := tx.NewUpdate().
+			Model((*models.Item)(nil)).
+			Set("details = ?", details).
+			Set("has_flavors = ?", details.HasFlavors()).
+			Set("is_available = ?", models.SyncIsAvailableFlag(effective)).
+			Where("id = ?", item.ID).
+			Exec(ctx); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
 
-// itemIDsByFlavor devuelve los items actualmente asociados a un sabor, usado
-// para saber qué cachés de sabores por item invalidar y qué items recalcular
-// has_flavors al eliminar el sabor.
-func (p *productsRepo) itemIDsByFlavor(ctx context.Context, flavorID uuid.UUID) ([]uuid.UUID, error) {
+// itemIDsByFlavor devuelve los items que tienen asignado un sabor embebido.
+func (p *productsRepo) itemIDsByFlavor(ctx context.Context, categoryID, flavorID uuid.UUID) ([]uuid.UUID, error) {
 	var itemIDs []uuid.UUID
 
 	if err := p.db.NewSelect().
-		Model((*models.ItemsFlavor)(nil)).
-		Column("item_id").
-		Where("flavor_id = ?", flavorID).
+		Model((*models.Item)(nil)).
+		Column("id").
+		Where("category_id = ?", categoryID).
+		Where("EXISTS (SELECT 1 FROM jsonb_array_elements(details->'flavors') elem WHERE (elem->>'id')::uuid = ?)", flavorID).
 		Scan(ctx, &itemIDs); err != nil {
 		slog.Error("error al obtener items por sabor", "error", err)
 		return nil, errcustom.ErrUnexpectedError
@@ -917,6 +1055,111 @@ func (p *productsRepo) DeleteItemDiscount(ctx context.Context, discount *models.
 	p.clearItemDiscountCaches(ctx, discount.ShopID)
 
 	return nil
+}
+
+func (p *productsRepo) SearchCategoriesByIDs(ctx context.Context, shopID uuid.UUID, categoryIDs []uuid.UUID) (models.Categories, error) {
+	var categories models.Categories
+
+	if err := p.db.NewSelect().
+		Model(&categories).
+		Where("shop_id = ?", shopID).
+		Where("id IN (?)", bun.In(categoryIDs)).
+		Scan(ctx); err != nil {
+		slog.Error("error al obtener categorías por ids", "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	return categories, nil
+}
+
+func (p *productsRepo) SearchCategoriesByShopID(ctx context.Context, shopID uuid.UUID) (models.Categories, error) {
+	var categories models.Categories
+
+	if err := p.db.NewSelect().
+		Model(&categories).
+		Where("shop_id = ?", shopID).
+		Relation("Schedules").
+		Relation("MacroCategory").
+		Order("name ASC").
+		Scan(ctx); err != nil {
+		slog.Error("error al obtener categorías del negocio", "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	if len(categories) == 0 {
+		return nil, errcustom.ErrNotFound
+	}
+
+	return categories, nil
+}
+
+func (p *productsRepo) SearchCategorySummariesByShopID(ctx context.Context, shopID uuid.UUID, filter string) (models.Categories, error) {
+	var categories models.Categories
+
+	q := p.db.NewSelect().
+		Model(&categories).
+		Column("id", "name").
+		Where("shop_id = ?", shopID).
+		Where("deleted_at IS NULL")
+
+	switch filter {
+	case "flavors":
+		q = q.Where("details->>'selector_type' IN (?)", bun.In([]string{
+			models.SelectorSingleSelect,
+			models.SelectorMultiSelect,
+		}))
+	case "additions":
+		q = q.
+			Join("JOIN products.macro_categories AS macro_category ON macro_category.id = category.macro_category_id").
+			Where("macro_category.slug = ?", models.MacroSlugAdiciones)
+	}
+
+	if err := q.Order("name ASC").Scan(ctx); err != nil {
+		slog.Error("error al obtener el resumen de categorías", "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	return categories, nil
+}
+
+func (p *productsRepo) clearShopCache(ctx context.Context, shopID uuid.UUID) {
+	if err := p.cache.ClearByPrefix(ctx, prefix_shop_cashe+shopID.String()); err != nil {
+		slog.Error("error al limpiar el cache del negocio", "error", err)
+	}
+}
+
+func (p *productsRepo) clearItemCaches(ctx context.Context, shopID, itemID uuid.UUID) {
+	p.clearShopCache(ctx, shopID)
+
+	if err := p.cache.ClearByPrefix(ctx, prefix_flavors_item_cache+itemID.String()); err != nil {
+		slog.Error("error al limpiar el cache de sabores del item", "error", err)
+	}
+
+	if err := p.cache.ClearByPrefix(ctx, prefix_additions_cache+"item:"+itemID.String()); err != nil {
+		slog.Error("error al limpiar el cache de adiciones del item", "error", err)
+	}
+
+	if err := p.cache.ClearByPrefix(ctx, prefix_additions_cache+"catalog:shop:"+shopID.String()); err != nil {
+		slog.Error("error al limpiar el cache del catálogo de adiciones", "error", err)
+	}
+
+	if err := p.cache.ClearByPrefix(ctx, prefix_best_sellers_cache+shopID.String()); err != nil {
+		slog.Error("error al limpiar el cache de best sellers", "error", err)
+	}
+}
+
+func (p *productsRepo) clearAdditionCaches(ctx context.Context, shopID uuid.UUID, itemIDs []uuid.UUID) {
+	if err := p.cache.ClearByPrefix(ctx, prefix_additions_cache+"catalog:shop:"+shopID.String()); err != nil {
+		slog.Error("error al limpiar el cache del catálogo de adiciones", "error", err)
+	}
+
+	for _, itemID := range itemIDs {
+		if err := p.cache.ClearByPrefix(ctx, prefix_additions_cache+"item:"+itemID.String()); err != nil {
+			slog.Error("error al limpiar el cache de adiciones del item", "error", err, "itemID", itemID)
+		}
+	}
+
+	p.clearShopCache(ctx, shopID)
 }
 
 func (p *productsRepo) clearItemDiscountCaches(ctx context.Context, shopID uuid.UUID) {

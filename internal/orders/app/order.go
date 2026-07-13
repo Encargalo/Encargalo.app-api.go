@@ -35,6 +35,42 @@ const priceTolerance = 0.01
 // para poder testearla sin depender de red (deliveryfee.Calculate, más
 // arriba en CreateOrder, hace una llamada real a Google Maps que no se
 // puede mockear sin refactorizarla a un port inyectable).
+func (o *orderApp) resolveOrderItemFlavors(ctx context.Context, order *models.Order) error {
+	for i := range order.ItemsOrders {
+		itemOrder := &order.ItemsOrders[i]
+		chosenIDs := itemOrder.GetFlavorIDs()
+		if len(chosenIDs) == 0 {
+			continue
+		}
+
+		catalog, err := o.repo.SearchFlavorsForItem(ctx, itemOrder.ItemID)
+		if err != nil {
+			return err
+		}
+
+		catalogByID := make(map[uuid.UUID]models.Flavor, len(catalog))
+		for _, flavor := range catalog {
+			catalogByID[flavor.ID] = flavor
+		}
+
+		resolved := make([]models.Flavor, 0, len(chosenIDs))
+		for _, id := range chosenIDs {
+			flavor, ok := catalogByID[id]
+			if !ok {
+				return errcustom.ErrInvalidFlavors
+			}
+			if !flavor.IsAvailable() {
+				return errcustom.ErrProductUnavailable
+			}
+			resolved = append(resolved, flavor)
+		}
+
+		itemOrder.SetFlavorsDetails(resolved)
+	}
+
+	return nil
+}
+
 func PriceMismatch(actual, expected float64) bool {
 	return math.Abs(actual-expected) > priceTolerance
 }
@@ -87,6 +123,17 @@ func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustom
 		},
 	}
 	return o
+}
+
+// bcvRate resuelve la tasa BCV vigente; si el proveedor falla, se ignora y
+// los montos en bolívares del recibo quedan en 0 en vez de romper el checkout.
+func (o *orderApp) bcvRate(ctx context.Context) float64 {
+	rate, err := o.bcv.GetRate(ctx)
+	if err != nil {
+		slog.Warn("bcv rate unavailable, order details bs prices will be 0", "error", err)
+		return 0
+	}
+	return rate.Rate
 }
 
 func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*models.Order, error) {
@@ -145,6 +192,10 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		return &models.Order{}, err
 	}
 
+	if err := validateOrderCatalogAvailability(items, orderModel); err != nil {
+		return &models.Order{}, err
+	}
+
 	orderModel.SetPrices(items)
 	orderModel.SetItemName(items)
 	orderModel.SetItemImage(items)
@@ -162,11 +213,9 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 	}
 
 	if flavorIDs := orderModel.GetFlavorsID(); len(flavorIDs) > 0 {
-		flavors, err := o.repo.SearchFlavorsByID(ctx, flavorIDs)
-		if err != nil {
+		if err := o.resolveOrderItemFlavors(ctx, orderModel); err != nil {
 			return &models.Order{}, err
 		}
-		orderModel.SetFlavorsName(flavors)
 	}
 
 	orderModel.ApplyLaunchPromo(shop.HasActiveLaunchPromo())
@@ -179,7 +228,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 	}
 
 	DetailsModel := new(models.Details)
-	DetailsModel.BuildDetails(orderModel, shop, customer, order.Address.Instructions)
+	DetailsModel.BuildDetails(orderModel, shop, customer, order.Address.Instructions, o.bcvRate(ctx))
 
 	if order.PaymentProofImage != "" {
 		proofUpload, err := o.uploadImage.UploadImage(ctx, order.PaymentProofImage)

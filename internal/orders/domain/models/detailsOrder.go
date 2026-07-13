@@ -1,6 +1,7 @@
 package models
 
 import (
+	"Encargalo.app-api.go/internal/pkg/money"
 	"Encargalo.app-api.go/internal/users/domain/models"
 	"github.com/google/uuid"
 )
@@ -17,7 +18,12 @@ type PaymentDetails struct {
 	PaymentProofURL string `json:"payment_proof_url"`
 }
 
-func (d *Details) BuildDetails(order *Order, shop *ShopOrder, customer *models.Account, addressInstructions string) {
+// BuildDetails congela una foto del pedido para mostrarla luego (historial,
+// recibo, panel del local) sin depender de que el catálogo original no haya
+// cambiado. rate es la tasa BCV vigente al momento de crear la orden: se usa
+// para fijar de una vez los montos en bolívares de cada item/adición, igual
+// que Order.ApplyBsPrice hace con el total y el delivery fee.
+func (d *Details) BuildDetails(order *Order, shop *ShopOrder, customer *models.Account, addressInstructions string, rate float64) {
 
 	d.CustomerDetails.ID = customer.ID
 	d.CustomerDetails.Name = customer.Name
@@ -44,6 +50,8 @@ func (d *Details) BuildDetails(order *Order, shop *ShopOrder, customer *models.A
 		d.ItemsDetails[i].Image = order.ItemsOrders[i].Image
 		d.ItemsDetails[i].UnitPrice = order.ItemsOrders[i].UnitPrice
 		d.ItemsDetails[i].TotalPrice = order.ItemsOrders[i].TotalPrice
+		d.ItemsDetails[i].UnitPriceBs = money.RoundBs(float64(order.ItemsOrders[i].UnitPrice) * rate)
+		d.ItemsDetails[i].TotalPriceBs = money.RoundBs(float64(order.ItemsOrders[i].TotalPrice) * rate)
 		d.ItemsDetails[i].Observation = order.ItemsOrders[i].Observation
 		d.ItemsDetails[i].Flavors = order.ItemsOrders[i].FlavorsDetails
 		d.ItemsDetails[i].Additions = make([]additionsDetails, len(order.ItemsOrders[i].Additions))
@@ -53,6 +61,8 @@ func (d *Details) BuildDetails(order *Order, shop *ShopOrder, customer *models.A
 			d.ItemsDetails[i].Additions[j].Amount = order.ItemsOrders[i].Additions[j].Amount
 			d.ItemsDetails[i].Additions[j].UnitPrice = order.ItemsOrders[i].Additions[j].UnitPrice
 			d.ItemsDetails[i].Additions[j].TotalPrice = order.ItemsOrders[i].Additions[j].TotalPrice
+			d.ItemsDetails[i].Additions[j].UnitPriceBs = money.RoundBs(float64(order.ItemsOrders[i].Additions[j].UnitPrice) * rate)
+			d.ItemsDetails[i].Additions[j].TotalPriceBs = money.RoundBs(float64(order.ItemsOrders[i].Additions[j].TotalPrice) * rate)
 		}
 	}
 
@@ -80,21 +90,25 @@ type addressDetails struct {
 }
 
 type itemsDetails struct {
-	ID          uuid.UUID          `json:"id"`
-	Name        string             `json:"name"`
-	Image       string             `json:"image"`
-	Amount      int                `json:"amount"`
-	UnitPrice   int                `json:"unit_price"`
-	TotalPrice  int                `json:"total_price"`
-	Observation string             `json:"observation"`
-	Flavors     []ItemFlavor       `json:"flavors"`
-	Additions   []additionsDetails `json:"additions"`
+	ID           uuid.UUID          `json:"id"`
+	Name         string             `json:"name"`
+	Image        string             `json:"image"`
+	Amount       int                `json:"amount"`
+	UnitPrice    int                `json:"unit_price"`
+	TotalPrice   int                `json:"total_price"`
+	UnitPriceBs  float64            `json:"unit_price_bs"`
+	TotalPriceBs float64            `json:"total_price_bs"`
+	Observation  string             `json:"observation"`
+	Flavors      []ItemFlavor       `json:"flavors"`
+	Additions    []additionsDetails `json:"additions"`
 }
 
 type additionsDetails struct {
-	ID         uuid.UUID `json:"id"`
-	Name       string    `json:"name"`
-	Amount     int       `json:"amount"`
-	UnitPrice  int       `json:"unit_price"`
-	TotalPrice int       `json:"total_price"`
+	ID           uuid.UUID `json:"id"`
+	Name         string    `json:"name"`
+	Amount       int       `json:"amount"`
+	UnitPrice    int       `json:"unit_price"`
+	TotalPrice   int       `json:"total_price"`
+	UnitPriceBs  float64   `json:"unit_price_bs"`
+	TotalPriceBs float64   `json:"total_price_bs"`
 }

@@ -293,14 +293,104 @@ const docTemplate = `{
                 }
             }
         },
+        "/business/products/additions/catalog": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna los items del negocio cuya categoría tiene macro ` + "`" + `adiciones` + "`" + `. Usar al crear/editar un producto para seleccionar ` + "`" + `addition_ids` + "`" + `.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Catálogo de adiciones del negocio",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/business/products/categories": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna todas las categorías del negocio autenticado con ` + "`" + `details` + "`" + ` (flavors, selector_type), ` + "`" + `availability_status` + "`" + `, ` + "`" + `macro_category_id` + "`" + ` y ` + "`" + `schedules` + "`" + `. No incluye items (usar ` + "`" + `GET /business/products` + "`" + ` para el catálogo con productos).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Listar categorías completas del negocio",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategoryResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Categorías no encontradas",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "El usuario no tiene un negocio asociado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
                         "SessionCookie": []
                     }
                 ],
-                "description": "Registra una nueva categoría (sección de menú) en el negocio asociado a la sesión autenticada, con horario opcional de disponibilidad. Si se omite ` + "`" + `schedules` + "`" + ` o se envía vacío, la categoría queda siempre disponible.",
+                "description": "Registra una nueva categoría. Puede incluir ` + "`" + `flavors` + "`" + ` (name/description); el backend genera el ` + "`" + `id` + "`" + ` de cada sabor y lo guarda en ` + "`" + `details.flavors` + "`" + `. Si hay sabores, ` + "`" + `selector_type` + "`" + ` debe ser ` + "`" + `single_select` + "`" + ` (cantidad 1 por sabor; min/max = sabores distintos) o ` + "`" + `multi_select` + "`" + ` (cantidad N del mismo sabor).",
                 "consumes": [
                     "application/json"
                 ],
@@ -356,6 +446,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/business/products/categories/summary": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna solo id y nombre de cada micro categoría del negocio. Use ` + "`" + `for=flavors` + "`" + ` o ` + "`" + `for=additions` + "`" + ` (macro Adiciones).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Listar categorías del negocio (resumen)",
+                "parameters": [
+                    {
+                        "enum": [
+                            "flavors",
+                            "additions"
+                        ],
+                        "type": "string",
+                        "description": "Filtrar categorías elegibles",
+                        "name": "for",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategorySummaryResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "El usuario no tiene un negocio asociado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/business/products/categories/{category_id}": {
             "put": {
                 "security": [
@@ -363,7 +511,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Actualiza el nombre, macro-categoría y/o horario de una categoría existente del negocio autenticado. Enviar ` + "`" + `schedules` + "`" + ` reemplaza todo el horario configurado; omitirlo lo deja sin cambios; enviar ` + "`" + `[]` + "`" + ` elimina el horario (la categoría queda siempre disponible).",
+                "description": "Actualiza el nombre, macro-categoría, ` + "`" + `availability_status` + "`" + ` (` + "`" + `active` + "`" + ` | ` + "`" + `hidden` + "`" + ` | ` + "`" + `out_of_stock` + "`" + `) y/o horario de una categoría existente. Enviar ` + "`" + `schedules` + "`" + ` reemplaza todo el horario; omitirlo lo deja sin cambios; ` + "`" + `[]` + "`" + ` elimina el horario.",
                 "consumes": [
                     "application/json"
                 ],
@@ -693,6 +841,68 @@ const docTemplate = `{
                 }
             }
         },
+        "/business/products/flavors/category": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna todos los sabores del catálogo JSONB de una categoría (` + "`" + `details.flavors` + "`" + `). Disponible para Customer y para Owner/Order Manager.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Obtener sabores por categoría",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID de la categoría",
+                        "name": "category_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "category_id es requerido o inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Sabores no encontrados",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/business/products/flavors/{flavor_id}": {
             "put": {
                 "security": [
@@ -700,7 +910,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Actualiza el nombre y/o la descripción de un sabor existente del negocio autenticado.",
+                "description": "Actualiza el nombre, descripción y/o disponibilidad (` + "`" + `available` + "`" + `) de un sabor existente del negocio autenticado. Si desactivar sabores deja al item con menos opciones que ` + "`" + `min_selection` + "`" + `, el item pasa a no ser pedible automáticamente.",
                 "consumes": [
                     "application/json"
                 ],
@@ -769,7 +979,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Elimina (soft delete) un sabor del negocio autenticado y lo desasocia de todos los productos que lo tenían asignado. Si un producto queda sin sabores tras la eliminación, su indicador has_flavors se actualiza automáticamente a false.",
+                "description": "Elimina un sabor del catálogo JSONB de la categoría y lo quita de todos los productos de esa categoría que lo tenían asignado. Si un producto queda sin sabores, has_flavors pasa a false.",
                 "produces": [
                     "application/json"
                 ],
@@ -828,7 +1038,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Registra un nuevo producto en el negocio asociado a la sesión autenticada.",
+                "description": "Registra un nuevo producto. Con sabores: ` + "`" + `flavor_ids` + "`" + ` + opcional ` + "`" + `min_selection` + "`" + `/` + "`" + `max_selection` + "`" + ` (defaults 1 y cantidad de sabores). ` + "`" + `single_select` + "`" + ` = sabores distintos (cantidad 1 c/u); ` + "`" + `multi_select` + "`" + ` = cantidad N del mismo sabor. ` + "`" + `addition_ids` + "`" + ` opcional: items de la macro Adiciones; selección fija multi_select max 5.",
                 "consumes": [
                     "application/json"
                 ],
@@ -931,7 +1141,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Actualiza la información de un producto existente del negocio autenticado.",
+                "description": "Actualiza un producto. ` + "`" + `availability_status` + "`" + `: active|hidden|out_of_stock. Si es un item de la macro Adiciones, sincroniza name/price/available en los productos que lo referencian. ` + "`" + `addition_ids` + "`" + ` asigna adiciones (max selección 5).",
                 "consumes": [
                     "application/json"
                 ],
@@ -1809,7 +2019,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna todos los productos agrupados por categoría de una tienda. Solo incluye productos disponibles, ordenados por precio ascendente. Además, excluye productos cuya categoría tiene un horario configurado que no cubre la hora actual (America/Caracas).",
+                "description": "Retorna productos agrupados por categoría para clientes. Excluye categorías ` + "`" + `hidden` + "`" + `, items ` + "`" + `hidden` + "`" + `, sabores/adiciones no disponibles, y aplica horario de categoría (America/Caracas). Items con ` + "`" + `effective_status: out_of_stock` + "`" + ` o ` + "`" + `can_order: false` + "`" + ` se muestran pero no se pueden pedir (p. ej. cuando los sabores activos son menos que ` + "`" + `min_selection` + "`" + `).",
                 "produces": [
                     "application/json"
                 ],
@@ -1871,20 +2081,20 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna todas las adiciones disponibles de una categoría, ordenadas por precio ascendente.",
+                "description": "Retorna las adiciones asignadas a un producto específico (subset del catálogo de la categoría), ordenadas como están en items.details.additions.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Products"
                 ],
-                "summary": "Obtener adiciones por categoría",
+                "summary": "Obtener adiciones por producto",
                 "parameters": [
                     {
                         "type": "string",
                         "format": "uuid",
-                        "description": "ID de la categoría",
-                        "name": "category_id",
+                        "description": "ID del producto",
+                        "name": "item_id",
                         "in": "query",
                         "required": true
                     }
@@ -1900,7 +2110,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "category_id es requerido o inválido",
+                        "description": "item_id es requerido o inválido",
                         "schema": {
                             "type": "string"
                         }
@@ -2057,7 +2267,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna todos los sabores disponibles asociados a una categoría específica.",
+                "description": "Retorna todos los sabores del catálogo JSONB de una categoría (` + "`" + `details.flavors` + "`" + `). Disponible para Customer y para Owner/Order Manager.",
                 "produces": [
                     "application/json"
                 ],
@@ -3127,6 +3337,9 @@ const docTemplate = `{
         "Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse": {
             "type": "object",
             "properties": {
+                "available": {
+                    "type": "boolean"
+                },
                 "bs": {
                     "type": "number"
                 },
@@ -3141,9 +3354,52 @@ const docTemplate = `{
                 }
             }
         },
+        "Encargalo_app-api_go_internal_products_domain_dtos.AdditionSelectionResponse": {
+            "type": "object",
+            "properties": {
+                "max_selection": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "min_selection": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "selector_type": {
+                    "type": "string",
+                    "example": "multi_select"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.CategoryDetailsResponse": {
+            "type": "object",
+            "properties": {
+                "flavors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse"
+                    }
+                },
+                "selector_type": {
+                    "type": "string",
+                    "example": "multi_select"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_products_domain_dtos.CategoryResponse": {
             "type": "object",
             "properties": {
+                "availability_status": {
+                    "type": "string",
+                    "example": "active"
+                },
+                "can_order": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "details": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategoryDetailsResponse"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -3152,6 +3408,9 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse"
                     }
+                },
+                "macro_category_id": {
+                    "type": "string"
                 },
                 "name": {
                     "type": "string"
@@ -3167,7 +3426,7 @@ const docTemplate = `{
                 }
             }
         },
-        "Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse": {
+        "Encargalo_app-api_go_internal_products_domain_dtos.CategorySummaryResponse": {
             "type": "object",
             "properties": {
                 "id": {
@@ -3178,12 +3437,99 @@ const docTemplate = `{
                 }
             }
         },
+        "Encargalo_app-api_go_internal_products_domain_dtos.FlavorInput": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "Con jamón ahumado"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Jamón"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse": {
+            "type": "object",
+            "properties": {
+                "available": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.FlavorSelectionResponse": {
+            "type": "object",
+            "properties": {
+                "max_selection": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "min_selection": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "selector_type": {
+                    "type": "string",
+                    "example": "single_select"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.ItemDetailsResponse": {
+            "type": "object",
+            "properties": {
+                "additions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse"
+                    }
+                },
+                "flavors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse"
+                    }
+                },
+                "max_additions_selection": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "max_selection": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "min_selection": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse": {
             "type": "object",
             "properties": {
+                "addition_selection": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.AdditionSelectionResponse"
+                },
+                "availability_status": {
+                    "type": "string",
+                    "example": "active"
+                },
                 "bs": {
                     "type": "number",
                     "example": 7000
+                },
+                "can_order": {
+                    "type": "boolean",
+                    "example": true
                 },
                 "category_id": {
                     "type": "string",
@@ -3193,6 +3539,9 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Pizza mediana con jamón, piña y queso mozzarella sobre una base de salsa napolitana."
                 },
+                "details": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemDetailsResponse"
+                },
                 "effective_bs": {
                     "type": "number",
                     "example": 7000
@@ -3201,6 +3550,17 @@ const docTemplate = `{
                     "description": "EffectiveRef/EffectiveBs son el precio final que paga el cliente tras\naplicar, en orden, el descuento propio del negocio y luego la promo de\nlanzamiento (día 1). Ref/Bs siempre muestran el precio de catálogo\noriginal, sin descuentos, para no romper compatibilidad.",
                     "type": "number",
                     "example": 14
+                },
+                "effective_status": {
+                    "type": "string",
+                    "example": "active"
+                },
+                "flavor_selection": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorSelectionResponse"
+                },
+                "has_additions": {
+                    "type": "boolean",
+                    "example": false
                 },
                 "has_flavors": {
                     "type": "boolean",
@@ -3230,12 +3590,6 @@ const docTemplate = `{
                     "type": "number",
                     "example": 14
                 },
-                "rules": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemRule"
-                    }
-                },
                 "schedules": {
                     "type": "array",
                     "items": {
@@ -3249,31 +3603,6 @@ const docTemplate = `{
                 "shop_id": {
                     "type": "string",
                     "example": "d33aaf08-2c43-41c4-b2e7-882b019edb1e"
-                }
-            }
-        },
-        "Encargalo_app-api_go_internal_products_domain_dtos.ItemRule": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string",
-                    "example": "71c62783-820d-46f8-957d-c8d02db97264"
-                },
-                "item_id": {
-                    "type": "string",
-                    "example": "7e441237-a818-42d2-bb54-9b8747198305"
-                },
-                "rule_key": {
-                    "type": "string",
-                    "example": "max_flavors"
-                },
-                "rule_value": {
-                    "type": "integer",
-                    "example": 2
-                },
-                "selector_type": {
-                    "type": "string",
-                    "example": "multi_select"
                 }
             }
         },
@@ -3294,9 +3623,16 @@ const docTemplate = `{
         "Encargalo_app-api_go_internal_products_domain_dtos.RegisterCategory": {
             "type": "object",
             "required": [
+                "macro_category_id",
                 "name"
             ],
             "properties": {
+                "flavors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorInput"
+                    }
+                },
                 "macro_category_id": {
                     "type": "string",
                     "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
@@ -3310,6 +3646,15 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleInput"
                     }
+                },
+                "selector_type": {
+                    "type": "string",
+                    "enum": [
+                        "none",
+                        "single_select",
+                        "multi_select"
+                    ],
+                    "example": "single_select"
                 }
             }
         },
@@ -3344,6 +3689,15 @@ const docTemplate = `{
                 "price"
             ],
             "properties": {
+                "addition_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "[\"a1b2c3d4-e5f6-7890-abcd-ef1234567890\"]"
+                    ]
+                },
                 "category_id": {
                     "type": "string",
                     "example": "b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2"
@@ -3364,6 +3718,14 @@ const docTemplate = `{
                 "image": {
                     "type": "string",
                     "example": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEBLAEsAAD/4QC8RXhpZgAASUkqAAgAAAAGABIBAwABAAAAAQAAABoBBQABAAAAVgAAABsBBQABAAAAXgAAACgBAwABAAAAAgAAABMCAwABAAAA"
+                },
+                "max_selection": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "min_selection": {
+                    "type": "integer",
+                    "example": 1
                 },
                 "name": {
                     "type": "string",
@@ -3548,9 +3910,19 @@ const docTemplate = `{
         "Encargalo_app-api_go_internal_products_domain_dtos.UpdateCategory": {
             "type": "object",
             "required": [
+                "macro_category_id",
                 "name"
             ],
             "properties": {
+                "availability_status": {
+                    "type": "string",
+                    "enum": [
+                        "active",
+                        "hidden",
+                        "out_of_stock"
+                    ],
+                    "example": "active"
+                },
                 "macro_category_id": {
                     "type": "string",
                     "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
@@ -3564,6 +3936,15 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleInput"
                     }
+                },
+                "selector_type": {
+                    "type": "string",
+                    "enum": [
+                        "none",
+                        "single_select",
+                        "multi_select"
+                    ],
+                    "example": "single_select"
                 }
             }
         },
@@ -3573,6 +3954,10 @@ const docTemplate = `{
                 "name"
             ],
             "properties": {
+                "available": {
+                    "type": "boolean",
+                    "example": true
+                },
                 "description": {
                     "type": "string",
                     "example": "Con salsa picante casera"
@@ -3591,6 +3976,24 @@ const docTemplate = `{
                 "price"
             ],
             "properties": {
+                "addition_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "[\"a1b2c3d4-e5f6-7890-abcd-ef1234567890\"]"
+                    ]
+                },
+                "availability_status": {
+                    "type": "string",
+                    "enum": [
+                        "active",
+                        "hidden",
+                        "out_of_stock"
+                    ],
+                    "example": "active"
+                },
                 "description": {
                     "type": "string",
                     "example": "Pizza mediana con jamón, piña y queso mozzarella sobre una base de salsa napolitana."
@@ -3607,6 +4010,14 @@ const docTemplate = `{
                 "image": {
                     "type": "string",
                     "example": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ..."
+                },
+                "max_selection": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "min_selection": {
+                    "type": "integer",
+                    "example": 1
                 },
                 "name": {
                     "type": "string",
@@ -3758,19 +4169,13 @@ const docTemplate = `{
                 }
             }
         },
-        "Encargalo_app-api_go_internal_shops_domain_dtos.MatchedItemRule": {
+        "Encargalo_app-api_go_internal_shops_domain_dtos.MatchedFlavorSelection": {
             "type": "object",
             "properties": {
-                "id": {
-                    "type": "string"
+                "max_selection": {
+                    "type": "integer"
                 },
-                "item_id": {
-                    "type": "string"
-                },
-                "rule_key": {
-                    "type": "string"
-                },
-                "rule_value": {
+                "min_selection": {
                     "type": "integer"
                 },
                 "selector_type": {
@@ -3783,6 +4188,9 @@ const docTemplate = `{
             "properties": {
                 "description": {
                     "type": "string"
+                },
+                "flavor_selection": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedFlavorSelection"
                 },
                 "has_flavors": {
                     "type": "boolean"
@@ -3798,12 +4206,6 @@ const docTemplate = `{
                 },
                 "ref": {
                     "type": "number"
-                },
-                "rules": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedItemRule"
-                    }
                 },
                 "schedules": {
                     "type": "array",

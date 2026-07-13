@@ -4,30 +4,37 @@ import (
 	"errors"
 	"net/http"
 
+	"Encargalo.app-api.go/internal/shared/applog"
 	"github.com/labstack/echo/v4"
 )
 
 var statusMap = map[error]int{
-	ErrNotFound:             http.StatusNotFound,
-	ErrUnexpectedError:      http.StatusInternalServerError,
-	ErrIncorrectAccessData:  http.StatusUnprocessableEntity,
-	ErrPhoneAlreadyExist:    http.StatusConflict,
-	ErrUnautorized:          http.StatusUnauthorized,
-	ErrUploadingImage:       http.StatusUnprocessableEntity,
-	ErrConvertingImage:      http.StatusUnprocessableEntity,
-	ErrOrderAlreadyExists:   http.StatusConflict,
-	ErrItemsNotFound:        http.StatusUnprocessableEntity,
-	ErrBatchNotOpen:         http.StatusUnprocessableEntity,
-	ErrInvalidCode:          http.StatusBadRequest,
-	ErrCodeAlreadyUsed:      http.StatusConflict,
-	ErrInvalidTransition:    http.StatusUnprocessableEntity,
-	ErrOrderAlreadyAssigned: http.StatusConflict,
-	ErrInsufficientBalance:  http.StatusUnprocessableEntity,
-	ErrWithdrawalCooldown:   http.StatusTooManyRequests,
-	ErrInvalidStatus:        http.StatusBadRequest,
-	ErrInvalidFlavors:       http.StatusBadRequest,
-	ErrInvalidDiscountValue: http.StatusBadRequest,
-	ErrPriceChanged:         http.StatusConflict,
+	ErrNotFound:               http.StatusNotFound,
+	ErrUnexpectedError:        http.StatusInternalServerError,
+	ErrIncorrectAccessData:    http.StatusUnprocessableEntity,
+	ErrPhoneAlreadyExist:      http.StatusConflict,
+	ErrUnautorized:            http.StatusUnauthorized,
+	ErrUploadingImage:         http.StatusUnprocessableEntity,
+	ErrConvertingImage:        http.StatusUnprocessableEntity,
+	ErrOrderAlreadyExists:     http.StatusConflict,
+	ErrItemsNotFound:          http.StatusUnprocessableEntity,
+	ErrBatchNotOpen:           http.StatusUnprocessableEntity,
+	ErrInvalidCode:            http.StatusBadRequest,
+	ErrCodeAlreadyUsed:        http.StatusConflict,
+	ErrInvalidTransition:      http.StatusUnprocessableEntity,
+	ErrOrderAlreadyAssigned:   http.StatusConflict,
+	ErrInsufficientBalance:    http.StatusUnprocessableEntity,
+	ErrWithdrawalCooldown:     http.StatusTooManyRequests,
+	ErrInvalidStatus:          http.StatusBadRequest,
+	ErrInvalidFlavors:         http.StatusBadRequest,
+	ErrInvalidAdditions:       http.StatusBadRequest,
+	ErrInvalidSelection:       http.StatusBadRequest,
+	ErrCategoryWithoutFlavors: http.StatusBadRequest,
+	ErrCategoryHasFlavors:     http.StatusBadRequest,
+	ErrInvalidDiscountValue:   http.StatusBadRequest,
+	ErrPriceChanged:           http.StatusConflict,
+	ErrInvalidCategories:      http.StatusBadRequest,
+	ErrProductUnavailable:     http.StatusUnprocessableEntity,
 }
 
 func ToHTTPError(err error) error {
@@ -40,17 +47,30 @@ func ToHTTPError(err error) error {
 }
 
 func HTTPErrorHandler(err error, c echo.Context) {
-	if he, ok := errors.AsType[*echo.HTTPError](err); ok {
-		c.JSON(he.Code, he.Message) //nolint:errcheck
+	if c.Response().Committed {
 		return
+	}
+
+	status, message := resolveHTTPError(err)
+	applog.HTTPFailure(c, status, err)
+
+	_ = c.JSON(status, message)
+}
+
+func resolveHTTPError(err error) (int, any) {
+	if he, ok := errors.AsType[*echo.HTTPError](err); ok {
+		msg := he.Message
+		if msg == nil {
+			msg = http.StatusText(he.Code)
+		}
+		return he.Code, msg
 	}
 
 	for sentinel, code := range statusMap {
 		if errors.Is(err, sentinel) {
-			c.JSON(code, err.Error()) //nolint:errcheck
-			return
+			return code, err.Error()
 		}
 	}
 
-	c.JSON(http.StatusInternalServerError, ErrUnexpectedError.Error()) //nolint:errcheck
+	return http.StatusInternalServerError, ErrUnexpectedError.Error()
 }

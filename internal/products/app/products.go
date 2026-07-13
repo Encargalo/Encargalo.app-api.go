@@ -58,11 +58,7 @@ func (p *productsApp) bcvRate(ctx context.Context) float64 {
 
 func applyRateToCategories(rate float64, data *dtos.CategoriesResponse) {
 	for i := range *data {
-		for j := range (*data)[i].Items {
-			item := &(*data)[i].Items[j]
-			item.Bs = money.RoundBs(item.Ref * rate)
-			item.EffectiveBs = money.RoundBs(item.EffectiveRef * rate)
-		}
+		applyRateToItems(rate, &(*data)[i].Items)
 	}
 }
 
@@ -71,6 +67,7 @@ func applyRateToItems(rate float64, data *dtos.ItemsResponse) {
 		item := &(*data)[i]
 		item.Bs = money.RoundBs(item.Ref * rate)
 		item.EffectiveBs = money.RoundBs(item.EffectiveRef * rate)
+		applyRateToAdditions(rate, &item.Details.Additions)
 	}
 }
 
@@ -98,6 +95,9 @@ func applyLaunchDiscountToCategories(data *dtos.CategoriesResponse, endsAt *time
 }
 
 func applyRateToAdditions(rate float64, data *dtos.AdditionsResponse) {
+	if data == nil {
+		return
+	}
 	for i := range *data {
 		(*data)[i].Bs = money.RoundBs((*data)[i].Ref * rate)
 	}
@@ -171,53 +171,167 @@ func (p *productsApp) RegisterItem(ctx context.Context, item dtos.RegisterItem) 
 
 	publicID := strings.ReplaceAll(resp.PublicID, "\\", "/")
 
-	if err := p.validateFlavorsBelongToCategory(ctx, item.CategoryID, item.FlavorIDs); err != nil {
-		return err
-	}
-
-	itemModel := models.Item{}
-	itemModel.BuildToModel(item, resp.SecureURL, publicID, sha256Hash(imageBytes))
-
-	if err := p.repo.RegisterItem(ctx, &itemModel); err != nil {
-		return err
-	}
-
-	if item.HasFlavors && len(item.FlavorIDs) > 0 {
-		if err := p.repo.RegisterItemFlavors(ctx, itemModel.ID, item.FlavorIDs); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// validateFlavorsBelongToCategory asegura que un producto solo pueda tener
-// asignados sabores que pertenezcan a su propia categoría.
-func (p *productsApp) validateFlavorsBelongToCategory(ctx context.Context, categoryID uuid.UUID, flavorIDs []uuid.UUID) error {
-	if len(flavorIDs) == 0 {
-		return nil
-	}
-
-	flavors, err := p.repo.SearchFlavorsByIDs(ctx, flavorIDs)
+	selectedFlavors, err := p.resolveItemFlavors(ctx, item.CategoryID, item.FlavorIDs)
 	if err != nil {
 		return err
 	}
 
-	found := make(map[uuid.UUID]bool, len(flavors))
-	for _, flavor := range flavors {
-		if flavor.CategoryID != categoryID {
-			return errcustom.ErrInvalidFlavors
-		}
-		found[flavor.ID] = true
+	itemDetails, err := p.buildItemDetails(ctx, item.CategoryID, selectedFlavors, item.MinSelection, item.MaxSelection, models.DefaultItemDetails())
+	if err != nil {
+		return err
 	}
 
-	for _, id := range flavorIDs {
-		if !found[id] {
-			return errcustom.ErrInvalidFlavors
-		}
+	selectedAdditions, err := p.resolveItemAdditions(ctx, item.ShopID, item.AdditionIDs)
+	if err != nil {
+		return err
+	}
+	itemDetails.Additions = selectedAdditions
+	itemDetails.ApplyFixedAdditionsLimits()
+
+	itemModel := models.Item{}
+	itemModel.BuildToModel(item, resp.SecureURL, publicID, sha256Hash(imageBytes))
+	itemModel.Details = itemDetails
+	itemModel.HasFlavors = itemDetails.HasFlavors()
+	itemModel.IsAvailable = models.SyncIsAvailableFlag(
+		models.EffectiveItemAvailability(itemModel.AvailabilityStatus, itemDetails),
+	)
+
+	return p.repo.RegisterItem(ctx, &itemModel)
+}
+
+func (p *productsApp) buildItemDetails(
+	ctx context.Context,
+	categoryID uuid.UUID,
+	flavors models.FlavorEntries,
+	minSelection, maxSelection *int,
+	current models.ItemDetails,
+) (models.ItemDetails, error) {
+	details := current
+	details.Flavors = flavors
+
+	if len(flavors) == 0 {
+		details.MinSelection = 0
+		details.MaxSelection = 0
+		return details, nil
 	}
 
+	category, err := p.repo.SearchCategoryByID(ctx, categoryID)
+	if err != nil {
+		return models.ItemDetails{}, err
+	}
+
+	minSel, maxSel, err := resolveSelectionLimits(
+		category.Details.SelectorType,
+		minSelection,
+		maxSelection,
+		len(flavors),
+	)
+	if err != nil {
+		return models.ItemDetails{}, err
+	}
+	details.MinSelection = minSel
+	details.MaxSelection = maxSel
+
+	if err := validateSelectionLimits(category.Details.SelectorType, details.MinSelection, details.MaxSelection, len(flavors)); err != nil {
+		return models.ItemDetails{}, err
+	}
+
+	return details, nil
+}
+
+func resolveSelectionLimits(
+	selectorType string,
+	minSelection, maxSelection *int,
+	flavorCount int,
+) (int, int, error) {
+	if !models.SupportsFlavorSelection(selectorType) {
+		return 0, 0, errcustom.ErrCategoryWithoutFlavors
+	}
+
+	// Defaults: al menos 1 sabor y como máximo todos los asignados al item.
+	// En single_select eso es "sabores distintos"; en multi_select, el tope
+	// de unidades lo define el front con max_selection si lo envía.
+	minSel := 1
+	maxSel := flavorCount
+	if minSelection != nil {
+		minSel = *minSelection
+	}
+	if maxSelection != nil {
+		maxSel = *maxSelection
+	}
+
+	return minSel, maxSel, nil
+}
+
+func validateSelectionLimits(selectorType string, minSelection, maxSelection, flavorCount int) error {
+	if !models.SupportsFlavorSelection(selectorType) {
+		return errcustom.ErrCategoryWithoutFlavors
+	}
+	if minSelection < 0 || maxSelection < 0 || minSelection > maxSelection {
+		return errcustom.ErrInvalidSelection
+	}
+	// single_select: min/max cuentan sabores distintos → no pueden superar el catálogo del item.
+	if selectorType == models.SelectorSingleSelect && flavorCount > 0 {
+		if maxSelection > flavorCount || minSelection > flavorCount {
+			return errcustom.ErrInvalidSelection
+		}
+	}
+	// multi_select: min/max son tope de unidades (puede repetir el mismo sabor),
+	// así que max puede ser mayor que la cantidad de sabores distintos.
 	return nil
+}
+
+// resolveItemFlavors valida que los IDs pertenezcan al catálogo de la categoría
+// y devuelve las entradas embebidas que se persistirán en items.details.
+func (p *productsApp) resolveItemFlavors(ctx context.Context, categoryID uuid.UUID, flavorIDs []uuid.UUID) (models.FlavorEntries, error) {
+	if len(flavorIDs) == 0 {
+		return nil, nil
+	}
+
+	category, err := p.repo.SearchCategoryByID(ctx, categoryID)
+	if err != nil {
+		return nil, err
+	}
+
+	if !models.SupportsFlavorSelection(category.Details.SelectorType) {
+		return nil, errcustom.ErrCategoryWithoutFlavors
+	}
+
+	selected := category.Details.Flavors.FilterByIDs(flavorIDs)
+	if len(selected) != len(flavorIDs) {
+		return nil, errcustom.ErrInvalidFlavors
+	}
+
+	return selected, nil
+}
+
+func (p *productsApp) resolveItemAdditions(ctx context.Context, shopID uuid.UUID, additionIDs []uuid.UUID) (models.AdditionEntries, error) {
+	if len(additionIDs) == 0 {
+		return models.AdditionEntries{}, nil
+	}
+
+	items, err := p.repo.SearchAdditionItemsByIDs(ctx, shopID, additionIDs)
+	if err != nil {
+		return nil, err
+	}
+	if len(items) != len(additionIDs) {
+		return nil, errcustom.ErrInvalidAdditions
+	}
+
+	byID := make(map[uuid.UUID]models.Item, len(items))
+	for _, item := range items {
+		byID[item.ID] = item
+	}
+
+	selected := make(models.AdditionEntries, 0, len(additionIDs))
+	for _, id := range additionIDs {
+		item, ok := byID[id]
+		if !ok {
+			return nil, errcustom.ErrInvalidAdditions
+		}
+		selected = append(selected, models.AdditionEntryFromItem(item))
+	}
+	return selected, nil
 }
 
 func (p *productsApp) UpdateItem(ctx context.Context, item dtos.UpdateItem, itemID, userID uuid.UUID) error {
@@ -259,39 +373,77 @@ func (p *productsApp) UpdateItem(ctx context.Context, item dtos.UpdateItem, item
 		}
 	}
 
-	// has_flavors: derivar según FlavorIDs si se envían, mantener el actual si no
+	// has_flavors y details: derivar según campos enviados
 	hasFlavors := itemModel.HasFlavors
+	itemDetails := itemModel.Details
+	itemFlavors := itemModel.Details.Flavors
+
 	if item.FlavorIDs != nil {
-		hasFlavors = len(*item.FlavorIDs) > 0
-		if err := p.validateFlavorsBelongToCategory(ctx, itemModel.CategoryID, *item.FlavorIDs); err != nil {
+		selectedFlavors, err := p.resolveItemFlavors(ctx, itemModel.CategoryID, *item.FlavorIDs)
+		if err != nil {
 			return err
 		}
+		itemFlavors = selectedFlavors
+	}
+
+	if item.FlavorIDs != nil || item.MinSelection != nil || item.MaxSelection != nil {
+		builtDetails, err := p.buildItemDetails(
+			ctx,
+			itemModel.CategoryID,
+			itemFlavors,
+			item.MinSelection,
+			item.MaxSelection,
+			itemDetails,
+		)
+		if err != nil {
+			return err
+		}
+		itemDetails = builtDetails
+		hasFlavors = itemDetails.HasFlavors()
+	}
+
+	if item.AdditionIDs != nil {
+		selectedAdditions, err := p.resolveItemAdditions(ctx, itemModel.ShopID, *item.AdditionIDs)
+		if err != nil {
+			return err
+		}
+		itemDetails.Additions = selectedAdditions
+		itemDetails.ApplyFixedAdditionsLimits()
 	}
 
 	var ItemUpdateModel models.UpdateItem
-	ItemUpdateModel.BuildToModel(item, itemModel.ID, hasFlavors, imageURL, imagePublicID, imageHash)
+	status := itemModel.AvailabilityStatus
+	if item.AvailabilityStatus != nil {
+		status = models.NormalizeAvailabilityStatus(*item.AvailabilityStatus)
+	}
+	ItemUpdateModel.BuildToModel(item, itemModel.ID, hasFlavors, itemDetails, status, imageURL, imagePublicID, imageHash)
 
 	if err := p.repo.UpdateItem(ctx, &ItemUpdateModel, itemModel.ShopID); err != nil {
 		return err
 	}
 
-	// Sabores: si se enviaron (incluso vacío), reemplazar
-	if item.FlavorIDs != nil {
-		if err := p.repo.DeleteItemFlavors(ctx, itemID); err != nil {
+	isAddition, err := p.repo.IsAdditionItem(ctx, itemModel.ID)
+	if err != nil {
+		return err
+	}
+	if isAddition {
+		entry := models.AdditionEntryFromItem(models.Item{
+			ID:                 itemModel.ID,
+			Name:               ItemUpdateModel.Name,
+			Price:              ItemUpdateModel.Price,
+			AvailabilityStatus: ItemUpdateModel.AvailabilityStatus,
+			Details:            ItemUpdateModel.Details,
+		})
+		if err := p.repo.SyncAdditionSnapshots(ctx, itemModel.ShopID, entry); err != nil {
 			return err
-		}
-		if len(*item.FlavorIDs) > 0 {
-			if err := p.repo.RegisterItemFlavors(ctx, itemID, *item.FlavorIDs); err != nil {
-				return err
-			}
 		}
 	}
 
 	return nil
 }
 
-func (p *productsApp) SearchProductsByShopID(ctx context.Context, shopID uuid.UUID) (dtos.CategoriesResponse, error) {
-	data, err := p.repo.SearchProductsByShopID(ctx, shopID)
+func (p *productsApp) SearchProductsByShopID(ctx context.Context, shopID uuid.UUID, forCustomer bool) (dtos.CategoriesResponse, error) {
+	data, err := p.repo.SearchProductsByShopID(ctx, shopID, forCustomer)
 	if err != nil {
 		return nil, err
 	}
@@ -304,7 +456,7 @@ func (p *productsApp) SearchProductsByShopID(ctx context.Context, shopID uuid.UU
 // SearchProductsByShopIDForOwner es la versión sin filtrar por horario, usada por el
 // dashboard del dueño (GetMyProducts) para que siempre pueda ver y editar todo su catálogo.
 func (p *productsApp) SearchProductsByShopIDForOwner(ctx context.Context, shopID uuid.UUID) (dtos.CategoriesResponse, error) {
-	data, err := p.repo.SearchProductsByShopID(ctx, shopID)
+	data, err := p.repo.SearchProductsByShopID(ctx, shopID, false)
 	if err != nil {
 		return nil, err
 	}
@@ -312,8 +464,17 @@ func (p *productsApp) SearchProductsByShopIDForOwner(ctx context.Context, shopID
 	return data, nil
 }
 
-func (p *productsApp) SearchAdditionsByShopID(ctx context.Context, categoryID uuid.UUID) (dtos.AdditionsResponse, error) {
-	data, err := p.repo.SearchAdditionsByShopID(ctx, categoryID)
+func (p *productsApp) SearchAdditionsByItemID(ctx context.Context, itemID uuid.UUID) (dtos.AdditionsResponse, error) {
+	data, err := p.repo.SearchAdditionsByItemID(ctx, itemID)
+	if err != nil {
+		return nil, err
+	}
+	applyRateToAdditions(p.bcvRate(ctx), &data)
+	return data, nil
+}
+
+func (p *productsApp) SearchAdditionsCatalogByShopID(ctx context.Context, shopID uuid.UUID) (dtos.AdditionsResponse, error) {
+	data, err := p.repo.SearchAdditionsCatalogByShopID(ctx, shopID)
 	if err != nil {
 		return nil, err
 	}
@@ -358,10 +519,41 @@ func (p *productsApp) GetTrendingByCoords(ctx context.Context, coords dtos.Trend
 }
 
 func (p *productsApp) RegisterCategory(ctx context.Context, category dtos.RegisterCategory) error {
+	details := models.DefaultCategoryDetails()
+	selectorType := models.NormalizeSelectorType(category.SelectorType)
+	if !models.IsValidSelectorType(selectorType) {
+		return errcustom.ErrInvalidSelection
+	}
+	details.SelectorType = selectorType
+
+	if len(category.Flavors) > 0 {
+		if !models.SupportsFlavorSelection(selectorType) {
+			return errcustom.ErrCategoryWithoutFlavors
+		}
+		flavors := make(models.FlavorEntries, 0, len(category.Flavors))
+		seen := make(map[string]struct{}, len(category.Flavors))
+		for _, input := range category.Flavors {
+			if _, ok := seen[input.Name]; ok {
+				return errcustom.ErrInvalidSelection
+			}
+			seen[input.Name] = struct{}{}
+			flavors = append(flavors, models.FlavorEntry{
+				ID:          uuid.New(),
+				Name:        input.Name,
+				Description: input.Description,
+				Available:   models.BoolPtr(true),
+			})
+		}
+		details.Flavors = flavors
+	}
+
+	macroCategoryID := category.MacroCategoryID
 	categoryModel := models.Category{
-		ShopID:          category.ShopID,
-		Name:            category.Name,
-		MacroCategoryID: category.MacroCategoryID,
+		ShopID:             category.ShopID,
+		Name:               category.Name,
+		MacroCategoryID:    &macroCategoryID,
+		AvailabilityStatus: models.AvailabilityActive,
+		Details:            details,
 	}
 
 	if err := p.repo.RegisterCategory(ctx, &categoryModel); err != nil {
@@ -395,8 +587,20 @@ func (p *productsApp) UpdateCategory(ctx context.Context, category dtos.UpdateCa
 		return errcustom.ErrUnautorized
 	}
 
+	details := categoryModel.Details
+	if category.SelectorType != nil {
+		selectorType := models.NormalizeSelectorType(*category.SelectorType)
+		if !models.IsValidSelectorType(selectorType) {
+			return errcustom.ErrInvalidSelection
+		}
+		if selectorType == models.SelectorNone && len(categoryModel.Details.Flavors) > 0 {
+			return errcustom.ErrCategoryHasFlavors
+		}
+		details.SelectorType = selectorType
+	}
+
 	var updateModel models.UpdateCategory
-	updateModel.BuildToModel(category, categoryID)
+	updateModel.BuildToModel(category, categoryID, details, categoryModel.AvailabilityStatus)
 
 	if err := p.repo.UpdateCategory(ctx, &updateModel, categoryModel.ShopID); err != nil {
 		return err
@@ -449,10 +653,16 @@ func (p *productsApp) RegisterFlavor(ctx context.Context, flavor dtos.RegisterFl
 		return errcustom.ErrUnautorized
 	}
 
-	flavorModel := models.Flavor{}
-	flavorModel.BuildToModel(flavor)
+	if !models.SupportsFlavorSelection(categoryModel.Details.SelectorType) {
+		return errcustom.ErrCategoryWithoutFlavors
+	}
 
-	return p.repo.RegisterFlavor(ctx, &flavorModel)
+	if categoryModel.Details.Flavors.HasName(flavor.Name, uuid.Nil) {
+		return errcustom.ErrUnexpectedError
+	}
+
+	catalogFlavor := models.BuildCatalogFlavorFromDTO(flavor)
+	return p.repo.RegisterFlavor(ctx, catalogFlavor)
 }
 
 func (p *productsApp) UpdateFlavor(ctx context.Context, flavor dtos.UpdateFlavor, flavorID, userID uuid.UUID) error {
@@ -474,10 +684,27 @@ func (p *productsApp) UpdateFlavor(ctx context.Context, flavor dtos.UpdateFlavor
 		return errcustom.ErrUnautorized
 	}
 
-	var updateModel models.UpdateFlavor
-	updateModel.BuildToModel(flavor, flavorID)
+	category, err := p.repo.SearchCategoryByID(ctx, flavorModel.CategoryID)
+	if err != nil {
+		return err
+	}
 
-	return p.repo.UpdateFlavor(ctx, &updateModel, flavorModel.ShopID, flavorModel.CategoryID)
+	if category.Details.Flavors.HasName(flavor.Name, flavorID) {
+		return errcustom.ErrUnexpectedError
+	}
+
+	entry := flavorModel.Entry
+	entry.Name = flavor.Name
+	if flavor.Description != nil {
+		entry.Description = *flavor.Description
+	} else {
+		entry.Description = ""
+	}
+	if flavor.Available != nil {
+		entry.Available = flavor.Available
+	}
+
+	return p.repo.UpdateFlavor(ctx, flavorID, entry, flavorModel.ShopID, flavorModel.CategoryID)
 }
 
 func (p *productsApp) DeleteFlavor(ctx context.Context, flavorID, userID uuid.UUID) error {
@@ -499,7 +726,7 @@ func (p *productsApp) DeleteFlavor(ctx context.Context, flavorID, userID uuid.UU
 		return errcustom.ErrUnautorized
 	}
 
-	return p.repo.DeleteFlavor(ctx, flavorModel)
+	return p.repo.DeleteFlavor(ctx, *flavorModel)
 }
 
 func (p *productsApp) SearchMacroCategories(ctx context.Context) (dtos.MacroCategoriesResponse, error) {
@@ -607,4 +834,20 @@ func (p *productsApp) DeleteItemDiscount(ctx context.Context, discountID, userID
 	}
 
 	return p.repo.DeleteItemDiscount(ctx, discountModel)
+}
+
+func (p *productsApp) SearchCategoriesByShopID(ctx context.Context, shopID uuid.UUID) (dtos.CategoriesResponse, error) {
+	categories, err := p.repo.SearchCategoriesByShopID(ctx, shopID)
+	if err != nil {
+		return nil, err
+	}
+	return categories.ToOwnerCatalogDTO(), nil
+}
+
+func (p *productsApp) SearchCategorySummariesByShopID(ctx context.Context, shopID uuid.UUID, filter string) (dtos.CategorySummariesResponse, error) {
+	categories, err := p.repo.SearchCategorySummariesByShopID(ctx, shopID, filter)
+	if err != nil {
+		return nil, err
+	}
+	return categories.ToSummaryDTO(), nil
 }

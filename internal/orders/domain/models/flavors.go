@@ -1,15 +1,17 @@
 package models
 
-import (
-	"github.com/google/uuid"
-	"github.com/uptrace/bun"
-)
+import "github.com/google/uuid"
 
-// Flavor is the read model orders uses to resolve flavor names chosen on an
-// item; it mirrors Addition rather than importing the products domain.
+// Flavor is the read model orders uses to resolve flavor names chosen on an item.
 type Flavor struct {
-	bun.BaseModel `bun:"table:products.flavors"`
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Available *bool     `json:"available,omitempty"`
+}
 
-	ID   uuid.UUID `bun:"id,pk,type:uuid,default:gen_random_uuid()" json:"id"`
-	Name string    `bun:"name,notnull" json:"name"`
+func (f Flavor) IsAvailable() bool {
+	if f.Available == nil {
+		return true
+	}
+	return *f.Available
 }
