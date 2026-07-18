@@ -95,7 +95,7 @@ func (s *shops) GetMyShop(c echo.Context) error {
 
 // SearchShops godoc
 // @Summary      Buscar tiendas por texto y proximidad
-// @Description  Retorna tiendas dentro de 3 km que coincidan con la búsqueda en nombre de tienda o nombre/descripción de producto.
+// @Description  Retorna tiendas dentro de 3 km que coincidan con la búsqueda en nombre de tienda, categoría o macro. matched_products incluye sabores y adiciones disponibles del item (details).
 // @Tags         Shops
 // @Produce      json
 // @Security     SessionCookie

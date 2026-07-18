@@ -24,6 +24,7 @@ var statusMap = map[error]int{
 	ErrInvalidTransition:      http.StatusUnprocessableEntity,
 	ErrOrderAlreadyAssigned:   http.StatusConflict,
 	ErrInsufficientBalance:    http.StatusUnprocessableEntity,
+	ErrInvalidBalanceAmount:   http.StatusBadRequest,
 	ErrWithdrawalCooldown:     http.StatusTooManyRequests,
 	ErrInvalidStatus:          http.StatusBadRequest,
 	ErrInvalidFlavors:         http.StatusBadRequest,
@@ -35,6 +36,10 @@ var statusMap = map[error]int{
 	ErrPriceChanged:           http.StatusConflict,
 	ErrInvalidCategories:      http.StatusBadRequest,
 	ErrProductUnavailable:     http.StatusUnprocessableEntity,
+	ErrQuoteNotFound:          http.StatusNotFound,
+	ErrQuoteExpired:           http.StatusGone,
+	ErrQuoteConsumed:          http.StatusConflict,
+	ErrQuoteForbidden:         http.StatusForbidden,
 }
 
 func ToHTTPError(err error) error {
@@ -44,6 +49,12 @@ func ToHTTPError(err error) error {
 		}
 	}
 	return echo.NewHTTPError(http.StatusInternalServerError, ErrUnexpectedError.Error())
+}
+
+// HTTPStatus resuelve el código HTTP de un error (para access log antes del ErrorHandler).
+func HTTPStatus(err error) int {
+	status, _ := resolveHTTPError(err)
+	return status
 }
 
 func HTTPErrorHandler(err error, c echo.Context) {

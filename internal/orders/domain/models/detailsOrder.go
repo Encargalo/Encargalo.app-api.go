@@ -14,8 +14,23 @@ type Details struct {
 	PaymentDetails  *PaymentDetails `json:"payment,omitempty"`
 }
 
+// PaymentDetails congela el estado de la revisión de pago manual para que el
+// cliente sepa, sin depender del WS de staff, cuánto se esperaba, cuánto se
+// detectó en el comprobante, la diferencia (si pagó de más o de menos), el
+// motivo si fue rechazado (comprobante inválido o pago incompleto) y cuánto
+// se le acreditó a su balance en esos casos. `Status` refleja el estado de
+// la revisión (PaymentReviewStatus) para que el front distinga el motivo
+// exacto sin llamadas adicionales.
 type PaymentDetails struct {
-	PaymentProofURL string `json:"payment_proof_url"`
+	PaymentProofURL    string              `json:"payment_proof_url,omitempty"`
+	Status             PaymentReviewStatus `json:"status,omitempty"`
+	ExpectedAmountBs   float64             `json:"expected_amount_bs,omitempty"`
+	ObservedAmountBs   *float64            `json:"observed_amount_bs,omitempty"`
+	DifferenceBs       *float64            `json:"difference_bs,omitempty"`
+	RejectionReason    *string             `json:"rejection_reason,omitempty"`
+	CreditedUSD        *float64            `json:"credited_usd,omitempty"`
+	BalanceAmountUSD   float64             `json:"balance_amount_usd,omitempty"`
+	PagoMovilAmountUSD float64             `json:"pago_movil_amount_usd,omitempty"`
 }
 
 // BuildDetails congela una foto del pedido para mostrarla luego (historial,
@@ -27,7 +42,9 @@ func (d *Details) BuildDetails(order *Order, shop *ShopOrder, customer *models.A
 
 	d.CustomerDetails.ID = customer.ID
 	d.CustomerDetails.Name = customer.Name
-	d.CustomerDetails.Phone = customer.Phone
+	if customer.Phone != nil {
+		d.CustomerDetails.Phone = *customer.Phone
+	}
 	if customer.SurName != nil {
 		d.CustomerDetails.LastName = *customer.SurName
 	}

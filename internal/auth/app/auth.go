@@ -9,6 +9,7 @@ import (
 	"Encargalo.app-api.go/internal/auth/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/bycript"
 	"Encargalo.app-api.go/internal/pkg/logs"
+	"Encargalo.app-api.go/internal/shared/adapters/googleauth"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/users/domain/dto"
 	portsCusto "Encargalo.app-api.go/internal/users/domain/ports"
@@ -16,14 +17,15 @@ import (
 )
 
 type appAuth struct {
-	svc       portsCusto.UsersApp
-	bycript   bycript.Password
-	repo      ports.AuthRepo
-	slackLogs logs.Logs
+	svc            portsCusto.UsersApp
+	bycript        bycript.Password
+	repo           ports.AuthRepo
+	slackLogs      logs.Logs
+	googleVerifier googleauth.Verifier
 }
 
-func NewAuthApp(svc portsCusto.UsersApp, bycript bycript.Password, repo ports.AuthRepo, slackLogs logs.Logs) ports.AuthApp {
-	return &appAuth{svc, bycript, repo, slackLogs}
+func NewAuthApp(svc portsCusto.UsersApp, bycript bycript.Password, repo ports.AuthRepo, slackLogs logs.Logs, googleVerifier googleauth.Verifier) ports.AuthApp {
+	return &appAuth{svc, bycript, repo, slackLogs, googleVerifier}
 }
 
 func (a *appAuth) SignInCustomer(ctx context.Context, phone, password string) (uuid.UUID, error) {
@@ -93,6 +95,62 @@ func (a *appAuth) SignInRider(ctx context.Context, phone, password string) (uuid
 
 	var session models.ActiveSession
 	session.BuildActiveSessionModel(rider.ID, string(models.Rider), []models.Role{models.Rider}, "", "", nil)
+
+	if err := a.repo.SaveSession(ctx, &session); err != nil {
+		return uuid.Nil, err
+	}
+
+	return session.ID, nil
+}
+
+func (a *appAuth) SignInStaff(ctx context.Context, phone, password string) (uuid.UUID, error) {
+	staff, err := a.svc.SearchAccountByPhone(ctx, phone, []string{string(models.Staff)})
+	if err != nil {
+		if errors.Is(err, errcustom.ErrNotFound) {
+			return uuid.Nil, errcustom.ErrIncorrectAccessData
+		}
+		return uuid.Nil, errcustom.ErrUnexpectedError
+	}
+
+	if !a.bycript.CheckPasswordHash([]byte(staff.Password), password) {
+		return uuid.Nil, errcustom.ErrIncorrectAccessData
+	}
+
+	var session models.ActiveSession
+	session.BuildActiveSessionModel(staff.ID, string(models.Staff), []models.Role{models.Staff}, "", "", nil)
+
+	if err := a.repo.SaveSession(ctx, &session); err != nil {
+		return uuid.Nil, err
+	}
+
+	return session.ID, nil
+}
+
+func (a *appAuth) SignInGoogle(ctx context.Context, idToken string) (uuid.UUID, error) {
+
+	userInfo, err := a.googleVerifier.Verify(ctx, idToken)
+	if err != nil {
+		return uuid.Nil, errcustom.ErrUnautorized
+	}
+
+	custo, err := a.svc.SearchCustomerBy(ctx, dto.SearchCustomerBy{Email: userInfo.Email})
+	if err != nil {
+		if !errors.Is(err, errcustom.ErrNotFound) {
+			return uuid.Nil, errcustom.ErrUnexpectedError
+		}
+
+		custo, err = a.svc.RegisterCustomerFromGoogle(ctx, dto.RegisterCustomerFromGoogle{
+			Name:    userInfo.Name,
+			SurName: userInfo.SurName,
+			Email:   userInfo.Email,
+		})
+		if err != nil {
+			return uuid.Nil, err
+		}
+	}
+
+	var session models.ActiveSession
+	session.BuildActiveSessionModel(custo.ID, string(models.Customer), []models.Role{models.Customer}, "", "", nil)
 
 	if err := a.repo.SaveSession(ctx, &session); err != nil {
 		return uuid.Nil, err

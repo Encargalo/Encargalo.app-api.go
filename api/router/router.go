@@ -53,6 +53,7 @@ func New(
 func (r *Router) Init() {
 
 	r.server.Use(sharedmw.RequestID())
+	r.server.Use(sharedmw.RequestLog())
 	r.server.Use(middleware.Recover())
 
 	r.server.Use(middleware.CORSWithConfig(middleware.CORSConfig{

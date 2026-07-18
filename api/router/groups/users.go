@@ -17,6 +17,7 @@ type usersGroup struct {
 	middleAuth     auth.AuthMiddleware
 	handlerAddress handler.UsersAddressHandler
 	handlerUsers   handler.UsersHandler
+	handlerFinance handler.CustomerFinanceHandler
 }
 
 func NewUsersGroup(
@@ -24,12 +25,14 @@ func NewUsersGroup(
 	middleAuth auth.AuthMiddleware,
 	handlerAddress handler.UsersAddressHandler,
 	handlerUsers handler.UsersHandler,
+	handlerFinance handler.CustomerFinanceHandler,
 ) UsersGroup {
 	return &usersGroup{
 		middle,
 		middleAuth,
 		handlerAddress,
 		handlerUsers,
+		handlerFinance,
 	}
 }
 
@@ -42,6 +45,7 @@ func (o *usersGroup) Resource(g *echo.Echo) {
 	group.GET("", o.handlerUsers.SearchCustomer, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer, models.OrderManager, models.Owner))
 	group.PUT("", o.handlerUsers.UpdateCustomer, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer, models.OrderManager, models.Owner))
 	group.PUT("/change-password", o.handlerUsers.UpdatePassword, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer, models.OrderManager, models.Owner))
+	group.GET("/balance", o.handlerFinance.GetBalance, o.middleAuth.Auth, o.middleAuth.Require(models.Customer))
 	group.POST("/address", o.handlerAddress.RegisterAddress, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer, models.OrderManager, models.Owner))
 	group.GET("/address", o.handlerAddress.SearchAllAdrress, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer, models.OrderManager, models.Owner))
 	group.DELETE("/address", o.handlerAddress.DeleteAddress, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer, models.OrderManager, models.Owner))

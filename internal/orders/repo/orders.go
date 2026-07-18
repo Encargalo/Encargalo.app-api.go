@@ -208,12 +208,16 @@ func (o *orders) SearchActiveOrdersByCriteria(ctx context.Context, criteria uuid
 		q = o.db.NewSelect().
 			Model(&orders).
 			Where("shop_id = ?", criteria).
-			Where("batch_id = (?)", lastBatch)
+			Where("batch_id = (?)", lastBatch).
+			Where("status NOT IN (?)", bun.In([]string{
+				"Payment Review",
+			}))
 	} else {
 		q = o.db.NewSelect().
 			Model(&orders).
 			Where("customer_id = ?", criteria).
 			Where("status IN (?)", bun.In([]string{
+				"Payment Review",
 				"Pending",
 				"In Preparation",
 				"Ready",
@@ -344,6 +348,93 @@ func (o *orders) SearchOrderHistoryByCustomer(ctx context.Context, customerID uu
 		return nil, errcustom.ErrUnexpectedError
 	}
 	return result, nil
+}
+
+func (o *orders) UpdateOrderDetails(ctx context.Context, orderID uuid.UUID, details []byte) error {
+	_, err := o.db.NewUpdate().Model(&models.Order{}).
+		Set("details = ?", details).
+		Where("id = ?", orderID).
+		Exec(ctx)
+	if err != nil {
+		slog.Error("UpdateOrderDetails failed", "orderID", orderID, "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+	return nil
+}
+
+func (o *orders) MarkPendingAt(ctx context.Context, orderID uuid.UUID, at time.Time) error {
+	_, err := o.db.NewUpdate().Model((*models.Order)(nil)).
+		Set("pending_at = ?", at).
+		Set("pending_alert_minute = ?", 0).
+		Where("id = ?", orderID).
+		Exec(ctx)
+	if err != nil {
+		slog.Error("MarkPendingAt failed", "orderID", orderID, "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+	return nil
+}
+
+func (o *orders) ListStalePending(ctx context.Context, olderThan time.Time) ([]models.Order, error) {
+	var orders []models.Order
+	err := o.db.NewSelect().
+		Model(&orders).
+		Where("status = ?", string(models.StatusPending)).
+		Where("pending_at IS NOT NULL").
+		Where("pending_at <= ?", olderThan).
+		OrderExpr("pending_at ASC").
+		Scan(ctx)
+	if err != nil {
+		slog.Error("ListStalePending failed", "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+	return orders, nil
+}
+
+func (o *orders) RejectIfPending(ctx context.Context, orderID uuid.UUID) (bool, error) {
+	res, err := o.db.NewUpdate().Model((*models.Order)(nil)).
+		Set("status = ?", string(models.StatusRejected)).
+		Where("id = ?", orderID).
+		Where("status = ?", string(models.StatusPending)).
+		Exec(ctx)
+	if err != nil {
+		slog.Error("RejectIfPending failed", "orderID", orderID, "error", err)
+		return false, errcustom.ErrUnexpectedError
+	}
+	n, _ := res.RowsAffected()
+	return n > 0, nil
+}
+
+func (o *orders) ListPendingUnassignedForAlert(ctx context.Context, olderThan time.Time) ([]models.Order, error) {
+	var orders []models.Order
+	err := o.db.NewSelect().
+		Model(&orders).
+		Where("status = ?", string(models.StatusPending)).
+		Where("pending_at IS NOT NULL").
+		Where("pending_at <= ?", olderThan).
+		Where("pending_alert_minute < ?", models.PendingUnassignedMaxAlertMinute).
+		OrderExpr("pending_at ASC").
+		Scan(ctx)
+	if err != nil {
+		slog.Error("ListPendingUnassignedForAlert failed", "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+	return orders, nil
+}
+
+func (o *orders) MarkPendingAlertMinute(ctx context.Context, orderID uuid.UUID, minute int) (bool, error) {
+	res, err := o.db.NewUpdate().Model((*models.Order)(nil)).
+		Set("pending_alert_minute = ?", minute).
+		Where("id = ?", orderID).
+		Where("status = ?", string(models.StatusPending)).
+		Where("pending_alert_minute < ?", minute).
+		Exec(ctx)
+	if err != nil {
+		slog.Error("MarkPendingAlertMinute failed", "orderID", orderID, "error", err)
+		return false, errcustom.ErrUnexpectedError
+	}
+	n, _ := res.RowsAffected()
+	return n > 0, nil
 }
 
 func getLastOrderNumber(ctx context.Context, tx bun.Tx, batchID uuid.UUID) (int, error) {

@@ -10,6 +10,8 @@ import (
 
 	models "Encargalo.app-api.go/internal/orders/domain/models"
 
+	time "time"
+
 	uuid "github.com/google/uuid"
 )
 
@@ -66,6 +68,66 @@ func (_m *OrdersRepo) CreateOrder(ctx context.Context, order *models.Order) (*mo
 	return r0, r1
 }
 
+// ListPendingUnassignedForAlert provides a mock function with given fields: ctx, olderThan
+func (_m *OrdersRepo) ListPendingUnassignedForAlert(ctx context.Context, olderThan time.Time) ([]models.Order, error) {
+	ret := _m.Called(ctx, olderThan)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListPendingUnassignedForAlert")
+	}
+
+	var r0 []models.Order
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time) ([]models.Order, error)); ok {
+		return rf(ctx, olderThan)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time) []models.Order); ok {
+		r0 = rf(ctx, olderThan)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.Order)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, time.Time) error); ok {
+		r1 = rf(ctx, olderThan)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ListStalePending provides a mock function with given fields: ctx, olderThan
+func (_m *OrdersRepo) ListStalePending(ctx context.Context, olderThan time.Time) ([]models.Order, error) {
+	ret := _m.Called(ctx, olderThan)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListStalePending")
+	}
+
+	var r0 []models.Order
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time) ([]models.Order, error)); ok {
+		return rf(ctx, olderThan)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time) []models.Order); ok {
+		r0 = rf(ctx, olderThan)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.Order)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, time.Time) error); ok {
+		r1 = rf(ctx, olderThan)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // MarkDeliveryCodeUsed provides a mock function with given fields: ctx, orderID
 func (_m *OrdersRepo) MarkDeliveryCodeUsed(ctx context.Context, orderID uuid.UUID) error {
 	ret := _m.Called(ctx, orderID)
@@ -77,6 +139,52 @@ func (_m *OrdersRepo) MarkDeliveryCodeUsed(ctx context.Context, orderID uuid.UUI
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
 		r0 = rf(ctx, orderID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MarkPendingAlertMinute provides a mock function with given fields: ctx, orderID, minute
+func (_m *OrdersRepo) MarkPendingAlertMinute(ctx context.Context, orderID uuid.UUID, minute int) (bool, error) {
+	ret := _m.Called(ctx, orderID, minute)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MarkPendingAlertMinute")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, int) (bool, error)); ok {
+		return rf(ctx, orderID, minute)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, int) bool); ok {
+		r0 = rf(ctx, orderID, minute)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, int) error); ok {
+		r1 = rf(ctx, orderID, minute)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MarkPendingAt provides a mock function with given fields: ctx, orderID, at
+func (_m *OrdersRepo) MarkPendingAt(ctx context.Context, orderID uuid.UUID, at time.Time) error {
+	ret := _m.Called(ctx, orderID, at)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MarkPendingAt")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, time.Time) error); ok {
+		r0 = rf(ctx, orderID, at)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -100,6 +208,34 @@ func (_m *OrdersRepo) MarkPickupCodeUsed(ctx context.Context, orderID uuid.UUID)
 	}
 
 	return r0
+}
+
+// RejectIfPending provides a mock function with given fields: ctx, orderID
+func (_m *OrdersRepo) RejectIfPending(ctx context.Context, orderID uuid.UUID) (bool, error) {
+	ret := _m.Called(ctx, orderID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RejectIfPending")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (bool, error)); ok {
+		return rf(ctx, orderID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) bool); ok {
+		r0 = rf(ctx, orderID)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, orderID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // SaveDeliveryCode provides a mock function with given fields: ctx, orderID, code
@@ -406,6 +542,24 @@ func (_m *OrdersRepo) SearchShopByID(ctx context.Context, shopID uuid.UUID) (*mo
 	}
 
 	return r0, r1
+}
+
+// UpdateOrderDetails provides a mock function with given fields: ctx, orderID, details
+func (_m *OrdersRepo) UpdateOrderDetails(ctx context.Context, orderID uuid.UUID, details []byte) error {
+	ret := _m.Called(ctx, orderID, details)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateOrderDetails")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, []byte) error); ok {
+		r0 = rf(ctx, orderID, details)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // UpdateOrderStatus provides a mock function with given fields: ctx, orderID, status

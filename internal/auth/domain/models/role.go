@@ -7,6 +7,7 @@ const (
 	OrderManager Role = "Order Manager"
 	Owner        Role = "Owner"
 	Rider        Role = "Rider"
+	Staff        Role = "Staff"
 )
 
 type ContextKey string

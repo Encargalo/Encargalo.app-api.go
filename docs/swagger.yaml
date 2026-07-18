@@ -1,4 +1,12 @@
 definitions:
+  Encargalo_app-api_go_internal_auth_handler_request.SignInGoogleRequest:
+    properties:
+      id_token:
+        example: eyJhbGciOiJSUzI1NiIsIn...
+        type: string
+    required:
+    - id_token
+    type: object
   Encargalo_app-api_go_internal_auth_handler_request.SignInRequest:
     properties:
       password:
@@ -64,13 +72,16 @@ definitions:
     properties:
       address:
         $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.Address'
+      balance_amount_usd:
+        description: |-
+          BalanceAmountUSD es opcional. 0 = no usar balance. Si > 0 debe ser >= 1
+          y <= min(balance, total). Si cubre el total no se requiere comprobante.
+        example: 4
+        type: number
       expected_total_price:
         description: |-
-          ExpectedTotalPrice es el total que el front mostró al cliente justo
-          antes de confirmar (catálogo/carrito). El backend siempre recalcula el
-          cobro real desde la base de datos; este campo solo sirve para detectar
-          si el precio quedó desactualizado (ver ErrPriceChanged, 409) y nunca se
-          usa para fijar el monto cobrado.
+          ExpectedTotalPrice (legacy sin quote): total que el front mostró.
+          Con quote_id se ignora. Sin quote_id sigue siendo obligatorio.
         example: 18.5
         type: number
       id:
@@ -88,16 +99,18 @@ definitions:
       payment_proof_image:
         example: data:image/jpeg;base64,/9j/4AAQ...
         type: string
+      quote_id:
+        description: |-
+          QuoteID congela el total en el servidor (POST /orders/quote). Si viene,
+          shop/address/items/expected_total_price se toman del quote (pueden omitirse).
+        example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        type: string
       shop_id:
         example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
         type: string
     required:
-    - address
-    - expected_total_price
     - id
-    - items
     - method_payment
-    - shop_id
     type: object
   Encargalo_app-api_go_internal_orders_domain_dtos.CreateOrderResponse:
     properties:
@@ -109,6 +122,21 @@ definitions:
         type: number
       total_price:
         type: number
+    type: object
+  Encargalo_app-api_go_internal_orders_domain_dtos.CreateQuote:
+    properties:
+      address:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.Address'
+      items:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.CreateItemsOrder'
+        type: array
+      shop_id:
+        type: string
+    required:
+    - address
+    - items
+    - shop_id
     type: object
   Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse:
     properties:
@@ -138,6 +166,46 @@ definitions:
       status:
         type: string
       total_price:
+        type: number
+    type: object
+  Encargalo_app-api_go_internal_orders_domain_dtos.QuoteItemView:
+    properties:
+      amount:
+        type: integer
+      item_id:
+        type: string
+      name:
+        type: string
+      total_price:
+        type: integer
+      unit_price:
+        type: integer
+    type: object
+  Encargalo_app-api_go_internal_orders_domain_dtos.QuoteResponse:
+    properties:
+      bcv_rate:
+        type: number
+      delivery_fee_bs:
+        type: number
+      delivery_fee_usd:
+        type: number
+      expires_at:
+        type: string
+      is_launch_promo:
+        type: boolean
+      items:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.QuoteItemView'
+        type: array
+      promo_subsidy_amount:
+        type: number
+      proof_grace_until:
+        type: string
+      quote_id:
+        type: string
+      total_bs:
+        type: number
+      total_usd:
         type: number
     type: object
   Encargalo_app-api_go_internal_payment_methods_domain_models.PaymentMethod:
@@ -746,6 +814,35 @@ definitions:
       previous:
         $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.CustomerMetrics'
     type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.MatchedAddition:
+    properties:
+      available:
+        type: boolean
+      id:
+        type: string
+      name:
+        type: string
+      ref:
+        type: number
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.MatchedAdditionSelection:
+    properties:
+      max_selection:
+        type: integer
+      min_selection:
+        type: integer
+      selector_type:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.MatchedFlavor:
+    properties:
+      available:
+        type: boolean
+      id:
+        type: string
+      name:
+        type: string
+    type: object
   Encargalo_app-api_go_internal_shops_domain_dtos.MatchedFlavorSelection:
     properties:
       max_selection:
@@ -755,12 +852,35 @@ definitions:
       selector_type:
         type: string
     type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.MatchedItemDetails:
+    properties:
+      additions:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedAddition'
+        type: array
+      flavors:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedFlavor'
+        type: array
+      max_additions_selection:
+        type: integer
+      max_selection:
+        type: integer
+      min_selection:
+        type: integer
+    type: object
   Encargalo_app-api_go_internal_shops_domain_dtos.MatchedProductItem:
     properties:
+      addition_selection:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedAdditionSelection'
       description:
         type: string
+      details:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedItemDetails'
       flavor_selection:
         $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedFlavorSelection'
+      has_additions:
+        type: boolean
       has_flavors:
         type: boolean
       id:
@@ -1027,6 +1147,15 @@ definitions:
     - long
     - type
     type: object
+  Encargalo_app-api_go_internal_users_domain_dto.CustomerBalanceResponse:
+    properties:
+      balance:
+        type: number
+      transactions:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.CustomerTransactionItem'
+        type: array
+    type: object
   Encargalo_app-api_go_internal_users_domain_dto.CustomerResponse:
     properties:
       birthday_date:
@@ -1054,6 +1183,19 @@ definitions:
         type: string
       sur_name:
         example: Ramírez
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_users_domain_dto.CustomerTransactionItem:
+    properties:
+      amount:
+        type: number
+      created_at:
+        type: string
+      id:
+        type: string
+      movement_type:
+        type: string
+      order_id:
         type: string
     type: object
   Encargalo_app-api_go_internal_users_domain_dto.RegisterCustomer:
@@ -1113,10 +1255,6 @@ definitions:
         example: Ramírez
         minLength: 3
         type: string
-    required:
-    - name
-    - phone
-    - sur_name
     type: object
   Encargalo_app-api_go_internal_users_domain_dto.UpdatePassword:
     properties:
@@ -1200,6 +1338,50 @@ paths:
       summary: Iniciar sesión como empleado
       tags:
       - Auth
+  /auth/sign-in/google:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Verifica un id_token de Google emitido por la app móvil. Si el email ya
+        pertenece a un customer, inicia sesión; si no existe, crea la cuenta
+        automáticamente (sin teléfono, que se completa luego desde el perfil).
+        Si las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.
+      parameters:
+      - description: id_token de Google
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_auth_handler_request.SignInGoogleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: session created
+          schema:
+            type: string
+        "400":
+          description: Solicitud inválida (validación o JSON incorrecto)
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: id_token inválido o expirado
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error inesperado del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Iniciar sesión o registrarse con Google
+      tags:
+      - Auth
   /auth/sign-in/riders:
     post:
       consumes:
@@ -1240,6 +1422,48 @@ paths:
               type: string
             type: object
       summary: Iniciar sesión como rider
+      tags:
+      - Auth
+  /auth/sign-in/staff:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Autentica a un miembro del staff (CRM) usando teléfono y contraseña.
+        Si las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.
+      parameters:
+      - description: Datos de inicio de sesión
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_auth_handler_request.SignInRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: session created
+          schema:
+            type: string
+        "400":
+          description: Solicitud inválida (validación o JSON incorrecto)
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Credenciales incorrectas
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error inesperado del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Iniciar sesión como staff
       tags:
       - Auth
   /auth/sign-in/users:
@@ -2221,13 +2445,11 @@ paths:
     post:
       consumes:
       - application/json
-      description: 'Crea una nueva orden con los productos e informacion de entrega
-        proporcionados. El customer_id se obtiene automaticamente del token de sesion.
-        Se debe enviar `payment_proof_image` en base64. `expected_total_price` debe
-        ser el total que el front mostro al cliente antes de confirmar: si no coincide
-        con el total recalculado en el servidor (por un descuento vencido, promo de
-        lanzamiento, etc.), la orden se rechaza con 409 y el cliente debe refrescar
-        su carrito.'
+      description: 'Preferido: enviar `quote_id` de POST /orders/quote (total congelado;
+        shop/items/address salen del quote). Legacy: sin quote_id, enviar carrito
+        + `expected_total_price` (409 si el precio cambió). Opcionalmente `balance_amount_usd`.
+        Si queda resto Pago Móvil, requiere `payment_proof_image` y nace en Payment
+        Review.'
       parameters:
       - description: Datos de la orden
         in: body
@@ -2251,8 +2473,11 @@ paths:
           schema:
             type: string
         "409":
-          description: La orden ya existe, o el precio cambio desde que se mostro
-            al cliente
+          description: La orden ya existe, precio cambió, o quote ya usado
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+        "410":
+          description: Quote expirado
           schema:
             $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
         "422":
@@ -2415,6 +2640,49 @@ paths:
       summary: WebSocket de gestión de órdenes
       tags:
       - Orders WebSocket
+  /orders/quote:
+    post:
+      consumes:
+      - application/json
+      description: Calcula y congela el total (descuentos, promo, delivery, BCV) en
+        Redis con TTL. El cliente debe pagar contra este quote y luego crear la orden
+        con `quote_id`. `expires_at` = 30m; `proof_grace_until` = +15m si al crear
+        ya envía comprobante.
+      parameters:
+      - description: Carrito a cotizar
+        in: body
+        name: quote
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.CreateQuote'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Cotización creada
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.QuoteResponse'
+        "400":
+          description: Body invalido
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "422":
+          description: Catalogo/lote no disponible
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+        "500":
+          description: Error interno
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+      security:
+      - SessionCookie: []
+      summary: Crear cotización de orden (precio congelado)
+      tags:
+      - Orders
   /orders/rider:
     get:
       consumes:
@@ -2440,6 +2708,22 @@ paths:
       summary: WebSocket de gestión de órdenes para riders
       tags:
       - Riders WebSocket
+  /orders/staff/reviews:
+    get:
+      responses:
+        "401":
+          description: Sesión no encontrada o inválida
+          schema:
+            type: string
+        "403":
+          description: Acceso denegado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: WebSocket de revisión de comprobantes (Staff CRM)
+      tags:
+      - Orders WebSocket
   /payment-methods:
     get:
       description: Retorna la lista de métodos de pago activos. Para PagoMovil se
@@ -2902,7 +3186,8 @@ paths:
   /shops/search:
     get:
       description: Retorna tiendas dentro de 3 km que coincidan con la búsqueda en
-        nombre de tienda o nombre/descripción de producto.
+        nombre de tienda, categoría o macro. matched_products incluye sabores y adiciones
+        disponibles del item (details).
       parameters:
       - description: 'Texto a buscar, ej: pizza'
         in: query
@@ -3011,8 +3296,9 @@ paths:
     put:
       consumes:
       - application/json
-      description: Actualiza los datos del usuario usando la información enviada en
-        el cuerpo de la solicitud.
+      description: 'Actualización parcial: solo se modifican los campos presentes
+        en el cuerpo de la solicitud (name, sur_name, phone, email son todos opcionales),
+        el resto de la cuenta queda intacto.'
       parameters:
       - description: Datos del usuario a actualizar
         in: body
@@ -3151,6 +3437,29 @@ paths:
       summary: Registrar una nueva dirección
       tags:
       - Users Address
+  /users/balance:
+    get:
+      description: Retorna el balance en USD del cliente y los últimos 10 movimientos.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.CustomerBalanceResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Balance del cliente
+      tags:
+      - Users Finance
   /users/change-password:
     put:
       consumes:

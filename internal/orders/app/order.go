@@ -10,11 +10,13 @@ import (
 	"math"
 	"math/big"
 	"strings"
+	"time"
 
 	bcvPorts "Encargalo.app-api.go/internal/bcv/domain/ports"
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
+	"Encargalo.app-api.go/internal/pkg/money"
 	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
 	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/deliveryfee"
@@ -91,29 +93,37 @@ var paymentAutoTransitions = map[models.PaymentMethod]map[models.OrderStatus]mod
 type statusHandler func(ctx context.Context, order models.Order) error
 
 type orderApp struct {
-	repo           ports.OrdersRepo
-	shops          shops.ShopsRepo
-	custo          portsCustomers.UsersRepo
-	stream         ports.RedisStream
-	uploadImage    uploadimage.UploadImage
-	riderMgr       ports.OrderRiderBroadcaster
-	finance        ports.RideEarningRecorder
-	shopCommission ports.ShopCommissionRecorder
-	bcv            bcvPorts.BcvApp
-	statusHandlers map[models.OrderStatus]statusHandler
+	repo            ports.OrdersRepo
+	shops           shops.ShopsRepo
+	custo           portsCustomers.UsersRepo
+	stream          ports.RedisStream
+	uploadImage     uploadimage.UploadImage
+	riderMgr        ports.OrderRiderBroadcaster
+	finance         ports.RideEarningRecorder
+	shopCommission  ports.ShopCommissionRecorder
+	bcv             bcvPorts.BcvApp
+	reviewsRepo     ports.PaymentReviewsRepo
+	staffHub        ports.StaffReviewHub
+	customerBalance ports.CustomerBalanceCreditor
+	quotes          ports.OrderQuotesRepo
+	statusHandlers  map[models.OrderStatus]statusHandler
 }
 
-func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.UsersRepo, stream ports.RedisStream, uploadImage uploadimage.UploadImage, riderMgr ports.OrderRiderBroadcaster, finance ports.RideEarningRecorder, shopCommission ports.ShopCommissionRecorder, bcv bcvPorts.BcvApp) ports.OrdersApp {
+func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.UsersRepo, stream ports.RedisStream, uploadImage uploadimage.UploadImage, riderMgr ports.OrderRiderBroadcaster, finance ports.RideEarningRecorder, shopCommission ports.ShopCommissionRecorder, bcv bcvPorts.BcvApp, reviewsRepo ports.PaymentReviewsRepo, staffHub ports.StaffReviewHub, customerBalance ports.CustomerBalanceCreditor, quotes ports.OrderQuotesRepo) ports.OrdersApp {
 	o := &orderApp{
-		repo:           repo,
-		shops:          shops,
-		custo:          custo,
-		stream:         stream,
-		uploadImage:    uploadImage,
-		riderMgr:       riderMgr,
-		finance:        finance,
-		shopCommission: shopCommission,
-		bcv:            bcv,
+		repo:            repo,
+		shops:           shops,
+		custo:           custo,
+		stream:          stream,
+		uploadImage:     uploadImage,
+		riderMgr:        riderMgr,
+		finance:         finance,
+		shopCommission:  shopCommission,
+		bcv:             bcv,
+		reviewsRepo:     reviewsRepo,
+		staffHub:        staffHub,
+		customerBalance: customerBalance,
+		quotes:          quotes,
 	}
 	o.statusHandlers = map[models.OrderStatus]statusHandler{
 		models.StatusInPreparation: func(ctx context.Context, order models.Order) error {
@@ -136,6 +146,210 @@ func (o *orderApp) bcvRate(ctx context.Context) float64 {
 	return rate.Rate
 }
 
+func (o *orderApp) CreateQuote(ctx context.Context, req *dtos.CreateQuote) (*dtos.QuoteResponse, error) {
+	fingerprint := models.CartFingerprint(req.ShopID, req.Address, req.Items)
+
+	if existing, ok := o.reusableActiveQuote(ctx, req.CustomerID, fingerprint); ok {
+		return quoteResponseFromModel(existing), nil
+	}
+
+	priced, err := o.priceOrderDraft(ctx, &dtos.CreateOrder{
+		ID:               uuid.New(),
+		ShopID:           req.ShopID,
+		CustomerID:       req.CustomerID,
+		MethodPayment:    "PagoMovil",
+		Address:          req.Address,
+		CreateItemsOrder: req.Items,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+	quoteID := uuid.New()
+	quote := &models.OrderQuote{
+		QuoteID:            quoteID,
+		CustomerID:         req.CustomerID,
+		ShopID:             req.ShopID,
+		Address:            req.Address,
+		Items:              append([]dtos.CreateItemsOrder(nil), req.Items...),
+		TotalUSD:           money.RoundUSD(priced.order.TotalPrice),
+		TotalBs:            money.RoundBs(priced.order.TotalPrice * priced.rate),
+		DeliveryFeeUSD:     money.RoundUSD(priced.order.DeliveryFee),
+		DeliveryFeeBs:      money.RoundBs(priced.order.DeliveryFee * priced.rate),
+		BcvRate:            priced.rate,
+		IsLaunchPromo:      priced.order.IsLaunchPromo,
+		PromoSubsidyAmount: priced.order.PromoSubsidyAmount,
+		IsZeroCommission:   priced.order.IsZeroCommission,
+		Lines:              models.SnapshotLinesFromOrder(priced.order),
+		CartFingerprint:    fingerprint,
+		CreatedAt:          now,
+		ExpiresAt:          now.Add(models.QuotePaymentTTL),
+		ProofGraceUntil:    now.Add(models.QuotePaymentTTL + models.QuoteProofGrace),
+	}
+
+	ttl := models.QuotePaymentTTL + models.QuoteProofGrace
+	if err := o.replaceActiveQuote(ctx, req.CustomerID, quote, ttl); err != nil {
+		return nil, err
+	}
+
+	return quoteResponseFromModel(quote), nil
+}
+
+// reusableActiveQuote returns the customer's current quote when it is still
+// within expires_at, not consumed, and matches the same cart fingerprint.
+func (o *orderApp) reusableActiveQuote(ctx context.Context, customerID uuid.UUID, fingerprint string) (*models.OrderQuote, bool) {
+	activeID, err := o.quotes.GetActiveID(ctx, customerID)
+	if err != nil || activeID == uuid.Nil {
+		return nil, false
+	}
+	quote, err := o.quotes.Get(ctx, activeID)
+	if err != nil {
+		_ = o.quotes.ClearActiveID(ctx, customerID)
+		return nil, false
+	}
+	consumed, err := o.quotes.IsConsumed(ctx, activeID)
+	if err != nil || consumed {
+		_ = o.quotes.ClearActiveID(ctx, customerID)
+		return nil, false
+	}
+	now := time.Now()
+	if now.After(quote.ExpiresAt) {
+		return nil, false
+	}
+	if quote.CustomerID != customerID || quote.CartFingerprint != fingerprint {
+		return nil, false
+	}
+	return quote, true
+}
+
+func (o *orderApp) replaceActiveQuote(ctx context.Context, customerID uuid.UUID, quote *models.OrderQuote, ttl time.Duration) error {
+	if prevID, err := o.quotes.GetActiveID(ctx, customerID); err == nil && prevID != uuid.Nil && prevID != quote.QuoteID {
+		_ = o.quotes.Delete(ctx, prevID)
+	}
+	if err := o.quotes.Save(ctx, quote, ttl); err != nil {
+		return err
+	}
+	return o.quotes.SetActiveID(ctx, customerID, quote.QuoteID, ttl)
+}
+
+func quoteResponseFromModel(quote *models.OrderQuote) *dtos.QuoteResponse {
+	itemsView := make([]dtos.QuoteItemView, 0, len(quote.Lines))
+	for _, line := range quote.Lines {
+		itemsView = append(itemsView, dtos.QuoteItemView{
+			ItemID:     line.ItemID,
+			Name:       line.Name,
+			Amount:     line.Amount,
+			UnitPrice:  line.UnitPrice,
+			TotalPrice: line.TotalPrice,
+		})
+	}
+	return &dtos.QuoteResponse{
+		QuoteID:            quote.QuoteID,
+		TotalUSD:           quote.TotalUSD,
+		TotalBs:            quote.TotalBs,
+		DeliveryFeeUSD:     quote.DeliveryFeeUSD,
+		DeliveryFeeBs:      quote.DeliveryFeeBs,
+		BcvRate:            quote.BcvRate,
+		IsLaunchPromo:      quote.IsLaunchPromo,
+		PromoSubsidyAmount: quote.PromoSubsidyAmount,
+		ExpiresAt:          quote.ExpiresAt,
+		ProofGraceUntil:    quote.ProofGraceUntil,
+		Items:              itemsView,
+	}
+}
+
+type pricedOrderDraft struct {
+	order *models.Order
+	shop  *models.ShopOrder
+	rate  float64
+}
+
+// priceOrderDraft calcula totales (items, delivery, promo) sin persistir ni cobrar.
+func (o *orderApp) priceOrderDraft(ctx context.Context, order *dtos.CreateOrder) (*pricedOrderDraft, error) {
+	batchID, err := o.shops.SearchBatchByShopID(ctx, order.ShopID)
+	if err != nil {
+		if errors.Is(err, errcustom.ErrNotFound) {
+			return nil, errcustom.ErrBatchNotOpen
+		}
+		return nil, err
+	}
+
+	shop, err := o.repo.SearchShopByID(ctx, order.ShopID)
+	if err != nil {
+		return nil, err
+	}
+
+	orderModel := new(models.Order)
+	orderModel.BuildDtoToModel(*order, batchID)
+
+	var fee float64
+	if config.Get().Environment.Current == "production" {
+		fee, err = deliveryfee.Calculate(shop.Latitude, shop.Longitude, order.Address.Latitude, order.Address.Longitude)
+		if err != nil {
+			slog.Error("calcDeliveryFee: google maps failed", "shopID", shop.ID, "error", err)
+			return nil, errcustom.ErrUnexpectedError
+		}
+	} else {
+		fee = deliveryfee.DevPlaceholderFee
+	}
+	orderModel.DeliveryFee = fee
+
+	items, err := o.repo.SearchItemsByID(ctx, orderModel.GetItemsID())
+	if err != nil {
+		return nil, err
+	}
+
+	if err := validateOrderCatalogAvailability(items, orderModel); err != nil {
+		return nil, err
+	}
+
+	orderModel.SetPrices(items)
+	orderModel.SetItemName(items)
+	orderModel.SetItemImage(items)
+
+	for _, v := range orderModel.ItemsOrders {
+		if v.Additions != nil {
+			additions, err := o.repo.SearchAdditionsByID(ctx, v.GetAdditionsID())
+			if err != nil {
+				return nil, err
+			}
+			orderModel.SetAdditionalsPrices(additions)
+			orderModel.SetAdditionalsName(additions)
+		}
+	}
+
+	if flavorIDs := orderModel.GetFlavorsID(); len(flavorIDs) > 0 {
+		if err := o.resolveOrderItemFlavors(ctx, orderModel); err != nil {
+			return nil, err
+		}
+	}
+
+	orderModel.ApplyLaunchPromo(shop.HasActiveLaunchPromo())
+	orderModel.ApplyZeroCommission(shop.HasActiveZeroCommission())
+
+	return &pricedOrderDraft{
+		order: orderModel,
+		shop:  shop,
+		rate:  o.bcvRate(ctx),
+	}, nil
+}
+
+func (o *orderApp) loadQuoteForCreate(ctx context.Context, order *dtos.CreateOrder) (*models.OrderQuote, error) {
+	quote, err := o.quotes.Get(ctx, order.QuoteID)
+	if err != nil {
+		return nil, err
+	}
+	if quote.CustomerID != order.CustomerID {
+		return nil, errcustom.ErrQuoteForbidden
+	}
+	hasProof := strings.TrimSpace(order.PaymentProofImage) != ""
+	if !quote.AcceptableForCreate(time.Now(), hasProof) {
+		return nil, errcustom.ErrQuoteExpired
+	}
+	return quote, nil
+}
+
 func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*models.Order, error) {
 
 	ord, err := o.SearchOrdersByID(ctx, order.ID)
@@ -149,99 +363,143 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		}
 	}
 
-	batchID, err := o.shops.SearchBatchByShopID(ctx, order.ShopID)
-	if err != nil {
-		if errors.Is(err, errcustom.ErrNotFound) {
-			return &models.Order{}, errcustom.ErrBatchNotOpen
-		}
-		return &models.Order{}, err
-	}
+	var (
+		quote      *models.OrderQuote
+		orderModel *models.Order
+		shop       *models.ShopOrder
+		rate       float64
+	)
 
-	shop, err := o.repo.SearchShopByID(ctx, order.ShopID)
-	if err != nil {
-		return &models.Order{}, err
-	}
-
-	orderModel := new(models.Order)
-	orderModel.BuildDtoToModel(*order, batchID)
-
-	// Fuera de production, el listado de tiendas le muestra al cliente un
-	// delivery fee fijo (deliveryfee.DevPlaceholderFee) para no gastar cuota
-	// de Google Maps. Si aquí recalculáramos el fee real, el total que ve el
-	// cliente en el carrito casi nunca coincidiría con el que se cobra al
-	// confirmar, disparando ErrPriceChanged en cada checkout de desarrollo.
-	var fee float64
-	if config.Get().Environment.Current == "production" {
-		fee, err = deliveryfee.Calculate(shop.Latitude, shop.Longitude, order.Address.Latitude, order.Address.Longitude)
+	if order.QuoteID != uuid.Nil {
+		quote, err = o.loadQuoteForCreate(ctx, order)
 		if err != nil {
-			slog.Error("calcDeliveryFee: google maps failed", "shopID", shop.ID, "error", err)
-			return &models.Order{}, errcustom.ErrUnexpectedError
+			return &models.Order{}, err
+		}
+		order.ShopID = quote.ShopID
+		order.Address = quote.Address
+		order.CreateItemsOrder = quote.Items
+
+		batchID, err := o.shops.SearchBatchByShopID(ctx, order.ShopID)
+		if err != nil {
+			if errors.Is(err, errcustom.ErrNotFound) {
+				return &models.Order{}, errcustom.ErrBatchNotOpen
+			}
+			return &models.Order{}, err
+		}
+		shop, err = o.repo.SearchShopByID(ctx, order.ShopID)
+		if err != nil {
+			return &models.Order{}, err
+		}
+
+		orderModel = new(models.Order)
+		orderModel.BuildDtoToModel(*order, batchID)
+		models.ApplyQuoteSnapshot(orderModel, quote)
+		rate = quote.BcvRate
+
+		items, err := o.repo.SearchItemsByID(ctx, orderModel.GetItemsID())
+		if err != nil {
+			return &models.Order{}, err
+		}
+		if err := validateOrderCatalogAvailability(items, orderModel); err != nil {
+			return &models.Order{}, err
 		}
 	} else {
-		fee = deliveryfee.DevPlaceholderFee
+		priced, err := o.priceOrderDraft(ctx, order)
+		if err != nil {
+			return &models.Order{}, err
+		}
+		orderModel = priced.order
+		shop = priced.shop
+		rate = priced.rate
+
+		if PriceMismatch(orderModel.TotalPrice, order.ExpectedTotalPrice) {
+			slog.Warn("price mismatch detected at checkout", "shopID", shop.ID, "customerID", order.CustomerID,
+				"expected", order.ExpectedTotalPrice, "actual", orderModel.TotalPrice)
+			return &models.Order{}, errcustom.ErrPriceChanged
+		}
 	}
-	orderModel.DeliveryFee = fee
 
 	customer, err := o.custo.SearchCustomerBy(ctx, dto.SearchCustomerBy{ID: order.CustomerID})
 	if err != nil {
 		return &models.Order{}, err
 	}
 
-	items, err := o.repo.SearchItemsByID(ctx, orderModel.GetItemsID())
-	if err != nil {
-		return &models.Order{}, err
+	balanceUsed := money.RoundUSD(order.BalanceAmountUSD)
+	pagoMovilUSD := money.RoundUSD(orderModel.TotalPrice - balanceUsed)
+	if pagoMovilUSD < 0 {
+		pagoMovilUSD = 0
 	}
 
-	if err := validateOrderCatalogAvailability(items, orderModel); err != nil {
-		return &models.Order{}, err
-	}
-
-	orderModel.SetPrices(items)
-	orderModel.SetItemName(items)
-	orderModel.SetItemImage(items)
-
-	for _, v := range orderModel.ItemsOrders {
-		if v.Additions != nil {
-			additions, err := o.repo.SearchAdditionsByID(ctx, v.GetAdditionsID())
-			if err != nil {
-				return &models.Order{}, err
-			}
-
-			orderModel.SetAdditionalsPrices(additions)
-			orderModel.SetAdditionalsName(additions)
+	if balanceUsed > 0 {
+		if balanceUsed+priceTolerance < 1 {
+			return &models.Order{}, fmt.Errorf("%w: balance_amount_usd mínimo es 1", errcustom.ErrInvalidBalanceAmount)
 		}
-	}
-
-	if flavorIDs := orderModel.GetFlavorsID(); len(flavorIDs) > 0 {
-		if err := o.resolveOrderItemFlavors(ctx, orderModel); err != nil {
+		if balanceUsed > orderModel.TotalPrice+priceTolerance {
+			return &models.Order{}, fmt.Errorf("%w: balance_amount_usd no puede superar el total de la orden", errcustom.ErrInvalidBalanceAmount)
+		}
+		available, err := o.customerBalance.GetBalanceUSD(ctx, order.CustomerID)
+		if err != nil {
 			return &models.Order{}, err
 		}
+		if balanceUsed > available+priceTolerance {
+			return &models.Order{}, errcustom.ErrInsufficientBalance
+		}
+		// Cap floating noise: treat near-total as full cover.
+		if math.Abs(orderModel.TotalPrice-balanceUsed) <= priceTolerance {
+			balanceUsed = orderModel.TotalPrice
+			pagoMovilUSD = 0
+		}
 	}
 
-	orderModel.ApplyLaunchPromo(shop.HasActiveLaunchPromo())
-	orderModel.ApplyZeroCommission(shop.HasActiveZeroCommission())
+	if pagoMovilUSD > priceTolerance && order.PaymentProofImage == "" {
+		return &models.Order{}, fmt.Errorf("%w: payment_proof_image es requerido cuando el balance no cubre el total", errcustom.ErrInvalidBalanceAmount)
+	}
 
-	if PriceMismatch(orderModel.TotalPrice, order.ExpectedTotalPrice) {
-		slog.Warn("price mismatch detected at checkout", "shopID", shop.ID, "customerID", order.CustomerID,
-			"expected", order.ExpectedTotalPrice, "actual", orderModel.TotalPrice)
-		return &models.Order{}, errcustom.ErrPriceChanged
+	if quote != nil {
+		ok, err := o.quotes.TryConsume(ctx, quote.QuoteID, quote.RedisTTL(time.Now()))
+		if err != nil {
+			return &models.Order{}, err
+		}
+		if !ok {
+			return &models.Order{}, errcustom.ErrQuoteConsumed
+		}
+		_ = o.quotes.ClearActiveID(ctx, order.CustomerID)
 	}
 
 	DetailsModel := new(models.Details)
-	DetailsModel.BuildDetails(orderModel, shop, customer, order.Address.Instructions, o.bcvRate(ctx))
+	DetailsModel.BuildDetails(orderModel, shop, customer, order.Address.Instructions, rate)
 
-	if order.PaymentProofImage != "" {
+	DetailsModel.PaymentDetails = &models.PaymentDetails{
+		BalanceAmountUSD:   balanceUsed,
+		PagoMovilAmountUSD: pagoMovilUSD,
+	}
+
+	var proofURL string
+	if pagoMovilUSD > priceTolerance {
 		proofUpload, err := o.uploadImage.UploadImage(ctx, order.PaymentProofImage)
 		if err != nil {
 			return &models.Order{}, errcustom.ErrUploadingImage
 		}
-		DetailsModel.PaymentDetails = &models.PaymentDetails{
-			PaymentProofURL: proofUpload.SecureURL,
+		proofURL = proofUpload.SecureURL
+		DetailsModel.PaymentDetails.PaymentProofURL = proofURL
+		DetailsModel.PaymentDetails.ExpectedAmountBs = money.RoundBs(pagoMovilUSD * rate)
+		orderModel.Status = string(models.StatusPaymentReview)
+	} else {
+		// 100% balance (or no PM remainder): va directo al local.
+		orderModel.Status = string(models.StatusPending)
+		now := time.Now()
+		orderModel.PendingAt = &now
+	}
+
+	if balanceUsed > 0 {
+		if err := o.customerBalance.DebitForOrder(ctx, order.CustomerID, orderModel.ID, balanceUsed); err != nil {
+			return &models.Order{}, err
 		}
 	}
 
 	detailsData, err := json.Marshal(DetailsModel)
 	if err != nil {
+		o.refundBalanceDebit(ctx, order.CustomerID, orderModel.ID, balanceUsed)
 		return &models.Order{}, err
 	}
 
@@ -249,10 +507,59 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 
 	orderDB, err := o.repo.CreateOrder(ctx, orderModel)
 	if err != nil {
+		o.refundBalanceDebit(ctx, order.CustomerID, orderModel.ID, balanceUsed)
 		return &models.Order{}, err
 	}
 
-	deliveryfee.ApplyBsToOrder(ctx, o.bcv, orderDB)
+	orderDB.ApplyBsPrice(rate)
+
+	if proofURL != "" {
+		expectedBs := money.RoundBs(pagoMovilUSD * rate)
+		review := &models.PaymentReview{
+			ID:               uuid.New(),
+			OrderID:          orderDB.ID,
+			ProofURL:         proofURL,
+			ExpectedAmountBs: expectedBs,
+			BcvRate:          rate,
+			Status:           models.ReviewPendingReview,
+			CreatedAt:        time.Now(),
+		}
+		if err := o.reviewsRepo.Create(ctx, review); err != nil {
+			slog.Error("CreateOrder: payment review failed", "orderID", orderDB.ID, "error", err)
+			o.refundBalanceDebit(ctx, order.CustomerID, orderDB.ID, balanceUsed)
+			return &models.Order{}, err
+		}
+		event := models.DataEventPaymentProofPending{}
+		event.BuildFrom(*orderDB, *review)
+		if err := o.stream.PublisherEvent(ctx, event); err != nil {
+			slog.Error("error producing payment_proof_pending", "error", err)
+		}
+		if o.staffHub != nil {
+			b := models.PaymentReviewBroadcast{
+				Type:               "payment_review_update",
+				ReviewID:           review.ID,
+				OrderID:            orderDB.ID,
+				ShopID:             orderDB.ShopID,
+				CustomerID:         orderDB.CustomerID,
+				ProofURL:           review.ProofURL,
+				ExpectedAmountBs:   review.ExpectedAmountBs,
+				Status:             review.Status,
+				BalanceAmountUSD:   balanceUsed,
+				PagoMovilAmountUSD: pagoMovilUSD,
+				TotalUSD:           orderDB.TotalPrice,
+				OrderStatus:        orderDB.Status,
+				CreatedAt:          review.CreatedAt,
+			}
+			if DetailsModel.CustomerDetails.Name != "" {
+				b.CustomerName = DetailsModel.CustomerDetails.Name
+				if DetailsModel.CustomerDetails.LastName != "" {
+					b.CustomerName += " " + DetailsModel.CustomerDetails.LastName
+				}
+				b.CustomerPhone = DetailsModel.CustomerDetails.Phone
+			}
+			_ = o.staffHub.BroadcastReview(b)
+		}
+	}
 
 	if err := o.stream.PublisherEvent(ctx, buildToDataProduceOrder(*orderDB)); err != nil {
 		slog.Error("error producing order to stream", "error", err)
@@ -266,6 +573,15 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 	}
 
 	return orderDB, nil
+}
+
+func (o *orderApp) refundBalanceDebit(ctx context.Context, customerID, orderID uuid.UUID, amount float64) {
+	if amount <= 0 || o.customerBalance == nil {
+		return
+	}
+	if err := o.customerBalance.RefundBalancePayment(ctx, customerID, orderID, amount); err != nil {
+		slog.Error("refundBalanceDebit failed", "orderID", orderID, "amount", amount, "error", err)
+	}
 }
 
 func (o *orderApp) SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*models.Order, error) {
@@ -300,6 +616,7 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 		return models.Order{}, errcustom.ErrUnautorized
 	}
 
+	prevStatus := order.Status
 	newStatus = resolveAutoTransition(models.PaymentMethod(strings.TrimSpace(order.MethodPayment)), newStatus)
 
 	if err := o.repo.UpdateOrderStatus(ctx, orderID, string(newStatus)); err != nil {
@@ -307,9 +624,135 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 	}
 
 	order.Status = string(newStatus)
+
+	if newStatus == models.StatusRejected && prevStatus != string(models.StatusRejected) {
+		o.refundCustomerOnShopReject(ctx, order)
+	}
+
 	o.handleStatusTransition(ctx, newStatus, order)
 
 	return *order, nil
+}
+
+// refundCustomerOnShopReject acredita el total de la orden (USD) al balance
+// del cliente cuando el local rechaza un pedido ya pagado (Pago Móvil).
+// El exceso por overpay, si existía, ya se acreditó al aprobar el comprobante;
+// aquí va el monto de la orden propiamente dicho.
+func (o *orderApp) refundCustomerOnShopReject(ctx context.Context, order *models.Order) {
+	o.refundCustomerOnShopRejectWithReason(ctx, order, "Orden rechazada por el local")
+}
+
+func (o *orderApp) refundCustomerOnShopRejectWithReason(ctx context.Context, order *models.Order, reason string) {
+	if o.customerBalance == nil {
+		return
+	}
+	if models.PaymentMethod(strings.TrimSpace(order.MethodPayment)) != models.MethodPagoMovil {
+		return
+	}
+	if order.TotalPrice <= 0 {
+		return
+	}
+
+	if err := o.customerBalance.CreditOrderRejected(ctx, order.CustomerID, order.ID, order.TotalPrice); err != nil {
+		slog.Error("refundCustomerOnShopReject credit failed", "orderID", order.ID, "error", err)
+		return
+	}
+
+	credited := order.TotalPrice
+	var details models.Details
+	if len(order.Details) > 0 {
+		_ = json.Unmarshal(order.Details, &details)
+	}
+	if details.PaymentDetails == nil {
+		details.PaymentDetails = &models.PaymentDetails{}
+	}
+	details.PaymentDetails.Status = models.ReviewRefundedShopReject
+	details.PaymentDetails.RejectionReason = &reason
+	details.PaymentDetails.CreditedUSD = &credited
+
+	data, err := json.Marshal(details)
+	if err != nil {
+		slog.Error("refundCustomerOnShopReject marshal details failed", "orderID", order.ID, "error", err)
+		return
+	}
+	order.Details = data
+	if err := o.repo.UpdateOrderDetails(ctx, order.ID, data); err != nil {
+		slog.Error("refundCustomerOnShopReject persist details failed", "orderID", order.ID, "error", err)
+	}
+}
+
+// AutoRejectStalePending rechaza órdenes que llevan demasiado tiempo en Pending
+// sin aceptación del local (mismo efecto económico que reject manual del shop).
+func (o *orderApp) AutoRejectStalePending(ctx context.Context) ([]models.Order, error) {
+	cutoff := time.Now().Add(-models.PendingAcceptTimeout)
+	stale, err := o.repo.ListStalePending(ctx, cutoff)
+	if err != nil {
+		return nil, err
+	}
+	if len(stale) == 0 {
+		return nil, nil
+	}
+
+	out := make([]models.Order, 0, len(stale))
+	for i := range stale {
+		order := stale[i]
+		ok, err := o.repo.RejectIfPending(ctx, order.ID)
+		if err != nil {
+			slog.Error("AutoRejectStalePending RejectIfPending failed", "orderID", order.ID, "error", err)
+			continue
+		}
+		if !ok {
+			continue
+		}
+		order.Status = string(models.StatusRejected)
+		o.refundCustomerOnShopRejectWithReason(ctx, &order, "El local no aceptó el pedido a tiempo")
+		out = append(out, order)
+		slog.Info("AutoRejectStalePending rejected order", "orderID", order.ID, "shopID", order.ShopID)
+	}
+	return out, nil
+}
+
+// NotifyPendingUnassigned publica order_pending_unassigned en los minutos 4 y 8
+// mientras el local no acepta. En el minuto 10 AutoRejectStalePending cancela.
+func (o *orderApp) NotifyPendingUnassigned(ctx context.Context) error {
+	if o.stream == nil {
+		return nil
+	}
+	cutoff := time.Now().Add(-time.Duration(models.PendingUnassignedFirstAlertMinute) * time.Minute)
+	pending, err := o.repo.ListPendingUnassignedForAlert(ctx, cutoff)
+	if err != nil {
+		return err
+	}
+	now := time.Now()
+	for i := range pending {
+		order := pending[i]
+		if order.PendingAt == nil {
+			continue
+		}
+		elapsedMin := int(now.Sub(*order.PendingAt) / time.Minute)
+		for _, minute := range models.PendingUnassignedAlertMinutes {
+			if elapsedMin < minute || order.PendingAlertMinute >= minute {
+				continue
+			}
+			ok, err := o.repo.MarkPendingAlertMinute(ctx, order.ID, minute)
+			if err != nil {
+				slog.Error("NotifyPendingUnassigned MarkPendingAlertMinute failed", "orderID", order.ID, "minute", minute, "error", err)
+				break
+			}
+			if !ok {
+				break
+			}
+			order.PendingAlertMinute = minute
+			event := models.DataEventOrderPendingUnassigned{}
+			event.BuildFromOrder(order, minute)
+			if err := o.stream.PublisherEvent(ctx, event); err != nil {
+				slog.Error("NotifyPendingUnassigned publish failed", "orderID", order.ID, "minute", minute, "error", err)
+				continue
+			}
+			slog.Info("NotifyPendingUnassigned published", "orderID", order.ID, "shopID", order.ShopID, "minutesPending", minute)
+		}
+	}
+	return nil
 }
 
 func resolveAutoTransition(method models.PaymentMethod, status models.OrderStatus) models.OrderStatus {

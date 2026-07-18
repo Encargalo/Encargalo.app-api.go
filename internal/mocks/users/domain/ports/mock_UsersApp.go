@@ -66,6 +66,36 @@ func (_m *UsersApp) RegisterCustomer(ctx context.Context, customer dto.RegisterC
 	return r0
 }
 
+// RegisterCustomerFromGoogle provides a mock function with given fields: ctx, customer
+func (_m *UsersApp) RegisterCustomerFromGoogle(ctx context.Context, customer dto.RegisterCustomerFromGoogle) (*models.Account, error) {
+	ret := _m.Called(ctx, customer)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RegisterCustomerFromGoogle")
+	}
+
+	var r0 *models.Account
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, dto.RegisterCustomerFromGoogle) (*models.Account, error)); ok {
+		return rf(ctx, customer)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, dto.RegisterCustomerFromGoogle) *models.Account); ok {
+		r0 = rf(ctx, customer)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.Account)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, dto.RegisterCustomerFromGoogle) error); ok {
+		r1 = rf(ctx, customer)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // SearchAccountByPhone provides a mock function with given fields: ctx, phone, roles
 func (_m *UsersApp) SearchAccountByPhone(ctx context.Context, phone string, roles []string) (*models.Account, error) {
 	ret := _m.Called(ctx, phone, roles)

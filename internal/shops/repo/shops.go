@@ -381,14 +381,59 @@ func (s *shopsRepo) FindMatchedProducts(ctx context.Context, shopIDs []uuid.UUID
 
 	result := make(map[uuid.UUID][]shopsDTO.MatchedProductItem, len(shopIDs))
 	for _, item := range items {
-		var selection *shopsDTO.MatchedFlavorSelection
-		if item.HasFlavors && item.Category != nil {
-			selection = &shopsDTO.MatchedFlavorSelection{
+		hasFlavors := item.HasFlavors || item.Details.HasFlavors()
+		hasAdditions := item.Details.HasAdditions()
+
+		var flavorSelection *shopsDTO.MatchedFlavorSelection
+		if hasFlavors && item.Category != nil {
+			flavorSelection = &shopsDTO.MatchedFlavorSelection{
 				SelectorType: item.Category.Details.SelectorType,
 				MinSelection: item.Details.MinSelection,
 				MaxSelection: item.Details.MaxSelection,
 			}
 		}
+
+		var additionSelection *shopsDTO.MatchedAdditionSelection
+		if hasAdditions {
+			additionSelection = &shopsDTO.MatchedAdditionSelection{
+				SelectorType: productModels.SelectorMultiSelect,
+				MinSelection: 0,
+				MaxSelection: productModels.MaxAdditionsSelection,
+			}
+		}
+
+		var details *shopsDTO.MatchedItemDetails
+		if hasFlavors || hasAdditions {
+			customerDetails := item.Details.ToCustomerDTO()
+			matched := shopsDTO.MatchedItemDetails{
+				MinSelection:          customerDetails.MinSelection,
+				MaxSelection:          customerDetails.MaxSelection,
+				MaxAdditionsSelection: customerDetails.MaxAdditionsSelection,
+			}
+			if len(customerDetails.Flavors) > 0 {
+				matched.Flavors = make([]shopsDTO.MatchedFlavor, len(customerDetails.Flavors))
+				for i, f := range customerDetails.Flavors {
+					matched.Flavors[i] = shopsDTO.MatchedFlavor{
+						ID:        f.ID,
+						Name:      f.Name,
+						Available: f.Available,
+					}
+				}
+			}
+			if len(customerDetails.Additions) > 0 {
+				matched.Additions = make([]shopsDTO.MatchedAddition, len(customerDetails.Additions))
+				for i, a := range customerDetails.Additions {
+					matched.Additions[i] = shopsDTO.MatchedAddition{
+						ID:        a.ID,
+						Name:      a.Name,
+						Ref:       a.Ref,
+						Available: a.Available,
+					}
+				}
+			}
+			details = &matched
+		}
+
 		var schedules []shopsDTO.MatchedSchedule
 		if item.Category != nil {
 			schedules = make([]shopsDTO.MatchedSchedule, 0, len(item.Category.Schedules))
@@ -403,16 +448,19 @@ func (s *shopsRepo) FindMatchedProducts(ctx context.Context, shopIDs []uuid.UUID
 		}
 
 		result[item.ShopID] = append(result[item.ShopID], shopsDTO.MatchedProductItem{
-			ID:          item.ID,
-			ShopID:      item.ShopID,
-			Name:        item.Name,
-			Ref:         float64(item.Price),
-			Image:       item.Image,
-			Description: item.Description,
-			Score:       item.Score,
-			HasFlavors:  item.HasFlavors,
-			Selection:   selection,
-			Schedules:   schedules,
+			ID:                item.ID,
+			ShopID:            item.ShopID,
+			Name:              item.Name,
+			Ref:               float64(item.Price),
+			Image:             item.Image,
+			Description:       item.Description,
+			Score:             item.Score,
+			HasFlavors:        hasFlavors,
+			HasAdditions:      hasAdditions,
+			FlavorSelection:   flavorSelection,
+			AdditionSelection: additionSelection,
+			Details:           details,
+			Schedules:         schedules,
 		})
 	}
 

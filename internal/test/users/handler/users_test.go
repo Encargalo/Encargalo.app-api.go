@@ -164,7 +164,8 @@ func TestSearchCustomer_Success(t *testing.T) {
 	tc := buildhttptest.SetupControllerCase("/users", http.MethodGet, nil)
 	ctx, tc := sessionCtx(t, tc, userID)
 
-	account := &models.Account{ID: userID, Name: "Carlos", Phone: "+573001112233"}
+	phone := "+573001112233"
+	account := &models.Account{ID: userID, Name: "Carlos", Phone: &phone}
 	svc.On("SearchCustomerProfileByID", ctx, userID).Return(account, nil)
 
 	err := h.SearchCustomer(tc.Ctx)
@@ -227,7 +228,7 @@ func TestUpdateCustomer_Success(t *testing.T) {
 	ctx, tc := sessionCtx(t, tc, userID)
 
 	svc.On("UpdateCustomer", ctx, userID, dto.UpdateCustomer{
-		Name: "Carlos", SurName: "Ramírez", Phone: "+573001112233",
+		Name: new("Carlos"), SurName: new("Ramírez"), Phone: new("+573001112233"),
 	}).Return(nil)
 
 	err := h.UpdateCustomer(tc.Ctx)
@@ -274,6 +275,24 @@ func TestUpdateCustomer_NoSession(t *testing.T) {
 	assert.Equal(t, errcustom.ErrUnexpectedError, err)
 }
 
+func TestUpdateCustomer_PartialUpdate(t *testing.T) {
+	h, svc, _, _, _ := newUsersHandler(t)
+
+	userID := uuid.New()
+	body := buildBody(t, map[string]string{"phone": "+573001112233"})
+	tc := buildhttptest.SetupControllerCase("/users", http.MethodPut, body)
+	ctx, tc := sessionCtx(t, tc, userID)
+
+	svc.On("UpdateCustomer", ctx, userID, dto.UpdateCustomer{
+		Phone: new("+573001112233"),
+	}).Return(nil)
+
+	err := h.UpdateCustomer(tc.Ctx)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, tc.Res.Code)
+}
+
 func TestUpdateCustomer_NotFound(t *testing.T) {
 	h, svc, _, _, _ := newUsersHandler(t)
 
@@ -285,7 +304,7 @@ func TestUpdateCustomer_NotFound(t *testing.T) {
 	ctx, tc := sessionCtx(t, tc, userID)
 
 	svc.On("UpdateCustomer", ctx, userID, dto.UpdateCustomer{
-		Name: "Carlos", SurName: "Ramírez", Phone: "+573001112233",
+		Name: new("Carlos"), SurName: new("Ramírez"), Phone: new("+573001112233"),
 	}).Return(errcustom.ErrNotFound)
 
 	err := h.UpdateCustomer(tc.Ctx)

@@ -41,6 +41,19 @@
       }
     },
     {
+      "name": "Get Balance",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/users/balance",
+          "host": ["{{base_url}}"],
+          "path": ["users", "balance"]
+        },
+        "description": "Retorna el balance del customer en USD y los últimos 10 movimientos. Movimientos: `payment_overage`, `payment_partial_credit`, `order_rejected_refund`, `balance_payment` (débito al pagar con cartera), `balance_payment_refund`. Si no tiene balance aún: `balance: 0`, `transactions: []`. Cookie + rol Customer."
+      }
+    },
+    {
       "name": "Get User",
       "request": {
         "method": "GET",
@@ -77,7 +90,7 @@
           "host": ["{{base_url}}"],
           "path": ["users"]
         },
-        "description": "Actualiza los datos del usuario autenticado. Requiere cookie `encargalo-session`. Roles: Customer, customer."
+        "description": "Actualiza los datos del usuario autenticado. Actualización parcial: solo se modifican los campos presentes en el body (todos opcionales), el resto de la cuenta queda intacto. Requiere cookie `encargalo-session`. Roles: Customer, customer."
       }
     },
     {

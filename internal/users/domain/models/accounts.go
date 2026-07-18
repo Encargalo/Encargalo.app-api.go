@@ -15,7 +15,7 @@ type Account struct {
 	ID               uuid.UUID  `bun:"id,pk,type:uuid,default:uuid_generate_v4()"`
 	Name             string     `bun:"name,notnull"`
 	SurName          *string    `bun:"sur_name"`
-	Phone            string     `bun:"phone,notnull"`
+	Phone            *string    `bun:"phone"`
 	Email            *string    `bun:"email"`
 	Password         string     `bun:"password,notnull"`
 	BirthdayDate     *time.Time `bun:"birthday_date,nullzero"`
@@ -34,16 +34,37 @@ type Account struct {
 func (c *Account) BuildCustomerRegisterModel(customer dto.RegisterCustomer) {
 	c.Name = customer.Name
 	c.SurName = &customer.SurName
-	c.Phone = customer.Phone
+	c.Phone = &customer.Phone
 	c.Email = &customer.Email
 	c.Password = customer.Password
 }
 
-func (c *Account) BuildCustomerUpdateModel(customer dto.UpdateCustomer) {
+// BuildCustomerRegisterFromGoogleModel construye una cuenta a partir de un
+// login de Google: el teléfono queda sin asignar hasta que el usuario lo
+// complete desde su perfil, y no hay password porque la identidad ya fue
+// verificada por Google.
+func (c *Account) BuildCustomerRegisterFromGoogleModel(customer dto.RegisterCustomerFromGoogle) {
 	c.Name = customer.Name
 	c.SurName = &customer.SurName
-	c.Phone = customer.Phone
 	c.Email = &customer.Email
+}
+
+// BuildCustomerUpdateModel es una actualización parcial: solo copia los
+// campos que vinieron en el request (no nil), dejando el resto en su valor
+// cero para que el repo los omita del UPDATE.
+func (c *Account) BuildCustomerUpdateModel(customer dto.UpdateCustomer) {
+	if customer.Name != nil {
+		c.Name = *customer.Name
+	}
+	if customer.SurName != nil {
+		c.SurName = customer.SurName
+	}
+	if customer.Phone != nil {
+		c.Phone = customer.Phone
+	}
+	if customer.Email != nil {
+		c.Email = customer.Email
+	}
 	c.UpdatedAt = time.Now()
 }
 
@@ -62,6 +83,11 @@ func (c *Account) ToDomainDTO() dto.CustomerResponse {
 		email = *c.Email
 	}
 
+	phone := ""
+	if c.Phone != nil {
+		phone = *c.Phone
+	}
+
 	role := c.Role
 	if role == "" {
 		role = string(models.Customer)
@@ -71,7 +97,7 @@ func (c *Account) ToDomainDTO() dto.CustomerResponse {
 		ID:      c.ID,
 		Name:    c.Name,
 		SurName: surName,
-		Phone:   c.Phone,
+		Phone:   phone,
 		Email:   email,
 		Role:    role,
 	}

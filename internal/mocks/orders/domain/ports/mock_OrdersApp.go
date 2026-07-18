@@ -18,6 +18,36 @@ type OrdersApp struct {
 	mock.Mock
 }
 
+// AutoRejectStalePending provides a mock function with given fields: ctx
+func (_m *OrdersApp) AutoRejectStalePending(ctx context.Context) ([]models.Order, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AutoRejectStalePending")
+	}
+
+	var r0 []models.Order
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]models.Order, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []models.Order); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.Order)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // ConfirmDelivery provides a mock function with given fields: ctx, orderID, code
 func (_m *OrdersApp) ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code string) (models.Order, error) {
 	ret := _m.Called(ctx, orderID, code)
@@ -104,6 +134,36 @@ func (_m *OrdersApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (
 	return r0, r1
 }
 
+// CreateQuote provides a mock function with given fields: ctx, req
+func (_m *OrdersApp) CreateQuote(ctx context.Context, req *dtos.CreateQuote) (*dtos.QuoteResponse, error) {
+	ret := _m.Called(ctx, req)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateQuote")
+	}
+
+	var r0 *dtos.QuoteResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *dtos.CreateQuote) (*dtos.QuoteResponse, error)); ok {
+		return rf(ctx, req)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *dtos.CreateQuote) *dtos.QuoteResponse); ok {
+		r0 = rf(ctx, req)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*dtos.QuoteResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *dtos.CreateQuote) error); ok {
+		r1 = rf(ctx, req)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetOrderHistory provides a mock function with given fields: ctx, customerID
 func (_m *OrdersApp) GetOrderHistory(ctx context.Context, customerID uuid.UUID) (dtos.OrderHistoryResponse, error) {
 	ret := _m.Called(ctx, customerID)
@@ -132,6 +192,24 @@ func (_m *OrdersApp) GetOrderHistory(ctx context.Context, customerID uuid.UUID) 
 	}
 
 	return r0, r1
+}
+
+// NotifyPendingUnassigned provides a mock function with given fields: ctx
+func (_m *OrdersApp) NotifyPendingUnassigned(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for NotifyPendingUnassigned")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // SearchActiveOrdersByCriteria provides a mock function with given fields: ctx, criteria, isShop

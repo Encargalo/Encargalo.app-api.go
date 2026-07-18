@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/orders/domain/models"
@@ -10,6 +11,7 @@ import (
 )
 
 type OrdersApp interface {
+	CreateQuote(ctx context.Context, req *dtos.CreateQuote) (*dtos.QuoteResponse, error)
 	CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*models.Order, error)
 	SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*models.Order, error)
 	SearchActiveOrdersByCriteria(ctx context.Context, criteria uuid.UUID, isShop bool) ([]models.Order, error)
@@ -17,6 +19,13 @@ type OrdersApp interface {
 	ConfirmPickup(ctx context.Context, orderID uuid.UUID, code string) (models.Order, error)
 	ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code string) (models.Order, error)
 	GetOrderHistory(ctx context.Context, customerID uuid.UUID) (dtos.OrderHistoryResponse, error)
+	// AutoRejectStalePending rechaza órdenes Pending sin aceptación del local
+	// tras PendingAcceptTimeout. Devuelve las órdenes efectivamente rechazadas
+	// (para que el worker las broadcastée sin ciclo DI OrdersApp↔Manager).
+	AutoRejectStalePending(ctx context.Context) ([]models.Order, error)
+	// NotifyPendingUnassigned publica order_pending_unassigned en los minutos 4 y 8
+	// mientras la orden sigue Pending sin aceptación del local.
+	NotifyPendingUnassigned(ctx context.Context) error
 }
 
 type OrdersRepo interface {
@@ -36,6 +45,29 @@ type OrdersRepo interface {
 	AssignRider(ctx context.Context, orderID uuid.UUID, riderID uuid.UUID) error
 	SearchActiveOrdersByRiderID(ctx context.Context, riderID uuid.UUID) ([]models.Order, error)
 	SearchOrderHistoryByCustomer(ctx context.Context, customerID uuid.UUID) ([]models.Order, error)
+	UpdateOrderDetails(ctx context.Context, orderID uuid.UUID, details []byte) error
+	MarkPendingAt(ctx context.Context, orderID uuid.UUID, at time.Time) error
+	ListStalePending(ctx context.Context, olderThan time.Time) ([]models.Order, error)
+	// RejectIfPending CAS Pending → Rejected. Returns false if already left Pending.
+	RejectIfPending(ctx context.Context, orderID uuid.UUID) (bool, error)
+	// ListPendingUnassignedForAlert: Pending past first alert minute, still due for Discord.
+	ListPendingUnassignedForAlert(ctx context.Context, olderThan time.Time) ([]models.Order, error)
+	// MarkPendingAlertMinute CAS advances pending_alert_minute if still Pending and behind.
+	MarkPendingAlertMinute(ctx context.Context, orderID uuid.UUID, minute int) (bool, error)
+}
+
+// OrderQuotesRepo stores frozen checkout quotes (typically Redis with TTL).
+type OrderQuotesRepo interface {
+	Save(ctx context.Context, quote *models.OrderQuote, ttl time.Duration) error
+	Get(ctx context.Context, quoteID uuid.UUID) (*models.OrderQuote, error)
+	Delete(ctx context.Context, quoteID uuid.UUID) error
+	// TryConsume marks the quote as used once. Returns false if already consumed.
+	TryConsume(ctx context.Context, quoteID uuid.UUID, ttl time.Duration) (bool, error)
+	IsConsumed(ctx context.Context, quoteID uuid.UUID) (bool, error)
+	// Active quote pointer per customer (at most one reusable checkout quote).
+	GetActiveID(ctx context.Context, customerID uuid.UUID) (uuid.UUID, error)
+	SetActiveID(ctx context.Context, customerID, quoteID uuid.UUID, ttl time.Duration) error
+	ClearActiveID(ctx context.Context, customerID uuid.UUID) error
 }
 
 // OrderRiderBroadcaster is implemented by the riders module to receive order lifecycle events.
@@ -69,5 +101,6 @@ type AppManagerOrder interface {
 	Register(ctx context.Context, connectionID uuid.UUID, conn ManagerConn, isShop bool) error
 	Unregister(connectionID uuid.UUID, conn ManagerConn, isShop bool)
 	BroadcastOrder(order models.Order) error
+	BroadcastOrderToCustomer(order models.Order) error
 	BroadcastShopStatus(shopID uuid.UUID, open bool) error
 }

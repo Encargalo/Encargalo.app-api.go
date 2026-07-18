@@ -136,9 +136,9 @@ func TestCreateOrder_Success_PagoMovil(t *testing.T) {
 	tc := buildhttptest.SetupControllerCase("/orders", http.MethodPost, body)
 	tc = withSession(tc, session())
 
-	order := &models.Order{ID: uuid.New()}
+	order := &models.Order{ID: uuid.New(), Status: string(models.StatusPaymentReview)}
 	svc.On("CreateOrder", mock.Anything, mock.Anything).Return(order, nil)
-	mgr.On("BroadcastOrder", *order).Return(nil)
+	mgr.On("BroadcastOrderToCustomer", *order).Return(nil)
 
 	err := h.CreateOrder(tc.Ctx)
 
@@ -217,9 +217,9 @@ func TestCreateOrder_Success_PagoMovil_OnlyProof(t *testing.T) {
 	tc := buildhttptest.SetupControllerCase("/orders", http.MethodPost, body)
 	tc = withSession(tc, session())
 
-	order := &models.Order{ID: uuid.New()}
+	order := &models.Order{ID: uuid.New(), Status: string(models.StatusPaymentReview)}
 	svc.On("CreateOrder", mock.Anything, mock.Anything).Return(order, nil)
-	mgr.On("BroadcastOrder", *order).Return(nil)
+	mgr.On("BroadcastOrderToCustomer", *order).Return(nil)
 
 	err := h.CreateOrder(tc.Ctx)
 

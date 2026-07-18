@@ -5,9 +5,9 @@ import (
 	"log/slog"
 	"net/http"
 
+	"Encargalo.app-api.go/internal/pkg/cookie"
 	"Encargalo.app-api.go/internal/users/domain/dto"
 	"Encargalo.app-api.go/internal/users/domain/ports"
-	"Encargalo.app-api.go/internal/pkg/cookie"
 
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shared/jwt"
@@ -111,7 +111,7 @@ func (c *customersHandler) SearchCustomer(e echo.Context) error {
 
 // UpdateCustomer godoc
 // @Summary      Actualiza la información del usuario autenticado
-// @Description  Actualiza los datos del usuario usando la información enviada en el cuerpo de la solicitud.
+// @Description  Actualización parcial: solo se modifican los campos presentes en el cuerpo de la solicitud (name, sur_name, phone, email son todos opcionales), el resto de la cuenta queda intacto.
 // @Tags         Users
 // @Accept       json
 // @Produce      json

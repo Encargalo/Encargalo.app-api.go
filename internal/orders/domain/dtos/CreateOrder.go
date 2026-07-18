@@ -15,33 +15,70 @@ var (
 )
 
 type CreateOrder struct {
-	ID                uuid.UUID `json:"id" validate:"required,uuid4" example:"3fa85f64-5717-4562-b3fc-2c963f66afa6"`
-	ShopID            uuid.UUID `json:"shop_id" validate:"required,uuid4" example:"3fa85f64-5717-4562-b3fc-2c963f66afa6"`
-	CustomerID        uuid.UUID `json:"customer_id" swaggerignore:"true"`
+	ID         uuid.UUID `json:"id" validate:"required,uuid4" example:"3fa85f64-5717-4562-b3fc-2c963f66afa6"`
+	CustomerID uuid.UUID `json:"customer_id" swaggerignore:"true"`
+	// QuoteID congela el total en el servidor (POST /orders/quote). Si viene,
+	// shop/address/items/expected_total_price se toman del quote (pueden omitirse).
+	QuoteID           uuid.UUID `json:"quote_id,omitempty" example:"3fa85f64-5717-4562-b3fc-2c963f66afa6"`
+	ShopID            uuid.UUID `json:"shop_id" example:"3fa85f64-5717-4562-b3fc-2c963f66afa6"`
 	MethodPayment     string    `json:"method_payment" validate:"required,oneof=PagoMovil" example:"PagoMovil"`
 	PaymentProofImage string    `json:"payment_proof_image" example:"data:image/jpeg;base64,/9j/4AAQ..."`
-	Address           Address   `json:"address" validate:"required"`
-	// ExpectedTotalPrice es el total que el front mostró al cliente justo
-	// antes de confirmar (catálogo/carrito). El backend siempre recalcula el
-	// cobro real desde la base de datos; este campo solo sirve para detectar
-	// si el precio quedó desactualizado (ver ErrPriceChanged, 409) y nunca se
-	// usa para fijar el monto cobrado.
-	ExpectedTotalPrice float64 `json:"expected_total_price" validate:"required,gt=0" example:"18.5"`
+	Address           Address   `json:"address"`
+	// ExpectedTotalPrice (legacy sin quote): total que el front mostró.
+	// Con quote_id se ignora. Sin quote_id sigue siendo obligatorio.
+	ExpectedTotalPrice float64 `json:"expected_total_price" example:"18.5"`
+	// BalanceAmountUSD es opcional. 0 = no usar balance. Si > 0 debe ser >= 1
+	// y <= min(balance, total). Si cubre el total no se requiere comprobante.
+	BalanceAmountUSD float64 `json:"balance_amount_usd" example:"4.0"`
 
-	CreateItemsOrder []CreateItemsOrder `json:"items" validate:"required,dive,required"`
+	CreateItemsOrder []CreateItemsOrder `json:"items"`
 }
 
 func (o *CreateOrder) Validate() error {
 	_ = conform.Struct(context.Background(), o)
 
+	if o.ID == uuid.Nil {
+		return errors.New("id es requerido")
+	}
+	if o.MethodPayment != "PagoMovil" {
+		return errors.New("method_payment inválido")
+	}
+
+	if o.QuoteID != uuid.Nil {
+		return o.validateBalanceOnly()
+	}
+
 	if err := validate.Struct(o); err != nil {
 		return err
 	}
-
-	if o.PaymentProofImage == "" {
-		return errors.New("payment_proof_image es requerido")
+	if o.ShopID == uuid.Nil {
+		return errors.New("shop_id es requerido")
+	}
+	if err := o.Address.Validate(); err != nil {
+		return err
+	}
+	if len(o.CreateItemsOrder) == 0 {
+		return errors.New("items es requerido")
+	}
+	for i := range o.CreateItemsOrder {
+		if err := o.CreateItemsOrder[i].Validate(); err != nil {
+			return err
+		}
+	}
+	if o.ExpectedTotalPrice <= 0 {
+		return errors.New("expected_total_price es requerido sin quote_id")
 	}
 
+	return o.validateBalanceOnly()
+}
+
+func (o *CreateOrder) validateBalanceOnly() error {
+	if o.BalanceAmountUSD < 0 {
+		return errors.New("balance_amount_usd no puede ser negativo")
+	}
+	if o.BalanceAmountUSD > 0 && o.BalanceAmountUSD < 1 {
+		return errors.New("balance_amount_usd mínimo es 1")
+	}
 	return nil
 }
 

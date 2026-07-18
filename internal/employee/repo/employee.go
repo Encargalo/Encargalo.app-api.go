@@ -75,7 +75,7 @@ func (e *employeeRepo) SearchEmployeeByID(ctx context.Context, employeeID uuid.U
 		ShopID: result.Account.ShopID,
 		Name:   result.Name,
 		Email:  safeDerefString(result.Email),
-		Phone:  result.Phone,
+		Phone:  safeDerefString(result.Phone),
 		Role:   result.Role,
 		Shop:   shop.ToDomainDTO(),
 	}, nil

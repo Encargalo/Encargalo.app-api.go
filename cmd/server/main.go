@@ -11,6 +11,8 @@ import (
 	"Encargalo.app-api.go/api/router"
 	"Encargalo.app-api.go/cmd/server/providers"
 	bcvPorts "Encargalo.app-api.go/internal/bcv/domain/ports"
+	appOrders "Encargalo.app-api.go/internal/orders/app"
+	ordersPorts "Encargalo.app-api.go/internal/orders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/applog"
 	"Encargalo.app-api.go/internal/shared/config"
 	"github.com/labstack/echo/v4"
@@ -35,8 +37,19 @@ func main() {
 func run() error {
 	container := providers.BuildContainer()
 
-	return container.Invoke(func(server *echo.Echo, router *router.Router, cfg config.Config, bcv bcvPorts.BcvApp) error {
+	return container.Invoke(func(
+		server *echo.Echo,
+		router *router.Router,
+		cfg config.Config,
+		bcv bcvPorts.BcvApp,
+		hub *appOrders.StaffReviewHubImpl,
+		reviews ordersPorts.PaymentReviewsApp,
+		pendingWorker *appOrders.PendingAcceptWorker,
+	) error {
+		hub.SetReviewsApp(reviews)
+
 		bcv.Start(context.Background())
+		pendingWorker.Start(context.Background())
 		router.Init()
 
 		addr := fmt.Sprintf(":%d", cfg.Server.Port)

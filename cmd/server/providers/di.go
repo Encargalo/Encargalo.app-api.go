@@ -10,6 +10,7 @@ import (
 	"Encargalo.app-api.go/internal/pkg/cookie"
 	"Encargalo.app-api.go/internal/pkg/logs"
 	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
+	"Encargalo.app-api.go/internal/shared/adapters/googleauth"
 	"Encargalo.app-api.go/internal/shared/adapters/postgres"
 	"Encargalo.app-api.go/internal/shared/adapters/redis"
 	"Encargalo.app-api.go/internal/shared/adapters/slack"
@@ -47,6 +48,7 @@ import (
 
 	ordersPorts "Encargalo.app-api.go/internal/orders/domain/ports"
 	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
+	usersPorts "Encargalo.app-api.go/internal/users/domain/ports"
 
 	appEmployee "Encargalo.app-api.go/internal/employee/app"
 	repoEmployee "Encargalo.app-api.go/internal/employee/repo"
@@ -143,12 +145,26 @@ func BuildContainer() *dig.Container {
 	})
 
 	_ = Container.Provide(appCustomer.NewUserApp)
+	_ = Container.Provide(appCustomer.NewCustomerFinanceApp)
+	_ = Container.Provide(repoCustomer.NewCustomerFinanceRepo)
+	_ = Container.Provide(handCustomer.NewCustomerFinanceHandler)
 	_ = Container.Provide(appAuth.NewAuthApp)
 	_ = Container.Provide(appShops.NewShopsApp)
 	_ = Container.Provide(appProducts.NewProductsApp)
 	_ = Container.Provide(appCustomer.NewUsersAddressApp)
+	_ = Container.Provide(appOrders.NewStaffReviewHub)
+	_ = Container.Provide(func(h *appOrders.StaffReviewHubImpl) ordersPorts.StaffReviewHub {
+		return h
+	})
+	_ = Container.Provide(repoOrders.NewPaymentReviewsRepo)
+	_ = Container.Provide(func(fa usersPorts.CustomerFinanceApp) ordersPorts.CustomerBalanceCreditor {
+		return fa
+	})
+	_ = Container.Provide(appOrders.NewPaymentReviewsApp)
+	_ = Container.Provide(handOrders.NewStaffReviewsHandler)
 	_ = Container.Provide(appOrders.NewOrderApp)
 	_ = Container.Provide(appOrders.NewManagerOrderApp)
+	_ = Container.Provide(appOrders.NewPendingAcceptWorker)
 	_ = Container.Provide(appRiders.New)
 	_ = Container.Provide(appRiders.NewFinanceApp)
 
@@ -158,6 +174,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(repoCustomer.NewUsersRepo)
 	_ = Container.Provide(repoCustomer.NewUsersAddressRepo)
 	_ = Container.Provide(repoOrders.NewOrdersRepo)
+	_ = Container.Provide(repoOrders.NewOrderQuotesRepo)
 	_ = Container.Provide(repoOrders.NewRepositoryProducerStream)
 
 	_ = Container.Provide(appEmployee.New)
@@ -169,6 +186,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(repoBcv.NewCalendarScraper)
 	_ = Container.Provide(repoBcv.NewHolidayRepo)
 
+	_ = Container.Provide(googleauth.NewVerifier)
 	_ = Container.Provide(bycript.NewHashPassword)
 	_ = Container.Provide(jwt.NewSessionUtils)
 	_ = Container.Provide(slack.NewConnectionSlack)

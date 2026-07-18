@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"testing"
 
-	authhandler "Encargalo.app-api.go/internal/auth/handler"
 	"Encargalo.app-api.go/internal/auth/domain/models"
+	authhandler "Encargalo.app-api.go/internal/auth/handler"
 	mocksports "Encargalo.app-api.go/internal/mocks/auth/domain/ports"
 	mockscookie "Encargalo.app-api.go/internal/mocks/pkg/cookie"
 	mocksjwt "Encargalo.app-api.go/internal/mocks/shared/jwt"
@@ -192,6 +192,93 @@ func TestSignInEmployee_UnexpectedError(t *testing.T) {
 
 	h := authhandler.NewAuthHandler(svc, jwtMock, cookieMock)
 	err := h.SignInEmployee(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusInternalServerError, httpCode(err))
+}
+
+// --- SignInGoogle ---
+
+func TestSignInGoogle_SuccessExistingUser(t *testing.T) {
+	svc := mocksports.NewAuthApp(t)
+	jwtMock := mocksjwt.NewSessions(t)
+	cookieMock := mockscookie.NewCookieHandler(t)
+
+	sessionID := uuid.New()
+	body := buildBody(t, map[string]string{"id_token": "valid-token"})
+	tc := buildhttptest.SetupControllerCase("/auth/sign-in/google", http.MethodPost, body)
+
+	svc.On("SignInGoogle", tc.Req.Context(), "valid-token").Return(sessionID, nil)
+	jwtMock.On("CreateSession", sessionID).Return("jwt-token", nil)
+	cookieMock.On("CreateCookieSession", "jwt-token").Return(&http.Cookie{Name: "encargalo-session", Value: "jwt-token"})
+
+	h := authhandler.NewAuthHandler(svc, jwtMock, cookieMock)
+	err := h.SignInGoogle(tc.Ctx)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusCreated, tc.Res.Code)
+}
+
+func TestSignInGoogle_InvalidBody(t *testing.T) {
+	svc := mocksports.NewAuthApp(t)
+	jwtMock := mocksjwt.NewSessions(t)
+	cookieMock := mockscookie.NewCookieHandler(t)
+
+	body := bytes.NewBufferString("{invalid-json}")
+	tc := buildhttptest.SetupControllerCase("/auth/sign-in/google", http.MethodPost, body)
+
+	h := authhandler.NewAuthHandler(svc, jwtMock, cookieMock)
+	err := h.SignInGoogle(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusBadRequest, httpCode(err))
+}
+
+func TestSignInGoogle_ValidationFail(t *testing.T) {
+	svc := mocksports.NewAuthApp(t)
+	jwtMock := mocksjwt.NewSessions(t)
+	cookieMock := mockscookie.NewCookieHandler(t)
+
+	// id_token vacío
+	body := buildBody(t, map[string]string{"id_token": ""})
+	tc := buildhttptest.SetupControllerCase("/auth/sign-in/google", http.MethodPost, body)
+
+	h := authhandler.NewAuthHandler(svc, jwtMock, cookieMock)
+	err := h.SignInGoogle(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusBadRequest, httpCode(err))
+}
+
+func TestSignInGoogle_InvalidToken(t *testing.T) {
+	svc := mocksports.NewAuthApp(t)
+	jwtMock := mocksjwt.NewSessions(t)
+	cookieMock := mockscookie.NewCookieHandler(t)
+
+	body := buildBody(t, map[string]string{"id_token": "expired-token"})
+	tc := buildhttptest.SetupControllerCase("/auth/sign-in/google", http.MethodPost, body)
+
+	svc.On("SignInGoogle", tc.Req.Context(), "expired-token").Return(uuid.UUID{}, errcustom.ErrUnautorized)
+
+	h := authhandler.NewAuthHandler(svc, jwtMock, cookieMock)
+	err := h.SignInGoogle(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusUnauthorized, httpCode(err))
+}
+
+func TestSignInGoogle_UnexpectedError(t *testing.T) {
+	svc := mocksports.NewAuthApp(t)
+	jwtMock := mocksjwt.NewSessions(t)
+	cookieMock := mockscookie.NewCookieHandler(t)
+
+	body := buildBody(t, map[string]string{"id_token": "valid-token"})
+	tc := buildhttptest.SetupControllerCase("/auth/sign-in/google", http.MethodPost, body)
+
+	svc.On("SignInGoogle", tc.Req.Context(), "valid-token").Return(uuid.UUID{}, errcustom.ErrUnexpectedError)
+
+	h := authhandler.NewAuthHandler(svc, jwtMock, cookieMock)
+	err := h.SignInGoogle(tc.Ctx)
 
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusInternalServerError, httpCode(err))

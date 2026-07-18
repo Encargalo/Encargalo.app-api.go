@@ -6,6 +6,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	"Encargalo.app-api.go/internal/shared/reqctx"
 	"github.com/labstack/echo/v4"
@@ -85,6 +86,28 @@ func HTTPFailure(c echo.Context, status int, err error) {
 	if status >= 400 {
 		slog.Warn("solicitud fallida", attrs...)
 	}
+}
+
+// HTTPAccess loguea el resultado de toda solicitud HTTP (2xx–5xx).
+func HTTPAccess(c echo.Context, status int, latency time.Duration) {
+	if c == nil {
+		return
+	}
+
+	meta := reqctx.MetaFromEcho(c)
+	attrs := attrsFromMeta(meta)
+	attrs = append(attrs,
+		"status", status,
+		"latency_ms", latency.Milliseconds(),
+		"bytes_out", c.Response().Size,
+	)
+	if req := c.Request(); req != nil && req.URL != nil {
+		if q := req.URL.RawQuery; q != "" {
+			attrs = append(attrs, "query", q)
+		}
+	}
+
+	slog.Info("solicitud", attrs...)
 }
 
 func captureStack(skip int) string {

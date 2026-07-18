@@ -6,6 +6,7 @@ import (
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
+	modelsOrder "Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
@@ -13,6 +14,7 @@ import (
 )
 
 type OrderHandler interface {
+	CreateQuote(c echo.Context) error
 	CreateOrder(c echo.Context) error
 	ConfirmPickup(c echo.Context) error
 	ConfirmDelivery(c echo.Context) error
@@ -28,9 +30,48 @@ func NewOrderHandler(svc ports.OrdersApp, svc2 ports.AppManagerOrder) OrderHandl
 	return &orderHandler{svc, svc2}
 }
 
+// CreateQuote godoc
+// @Summary      Crear cotización de orden (precio congelado)
+// @Description  Calcula y congela el total (descuentos, promo, delivery, BCV) en Redis con TTL. El cliente debe pagar contra este quote y luego crear la orden con `quote_id`. `expires_at` = 30m; `proof_grace_until` = +15m si al crear ya envía comprobante.
+// @Tags         Orders
+// @Accept       json
+// @Produce      json
+// @Security     SessionCookie
+// @Param        quote  body      dtos.CreateQuote     true  "Carrito a cotizar"
+// @Success      201    {object}  dtos.QuoteResponse   "Cotización creada"
+// @Failure      400    {object}  dtos.ErrorResponse   "Body invalido"
+// @Failure      401    {string}  string               "No autorizado"
+// @Failure      422    {object}  dtos.ErrorResponse   "Catalogo/lote no disponible"
+// @Failure      500    {object}  dtos.ErrorResponse   "Error interno"
+// @Router       /orders/quote [post]
+func (o *orderHandler) CreateQuote(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	var req dtos.CreateQuote
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
+	if !ok {
+		slog.Error("No se encontro el usuario en el contexto")
+		return errcustom.ErrUnexpectedError
+	}
+	req.CustomerID = session.UserID
+
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := req.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	quote, err := o.svc.CreateQuote(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return c.JSON(http.StatusCreated, quote)
+}
+
 // CreateOrder godoc
 // @Summary      Crear una nueva orden
-// @Description  Crea una nueva orden con los productos e informacion de entrega proporcionados. El customer_id se obtiene automaticamente del token de sesion. Se debe enviar `payment_proof_image` en base64. `expected_total_price` debe ser el total que el front mostro al cliente antes de confirmar: si no coincide con el total recalculado en el servidor (por un descuento vencido, promo de lanzamiento, etc.), la orden se rechaza con 409 y el cliente debe refrescar su carrito.
+// @Description  Preferido: enviar `quote_id` de POST /orders/quote (total congelado; shop/items/address salen del quote). Legacy: sin quote_id, enviar carrito + `expected_total_price` (409 si el precio cambió). Opcionalmente `balance_amount_usd`. Si queda resto Pago Móvil, requiere `payment_proof_image` y nace en Payment Review.
 // @Tags         Orders
 // @Accept       json
 // @Produce      json
@@ -39,7 +80,8 @@ func NewOrderHandler(svc ports.OrdersApp, svc2 ports.AppManagerOrder) OrderHandl
 // @Success      201    {object}  dtos.CreateOrderResponse  "Orden creada"
 // @Failure      400    {object}  dtos.ErrorResponse        "Body invalido o validacion fallida"
 // @Failure      401    {string}  string                    "No autorizado"
-// @Failure      409    {object}  dtos.ErrorResponse        "La orden ya existe, o el precio cambio desde que se mostro al cliente"
+// @Failure      409    {object}  dtos.ErrorResponse        "La orden ya existe, precio cambió, o quote ya usado"
+// @Failure      410    {object}  dtos.ErrorResponse        "Quote expirado"
 // @Failure      422    {object}  dtos.ErrorResponse        "Uno o mas productos/adiciones no encontrados"
 // @Failure      500    {object}  dtos.ErrorResponse        "Error interno del servidor"
 // @Router       /orders [post]
@@ -70,7 +112,12 @@ func (o *orderHandler) CreateOrder(c echo.Context) error {
 		return err
 	}
 
-	if err = o.svc2.BroadcastOrder(*orderModel); err != nil {
+	// Payment Review: only notify the customer. Shop sees the order after staff approval.
+	if orderModel.Status == string(modelsOrder.StatusPaymentReview) {
+		if err = o.svc2.BroadcastOrderToCustomer(*orderModel); err != nil {
+			slog.Error("error broadcasting order to customer websocket", "error", err)
+		}
+	} else if err = o.svc2.BroadcastOrder(*orderModel); err != nil {
 		slog.Error("error broadcasting order to websockets", "error", err)
 	}
 

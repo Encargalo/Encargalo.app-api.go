@@ -15,7 +15,8 @@ var (
 	ErrCodeAlreadyUsed        = errors.New("el código de confirmación ya fue usado")
 	ErrInvalidTransition      = errors.New("estado del pedido inválido para esta operación")
 	ErrOrderAlreadyAssigned   = errors.New("el pedido ya está asignado a otro rider")
-	ErrInsufficientBalance    = errors.New("saldo insuficiente para el retiro")
+	ErrInsufficientBalance    = errors.New("saldo insuficiente")
+	ErrInvalidBalanceAmount   = errors.New("monto de balance inválido")
 	ErrWithdrawalCooldown     = errors.New("retiro no permitido: debe esperar 24 horas entre retiros")
 	ErrInvalidStatus          = errors.New("estado del pedido inválido")
 	ErrInvalidFlavors         = errors.New("uno o más sabores no pertenecen a la categoría del item")
@@ -27,6 +28,10 @@ var (
 	ErrPriceChanged           = errors.New("el precio del pedido cambió desde la última vez que se mostró al cliente")
 	ErrInvalidCategories      = errors.New("una o más categorías no pertenecen al negocio")
 	ErrProductUnavailable     = errors.New("uno o más productos no están disponibles para ordenar")
+	ErrQuoteNotFound          = errors.New("cotización no encontrada o expirada")
+	ErrQuoteExpired           = errors.New("la cotización expiró; solicita una nueva antes de pagar")
+	ErrQuoteConsumed          = errors.New("la cotización ya fue utilizada")
+	ErrQuoteForbidden         = errors.New("la cotización no pertenece a este cliente")
 )
 
 var (

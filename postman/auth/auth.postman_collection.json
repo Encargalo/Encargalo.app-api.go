@@ -95,6 +95,60 @@
       }
     },
     {
+      "name": "Sign In - Staff",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone_number\": \"+573001112233\",\n  \"password\": \"claveSegura123\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/auth/sign-in/staff",
+          "host": ["{{base_url}}"],
+          "path": ["auth", "sign-in", "staff"]
+        },
+        "description": "Autentica un miembro del staff (CRM) con teléfono y contraseña. Retorna una cookie `encargalo-session` con el JWT de sesión. Solo funciona con cuentas que tengan el rol Staff."
+      }
+    },
+    {
+      "name": "Sign In - Google",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id_token\": \"eyJhbGciOiJSUzI1NiIsIn...\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/auth/sign-in/google",
+          "host": ["{{base_url}}"],
+          "path": ["auth", "sign-in", "google"]
+        },
+        "description": "Inicia sesión o registra un customer a partir de un id_token de Google (emitido por la app móvil). Si el email ya existe, inicia sesión; si no, crea la cuenta automáticamente (sin teléfono, que se completa luego desde el perfil). Retorna una cookie `encargalo-session` con el JWT de sesión."
+      }
+    },
+    {
       "name": "Logout",
       "request": {
         "method": "DELETE",
@@ -104,7 +158,7 @@
           "host": ["{{base_url}}"],
           "path": ["auth", "logout"]
         },
-        "description": "Cierra la sesión activa. Requiere cookie `encargalo-session`. Roles permitidos: Customer, Order Manager, Owner, Rider."
+        "description": "Cierra la sesión activa. Requiere cookie `encargalo-session`. Roles permitidos: Customer, Order Manager, Owner, Rider, Staff."
       }
     }
   ]

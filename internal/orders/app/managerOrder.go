@@ -136,6 +136,23 @@ func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
 	return nil
 }
 
+func (s *appManagerOrder) BroadcastOrderToCustomer(order models.Order) error {
+	customerData, err := json.Marshal(buildBroadcast("order_update", order, false))
+	if err != nil {
+		return err
+	}
+
+	s.mu.RLock()
+	customerClients := s.customerConnections[order.CustomerID]
+	s.mu.RUnlock()
+
+	for _, c := range customerClients {
+		c.Send(customerData)
+	}
+
+	return nil
+}
+
 func buildBroadcast(msgType string, order models.Order, isShop bool) models.OrderBroadcast {
 	b := models.OrderBroadcast{Type: msgType}
 	if isShop {

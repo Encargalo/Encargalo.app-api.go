@@ -36,6 +36,24 @@ func (_m *AppManagerOrder) BroadcastOrder(order models.Order) error {
 	return r0
 }
 
+// BroadcastOrderToCustomer provides a mock function with given fields: order
+func (_m *AppManagerOrder) BroadcastOrderToCustomer(order models.Order) error {
+	ret := _m.Called(order)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BroadcastOrderToCustomer")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(models.Order) error); ok {
+		r0 = rf(order)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // BroadcastShopStatus provides a mock function with given fields: shopID, open
 func (_m *AppManagerOrder) BroadcastShopStatus(shopID uuid.UUID, open bool) error {
 	ret := _m.Called(shopID, open)

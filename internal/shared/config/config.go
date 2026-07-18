@@ -67,7 +67,8 @@ type Environment struct {
 }
 
 type Google struct {
-	Matrix string `validate:"required" env:"matrix"`
+	Matrix   string `validate:"required" env:"matrix"`
+	ClientID string `validate:"required" env:"client_id"`
 }
 
 type Cloudinary struct {

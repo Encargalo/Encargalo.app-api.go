@@ -119,6 +119,67 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/sign-in/google": {
+            "post": {
+                "description": "Verifica un id_token de Google emitido por la app móvil. Si el email ya\npertenece a un customer, inicia sesión; si no existe, crea la cuenta\nautomáticamente (sin teléfono, que se completa luego desde el perfil).\nSi las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Iniciar sesión o registrarse con Google",
+                "parameters": [
+                    {
+                        "description": "id_token de Google",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_auth_handler_request.SignInGoogleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "session created",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Solicitud inválida (validación o JSON incorrecto)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "id_token inválido o expirado",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error inesperado del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/auth/sign-in/riders": {
             "post": {
                 "description": "Autentica a un rider usando su número de teléfono y contraseña.\nSi las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.",
@@ -132,6 +193,67 @@ const docTemplate = `{
                     "Auth"
                 ],
                 "summary": "Iniciar sesión como rider",
+                "parameters": [
+                    {
+                        "description": "Datos de inicio de sesión",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_auth_handler_request.SignInRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "session created",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Solicitud inválida (validación o JSON incorrecto)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Credenciales incorrectas",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error inesperado del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/sign-in/staff": {
+            "post": {
+                "description": "Autentica a un miembro del staff (CRM) usando teléfono y contraseña.\nSi las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Iniciar sesión como staff",
                 "parameters": [
                     {
                         "description": "Datos de inicio de sesión",
@@ -1645,7 +1767,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Crea una nueva orden con los productos e informacion de entrega proporcionados. El customer_id se obtiene automaticamente del token de sesion. Se debe enviar ` + "`" + `payment_proof_image` + "`" + ` en base64. ` + "`" + `expected_total_price` + "`" + ` debe ser el total que el front mostro al cliente antes de confirmar: si no coincide con el total recalculado en el servidor (por un descuento vencido, promo de lanzamiento, etc.), la orden se rechaza con 409 y el cliente debe refrescar su carrito.",
+                "description": "Preferido: enviar ` + "`" + `quote_id` + "`" + ` de POST /orders/quote (total congelado; shop/items/address salen del quote). Legacy: sin quote_id, enviar carrito + ` + "`" + `expected_total_price` + "`" + ` (409 si el precio cambió). Opcionalmente ` + "`" + `balance_amount_usd` + "`" + `. Si queda resto Pago Móvil, requiere ` + "`" + `payment_proof_image` + "`" + ` y nace en Payment Review.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1687,7 +1809,13 @@ const docTemplate = `{
                         }
                     },
                     "409": {
-                        "description": "La orden ya existe, o el precio cambio desde que se mostro al cliente",
+                        "description": "La orden ya existe, precio cambió, o quote ya usado",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "410": {
+                        "description": "Quote expirado",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
@@ -1786,6 +1914,69 @@ const docTemplate = `{
                 }
             }
         },
+        "/orders/quote": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Calcula y congela el total (descuentos, promo, delivery, BCV) en Redis con TTL. El cliente debe pagar contra este quote y luego crear la orden con ` + "`" + `quote_id` + "`" + `. ` + "`" + `expires_at` + "`" + ` = 30m; ` + "`" + `proof_grace_until` + "`" + ` = +15m si al crear ya envía comprobante.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Crear cotización de orden (precio congelado)",
+                "parameters": [
+                    {
+                        "description": "Carrito a cotizar",
+                        "name": "quote",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.CreateQuote"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Cotización creada",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.QuoteResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Body invalido",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "Catalogo/lote no disponible",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/orders/rider": {
             "get": {
                 "security": [
@@ -1819,6 +2010,33 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/orders/staff/reviews": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "tags": [
+                    "Orders WebSocket"
+                ],
+                "summary": "WebSocket de revisión de comprobantes (Staff CRM)",
+                "responses": {
+                    "401": {
+                        "description": "Sesión no encontrada o inválida",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado",
                         "schema": {
                             "type": "string"
                         }
@@ -2670,7 +2888,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna tiendas dentro de 3 km que coincidan con la búsqueda en nombre de tienda o nombre/descripción de producto.",
+                "description": "Retorna tiendas dentro de 3 km que coincidan con la búsqueda en nombre de tienda, categoría o macro. matched_products incluye sabores y adiciones disponibles del item (details).",
                 "produces": [
                     "application/json"
                 ],
@@ -2780,7 +2998,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Actualiza los datos del usuario usando la información enviada en el cuerpo de la solicitud.",
+                "description": "Actualización parcial: solo se modifican los campos presentes en el cuerpo de la solicitud (name, sur_name, phone, email son todos opcionales), el resto de la cuenta queda intacto.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3043,6 +3261,43 @@ const docTemplate = `{
                 }
             }
         },
+        "/users/balance": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna el balance en USD del cliente y los últimos 10 movimientos.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Finance"
+                ],
+                "summary": "Balance del cliente",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.CustomerBalanceResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/users/change-password": {
             "put": {
                 "security": [
@@ -3108,6 +3363,18 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "Encargalo_app-api_go_internal_auth_handler_request.SignInGoogleRequest": {
+            "type": "object",
+            "required": [
+                "id_token"
+            ],
+            "properties": {
+                "id_token": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJSUzI1NiIsIn..."
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_auth_handler_request.SignInRequest": {
             "type": "object",
             "required": [
@@ -3200,19 +3467,20 @@ const docTemplate = `{
         "Encargalo_app-api_go_internal_orders_domain_dtos.CreateOrder": {
             "type": "object",
             "required": [
-                "address",
-                "expected_total_price",
                 "id",
-                "items",
-                "method_payment",
-                "shop_id"
+                "method_payment"
             ],
             "properties": {
                 "address": {
                     "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.Address"
                 },
+                "balance_amount_usd": {
+                    "description": "BalanceAmountUSD es opcional. 0 = no usar balance. Si \u003e 0 debe ser \u003e= 1\ny \u003c= min(balance, total). Si cubre el total no se requiere comprobante.",
+                    "type": "number",
+                    "example": 4
+                },
                 "expected_total_price": {
-                    "description": "ExpectedTotalPrice es el total que el front mostró al cliente justo\nantes de confirmar (catálogo/carrito). El backend siempre recalcula el\ncobro real desde la base de datos; este campo solo sirve para detectar\nsi el precio quedó desactualizado (ver ErrPriceChanged, 409) y nunca se\nusa para fijar el monto cobrado.",
+                    "description": "ExpectedTotalPrice (legacy sin quote): total que el front mostró.\nCon quote_id se ignora. Sin quote_id sigue siendo obligatorio.",
                     "type": "number",
                     "example": 18.5
                 },
@@ -3237,6 +3505,11 @@ const docTemplate = `{
                     "type": "string",
                     "example": "data:image/jpeg;base64,/9j/4AAQ..."
                 },
+                "quote_id": {
+                    "description": "QuoteID congela el total en el servidor (POST /orders/quote). Si viene,\nshop/address/items/expected_total_price se toman del quote (pueden omitirse).",
+                    "type": "string",
+                    "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                },
                 "shop_id": {
                     "type": "string",
                     "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
@@ -3257,6 +3530,28 @@ const docTemplate = `{
                 },
                 "total_price": {
                     "type": "number"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_orders_domain_dtos.CreateQuote": {
+            "type": "object",
+            "required": [
+                "address",
+                "items",
+                "shop_id"
+            ],
+            "properties": {
+                "address": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.Address"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.CreateItemsOrder"
+                    }
+                },
+                "shop_id": {
+                    "type": "string"
                 }
             }
         },
@@ -3301,6 +3596,67 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "total_price": {
+                    "type": "number"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_orders_domain_dtos.QuoteItemView": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer"
+                },
+                "item_id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "total_price": {
+                    "type": "integer"
+                },
+                "unit_price": {
+                    "type": "integer"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_orders_domain_dtos.QuoteResponse": {
+            "type": "object",
+            "properties": {
+                "bcv_rate": {
+                    "type": "number"
+                },
+                "delivery_fee_bs": {
+                    "type": "number"
+                },
+                "delivery_fee_usd": {
+                    "type": "number"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "is_launch_promo": {
+                    "type": "boolean"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.QuoteItemView"
+                    }
+                },
+                "promo_subsidy_amount": {
+                    "type": "number"
+                },
+                "proof_grace_until": {
+                    "type": "string"
+                },
+                "quote_id": {
+                    "type": "string"
+                },
+                "total_bs": {
+                    "type": "number"
+                },
+                "total_usd": {
                     "type": "number"
                 }
             }
@@ -4169,6 +4525,51 @@ const docTemplate = `{
                 }
             }
         },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.MatchedAddition": {
+            "type": "object",
+            "properties": {
+                "available": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ref": {
+                    "type": "number"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.MatchedAdditionSelection": {
+            "type": "object",
+            "properties": {
+                "max_selection": {
+                    "type": "integer"
+                },
+                "min_selection": {
+                    "type": "integer"
+                },
+                "selector_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.MatchedFlavor": {
+            "type": "object",
+            "properties": {
+                "available": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_shops_domain_dtos.MatchedFlavorSelection": {
             "type": "object",
             "properties": {
@@ -4183,14 +4584,49 @@ const docTemplate = `{
                 }
             }
         },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.MatchedItemDetails": {
+            "type": "object",
+            "properties": {
+                "additions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedAddition"
+                    }
+                },
+                "flavors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedFlavor"
+                    }
+                },
+                "max_additions_selection": {
+                    "type": "integer"
+                },
+                "max_selection": {
+                    "type": "integer"
+                },
+                "min_selection": {
+                    "type": "integer"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_shops_domain_dtos.MatchedProductItem": {
             "type": "object",
             "properties": {
+                "addition_selection": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedAdditionSelection"
+                },
                 "description": {
                     "type": "string"
                 },
+                "details": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedItemDetails"
+                },
                 "flavor_selection": {
                     "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedFlavorSelection"
+                },
+                "has_additions": {
+                    "type": "boolean"
                 },
                 "has_flavors": {
                     "type": "boolean"
@@ -4583,6 +5019,20 @@ const docTemplate = `{
                 }
             }
         },
+        "Encargalo_app-api_go_internal_users_domain_dto.CustomerBalanceResponse": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "number"
+                },
+                "transactions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.CustomerTransactionItem"
+                    }
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_users_domain_dto.CustomerResponse": {
             "type": "object",
             "properties": {
@@ -4620,6 +5070,26 @@ const docTemplate = `{
                 "sur_name": {
                     "type": "string",
                     "example": "Ramírez"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_users_domain_dto.CustomerTransactionItem": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "movement_type": {
+                    "type": "string"
+                },
+                "order_id": {
+                    "type": "string"
                 }
             }
         },
@@ -4680,11 +5150,6 @@ const docTemplate = `{
         },
         "Encargalo_app-api_go_internal_users_domain_dto.UpdateCustomer": {
             "type": "object",
-            "required": [
-                "name",
-                "phone",
-                "sur_name"
-            ],
             "properties": {
                 "email": {
                     "type": "string",

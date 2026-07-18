@@ -36,6 +36,10 @@ type Order struct {
 	RiderID            *uuid.UUID      `bun:"rider_id,nullzero,type:uuid" json:"rider_id,omitempty"`
 	RiderAcceptedAt    *time.Time      `bun:"rider_accepted_at" json:"rider_accepted_at,omitempty"`
 	CreatedAt          time.Time       `bun:"created_at" json:"created_at"`
+	// PendingAt: cuando la orden entró a Pending (reloj del auto-rechazo por no aceptación).
+	PendingAt *time.Time `bun:"pending_at" json:"pending_at,omitempty"`
+	// PendingAlertMinute: último minuto de aviso Discord emitido (4 u 8).
+	PendingAlertMinute int `bun:"pending_alert_minute" json:"pending_alert_minute,omitempty"`
 
 	// IsLaunchPromo: 50% de descuento al cliente aplicado (día 1 de vida del negocio).
 	IsLaunchPromo bool `bun:"is_launch_promo" json:"is_launch_promo"`

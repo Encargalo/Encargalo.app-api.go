@@ -184,7 +184,7 @@
             }
           ]
         },
-        "description": "Busca tiendas dentro de 3 km que coincidan con el texto en nombre de tienda o en sus productos. Retorna matched_products solo cuando el match fue por producto."
+        "description": "Busca tiendas dentro de 3 km que coincidan con el texto en nombre de tienda, categoría o macro. Cada matched_product incluye has_flavors/has_additions, flavor_selection/addition_selection y details (lista de sabores y adiciones disponibles)."
       }
     }
   ]

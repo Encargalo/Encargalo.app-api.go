@@ -17,6 +17,8 @@ type Auth interface {
 	SignInCustomer(e echo.Context) error
 	SignInEmployee(e echo.Context) error
 	SignInRider(e echo.Context) error
+	SignInStaff(e echo.Context) error
+	SignInGoogle(e echo.Context) error
 	Logout(e echo.Context) error
 }
 
@@ -141,6 +143,91 @@ func (a *auth) SignInRider(e echo.Context) error {
 	}
 
 	sessionID, err := a.svc.SignInRider(ctx, signIn.Phone, signIn.Password)
+	if err != nil {
+		return errcustom.ToHTTPError(err)
+	}
+
+	jwtSession, err := a.jwt.CreateSession(sessionID)
+	if err != nil {
+		return errcustom.ToHTTPError(errcustom.ErrUnexpectedError)
+	}
+
+	e.SetCookie(a.cookie.CreateCookieSession(jwtSession))
+
+	return e.JSON(http.StatusCreated, "session created")
+}
+
+// SignInStaff godoc
+// @Summary      Iniciar sesión como staff
+// @Description  Autentica a un miembro del staff (CRM) usando teléfono y contraseña.
+// @Description  Si las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        body  body  request.SignInRequest  true  "Datos de inicio de sesión"
+// @Success      201    {string}  string  "session created"
+// @Failure      400    {object}  map[string]string  "Solicitud inválida (validación o JSON incorrecto)"
+// @Failure      422    {object}  map[string]string  "Credenciales incorrectas"
+// @Failure      500    {object}  map[string]string  "Error inesperado del servidor"
+// @Router       /auth/sign-in/staff [post]
+func (a *auth) SignInStaff(e echo.Context) error {
+	ctx := e.Request().Context()
+
+	var signIn request.SignInRequest
+
+	if err := e.Bind(&signIn); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := signIn.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	sessionID, err := a.svc.SignInStaff(ctx, signIn.Phone, signIn.Password)
+	if err != nil {
+		return errcustom.ToHTTPError(err)
+	}
+
+	jwtSession, err := a.jwt.CreateSession(sessionID)
+	if err != nil {
+		return errcustom.ToHTTPError(errcustom.ErrUnexpectedError)
+	}
+
+	e.SetCookie(a.cookie.CreateCookieSession(jwtSession))
+
+	return e.JSON(http.StatusCreated, "session created")
+}
+
+// SignInGoogle godoc
+// @Summary      Iniciar sesión o registrarse con Google
+// @Description  Verifica un id_token de Google emitido por la app móvil. Si el email ya
+// @Description  pertenece a un customer, inicia sesión; si no existe, crea la cuenta
+// @Description  automáticamente (sin teléfono, que se completa luego desde el perfil).
+// @Description  Si las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        body  body  request.SignInGoogleRequest  true  "id_token de Google"
+// @Success      201    {string}  string  "session created"
+// @Failure      400    {object}  map[string]string  "Solicitud inválida (validación o JSON incorrecto)"
+// @Failure      401    {object}  map[string]string  "id_token inválido o expirado"
+// @Failure      500    {object}  map[string]string  "Error inesperado del servidor"
+// @Router       /auth/sign-in/google [post]
+func (a *auth) SignInGoogle(e echo.Context) error {
+
+	ctx := e.Request().Context()
+
+	var signIn request.SignInGoogleRequest
+
+	if err := e.Bind(&signIn); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := signIn.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	sessionID, err := a.svc.SignInGoogle(ctx, signIn.IDToken)
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
