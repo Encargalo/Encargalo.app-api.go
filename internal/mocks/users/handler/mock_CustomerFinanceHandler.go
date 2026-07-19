@@ -13,12 +13,102 @@ type CustomerFinanceHandler struct {
 	mock.Mock
 }
 
+// CreateRefundRequest provides a mock function with given fields: c
+func (_m *CustomerFinanceHandler) CreateRefundRequest(c echo.Context) error {
+	ret := _m.Called(c)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateRefundRequest")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(echo.Context) error); ok {
+		r0 = rf(c)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // GetBalance provides a mock function with given fields: c
 func (_m *CustomerFinanceHandler) GetBalance(c echo.Context) error {
 	ret := _m.Called(c)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetBalance")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(echo.Context) error); ok {
+		r0 = rf(c)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// GetPagoMovil provides a mock function with given fields: c
+func (_m *CustomerFinanceHandler) GetPagoMovil(c echo.Context) error {
+	ret := _m.Called(c)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPagoMovil")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(echo.Context) error); ok {
+		r0 = rf(c)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// GetRefundRequest provides a mock function with given fields: c
+func (_m *CustomerFinanceHandler) GetRefundRequest(c echo.Context) error {
+	ret := _m.Called(c)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRefundRequest")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(echo.Context) error); ok {
+		r0 = rf(c)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// ListRefundRequests provides a mock function with given fields: c
+func (_m *CustomerFinanceHandler) ListRefundRequests(c echo.Context) error {
+	ret := _m.Called(c)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListRefundRequests")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(echo.Context) error); ok {
+		r0 = rf(c)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// UpsertPagoMovil provides a mock function with given fields: c
+func (_m *CustomerFinanceHandler) UpsertPagoMovil(c echo.Context) error {
+	ret := _m.Called(c)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpsertPagoMovil")
 	}
 
 	var r0 error

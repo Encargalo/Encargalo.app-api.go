@@ -1,0 +1,5 @@
+$kind: http-request
+description: "Elimina (soft delete) un sabor por su `flavor_id` (UUID en el path) y lo desasocia de todos los productos que lo tenían asignado. Si un producto queda sin sabores, su `has_flavors` pasa a `false` automáticamente. Solo puede eliminarlo el Order Manager/Owner de la tienda propietaria. Requiere cookie `encargalo-session`. Rol: Order Manager / Owner."
+url: "{{base_url}}/business/products/flavors/00000000-0000-0000-0000-000000000000"
+method: DELETE
+order: 13000

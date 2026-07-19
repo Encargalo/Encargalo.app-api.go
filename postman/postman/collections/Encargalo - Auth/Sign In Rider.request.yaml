@@ -1,0 +1,14 @@
+$kind: http-request
+description: Autentica un rider con teléfono y contraseña. Retorna una cookie `encargalo-session` con el JWT de sesión. Solo funciona con cuentas que tengan el rol Rider.
+url: "{{base_url}}/auth/sign-in/riders"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "phone_number": "+573001112233",
+      "password": "claveSegura123"
+    }
+order: 3000

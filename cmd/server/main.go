@@ -15,6 +15,8 @@ import (
 	ordersPorts "Encargalo.app-api.go/internal/orders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/applog"
 	"Encargalo.app-api.go/internal/shared/config"
+	appCustomer "Encargalo.app-api.go/internal/users/app"
+	usersPorts "Encargalo.app-api.go/internal/users/domain/ports"
 	"github.com/labstack/echo/v4"
 )
 
@@ -45,11 +47,18 @@ func run() error {
 		hub *appOrders.StaffReviewHubImpl,
 		reviews ordersPorts.PaymentReviewsApp,
 		pendingWorker *appOrders.PendingAcceptWorker,
+		refundHub *appCustomer.StaffRefundHubImpl,
+		finance usersPorts.CustomerFinanceApp,
+		refundAlertWorker *appCustomer.RefundAlertWorker,
+		orderMgr ordersPorts.AppManagerOrder,
 	) error {
 		hub.SetReviewsApp(reviews)
+		refundHub.SetFinanceApp(finance)
+		finance.SetCustomerNotifier(orderMgr)
 
 		bcv.Start(context.Background())
 		pendingWorker.Start(context.Background())
+		refundAlertWorker.Start(context.Background())
 		router.Init()
 
 		addr := fmt.Sprintf(":%d", cfg.Server.Port)

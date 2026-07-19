@@ -79,6 +79,9 @@ func (r *financeRepo) RecordMovement(ctx context.Context, entityID uuid.UUID, en
 		movement.EntityID = entityID
 		movement.EntityType = entityType
 		movement.Amount = delta
+		if movement.CreatedAt.IsZero() {
+			movement.CreatedAt = time.Now()
+		}
 
 		if _, err = tx.NewInsert().Model(&movement).Exec(ctx); err != nil {
 			slog.Error("RecordMovement: transaction insert failed", "entityID", entityID, "error", err)

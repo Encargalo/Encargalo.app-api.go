@@ -12,6 +12,7 @@ import (
 
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
+	"Encargalo.app-api.go/internal/pkg/money"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 )
@@ -136,7 +137,8 @@ func (a *paymentReviewsApp) ApproveOverpay(ctx context.Context, reviewID, staffI
 		return models.StaffReviewResult{}, errcustom.ErrInvalidStatus
 	}
 
-	if err := a.finance.CreditPaymentOverage(ctx, order.CustomerID, order.ID, credited); err != nil {
+	txID, createdAt, err := a.finance.CreditPaymentOverage(ctx, order.CustomerID, order.ID, credited)
+	if err != nil {
 		slog.Error("ApproveOverpay credit failed", "orderID", order.ID, "error", err)
 		return models.StaffReviewResult{}, err
 	}
@@ -146,7 +148,7 @@ func (a *paymentReviewsApp) ApproveOverpay(ctx context.Context, reviewID, staffI
 	review.DifferenceBs = &diff
 	review.CreditedUSD = &credited
 	review.ReferenceLast4 = &last4
-	a.syncPaymentDetails(ctx, order, review)
+	a.syncPaymentDetails(ctx, order, review, txID, credited, createdAt)
 
 	orderOut, err := a.releaseToShop(ctx, order)
 	if err != nil {
@@ -200,7 +202,8 @@ func (a *paymentReviewsApp) RejectUnderpaid(ctx context.Context, reviewID, staff
 		return models.StaffReviewResult{}, errcustom.ErrInvalidStatus
 	}
 
-	if err := a.finance.CreditPaymentPartial(ctx, order.CustomerID, order.ID, pmCredited); err != nil {
+	txID, createdAt, err := a.finance.CreditPaymentPartial(ctx, order.CustomerID, order.ID, pmCredited)
+	if err != nil {
 		slog.Error("RejectUnderpaid credit failed", "orderID", order.ID, "error", err)
 		return models.StaffReviewResult{}, err
 	}
@@ -219,7 +222,8 @@ func (a *paymentReviewsApp) RejectUnderpaid(ctx context.Context, reviewID, staff
 	review.CreditedUSD = &totalCredited
 	review.StaffID = &staffID
 	review.ReferenceLast4 = &last4
-	a.syncPaymentDetails(ctx, order, review)
+	// Solo el crédito PM es cash-refundable (no el refund del balance usado).
+	a.syncPaymentDetails(ctx, order, review, txID, pmCredited, createdAt)
 
 	if a.mgr != nil {
 		_ = a.mgr.BroadcastOrderToCustomer(*order)
@@ -265,7 +269,7 @@ func (a *paymentReviewsApp) RejectInvalid(ctx context.Context, reviewID, staffID
 	if balanceUsed > 0 {
 		review.CreditedUSD = &balanceUsed
 	}
-	a.syncPaymentDetails(ctx, order, review)
+	a.syncPaymentDetails(ctx, order, review, uuid.Nil, 0, time.Time{})
 
 	if a.mgr != nil {
 		_ = a.mgr.BroadcastOrderToCustomer(*order)
@@ -294,7 +298,15 @@ func (a *paymentReviewsApp) ListActiveForStaff(ctx context.Context) ([]models.Pa
 // diferencia, motivo de rechazo, monto acreditado) dentro de order.Details
 // para que el cliente lo reciba en el mismo order_update por WS y quede
 // persistido para el snapshot al reconectar (SearchActiveOrdersByCriteria).
-func (a *paymentReviewsApp) syncPaymentDetails(ctx context.Context, order *models.Order, review *models.PaymentReview) {
+// Si creditTxID != Nil, añade transaction_id / can_request_refund / ventana.
+func (a *paymentReviewsApp) syncPaymentDetails(
+	ctx context.Context,
+	order *models.Order,
+	review *models.PaymentReview,
+	creditTxID uuid.UUID,
+	refundablePM float64,
+	creditCreatedAt time.Time,
+) {
 	var details models.Details
 	if len(order.Details) > 0 {
 		_ = json.Unmarshal(order.Details, &details)
@@ -309,6 +321,12 @@ func (a *paymentReviewsApp) syncPaymentDetails(ctx context.Context, order *model
 	details.PaymentDetails.DifferenceBs = review.DifferenceBs
 	details.PaymentDetails.RejectionReason = review.RejectionReason
 	details.PaymentDetails.CreditedUSD = review.CreditedUSD
+
+	credited := 0.0
+	if review.CreditedUSD != nil {
+		credited = *review.CreditedUSD
+	}
+	applyBalanceCreditToPaymentDetails(details.PaymentDetails, creditTxID, credited, refundablePM, creditCreatedAt)
 
 	data, err := json.Marshal(details)
 	if err != nil {
@@ -367,26 +385,50 @@ func balanceAmountUSD(order *models.Order) float64 {
 	return details.PaymentDetails.BalanceAmountUSD
 }
 
+// pagoMovilAmountUSD es la porción pagada por Pago Móvil (cash-refundable).
+// Nunca debe incluir lo pagado con balance.
 func pagoMovilAmountUSD(order *models.Order) float64 {
+	balanceUsed, pmFromDetails, hasPD := paymentSplitFromDetails(order)
+	return cashRefundablePMUSD(order.TotalPrice, balanceUsed, pmFromDetails, hasPD)
+}
+
+func paymentSplitFromDetails(order *models.Order) (balanceUsed, pmFromDetails float64, hasPaymentDetails bool) {
+	if order == nil || len(order.Details) == 0 {
+		return 0, 0, false
+	}
 	var details models.Details
-	if len(order.Details) == 0 {
-		return order.TotalPrice
-	}
 	if err := json.Unmarshal(order.Details, &details); err != nil || details.PaymentDetails == nil {
-		return order.TotalPrice
+		return 0, 0, false
 	}
-	if details.PaymentDetails.PagoMovilAmountUSD > 0 {
-		return details.PaymentDetails.PagoMovilAmountUSD
+	return details.PaymentDetails.BalanceAmountUSD, details.PaymentDetails.PagoMovilAmountUSD, true
+}
+
+// cashRefundablePMUSD calcula el monto elegible para devolución en efectivo.
+// Si hubo pago con balance, el cash-refundable es total−balance (no el total entero).
+func cashRefundablePMUSD(orderTotal, balanceUsed, pmFromDetails float64, hasPaymentDetails bool) float64 {
+	orderTotal = money.RoundUSD(orderTotal)
+	balanceUsed = money.RoundUSD(balanceUsed)
+	pmFromDetails = money.RoundUSD(pmFromDetails)
+
+	if balanceUsed > 0 {
+		derived := money.RoundUSD(orderTotal - balanceUsed)
+		if derived < 0 {
+			return 0
+		}
+		// Si details trae un PM que incluye el balance (p.ej. igual al total), ignorarlo.
+		if pmFromDetails > 0 && pmFromDetails <= derived+0.01 {
+			return pmFromDetails
+		}
+		return derived
 	}
-	// Órdenes antiguas sin split: todo el total era Pago Móvil.
-	if details.PaymentDetails.BalanceAmountUSD <= 0 {
-		return order.TotalPrice
+	if pmFromDetails > 0 {
+		return pmFromDetails
 	}
-	rest := order.TotalPrice - details.PaymentDetails.BalanceAmountUSD
-	if rest < 0 {
-		return 0
+	if !hasPaymentDetails {
+		// Legacy sin split: se asume 100% Pago Móvil.
+		return orderTotal
 	}
-	return rest
+	return orderTotal
 }
 
 func (a *paymentReviewsApp) refundBalanceUsed(ctx context.Context, order *models.Order, amount float64) error {

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"log/slog"
+	"time"
 
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shops/domain/models"
@@ -75,6 +76,9 @@ func (r *shopFinanceRepo) RecordMovement(ctx context.Context, entityID uuid.UUID
 		movement.EntityID = entityID
 		movement.EntityType = entityType
 		movement.Amount = delta
+		if movement.CreatedAt.IsZero() {
+			movement.CreatedAt = time.Now()
+		}
 
 		if _, err = tx.NewInsert().Model(&movement).Exec(ctx); err != nil {
 			slog.Error("shop RecordMovement: transaction insert failed", "entityID", entityID, "error", err)

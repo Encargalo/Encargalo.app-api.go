@@ -134,9 +134,12 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(handOrders.New)
 	_ = Container.Provide(handRiders.New)
 	_ = Container.Provide(handRiders.NewFinanceHandler)
+	_ = Container.Provide(handRiders.NewStaffRiderHandler)
 	_ = Container.Provide(repoRiders.NewRidersRepo)
 	_ = Container.Provide(repoRiders.NewFinanceRepo)
 	_ = Container.Provide(repoRiders.NewRidersStream)
+	_ = Container.Provide(repoRiders.NewRiderProfileRepo)
+	_ = Container.Provide(appRiders.NewRiderProfileApp)
 	_ = Container.Provide(func(mgr ridersPorts.RidersApp) ordersPorts.OrderRiderBroadcaster {
 		return mgr.(ordersPorts.OrderRiderBroadcaster)
 	})
@@ -145,9 +148,18 @@ func BuildContainer() *dig.Container {
 	})
 
 	_ = Container.Provide(appCustomer.NewUserApp)
+	_ = Container.Provide(appCustomer.NewStaffRefundHub)
+	_ = Container.Provide(func(h *appCustomer.StaffRefundHubImpl) usersPorts.StaffRefundHub {
+		return h
+	})
+	_ = Container.Provide(func(s ordersPorts.RedisStream) usersPorts.StreamPublisher {
+		return s
+	})
 	_ = Container.Provide(appCustomer.NewCustomerFinanceApp)
 	_ = Container.Provide(repoCustomer.NewCustomerFinanceRepo)
 	_ = Container.Provide(handCustomer.NewCustomerFinanceHandler)
+	_ = Container.Provide(handCustomer.NewStaffRefundHandler)
+	_ = Container.Provide(appCustomer.NewRefundAlertWorker)
 	_ = Container.Provide(appAuth.NewAuthApp)
 	_ = Container.Provide(appShops.NewShopsApp)
 	_ = Container.Provide(appProducts.NewProductsApp)

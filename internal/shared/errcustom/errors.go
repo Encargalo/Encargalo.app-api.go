@@ -1,6 +1,9 @@
 package errcustom
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 var (
 	ErrNotFound               = errors.New("no encontrado")
@@ -32,9 +35,29 @@ var (
 	ErrQuoteExpired           = errors.New("la cotización expiró; solicita una nueva antes de pagar")
 	ErrQuoteConsumed          = errors.New("la cotización ya fue utilizada")
 	ErrQuoteForbidden         = errors.New("la cotización no pertenece a este cliente")
+	ErrRefundNotEligible      = errors.New("devolución no elegible")
+	ErrPagoMovilRequired      = errors.New("debe registrar un pago móvil antes de solicitar devolución")
+	ErrRefundAlreadyRequested = errors.New("ya existe una solicitud de devolución para este crédito")
+	ErrInvalidProofURL        = errors.New("url de comprobante inválida")
+	ErrRefundAmountMismatch   = errors.New("el monto ingresado no coincide con la devolución")
+	ErrRefundProofRequired    = errors.New("el comprobante de pago es requerido")
+	ErrRiderProfileIncomplete = errors.New("expediente de rider incompleto")
+	ErrRiderNotActive         = errors.New("cuenta de rider no activa")
 )
 
 var (
 	ErrUploadingImage  = errors.New("error al subir la imagen")
 	ErrConvertingImage = errors.New("error al convertir la imagen a bytes")
 )
+
+// Unexpected envuelve la causa real bajo ErrUnexpectedError.
+// El cliente solo ve "error inesperado"; los logs pueden leer la causa con errors.Unwrap / Internal.
+func Unexpected(cause error) error {
+	if cause == nil {
+		return ErrUnexpectedError
+	}
+	if errors.Is(cause, ErrUnexpectedError) {
+		return cause
+	}
+	return fmt.Errorf("%w: %v", ErrUnexpectedError, cause)
+}

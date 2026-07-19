@@ -1,0 +1,15 @@
+$kind: http-request
+description: Retorna los productos más vendidos de una tienda ordenados por ventas descendente, con paginación. Excluye productos cuya categoría tiene un horario configurado que no cubre la hora actual (America/Caracas). Cada item incluye `effective_ref`/`effective_bs` (precio final ya con el descuento propio del negocio y, si aplica, la promo de lanzamiento de la plataforma), `has_shop_discount` y `has_launch_promo`. Público.
+url: "{{base_url}}/products/best-sellers?shop_id=00000000-0000-0000-0000-000000000000&page=1&limit=5"
+method: GET
+queryParams:
+  - key: shop_id
+    value: 00000000-0000-0000-0000-000000000000
+    description: UUID de la tienda
+  - key: page
+    value: "1"
+    description: "Número de página (default: 1)"
+  - key: limit
+    value: "5"
+    description: "Resultados por página (default: 5)"
+order: 16000

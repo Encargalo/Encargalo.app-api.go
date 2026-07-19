@@ -1,0 +1,19 @@
+$kind: http-request
+description: Retorna una tienda con todos sus productos buscando por tag.
+url: "{{base_url}}/shops?tag=dmo&lat=4.678034&lon=-74.0496399"
+method: GET
+queryParams:
+  - key: id
+    value: ""
+    disabled: true
+    description: UUID de la tienda (alternativo al tag)
+  - key: tag
+    value: dmo
+    description: Tag de la tienda
+  - key: lat
+    value: "4.678034"
+    description: Latitud del usuario
+  - key: lon
+    value: "-74.0496399"
+    description: Longitud del usuario
+order: 3000

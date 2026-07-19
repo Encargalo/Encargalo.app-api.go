@@ -1,0 +1,16 @@
+description: Staff marca accepted→completed. amount_usd debe coincidir (±0.01). proof_image es data-URL/base64; el API sube a Cloudinary. Cookie + rol Staff.
+url: "{{base_url}}/users/staff/refund-requests/:id/complete"
+method: POST
+header:
+  - key: Content-Type
+    value: application/json
+body:
+  mode: raw
+  raw: |-
+    {
+      "amount_usd": 52,
+      "proof_image": "data:image/jpeg;base64,/9j/4AAQ..."
+    }
+  options:
+    raw:
+      language: json

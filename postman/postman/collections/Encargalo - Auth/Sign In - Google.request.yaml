@@ -1,0 +1,13 @@
+$kind: http-request
+description: Inicia sesión o registra un customer a partir de un id_token de Google (emitido por la app móvil). Si el email ya existe, inicia sesión; si no, crea la cuenta automáticamente (sin teléfono, que se completa luego desde el perfil). Retorna una cookie `encargalo-session` con el JWT de sesión.
+url: "{{base_url}}/auth/sign-in/google"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "id_token": "eyJhbGciOiJSUzI1NiIsIn..."
+    }
+order: 5000

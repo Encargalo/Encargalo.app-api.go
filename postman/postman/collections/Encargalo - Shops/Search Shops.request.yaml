@@ -1,0 +1,15 @@
+$kind: http-request
+description: Busca tiendas dentro de 3 km que coincidan con el texto en nombre de tienda, categoría o macro. Cada matched_product incluye has_flavors/has_additions, flavor_selection/addition_selection y details (lista de sabores y adiciones disponibles).
+url: "{{base_url}}/shops/search?q=pizza&lat=4.678034&lon=-74.0496399"
+method: GET
+queryParams:
+  - key: q
+    value: pizza
+    description: Texto a buscar (nombre de tienda o producto)
+  - key: lat
+    value: "4.678034"
+    description: Latitud del usuario
+  - key: lon
+    value: "-74.0496399"
+    description: Longitud del usuario
+order: 6000

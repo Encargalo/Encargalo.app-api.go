@@ -45,5 +45,5 @@ type Transaction struct {
 	MovementType  string     `bun:"movement_type"`
 	PaymentMethod *string    `bun:"payment_method"`
 	DistanceKm    *float64   `bun:"distance_km"`
-	CreatedAt     time.Time  `bun:"created_at"`
+	CreatedAt     time.Time  `bun:"created_at,nullzero"`
 }

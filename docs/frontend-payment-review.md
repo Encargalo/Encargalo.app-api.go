@@ -197,6 +197,31 @@ Reembolsos si algo falla después:
 | Staff `rejected_underpaid` | `balance_amount_usd` + lo observado del PM |
 | Local `refunded_shop_reject` | `total_price` (recupera todo) |
 
+### Devolución en efectivo (ventana 15 min)
+
+Solo la **porción Pago Móvil** de un crédito puede pedirse como devolución (no lo que ya era balance). `can_request_refund` indica elegibilidad por ventana/monto/saldo (no exige PM registrado). El Pago Móvil se valida al crear: si no hay, el front pide registrarlo (`PUT /users/pago-movil`) y luego `POST /users/balance/refund-requests`.
+
+**Dos vías para el CTA de devolución:**
+
+1. Desde el `order_update` WS: leer `details.payment.transaction_id` + `can_request_refund` + `refund_eligible_until` (overpay / underpaid / shop reject).
+2. Desde `GET /users/balance`: mismo `id` del movimiento en el historial.
+
+La ventana de **15 minutos** aplica solo para **crear** la solicitud (`can_request_refund`). Una vez creada:
+
+- `pending` y `accepted` siguen **abiertas** (CRM + alerta Discord cada 5 min).
+- Solo terminan con `rejected` o `completed` (pago hecho + comprobante).
+- `accepted` **no** cierra el caso: si staff tarda en pagar, seguimos alertando.
+
+| Origen | Cash-refundable |
+|---|---|
+| `payment_overage` | todo el crédito |
+| `payment_partial_credit` | todo el crédito PM |
+| `order_rejected_refund` | solo `pago_movil_amount_usd` (0 si 100% balance → no elegible) |
+
+Flujo: `POST /users/balance/refund-requests` (debita como `balance_refund_hold`) → staff WS `accept` (`hold`→`processing`) → `complete` + imagen (`processing`→`payout`) | `reject` (restaura con `balance_refund_restore`). El cliente abre el detalle con `refund_request_id` desde el movimiento de reserva.
+
+Al crear la solicitud (y cada **5 minutos** mientras siga `pending` **o** `accepted`) la API publica `balance_refund_pending` al Redis Stream con `request_id` + `minutes_pending`; el consumer carga cliente/monto/estados desde BD y notifica a Discord.
+
 ---
 
 ## 1. Flujo general (cuando hay comprobante)
@@ -262,7 +287,11 @@ En `approve` / `approve_overpay` / `reject_underpaid` el staff **debe** enviar l
         "rejection_reason": "texto opcional",
         "credited_usd": 2.5,
         "balance_amount_usd": 4.0,
-        "pago_movil_amount_usd": 4.5
+        "pago_movil_amount_usd": 4.5,
+        "transaction_id": "uuid-del-movimiento-cash-refundable",
+        "refundable_pm_usd": 2.5,
+        "can_request_refund": true,
+        "refund_eligible_until": "2026-07-18T19:28:36Z"
       }
     }
   }
@@ -314,10 +343,10 @@ En `approve` / `approve_overpay` / `reject_underpaid` el staff **debe** enviar l
 |---|---|
 | `order.status` | `"Pending"` |
 | `details.payment.status` | `"overpaid"` |
-| Campos clave | `expected_amount_bs`, `observed_amount_bs`, `difference_bs`, `credited_usd` |
+| Campos clave | `expected_amount_bs`, `observed_amount_bs`, `difference_bs`, `credited_usd`, `transaction_id`, `refundable_pm_usd`, `can_request_refund`, `refund_eligible_until` |
 | Qué ve el cliente | “Pago confirmado. Detectamos un exceso de X Bs; te acreditamos Y USD a tu balance.” |
 | Balance | Sube `credited_usd` (`movement_type: payment_overage`) |
-| Acciones | Continuar tracking. Opcional: link a pantalla de balance. |
+| Acciones | Continuar tracking. Si `can_request_refund`: CTA devolución con `transaction_id` (o vía historial de balance). |
 
 **Ejemplo de lectura:**
 
@@ -337,10 +366,10 @@ if (order.status === 'Pending' && p?.status === 'overpaid') {
 |---|---|
 | `order.status` | `"Rejected"` |
 | `details.payment.status` | `"rejected_underpaid"` |
-| Campos clave | `expected_amount_bs`, `observed_amount_bs`, `difference_bs`, `credited_usd` |
+| Campos clave | `expected_amount_bs`, `observed_amount_bs`, `difference_bs`, `credited_usd`, `transaction_id` (crédito PM), `refundable_pm_usd`, `can_request_refund`, `refund_eligible_until` |
 | Qué ve el cliente | “Tu pedido fue rechazado porque el pago estaba incompleto. Lo que pagaste (X Bs ≈ Y USD) quedó en tu balance.” |
 | Balance | Sube `credited_usd` con **todo lo observado** (`movement_type: payment_partial_credit`) |
-| Acciones | **No** pedir segundo comprobante en esta orden. CTA: “Hacer un nuevo pedido” / “Usar mi balance”. |
+| Acciones | **No** pedir segundo comprobante en esta orden. Si `can_request_refund`: CTA devolución. También “Hacer un nuevo pedido” / “Usar mi balance”. |
 
 **Reglas de producto (importante):**
 
@@ -389,11 +418,11 @@ Incluye dos disparadores con el **mismo** payload para el front:
 |---|---|
 | `order.status` | `"Rejected"` |
 | `details.payment.status` | `"refunded_shop_reject"` |
-| Campos clave | `credited_usd` (= `order.total_price`), `rejection_reason` |
+| Campos clave | `credited_usd` (= `order.total_price`), `rejection_reason`, y si hay porción PM: `transaction_id`, `refundable_pm_usd`, `can_request_refund`, `refund_eligible_until` |
 | Qué ve el cliente | “El local rechazó tu pedido. Te acreditamos $X a tu balance.” (o el `rejection_reason` si lo muestran) |
 | Balance | Sube `order.total_price` USD (`movement_type: order_rejected_refund`) |
 | Nota | Si antes hubo overpay, el exceso **ya** estaba en balance; este crédito es el total de la orden (lo que se “cobró” por el pedido). En 100% balance, esto **devuelve** lo debitado al crear. |
-| Acciones | CTA: “Hacer un nuevo pedido” / “Ver balance” |
+| Acciones | CTA devolución si `can_request_refund` (usar `transaction_id` del mismo `details.payment`); también vía `GET /users/balance`. Alternativa: “Hacer un nuevo pedido” |
 
 El reloj del auto-timeout arranca cuando la orden **entra a `Pending`** (al crear si es 100% balance, o cuando staff aprueba el comprobante). Mientras esté en `Payment Review`, no corre.
 

@@ -1,0 +1,7 @@
+$kind: http-request
+description: "Sabores del JSONB de una categoría. Roles: Owner / Order Manager."
+url: "{{base_url}}/business/products/flavors/category?category_id=00000000-0000-0000-0000-000000000000"
+method: GET
+queryParams:
+  category_id: 00000000-0000-0000-0000-000000000000
+order: 5000

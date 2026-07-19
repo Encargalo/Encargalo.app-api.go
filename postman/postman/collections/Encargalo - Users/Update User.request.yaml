@@ -1,0 +1,16 @@
+$kind: http-request
+description: "Actualiza los datos del usuario autenticado. Actualización parcial: solo se modifican los campos presentes en el body (todos opcionales), el resto de la cuenta queda intacto. Requiere cookie `encargalo-session`. Roles: Customer, customer."
+url: "{{base_url}}/users"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "Carlos",
+      "sur_name": "Ramírez",
+      "phone": "+573001112233",
+      "email": "carlos.ramirez@example.com"
+    }
+order: 11000

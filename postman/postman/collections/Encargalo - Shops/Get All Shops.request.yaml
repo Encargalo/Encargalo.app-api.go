@@ -1,0 +1,12 @@
+$kind: http-request
+description: Retorna todas las tiendas disponibles ordenadas por distancia al usuario.
+url: "{{base_url}}/shops/all?lat=4.678034&lon=-74.0496399"
+method: GET
+queryParams:
+  - key: lat
+    value: "4.678034"
+    description: Latitud del usuario
+  - key: lon
+    value: "-74.0496399"
+    description: Longitud del usuario
+order: 1000

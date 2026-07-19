@@ -153,6 +153,17 @@ func (s *appManagerOrder) BroadcastOrderToCustomer(order models.Order) error {
 	return nil
 }
 
+func (s *appManagerOrder) NotifyCustomer(customerID uuid.UUID, msg []byte) error {
+	s.mu.RLock()
+	customerClients := s.customerConnections[customerID]
+	s.mu.RUnlock()
+
+	for _, c := range customerClients {
+		c.Send(msg)
+	}
+	return nil
+}
+
 func buildBroadcast(msgType string, order models.Order, isShop bool) models.OrderBroadcast {
 	b := models.OrderBroadcast{Type: msgType}
 	if isShop {

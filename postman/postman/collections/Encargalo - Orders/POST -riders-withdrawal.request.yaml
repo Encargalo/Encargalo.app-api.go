@@ -1,0 +1,6 @@
+$kind: http-request
+name: POST /riders/withdrawal
+description: Solicita retiro del balance acumulado. Requiere balance >= +$15.
+url: "{{base_url}}/riders/withdrawal"
+method: POST
+order: 12000

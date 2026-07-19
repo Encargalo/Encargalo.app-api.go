@@ -2628,6 +2628,330 @@
                 }
             }
         },
+        "/riders/staff/candidates": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Busca una cuenta (Customer) por teléfono y, si existe, el expediente rider.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff"
+                ],
+                "summary": "Buscar candidato a rider por teléfono",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Teléfono",
+                        "name": "phone",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.CandidateResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/staff/profiles": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Lista perfiles por status (default draft). Incluye completion para follow-up.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff"
+                ],
+                "summary": "Listar expedientes rider",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "draft",
+                        "description": "draft|active|suspended",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/staff/profiles/{userId}": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff"
+                ],
+                "summary": "Detalle expediente rider",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Upsert parcial. Fotos como data-URL/base64 (se suben a Cloudinary). No asigna rol Rider.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff"
+                ],
+                "summary": "Guardar borrador expediente rider",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Campos parciales",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.UpsertRiderProfileRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/staff/profiles/{userId}/activate": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Requiere checklist completo. Asigna rol Rider y status=active.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff"
+                ],
+                "summary": "Activar rider",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.ActivateErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/staff/profiles/{userId}/photos/{field}": {
+            "delete": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Pone NULL el campo en DB y elimina el asset en Cloudinary. field: profile_photo|id_photo|carnet_photo|license_photo|circulation_card|vehicle_photo_1..4",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff"
+                ],
+                "summary": "Eliminar foto del expediente rider",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Campo de foto",
+                        "name": "field",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/staff/profiles/{userId}/suspend": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff"
+                ],
+                "summary": "Suspender rider",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/staff/profiles/{userId}/touch-contact": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff"
+                ],
+                "summary": "Marcar contacto de seguimiento",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Notas opcionales",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TouchContactRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/riders/transactions": {
             "get": {
                 "security": [
@@ -3257,7 +3581,7 @@
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna el balance en USD del cliente y los últimos 10 movimientos.",
+                "description": "Retorna el balance en USD del cliente y los últimos 10 movimientos. Créditos elegibles incluyen can_request_refund (ventana/monto/saldo; no exige Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold / processing / payout) y créditos balance_refund_restore incluyen refund_request_id para abrir el detalle.",
                 "produces": [
                     "application/json"
                 ],
@@ -3280,6 +3604,141 @@
                     },
                     "500": {
                         "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/balance/refund-requests": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Lista las solicitudes de devolución del cliente autenticado.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Finance"
+                ],
+                "summary": "Listar solicitudes de devolución",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.RefundRequestResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Solicita devolución en efectivo de la porción Pago Móvil de un crédito elegible (\u003e $1, ventana 15 min). Requiere Pago Móvil registrado.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Finance"
+                ],
+                "summary": "Solicitar devolución de crédito",
+                "parameters": [
+                    {
+                        "description": "transaction_id del crédito",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.CreateRefundRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.RefundRequestResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "Ya existe solicitud",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "No elegible / sin PM",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/balance/refund-requests/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Detalle de una solicitud (incluye proof_url cuando status=completed). Usar desde el historial con refund_request_id.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Finance"
+                ],
+                "summary": "Detalle de solicitud de devolución",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "UUID de la solicitud",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.RefundRequestResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrada",
                         "schema": {
                             "type": "string"
                         }
@@ -3343,6 +3802,189 @@
                     },
                     "500": {
                         "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/pago-movil": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna el Pago Móvil registrado para devoluciones.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Finance"
+                ],
+                "summary": "Pago Móvil del cliente",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.PagoMovilResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "No registrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Registra o modifica el Pago Móvil destino del cliente para devoluciones.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Finance"
+                ],
+                "summary": "Crear o actualizar Pago Móvil",
+                "parameters": [
+                    {
+                        "description": "Datos Pago Móvil",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.UpsertPagoMovilRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.PagoMovilResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/staff/refund-requests": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "tags": [
+                    "Users Finance"
+                ],
+                "summary": "WebSocket de devoluciones de balance (Staff CRM)",
+                "responses": {
+                    "401": {
+                        "description": "Sesión no encontrada o inválida",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/staff/refund-requests/{id}/complete": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Registra el pago de una solicitud accepted: valida amount_usd, sube proof_image (base64) a Cloudinary y marca completed.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Finance"
+                ],
+                "summary": "Completar devolución (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID de la solicitud",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Monto pagado + imagen del comprobante",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.CompleteRefundRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.RefundRequestResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos / falta comprobante",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "Monto no coincide / estado inválido",
                         "schema": {
                             "type": "string"
                         }
@@ -4407,6 +5049,20 @@
                 }
             }
         },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.ActivateErrorResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "missing": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_riders_domain_dtos.BalanceResponse": {
             "type": "object",
             "properties": {
@@ -4421,6 +5077,146 @@
                 },
                 "zone": {
                     "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_models.Zone"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.CandidateResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "has_rider_role": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "profile": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse"
+                },
+                "sur_name": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.RiderCompletionDTO": {
+            "type": "object",
+            "properties": {
+                "filled_count": {
+                    "type": "integer"
+                },
+                "is_complete": {
+                    "type": "boolean"
+                },
+                "missing": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "required_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse": {
+            "type": "object",
+            "properties": {
+                "activated_at": {
+                    "type": "string"
+                },
+                "carnet_photo_url": {
+                    "type": "string"
+                },
+                "circulation_card_url": {
+                    "type": "string"
+                },
+                "completion": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderCompletionDTO"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "has_rider_role": {
+                    "type": "boolean"
+                },
+                "id_photo_url": {
+                    "type": "string"
+                },
+                "last_contacted_at": {
+                    "type": "string"
+                },
+                "license_photo_url": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "profile_photo_url": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "sur_name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                },
+                "vehicle_brand": {
+                    "type": "string"
+                },
+                "vehicle_color": {
+                    "type": "string"
+                },
+                "vehicle_model": {
+                    "type": "string"
+                },
+                "vehicle_photo_1_url": {
+                    "type": "string"
+                },
+                "vehicle_photo_2_url": {
+                    "type": "string"
+                },
+                "vehicle_photo_3_url": {
+                    "type": "string"
+                },
+                "vehicle_photo_4_url": {
+                    "type": "string"
+                },
+                "vehicle_plate": {
+                    "type": "string"
+                },
+                "vehicle_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.TouchContactRequest": {
+            "type": "object",
+            "properties": {
+                "notes": {
+                    "type": "string"
                 }
             }
         },
@@ -4467,6 +5263,56 @@
                     "items": {
                         "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO"
                     }
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.UpsertRiderProfileRequest": {
+            "type": "object",
+            "properties": {
+                "carnet_photo": {
+                    "type": "string"
+                },
+                "circulation_card": {
+                    "type": "string"
+                },
+                "id_photo": {
+                    "type": "string"
+                },
+                "license_photo": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "profile_photo": {
+                    "type": "string"
+                },
+                "vehicle_brand": {
+                    "type": "string"
+                },
+                "vehicle_color": {
+                    "type": "string"
+                },
+                "vehicle_model": {
+                    "type": "string"
+                },
+                "vehicle_photo_1": {
+                    "type": "string"
+                },
+                "vehicle_photo_2": {
+                    "type": "string"
+                },
+                "vehicle_photo_3": {
+                    "type": "string"
+                },
+                "vehicle_photo_4": {
+                    "type": "string"
+                },
+                "vehicle_plate": {
+                    "type": "string"
+                },
+                "vehicle_type": {
+                    "type": "string"
                 }
             }
         },
@@ -5008,6 +5854,32 @@
                 }
             }
         },
+        "Encargalo_app-api_go_internal_users_domain_dto.CompleteRefundRequest": {
+            "type": "object",
+            "required": [
+                "amount_usd",
+                "proof_image"
+            ],
+            "properties": {
+                "amount_usd": {
+                    "type": "number"
+                },
+                "proof_image": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_users_domain_dto.CreateRefundRequest": {
+            "type": "object",
+            "required": [
+                "transaction_id"
+            ],
+            "properties": {
+                "transaction_id": {
+                    "type": "string"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_users_domain_dto.CustomerBalanceResponse": {
             "type": "object",
             "properties": {
@@ -5068,6 +5940,9 @@
                 "amount": {
                     "type": "number"
                 },
+                "can_request_refund": {
+                    "type": "boolean"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -5078,6 +5953,82 @@
                     "type": "string"
                 },
                 "order_id": {
+                    "type": "string"
+                },
+                "refund_eligible_until": {
+                    "type": "string"
+                },
+                "refund_request_id": {
+                    "type": "string"
+                },
+                "refundable_pm_usd": {
+                    "type": "number"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_users_domain_dto.PagoMovilResponse": {
+            "type": "object",
+            "properties": {
+                "bank_code": {
+                    "type": "string"
+                },
+                "national_id": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_users_domain_dto.RefundRequestResponse": {
+            "type": "object",
+            "properties": {
+                "accepted_at": {
+                    "type": "string"
+                },
+                "amount_usd": {
+                    "type": "number"
+                },
+                "completed_at": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "order_id": {
+                    "type": "string"
+                },
+                "pm_bank_code": {
+                    "type": "string"
+                },
+                "pm_national_id": {
+                    "type": "string"
+                },
+                "pm_phone": {
+                    "type": "string"
+                },
+                "proof_url": {
+                    "type": "string"
+                },
+                "rejection_reason": {
+                    "type": "string"
+                },
+                "resolved_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "transaction_id": {
                     "type": "string"
                 }
             }
@@ -5170,6 +6121,25 @@
                     "type": "string",
                     "minLength": 8,
                     "example": "claveSegura123"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_users_domain_dto.UpsertPagoMovilRequest": {
+            "type": "object",
+            "required": [
+                "bank_code",
+                "national_id",
+                "phone"
+            ],
+            "properties": {
+                "bank_code": {
+                    "type": "string"
+                },
+                "national_id": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
                 }
             }
         }

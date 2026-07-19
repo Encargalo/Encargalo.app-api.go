@@ -1,0 +1,5 @@
+$kind: http-request
+description: Retorna los métodos de pago activos. PagoMovil incluye `qr_url` y los campos requeridos. Requiere cookie `encargalo-session`.
+url: "{{base_url}}/payment-methods"
+method: GET
+order: 1000

@@ -1,0 +1,3 @@
+description: Activa rider (checklist completo). Asigna rol Rider. Cookie + rol Staff.
+url: "{{base_url}}/riders/staff/profiles/:userId/activate"
+method: POST

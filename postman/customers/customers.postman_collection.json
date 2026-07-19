@@ -50,7 +50,152 @@
           "host": ["{{base_url}}"],
           "path": ["users", "balance"]
         },
-        "description": "Retorna el balance del customer en USD y los últimos 10 movimientos. Movimientos: `payment_overage`, `payment_partial_credit`, `order_rejected_refund`, `balance_payment` (débito al pagar con cartera), `balance_payment_refund`. Si no tiene balance aún: `balance: 0`, `transactions: []`. Cookie + rol Customer."
+        "description": "Retorna el balance del customer en USD y los últimos 10 movimientos. Créditos elegibles pueden incluir `can_request_refund`, `refundable_pm_usd`, `refund_eligible_until`. Débitos de devolución (`balance_refund_hold` / `processing` / `payout`) y créditos `balance_refund_restore` incluyen `refund_request_id` para abrir el detalle. Cookie + rol Customer."
+      }
+    },
+    {
+      "name": "Get Pago Movil",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/users/pago-movil",
+          "host": ["{{base_url}}"],
+          "path": ["users", "pago-movil"]
+        },
+        "description": "Retorna el Pago Móvil registrado del customer para devoluciones. 404 si no tiene. Cookie + rol Customer."
+      }
+    },
+    {
+      "name": "Upsert Pago Movil",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"+584121234567\",\n  \"bank_code\": \"0102\",\n  \"national_id\": \"V12345678\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/users/pago-movil",
+          "host": ["{{base_url}}"],
+          "path": ["users", "pago-movil"]
+        },
+        "description": "Crea o actualiza el Pago Móvil destino del customer. Requerido antes de solicitar devoluciones. Cookie + rol Customer."
+      }
+    },
+    {
+      "name": "Create Refund Request",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"transaction_id\": \"00000000-0000-0000-0000-000000000000\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/users/balance/refund-requests",
+          "host": ["{{base_url}}"],
+          "path": ["users", "balance", "refund-requests"]
+        },
+        "description": "Solicita devolución en efectivo de la porción Pago Móvil de un crédito (> $1, ventana 15 min desde el crédito). Requiere PM registrado. Estados: pending → accepted → completed (staff sube proof_url). Cookie + rol Customer."
+      }
+    },
+    {
+      "name": "List Refund Requests",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/users/balance/refund-requests",
+          "host": ["{{base_url}}"],
+          "path": ["users", "balance", "refund-requests"]
+        },
+        "description": "Lista las solicitudes de devolución del customer. Cookie + rol Customer."
+      }
+    },
+    {
+      "name": "Get Refund Request Detail",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/users/balance/refund-requests/:id",
+          "host": ["{{base_url}}"],
+          "path": ["users", "balance", "refund-requests", ":id"],
+          "variable": [
+            {
+              "key": "id",
+              "value": "00000000-0000-0000-0000-000000000000"
+            }
+          ]
+        },
+        "description": "Detalle de una solicitud. Cuando status=completed incluye proof_url del comprobante. Abrir desde el historial con refund_request_id. Cookie + rol Customer."
+      }
+    },
+    {
+      "name": "Staff Refund Requests WebSocket",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/users/staff/refund-requests",
+          "host": ["{{base_url}}"],
+          "path": ["users", "staff", "refund-requests"]
+        },
+        "description": "WebSocket CRM staff. Al conectar: snapshot pending/accepted + connected. Inbound: accept {request_id}, reject {request_id, reason?}, complete {request_id, amount_usd, proof_image}. Preferir POST .../complete. Cookie + rol Staff."
+      }
+    },
+    {
+      "name": "Staff Complete Refund Request",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amount_usd\": 52,\n  \"proof_image\": \"data:image/jpeg;base64,/9j/4AAQ...\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/users/staff/refund-requests/:id/complete",
+          "host": ["{{base_url}}"],
+          "path": ["users", "staff", "refund-requests", ":id", "complete"],
+          "variable": [
+            {
+              "key": "id",
+              "value": ""
+            }
+          ]
+        },
+        "description": "Staff marca accepted→completed. amount_usd debe coincidir (±0.01). proof_image es data-URL/base64; el API sube a Cloudinary. Cookie + rol Staff."
       }
     },
     {

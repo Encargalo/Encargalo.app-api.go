@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"github.com/google/uuid"
@@ -21,9 +22,12 @@ type PaymentReviewsRepo interface {
 // CustomerBalanceCreditor is implemented by users finance to credit/debit customer USD balance.
 type CustomerBalanceCreditor interface {
 	GetBalanceUSD(ctx context.Context, customerID uuid.UUID) (float64, error)
-	CreditPaymentOverage(ctx context.Context, customerID, orderID uuid.UUID, amountUSD float64) error
-	CreditPaymentPartial(ctx context.Context, customerID, orderID uuid.UUID, amountUSD float64) error
-	CreditOrderRejected(ctx context.Context, customerID, orderID uuid.UUID, amountUSD float64) error
+	// GetBalancePaymentDebitForOrder returns the USD debited from balance for this order
+	// (absolute value of balance_payment movements). 0 if none.
+	GetBalancePaymentDebitForOrder(ctx context.Context, customerID, orderID uuid.UUID) (float64, error)
+	CreditPaymentOverage(ctx context.Context, customerID, orderID uuid.UUID, amountUSD float64) (txID uuid.UUID, createdAt time.Time, err error)
+	CreditPaymentPartial(ctx context.Context, customerID, orderID uuid.UUID, amountUSD float64) (txID uuid.UUID, createdAt time.Time, err error)
+	CreditOrderRejected(ctx context.Context, customerID, orderID uuid.UUID, amountUSD, refundablePMUSD float64) (txID uuid.UUID, createdAt time.Time, err error)
 	DebitForOrder(ctx context.Context, customerID, orderID uuid.UUID, amountUSD float64) error
 	RefundBalancePayment(ctx context.Context, customerID, orderID uuid.UUID, amountUSD float64) error
 }

@@ -1,0 +1,5 @@
+$kind: http-request
+description: "Retorna solo `id` y `name` de cada micro categoría del negocio autenticado, sin items ni horarios. Pensado para poblar selectores del panel del negocio, como el de `category_ids` al crear o editar una adición. `shop_id` se obtiene automáticamente de la sesión. Requiere cookie `encargalo-session`. Rol: Order Manager / Owner."
+url: "{{base_url}}/business/products/categories/summary"
+method: GET
+order: 6000

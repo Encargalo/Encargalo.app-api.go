@@ -1,0 +1,17 @@
+$kind: http-request
+description: "El local introduce el código de 4 dígitos que le muestra el rider. Si el código es válido, el pedido pasa de 'In Preparation' o 'Ready' a 'On The Way' y se genera el código de entrega para el usuario. Requiere cookie `encargalo-session`. Roles: Order Manager, Owner."
+url: "{{base_url}}/orders/:id/confirm-pickup"
+method: POST
+headers:
+  Content-Type: application/json
+pathVariables:
+  - key: id
+    value: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+    description: UUID del pedido
+body:
+  type: json
+  content: |-
+    {
+      "code": "1234"
+    }
+order: 6000

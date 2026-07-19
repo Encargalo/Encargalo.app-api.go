@@ -103,4 +103,6 @@ type AppManagerOrder interface {
 	BroadcastOrder(order models.Order) error
 	BroadcastOrderToCustomer(order models.Order) error
 	BroadcastShopStatus(shopID uuid.UUID, open bool) error
+	// NotifyCustomer envía un payload arbitrario a las conexiones del customer (p. ej. refund_request_update).
+	NotifyCustomer(customerID uuid.UUID, msg []byte) error
 }

@@ -23,7 +23,11 @@ type Client struct {
 }
 
 func NewClient(conn *websocket.Conn) *Client {
-	conn.SetReadLimit(readLimit)
+	return NewClientWithReadLimit(conn, readLimit)
+}
+
+func NewClientWithReadLimit(conn *websocket.Conn, limit int64) *Client {
+	conn.SetReadLimit(limit)
 	_ = conn.SetReadDeadline(time.Now().Add(readTimeout))
 	conn.SetPongHandler(func(string) error {
 		_ = conn.SetReadDeadline(time.Now().Add(readTimeout))

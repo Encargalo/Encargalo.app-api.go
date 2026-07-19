@@ -481,6 +481,9 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 			return &models.Order{}, errcustom.ErrUploadingImage
 		}
 		proofURL = proofUpload.SecureURL
+		if proofURL == "" {
+			return &models.Order{}, errcustom.ErrUploadingImage
+		}
 		DetailsModel.PaymentDetails.PaymentProofURL = proofURL
 		DetailsModel.PaymentDetails.ExpectedAmountBs = money.RoundBs(pagoMovilUSD * rate)
 		orderModel.Status = string(models.StatusPaymentReview)
@@ -653,7 +656,14 @@ func (o *orderApp) refundCustomerOnShopRejectWithReason(ctx context.Context, ord
 		return
 	}
 
-	if err := o.customerBalance.CreditOrderRejected(ctx, order.CustomerID, order.ID, order.TotalPrice); err != nil {
+	balanceUsed, pmFromDetails, hasPD := paymentSplitFromDetails(order)
+	// Fuente de verdad del ledger si details no trae el split (o lo trae mal).
+	if debited, err := o.customerBalance.GetBalancePaymentDebitForOrder(ctx, order.CustomerID, order.ID); err == nil && debited > balanceUsed {
+		balanceUsed = debited
+	}
+	refundablePM := cashRefundablePMUSD(order.TotalPrice, balanceUsed, pmFromDetails, hasPD)
+	txID, createdAt, err := o.customerBalance.CreditOrderRejected(ctx, order.CustomerID, order.ID, order.TotalPrice, refundablePM)
+	if err != nil {
 		slog.Error("refundCustomerOnShopReject credit failed", "orderID", order.ID, "error", err)
 		return
 	}
@@ -666,9 +676,12 @@ func (o *orderApp) refundCustomerOnShopRejectWithReason(ctx context.Context, ord
 	if details.PaymentDetails == nil {
 		details.PaymentDetails = &models.PaymentDetails{}
 	}
+	// Persistir split corregido para lecturas posteriores.
+	details.PaymentDetails.BalanceAmountUSD = balanceUsed
+	details.PaymentDetails.PagoMovilAmountUSD = refundablePM
 	details.PaymentDetails.Status = models.ReviewRefundedShopReject
 	details.PaymentDetails.RejectionReason = &reason
-	details.PaymentDetails.CreditedUSD = &credited
+	applyBalanceCreditToPaymentDetails(details.PaymentDetails, txID, credited, refundablePM, createdAt)
 
 	data, err := json.Marshal(details)
 	if err != nil {

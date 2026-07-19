@@ -1,0 +1,21 @@
+$kind: http-request
+description: "Registra una dirección tipo Casa. Requiere cookie `encargalo-session`. Roles: Customer, customer."
+url: "{{base_url}}/users/address"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "type": "Home",
+      "label": "Casa",
+      "address": "Calle 123 # 45-67",
+      "lat": 4.609710,
+      "long": -74.081750,
+      "instructions": "Tocar el timbre azul",
+      "extra": {
+        "details": "Casa de dos pisos con jardín"
+      }
+    }
+order: 1000

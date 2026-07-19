@@ -40,15 +40,36 @@ var statusMap = map[error]int{
 	ErrQuoteExpired:           http.StatusGone,
 	ErrQuoteConsumed:          http.StatusConflict,
 	ErrQuoteForbidden:         http.StatusForbidden,
+	ErrRefundNotEligible:      http.StatusUnprocessableEntity,
+	ErrPagoMovilRequired:      http.StatusUnprocessableEntity,
+	ErrRefundAlreadyRequested: http.StatusConflict,
+	ErrInvalidProofURL:        http.StatusBadRequest,
+	ErrRefundAmountMismatch:   http.StatusUnprocessableEntity,
+	ErrRefundProofRequired:    http.StatusBadRequest,
+	ErrRiderProfileIncomplete: http.StatusUnprocessableEntity,
+	ErrRiderNotActive:         http.StatusForbidden,
 }
 
 func ToHTTPError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if he, ok := errors.AsType[*echo.HTTPError](err); ok {
+		return he
+	}
 	for sentinel, code := range statusMap {
 		if errors.Is(err, sentinel) {
-			return echo.NewHTTPError(code, err.Error())
+			out := echo.NewHTTPError(code, sentinel.Error())
+			// Conservar la cadena completa (p. ej. "error inesperado: pq: ...") en Internal para logs.
+			if err.Error() != sentinel.Error() {
+				_ = out.SetInternal(err)
+			}
+			return out
 		}
 	}
-	return echo.NewHTTPError(http.StatusInternalServerError, ErrUnexpectedError.Error())
+	out := echo.NewHTTPError(http.StatusInternalServerError, ErrUnexpectedError.Error())
+	_ = out.SetInternal(err)
+	return out
 }
 
 // HTTPStatus resuelve el código HTTP de un error (para access log antes del ErrorHandler).
@@ -79,7 +100,8 @@ func resolveHTTPError(err error) (int, any) {
 
 	for sentinel, code := range statusMap {
 		if errors.Is(err, sentinel) {
-			return code, err.Error()
+			// Nunca devolver err.Error() completo: puede incluir la causa interna.
+			return code, sentinel.Error()
 		}
 	}
 

@@ -43,7 +43,7 @@ type ShopTransaction struct {
 	Amount        float64    `bun:"amount"`
 	MovementType  string     `bun:"movement_type"`
 	PaymentMethod *string    `bun:"payment_method"`
-	CreatedAt     time.Time  `bun:"created_at"`
+	CreatedAt     time.Time  `bun:"created_at,nullzero"`
 }
 
 type CustomerMetricsRow struct {

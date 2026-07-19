@@ -2,6 +2,7 @@ package applog
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"os"
 	"runtime"
@@ -65,6 +66,7 @@ func Warn(ctx context.Context, msg string, err error, extra ...any) {
 }
 
 // HTTPFailure loguea un fallo de request: 4xx como warning, 5xx como error.
+// Si el error trae causa interna (echo.HTTPError.Internal o wrap), la incluye en "cause".
 func HTTPFailure(c echo.Context, status int, err error) {
 	if c == nil || err == nil {
 		return
@@ -76,6 +78,9 @@ func HTTPFailure(c echo.Context, status int, err error) {
 		"status", status,
 		"error", err.Error(),
 	)
+	if cause := errorCause(err); cause != "" && cause != err.Error() {
+		attrs = append(attrs, "cause", cause)
+	}
 
 	if status >= 500 {
 		attrs = append(attrs, "stack", captureStack(6))
@@ -86,6 +91,18 @@ func HTTPFailure(c echo.Context, status int, err error) {
 	if status >= 400 {
 		slog.Warn("solicitud fallida", attrs...)
 	}
+}
+
+// errorCause extrae el detalle real para logs sin confundirlo con el mensaje público.
+func errorCause(err error) string {
+	if he, ok := errors.AsType[*echo.HTTPError](err); ok {
+		if he.Internal != nil {
+			return he.Internal.Error()
+		}
+		// Message ya es lo público; sin Internal no hay causa extra.
+		return ""
+	}
+	return ""
 }
 
 // HTTPAccess loguea el resultado de toda solicitud HTTP (2xx–5xx).

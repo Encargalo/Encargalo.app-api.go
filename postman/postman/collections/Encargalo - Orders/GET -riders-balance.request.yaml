@@ -1,0 +1,6 @@
+$kind: http-request
+name: GET /riders/balance
+description: Retorna el balance actual del rider, su zona de control (risk/normal/withdrawal_available) y los últimos 10 movimientos.
+url: "{{base_url}}/riders/balance"
+method: GET
+order: 11000

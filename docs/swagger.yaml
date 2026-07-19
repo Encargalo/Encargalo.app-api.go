@@ -744,6 +744,15 @@ definitions:
     - discount_type
     - value
     type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.ActivateErrorResponse:
+    properties:
+      message:
+        type: string
+      missing:
+        items:
+          type: string
+        type: array
+    type: object
   Encargalo_app-api_go_internal_riders_domain_dtos.BalanceResponse:
     properties:
       balance:
@@ -754,6 +763,98 @@ definitions:
         type: array
       zone:
         $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_models.Zone'
+    type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.CandidateResponse:
+    properties:
+      email:
+        type: string
+      has_rider_role:
+        type: boolean
+      name:
+        type: string
+      phone:
+        type: string
+      profile:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse'
+      sur_name:
+        type: string
+      user_id:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.RiderCompletionDTO:
+    properties:
+      filled_count:
+        type: integer
+      is_complete:
+        type: boolean
+      missing:
+        items:
+          type: string
+        type: array
+      required_count:
+        type: integer
+    type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse:
+    properties:
+      activated_at:
+        type: string
+      carnet_photo_url:
+        type: string
+      circulation_card_url:
+        type: string
+      completion:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderCompletionDTO'
+      created_at:
+        type: string
+      email:
+        type: string
+      has_rider_role:
+        type: boolean
+      id_photo_url:
+        type: string
+      last_contacted_at:
+        type: string
+      license_photo_url:
+        type: string
+      name:
+        type: string
+      notes:
+        type: string
+      phone:
+        type: string
+      profile_photo_url:
+        type: string
+      status:
+        type: string
+      sur_name:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+      vehicle_brand:
+        type: string
+      vehicle_color:
+        type: string
+      vehicle_model:
+        type: string
+      vehicle_photo_1_url:
+        type: string
+      vehicle_photo_2_url:
+        type: string
+      vehicle_photo_3_url:
+        type: string
+      vehicle_photo_4_url:
+        type: string
+      vehicle_plate:
+        type: string
+      vehicle_type:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.TouchContactRequest:
+    properties:
+      notes:
+        type: string
     type: object
   Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO:
     properties:
@@ -784,6 +885,39 @@ definitions:
         items:
           $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO'
         type: array
+    type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.UpsertRiderProfileRequest:
+    properties:
+      carnet_photo:
+        type: string
+      circulation_card:
+        type: string
+      id_photo:
+        type: string
+      license_photo:
+        type: string
+      notes:
+        type: string
+      profile_photo:
+        type: string
+      vehicle_brand:
+        type: string
+      vehicle_color:
+        type: string
+      vehicle_model:
+        type: string
+      vehicle_photo_1:
+        type: string
+      vehicle_photo_2:
+        type: string
+      vehicle_photo_3:
+        type: string
+      vehicle_photo_4:
+        type: string
+      vehicle_plate:
+        type: string
+      vehicle_type:
+        type: string
     type: object
   Encargalo_app-api_go_internal_riders_domain_dtos.WithdrawalResponse:
     properties:
@@ -1147,6 +1281,23 @@ definitions:
     - long
     - type
     type: object
+  Encargalo_app-api_go_internal_users_domain_dto.CompleteRefundRequest:
+    properties:
+      amount_usd:
+        type: number
+      proof_image:
+        type: string
+    required:
+    - amount_usd
+    - proof_image
+    type: object
+  Encargalo_app-api_go_internal_users_domain_dto.CreateRefundRequest:
+    properties:
+      transaction_id:
+        type: string
+    required:
+    - transaction_id
+    type: object
   Encargalo_app-api_go_internal_users_domain_dto.CustomerBalanceResponse:
     properties:
       balance:
@@ -1189,6 +1340,8 @@ definitions:
     properties:
       amount:
         type: number
+      can_request_refund:
+        type: boolean
       created_at:
         type: string
       id:
@@ -1196,6 +1349,56 @@ definitions:
       movement_type:
         type: string
       order_id:
+        type: string
+      refund_eligible_until:
+        type: string
+      refund_request_id:
+        type: string
+      refundable_pm_usd:
+        type: number
+    type: object
+  Encargalo_app-api_go_internal_users_domain_dto.PagoMovilResponse:
+    properties:
+      bank_code:
+        type: string
+      national_id:
+        type: string
+      phone:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_users_domain_dto.RefundRequestResponse:
+    properties:
+      accepted_at:
+        type: string
+      amount_usd:
+        type: number
+      completed_at:
+        type: string
+      created_at:
+        type: string
+      expires_at:
+        type: string
+      id:
+        type: string
+      order_id:
+        type: string
+      pm_bank_code:
+        type: string
+      pm_national_id:
+        type: string
+      pm_phone:
+        type: string
+      proof_url:
+        type: string
+      rejection_reason:
+        type: string
+      resolved_at:
+        type: string
+      status:
+        type: string
+      transaction_id:
         type: string
     type: object
   Encargalo_app-api_go_internal_users_domain_dto.RegisterCustomer:
@@ -1264,6 +1467,19 @@ definitions:
         type: string
     required:
     - password
+    type: object
+  Encargalo_app-api_go_internal_users_domain_dto.UpsertPagoMovilRequest:
+    properties:
+      bank_code:
+        type: string
+      national_id:
+        type: string
+      phone:
+        type: string
+    required:
+    - bank_code
+    - national_id
+    - phone
     type: object
 info:
   contact: {}
@@ -3025,6 +3241,212 @@ paths:
       summary: Balance del rider
       tags:
       - Riders Finance
+  /riders/staff/candidates:
+    get:
+      description: Busca una cuenta (Customer) por teléfono y, si existe, el expediente
+        rider.
+      parameters:
+      - description: Teléfono
+        in: query
+        name: phone
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.CandidateResponse'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Buscar candidato a rider por teléfono
+      tags:
+      - Riders Staff
+  /riders/staff/profiles:
+    get:
+      description: Lista perfiles por status (default draft). Incluye completion para
+        follow-up.
+      parameters:
+      - default: draft
+        description: draft|active|suspended
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse'
+            type: array
+      security:
+      - SessionCookie: []
+      summary: Listar expedientes rider
+      tags:
+      - Riders Staff
+  /riders/staff/profiles/{userId}:
+    get:
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse'
+      security:
+      - SessionCookie: []
+      summary: Detalle expediente rider
+      tags:
+      - Riders Staff
+    put:
+      consumes:
+      - application/json
+      description: Upsert parcial. Fotos como data-URL/base64 (se suben a Cloudinary).
+        No asigna rol Rider.
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Campos parciales
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.UpsertRiderProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse'
+      security:
+      - SessionCookie: []
+      summary: Guardar borrador expediente rider
+      tags:
+      - Riders Staff
+  /riders/staff/profiles/{userId}/activate:
+    post:
+      description: Requiere checklist completo. Asigna rol Rider y status=active.
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.ActivateErrorResponse'
+      security:
+      - SessionCookie: []
+      summary: Activar rider
+      tags:
+      - Riders Staff
+  /riders/staff/profiles/{userId}/photos/{field}:
+    delete:
+      description: 'Pone NULL el campo en DB y elimina el asset en Cloudinary. field:
+        profile_photo|id_photo|carnet_photo|license_photo|circulation_card|vehicle_photo_1..4'
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Campo de foto
+        in: path
+        name: field
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Eliminar foto del expediente rider
+      tags:
+      - Riders Staff
+  /riders/staff/profiles/{userId}/suspend:
+    post:
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse'
+      security:
+      - SessionCookie: []
+      summary: Suspender rider
+      tags:
+      - Riders Staff
+  /riders/staff/profiles/{userId}/touch-contact:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Notas opcionales
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TouchContactRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse'
+      security:
+      - SessionCookie: []
+      summary: Marcar contacto de seguimiento
+      tags:
+      - Riders Staff
   /riders/transactions:
     get:
       description: Retorna el historial paginado de movimientos de balance del rider.
@@ -3440,6 +3862,10 @@ paths:
   /users/balance:
     get:
       description: Retorna el balance en USD del cliente y los últimos 10 movimientos.
+        Créditos elegibles incluyen can_request_refund (ventana/monto/saldo; no exige
+        Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold
+        / processing / payout) y créditos balance_refund_restore incluyen refund_request_id
+        para abrir el detalle.
       produces:
       - application/json
       responses:
@@ -3458,6 +3884,93 @@ paths:
       security:
       - SessionCookie: []
       summary: Balance del cliente
+      tags:
+      - Users Finance
+  /users/balance/refund-requests:
+    get:
+      description: Lista las solicitudes de devolución del cliente autenticado.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.RefundRequestResponse'
+            type: array
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Listar solicitudes de devolución
+      tags:
+      - Users Finance
+    post:
+      consumes:
+      - application/json
+      description: Solicita devolución en efectivo de la porción Pago Móvil de un
+        crédito elegible (> $1, ventana 15 min). Requiere Pago Móvil registrado.
+      parameters:
+      - description: transaction_id del crédito
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.CreateRefundRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.RefundRequestResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "409":
+          description: Ya existe solicitud
+          schema:
+            type: string
+        "422":
+          description: No elegible / sin PM
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Solicitar devolución de crédito
+      tags:
+      - Users Finance
+  /users/balance/refund-requests/{id}:
+    get:
+      description: Detalle de una solicitud (incluye proof_url cuando status=completed).
+        Usar desde el historial con refund_request_id.
+      parameters:
+      - description: UUID de la solicitud
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.RefundRequestResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: No encontrada
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Detalle de solicitud de devolución
       tags:
       - Users Finance
   /users/change-password:
@@ -3501,4 +4014,120 @@ paths:
       summary: Actualiza la contraseña del usuario autenticado
       tags:
       - Users
+  /users/pago-movil:
+    get:
+      description: Retorna el Pago Móvil registrado para devoluciones.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.PagoMovilResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: No registrado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Pago Móvil del cliente
+      tags:
+      - Users Finance
+    put:
+      consumes:
+      - application/json
+      description: Registra o modifica el Pago Móvil destino del cliente para devoluciones.
+      parameters:
+      - description: Datos Pago Móvil
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.UpsertPagoMovilRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.PagoMovilResponse'
+        "400":
+          description: Datos inválidos
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Crear o actualizar Pago Móvil
+      tags:
+      - Users Finance
+  /users/staff/refund-requests:
+    get:
+      responses:
+        "401":
+          description: Sesión no encontrada o inválida
+          schema:
+            type: string
+        "403":
+          description: Acceso denegado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: WebSocket de devoluciones de balance (Staff CRM)
+      tags:
+      - Users Finance
+  /users/staff/refund-requests/{id}/complete:
+    post:
+      consumes:
+      - application/json
+      description: 'Registra el pago de una solicitud accepted: valida amount_usd,
+        sube proof_image (base64) a Cloudinary y marca completed.'
+      parameters:
+      - description: ID de la solicitud
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Monto pagado + imagen del comprobante
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.CompleteRefundRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.RefundRequestResponse'
+        "400":
+          description: Datos inválidos / falta comprobante
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "403":
+          description: Acceso denegado
+          schema:
+            type: string
+        "422":
+          description: Monto no coincide / estado inválido
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Completar devolución (staff)
+      tags:
+      - Users Finance
 swagger: "2.0"

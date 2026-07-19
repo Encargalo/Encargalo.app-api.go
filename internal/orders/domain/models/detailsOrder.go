@@ -31,6 +31,12 @@ type PaymentDetails struct {
 	CreditedUSD        *float64            `json:"credited_usd,omitempty"`
 	BalanceAmountUSD   float64             `json:"balance_amount_usd,omitempty"`
 	PagoMovilAmountUSD float64             `json:"pago_movil_amount_usd,omitempty"`
+	// Campos para solicitar devoluci?n en efectivo desde el order_update WS
+	// (misma info que GET /users/balance sobre el movimiento cash-refundable).
+	TransactionID       *uuid.UUID `json:"transaction_id,omitempty"`
+	RefundablePMUSD     *float64   `json:"refundable_pm_usd,omitempty"`
+	CanRequestRefund    bool       `json:"can_request_refund,omitempty"`
+	RefundEligibleUntil *string    `json:"refund_eligible_until,omitempty"`
 }
 
 // BuildDetails congela una foto del pedido para mostrarla luego (historial,

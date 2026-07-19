@@ -1,0 +1,15 @@
+$kind: http-request
+description: "Actualiza nombre y/o descripción de un sabor existente por su `flavor_id` (UUID en el path). Solo puede actualizarlo el Order Manager/Owner de la tienda propietaria. Requiere cookie `encargalo-session`. Rol: Order Manager / Owner."
+url: "{{base_url}}/business/products/flavors/00000000-0000-0000-0000-000000000000"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "Muy picante",
+      "description": "Con salsa picante casera, extra picante",
+      "available": false
+    }
+order: 12000

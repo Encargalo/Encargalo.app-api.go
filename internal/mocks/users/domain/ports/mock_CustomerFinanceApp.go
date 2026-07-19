@@ -8,6 +8,10 @@ import (
 	dto "Encargalo.app-api.go/internal/users/domain/dto"
 	mock "github.com/stretchr/testify/mock"
 
+	ports "Encargalo.app-api.go/internal/users/domain/ports"
+
+	time "time"
+
 	uuid "github.com/google/uuid"
 )
 
@@ -16,58 +20,199 @@ type CustomerFinanceApp struct {
 	mock.Mock
 }
 
-// CreditOrderRejected provides a mock function with given fields: ctx, customerID, orderID, amountUSD
-func (_m *CustomerFinanceApp) CreditOrderRejected(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID, amountUSD float64) error {
-	ret := _m.Called(ctx, customerID, orderID, amountUSD)
+// AcceptRefund provides a mock function with given fields: ctx, requestID, staffID
+func (_m *CustomerFinanceApp) AcceptRefund(ctx context.Context, requestID uuid.UUID, staffID uuid.UUID) (dto.RefundRequestResponse, error) {
+	ret := _m.Called(ctx, requestID, staffID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AcceptRefund")
+	}
+
+	var r0 dto.RefundRequestResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) (dto.RefundRequestResponse, error)); ok {
+		return rf(ctx, requestID, staffID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) dto.RefundRequestResponse); ok {
+		r0 = rf(ctx, requestID, staffID)
+	} else {
+		r0 = ret.Get(0).(dto.RefundRequestResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r1 = rf(ctx, requestID, staffID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// CompleteRefund provides a mock function with given fields: ctx, requestID, proofImage, amountUSD
+func (_m *CustomerFinanceApp) CompleteRefund(ctx context.Context, requestID uuid.UUID, proofImage string, amountUSD float64) (dto.RefundRequestResponse, error) {
+	ret := _m.Called(ctx, requestID, proofImage, amountUSD)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CompleteRefund")
+	}
+
+	var r0 dto.RefundRequestResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, float64) (dto.RefundRequestResponse, error)); ok {
+		return rf(ctx, requestID, proofImage, amountUSD)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, float64) dto.RefundRequestResponse); ok {
+		r0 = rf(ctx, requestID, proofImage, amountUSD)
+	} else {
+		r0 = ret.Get(0).(dto.RefundRequestResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, string, float64) error); ok {
+		r1 = rf(ctx, requestID, proofImage, amountUSD)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// CreateRefundRequest provides a mock function with given fields: ctx, customerID, transactionID
+func (_m *CustomerFinanceApp) CreateRefundRequest(ctx context.Context, customerID uuid.UUID, transactionID uuid.UUID) (dto.RefundRequestResponse, error) {
+	ret := _m.Called(ctx, customerID, transactionID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateRefundRequest")
+	}
+
+	var r0 dto.RefundRequestResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) (dto.RefundRequestResponse, error)); ok {
+		return rf(ctx, customerID, transactionID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) dto.RefundRequestResponse); ok {
+		r0 = rf(ctx, customerID, transactionID)
+	} else {
+		r0 = ret.Get(0).(dto.RefundRequestResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r1 = rf(ctx, customerID, transactionID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// CreditOrderRejected provides a mock function with given fields: ctx, customerID, orderID, amountUSD, refundablePMUSD
+func (_m *CustomerFinanceApp) CreditOrderRejected(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID, amountUSD float64, refundablePMUSD float64) (uuid.UUID, time.Time, error) {
+	ret := _m.Called(ctx, customerID, orderID, amountUSD, refundablePMUSD)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreditOrderRejected")
 	}
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64) error); ok {
-		r0 = rf(ctx, customerID, orderID, amountUSD)
+	var r0 uuid.UUID
+	var r1 time.Time
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) (uuid.UUID, time.Time, error)); ok {
+		return rf(ctx, customerID, orderID, amountUSD, refundablePMUSD)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) uuid.UUID); ok {
+		r0 = rf(ctx, customerID, orderID, amountUSD, refundablePMUSD)
 	} else {
-		r0 = ret.Error(0)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(uuid.UUID)
+		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) time.Time); ok {
+		r1 = rf(ctx, customerID, orderID, amountUSD, refundablePMUSD)
+	} else {
+		r1 = ret.Get(1).(time.Time)
+	}
+
+	if rf, ok := ret.Get(2).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) error); ok {
+		r2 = rf(ctx, customerID, orderID, amountUSD, refundablePMUSD)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // CreditPaymentOverage provides a mock function with given fields: ctx, customerID, orderID, amountUSD
-func (_m *CustomerFinanceApp) CreditPaymentOverage(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID, amountUSD float64) error {
+func (_m *CustomerFinanceApp) CreditPaymentOverage(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID, amountUSD float64) (uuid.UUID, time.Time, error) {
 	ret := _m.Called(ctx, customerID, orderID, amountUSD)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreditPaymentOverage")
 	}
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64) error); ok {
+	var r0 uuid.UUID
+	var r1 time.Time
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64) (uuid.UUID, time.Time, error)); ok {
+		return rf(ctx, customerID, orderID, amountUSD)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64) uuid.UUID); ok {
 		r0 = rf(ctx, customerID, orderID, amountUSD)
 	} else {
-		r0 = ret.Error(0)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(uuid.UUID)
+		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, float64) time.Time); ok {
+		r1 = rf(ctx, customerID, orderID, amountUSD)
+	} else {
+		r1 = ret.Get(1).(time.Time)
+	}
+
+	if rf, ok := ret.Get(2).(func(context.Context, uuid.UUID, uuid.UUID, float64) error); ok {
+		r2 = rf(ctx, customerID, orderID, amountUSD)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // CreditPaymentPartial provides a mock function with given fields: ctx, customerID, orderID, amountUSD
-func (_m *CustomerFinanceApp) CreditPaymentPartial(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID, amountUSD float64) error {
+func (_m *CustomerFinanceApp) CreditPaymentPartial(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID, amountUSD float64) (uuid.UUID, time.Time, error) {
 	ret := _m.Called(ctx, customerID, orderID, amountUSD)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreditPaymentPartial")
 	}
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64) error); ok {
+	var r0 uuid.UUID
+	var r1 time.Time
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64) (uuid.UUID, time.Time, error)); ok {
+		return rf(ctx, customerID, orderID, amountUSD)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64) uuid.UUID); ok {
 		r0 = rf(ctx, customerID, orderID, amountUSD)
 	} else {
-		r0 = ret.Error(0)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(uuid.UUID)
+		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, float64) time.Time); ok {
+		r1 = rf(ctx, customerID, orderID, amountUSD)
+	} else {
+		r1 = ret.Get(1).(time.Time)
+	}
+
+	if rf, ok := ret.Get(2).(func(context.Context, uuid.UUID, uuid.UUID, float64) error); ok {
+		r2 = rf(ctx, customerID, orderID, amountUSD)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // DebitForOrder provides a mock function with given fields: ctx, customerID, orderID, amountUSD
@@ -116,6 +261,34 @@ func (_m *CustomerFinanceApp) GetBalance(ctx context.Context, customerID uuid.UU
 	return r0, r1
 }
 
+// GetBalancePaymentDebitForOrder provides a mock function with given fields: ctx, customerID, orderID
+func (_m *CustomerFinanceApp) GetBalancePaymentDebitForOrder(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID) (float64, error) {
+	ret := _m.Called(ctx, customerID, orderID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetBalancePaymentDebitForOrder")
+	}
+
+	var r0 float64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) (float64, error)); ok {
+		return rf(ctx, customerID, orderID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) float64); ok {
+		r0 = rf(ctx, customerID, orderID)
+	} else {
+		r0 = ret.Get(0).(float64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r1 = rf(ctx, customerID, orderID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetBalanceUSD provides a mock function with given fields: ctx, customerID
 func (_m *CustomerFinanceApp) GetBalanceUSD(ctx context.Context, customerID uuid.UUID) (float64, error) {
 	ret := _m.Called(ctx, customerID)
@@ -144,6 +317,140 @@ func (_m *CustomerFinanceApp) GetBalanceUSD(ctx context.Context, customerID uuid
 	return r0, r1
 }
 
+// GetPagoMovil provides a mock function with given fields: ctx, customerID
+func (_m *CustomerFinanceApp) GetPagoMovil(ctx context.Context, customerID uuid.UUID) (dto.PagoMovilResponse, error) {
+	ret := _m.Called(ctx, customerID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPagoMovil")
+	}
+
+	var r0 dto.PagoMovilResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (dto.PagoMovilResponse, error)); ok {
+		return rf(ctx, customerID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) dto.PagoMovilResponse); ok {
+		r0 = rf(ctx, customerID)
+	} else {
+		r0 = ret.Get(0).(dto.PagoMovilResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, customerID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetRefundRequest provides a mock function with given fields: ctx, customerID, requestID
+func (_m *CustomerFinanceApp) GetRefundRequest(ctx context.Context, customerID uuid.UUID, requestID uuid.UUID) (dto.RefundRequestResponse, error) {
+	ret := _m.Called(ctx, customerID, requestID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRefundRequest")
+	}
+
+	var r0 dto.RefundRequestResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) (dto.RefundRequestResponse, error)); ok {
+		return rf(ctx, customerID, requestID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) dto.RefundRequestResponse); ok {
+		r0 = rf(ctx, customerID, requestID)
+	} else {
+		r0 = ret.Get(0).(dto.RefundRequestResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r1 = rf(ctx, customerID, requestID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ListActiveForStaff provides a mock function with given fields: ctx
+func (_m *CustomerFinanceApp) ListActiveForStaff(ctx context.Context) ([]dto.RefundRequestBroadcast, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListActiveForStaff")
+	}
+
+	var r0 []dto.RefundRequestBroadcast
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]dto.RefundRequestBroadcast, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []dto.RefundRequestBroadcast); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]dto.RefundRequestBroadcast)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ListRefundRequests provides a mock function with given fields: ctx, customerID
+func (_m *CustomerFinanceApp) ListRefundRequests(ctx context.Context, customerID uuid.UUID) ([]dto.RefundRequestResponse, error) {
+	ret := _m.Called(ctx, customerID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListRefundRequests")
+	}
+
+	var r0 []dto.RefundRequestResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) ([]dto.RefundRequestResponse, error)); ok {
+		return rf(ctx, customerID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) []dto.RefundRequestResponse); ok {
+		r0 = rf(ctx, customerID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]dto.RefundRequestResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, customerID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// NotifyIncompleteRefunds provides a mock function with given fields: ctx
+func (_m *CustomerFinanceApp) NotifyIncompleteRefunds(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for NotifyIncompleteRefunds")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // RefundBalancePayment provides a mock function with given fields: ctx, customerID, orderID, amountUSD
 func (_m *CustomerFinanceApp) RefundBalancePayment(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID, amountUSD float64) error {
 	ret := _m.Called(ctx, customerID, orderID, amountUSD)
@@ -160,6 +467,67 @@ func (_m *CustomerFinanceApp) RefundBalancePayment(ctx context.Context, customer
 	}
 
 	return r0
+}
+
+// RejectRefund provides a mock function with given fields: ctx, requestID, staffID, reason
+func (_m *CustomerFinanceApp) RejectRefund(ctx context.Context, requestID uuid.UUID, staffID uuid.UUID, reason string) (dto.RefundRequestResponse, error) {
+	ret := _m.Called(ctx, requestID, staffID, reason)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RejectRefund")
+	}
+
+	var r0 dto.RefundRequestResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string) (dto.RefundRequestResponse, error)); ok {
+		return rf(ctx, requestID, staffID, reason)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string) dto.RefundRequestResponse); ok {
+		r0 = rf(ctx, requestID, staffID, reason)
+	} else {
+		r0 = ret.Get(0).(dto.RefundRequestResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, string) error); ok {
+		r1 = rf(ctx, requestID, staffID, reason)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SetCustomerNotifier provides a mock function with given fields: n
+func (_m *CustomerFinanceApp) SetCustomerNotifier(n ports.CustomerNotifier) {
+	_m.Called(n)
+}
+
+// UpsertPagoMovil provides a mock function with given fields: ctx, customerID, req
+func (_m *CustomerFinanceApp) UpsertPagoMovil(ctx context.Context, customerID uuid.UUID, req dto.UpsertPagoMovilRequest) (dto.PagoMovilResponse, error) {
+	ret := _m.Called(ctx, customerID, req)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpsertPagoMovil")
+	}
+
+	var r0 dto.PagoMovilResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, dto.UpsertPagoMovilRequest) (dto.PagoMovilResponse, error)); ok {
+		return rf(ctx, customerID, req)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, dto.UpsertPagoMovilRequest) dto.PagoMovilResponse); ok {
+		r0 = rf(ctx, customerID, req)
+	} else {
+		r0 = ret.Get(0).(dto.PagoMovilResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, dto.UpsertPagoMovilRequest) error); ok {
+		r1 = rf(ctx, customerID, req)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // NewCustomerFinanceApp creates a new instance of CustomerFinanceApp. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

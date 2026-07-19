@@ -9,6 +9,7 @@ import (
 	"Encargalo.app-api.go/internal/auth/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/bycript"
 	"Encargalo.app-api.go/internal/pkg/logs"
+	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/adapters/googleauth"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/users/domain/dto"
@@ -22,10 +23,18 @@ type appAuth struct {
 	repo           ports.AuthRepo
 	slackLogs      logs.Logs
 	googleVerifier googleauth.Verifier
+	riderProfiles  ridersPorts.RiderProfileApp
 }
 
-func NewAuthApp(svc portsCusto.UsersApp, bycript bycript.Password, repo ports.AuthRepo, slackLogs logs.Logs, googleVerifier googleauth.Verifier) ports.AuthApp {
-	return &appAuth{svc, bycript, repo, slackLogs, googleVerifier}
+func NewAuthApp(
+	svc portsCusto.UsersApp,
+	bycript bycript.Password,
+	repo ports.AuthRepo,
+	slackLogs logs.Logs,
+	googleVerifier googleauth.Verifier,
+	riderProfiles ridersPorts.RiderProfileApp,
+) ports.AuthApp {
+	return &appAuth{svc, bycript, repo, slackLogs, googleVerifier, riderProfiles}
 }
 
 func (a *appAuth) SignInCustomer(ctx context.Context, phone, password string) (uuid.UUID, error) {
@@ -91,6 +100,16 @@ func (a *appAuth) SignInRider(ctx context.Context, phone, password string) (uuid
 
 	if !a.bycript.CheckPasswordHash([]byte(rider.Password), password) {
 		return uuid.Nil, errcustom.ErrIncorrectAccessData
+	}
+
+	if a.riderProfiles != nil {
+		active, err := a.riderProfiles.IsActiveRider(ctx, rider.ID)
+		if err != nil {
+			return uuid.Nil, errcustom.ErrUnexpectedError
+		}
+		if !active {
+			return uuid.Nil, errcustom.ErrRiderNotActive
+		}
 	}
 
 	var session models.ActiveSession

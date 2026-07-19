@@ -12,18 +12,19 @@ import (
 type Account struct {
 	bun.BaseModel `bun:"table:users.accounts"`
 
-	ID               uuid.UUID  `bun:"id,pk,type:uuid,default:uuid_generate_v4()"`
-	Name             string     `bun:"name,notnull"`
-	SurName          *string    `bun:"sur_name"`
-	Phone            *string    `bun:"phone"`
-	Email            *string    `bun:"email"`
-	Password         string     `bun:"password,notnull"`
-	BirthdayDate     *time.Time `bun:"birthday_date,nullzero"`
-	ActivationStatus string     `bun:"activation_status,default:'in progress'"`
-	Enabled          bool       `bun:"enabled,default:true"`
-	CreatedAt        time.Time  `bun:"created_at,default:now()"`
-	UpdatedAt        time.Time  `bun:"updated_at,default:now()"`
-	DeletedAt        *time.Time `bun:"deleted_at,soft_delete,nullzero"`
+	ID               uuid.UUID          `bun:"id,pk,type:uuid,default:uuid_generate_v4()"`
+	Name             string             `bun:"name,notnull"`
+	SurName          *string            `bun:"sur_name"`
+	Phone            *string            `bun:"phone"`
+	Email            *string            `bun:"email"`
+	Password         string             `bun:"password,notnull"`
+	BirthdayDate     *time.Time         `bun:"birthday_date,nullzero"`
+	ActivationStatus string             `bun:"activation_status,default:'in progress'"`
+	Enabled          bool               `bun:"enabled,default:true"`
+	CreatedAt        time.Time          `bun:"created_at,default:now()"`
+	UpdatedAt        time.Time          `bun:"updated_at,default:now()"`
+	DeletedAt        *time.Time         `bun:"deleted_at,soft_delete,nullzero"`
+	PagoMovil        *CustomerPagoMovil `bun:"pago_movil,type:jsonb" json:"pago_movil,omitempty"`
 
 	// Populated via JOIN — zero values for customers
 	ShopID uuid.UUID     `bun:"-"`

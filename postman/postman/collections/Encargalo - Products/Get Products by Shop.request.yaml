@@ -1,0 +1,15 @@
+$kind: http-request
+description: Retorna productos agrupados por categoría de una tienda, con paginación. Solo incluye productos disponibles, ordenados por precio ascendente. Excluye categorías cuyo horario configurado no cubre la hora actual (America/Caracas). Respuesta incluye `data` (categorías con items) y `pagination` (page, limit, total, total_pages). Cada item incluye `effective_ref`/`effective_bs` (precio final ya con el descuento propio del negocio y, si aplica, la promo de lanzamiento de la plataforma), `has_shop_discount` y `has_launch_promo`. Público.
+url: "{{base_url}}/products?shop_id=00000000-0000-0000-0000-000000000000&page=1&limit=10"
+method: GET
+queryParams:
+  - key: shop_id
+    value: 00000000-0000-0000-0000-000000000000
+    description: UUID de la tienda
+  - key: page
+    value: "1"
+    description: "Número de página (default: 1)"
+  - key: limit
+    value: "10"
+    description: "Categorías por página (default: 10)"
+order: 14000

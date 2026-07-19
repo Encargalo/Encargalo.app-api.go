@@ -19,6 +19,7 @@ type ordersGroup struct {
 	handlerStaffReviews  handler.StaffReviews
 	handlerRiders        ridersHandler.RiderHandler
 	handlerFinance       ridersHandler.FinanceHandler
+	handlerStaffRiders   ridersHandler.StaffRiderHandler
 }
 
 func NewOrdersGroup(
@@ -28,8 +29,9 @@ func NewOrdersGroup(
 	handlerStaffReviews handler.StaffReviews,
 	handlerRiders ridersHandler.RiderHandler,
 	handlerFinance ridersHandler.FinanceHandler,
+	handlerStaffRiders ridersHandler.StaffRiderHandler,
 ) OrdersGroup {
-	return &ordersGroup{middle, handlerOrders, hanlderManagerOrders, handlerStaffReviews, handlerRiders, handlerFinance}
+	return &ordersGroup{middle, handlerOrders, hanlderManagerOrders, handlerStaffReviews, handlerRiders, handlerFinance, handlerStaffRiders}
 }
 
 func (o *ordersGroup) Resource(g *echo.Echo) {
@@ -48,4 +50,14 @@ func (o *ordersGroup) Resource(g *echo.Echo) {
 	riders.GET("/balance", o.handlerFinance.GetBalance)
 	riders.POST("/withdrawal", o.handlerFinance.RequestWithdrawal)
 	riders.GET("/transactions", o.handlerFinance.ListTransactions)
+
+	staffRiders := g.Group("/riders/staff", o.middle.Auth, o.middle.Require(models.Staff))
+	staffRiders.GET("/candidates", o.handlerStaffRiders.FindCandidate)
+	staffRiders.GET("/profiles", o.handlerStaffRiders.ListProfiles)
+	staffRiders.GET("/profiles/:userId", o.handlerStaffRiders.GetProfile)
+	staffRiders.PUT("/profiles/:userId", o.handlerStaffRiders.UpsertProfile)
+	staffRiders.DELETE("/profiles/:userId/photos/:field", o.handlerStaffRiders.DeletePhoto)
+	staffRiders.POST("/profiles/:userId/activate", o.handlerStaffRiders.Activate)
+	staffRiders.POST("/profiles/:userId/suspend", o.handlerStaffRiders.Suspend)
+	staffRiders.POST("/profiles/:userId/touch-contact", o.handlerStaffRiders.TouchContact)
 }
