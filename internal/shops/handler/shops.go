@@ -28,7 +28,7 @@ func NewShopsHandler(app ports.ShopsApp) Shops {
 
 // SetOpenClose godoc
 // @Summary      Abrir o cerrar el local
-// @Description  Cambia el estado de apertura del local asociado a la sesión del owner. La primera vez que un local se abre (open=true) se activan automáticamente sus ventanas de promoción de lanzamiento: 24h con 50% de descuento subsidiado por la plataforma y 192h (8 días) con comisión 0%.
+// @Description  Cambia el estado de apertura del local asociado a la sesión del owner. Al abrir (`open=true`) se crea un lote de jornada si no hay uno abierto. Al cerrar solo se marca el local como cerrado: el lote sigue abierto para gestionar órdenes activas y se cierra automáticamente cuando ya no quedan. La primera vez que un local se abre se activan automáticamente sus ventanas de promoción de lanzamiento: 24h con 50% de descuento subsidiado por la plataforma y 192h (8 días) con comisión 0%.
 // @Tags         Business
 // @Accept       json
 // @Produce      json

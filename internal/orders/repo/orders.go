@@ -198,17 +198,17 @@ func (o *orders) SearchActiveOrdersByCriteria(ctx context.Context, criteria uuid
 	var q *bun.SelectQuery
 
 	if isShop {
-		lastBatch := o.db.NewSelect().
-			TableExpr("orders.orders").
-			ColumnExpr("batch_id").
+		openBatch := o.db.NewSelect().
+			TableExpr("business.batches").
+			ColumnExpr("id").
 			Where("shop_id = ?", criteria).
-			OrderExpr("created_at DESC").
+			Where("opened = ?", true).
 			Limit(1)
 
 		q = o.db.NewSelect().
 			Model(&orders).
 			Where("shop_id = ?", criteria).
-			Where("batch_id = (?)", lastBatch).
+			Where("batch_id = (?)", openBatch).
 			Where("status NOT IN (?)", bun.In([]string{
 				"Payment Review",
 			}))

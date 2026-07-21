@@ -68,6 +68,12 @@ func (s *shopsApp) SetOpenClose(ctx context.Context, shopID *uuid.UUID, open boo
 	if err := s.repo.SetOpenClose(ctx, shopID, open); err != nil {
 		return err
 	}
+	if !open {
+		// Si ya no hay órdenes activas, cierra el lote de inmediato.
+		if err := s.repo.TryCloseOpenBatch(ctx, *shopID); err != nil {
+			slog.Error("error al intentar cerrar lote tras cerrar local", "error", err, "shopID", shopID)
+		}
+	}
 	if err := s.broadcaster.BroadcastShopStatus(*shopID, open); err != nil {
 		slog.Error("error al hacer broadcast del estado del local", "error", err, "shopID", shopID)
 	}

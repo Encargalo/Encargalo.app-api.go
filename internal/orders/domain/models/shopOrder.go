@@ -17,6 +17,7 @@ type ShopOrder struct {
 	Address   string    `bun:"address" json:"address"`
 	Latitude  float64   `bun:"latitude" json:"latitude"`
 	Longitude float64   `bun:"longitude" json:"longitude"`
+	Opened    bool      `bun:"opened" json:"opened"`
 
 	// LaunchPromoEndsAt/ZeroCommissionEndsAt anclan las promos de lanzamiento
 	// del negocio a la primera vez que se marcó como abierto.

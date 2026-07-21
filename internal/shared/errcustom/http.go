@@ -19,6 +19,7 @@ var statusMap = map[error]int{
 	ErrOrderAlreadyExists:     http.StatusConflict,
 	ErrItemsNotFound:          http.StatusUnprocessableEntity,
 	ErrBatchNotOpen:           http.StatusUnprocessableEntity,
+	ErrShopClosed:             http.StatusUnprocessableEntity,
 	ErrInvalidCode:            http.StatusBadRequest,
 	ErrCodeAlreadyUsed:        http.StatusConflict,
 	ErrInvalidTransition:      http.StatusUnprocessableEntity,

@@ -14,6 +14,7 @@ var (
 	ErrOrderAlreadyExists     = errors.New("el pedido ya existe")
 	ErrItemsNotFound          = errors.New("uno o más items no fueron encontrados")
 	ErrBatchNotOpen           = errors.New("el lote no está abierto")
+	ErrShopClosed             = errors.New("el local está cerrado")
 	ErrInvalidCode            = errors.New("código de confirmación inválido")
 	ErrCodeAlreadyUsed        = errors.New("el código de confirmación ya fue usado")
 	ErrInvalidTransition      = errors.New("estado del pedido inválido para esta operación")

@@ -19,6 +19,7 @@ import (
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	shopsDTO "Encargalo.app-api.go/internal/shops/domain/dtos"
 	"Encargalo.app-api.go/internal/shops/domain/entity"
+	shopsModels "Encargalo.app-api.go/internal/shops/domain/models"
 	"Encargalo.app-api.go/internal/shops/domain/models/shops"
 	ports "Encargalo.app-api.go/internal/shops/domain/ports"
 	"github.com/google/uuid"
@@ -468,30 +469,84 @@ func (s *shopsRepo) FindMatchedProducts(ctx context.Context, shopIDs []uuid.UUID
 }
 
 func (s *shopsRepo) SetOpenClose(ctx context.Context, shopID *uuid.UUID, open bool) error {
-	q := s.db.NewUpdate().
-		TableExpr("business.shops").
-		Set("opened = ?", open).
-		Set("updated_at = now()").
-		Where("id = ?", shopID)
+	err := s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		q := tx.NewUpdate().
+			TableExpr("business.shops").
+			Set("opened = ?", open).
+			Set("updated_at = now()").
+			Where("id = ?", shopID)
 
-	if open {
-		// Si es la primera vez que el negocio abre, ancla las dos ventanas de
-		// lanzamiento (día 1 al 50% y comisión 0% por 8 días) al instante
-		// exacto de esta apertura. El CASE WHEN ... IS NULL evita que
-		// aperturas posteriores reinicien las ventanas, sin necesitar un
-		// SELECT ... FOR UPDATE aparte.
-		now := time.Now()
-		launchPromoEndsAt := now.Add(launchPromoWindow)
-		zeroCommissionEndsAt := now.Add(zeroCommissionWindow)
+		if open {
+			// Si es la primera vez que el negocio abre, ancla las dos ventanas de
+			// lanzamiento (día 1 al 50% y comisión 0% por 8 días) al instante
+			// exacto de esta apertura. El CASE WHEN ... IS NULL evita que
+			// aperturas posteriores reinicien las ventanas, sin necesitar un
+			// SELECT ... FOR UPDATE aparte.
+			now := time.Now()
+			launchPromoEndsAt := now.Add(launchPromoWindow)
+			zeroCommissionEndsAt := now.Add(zeroCommissionWindow)
 
-		q = q.
-			Set("first_opened_at = CASE WHEN first_opened_at IS NULL THEN ? ELSE first_opened_at END", now).
-			Set("launch_promo_ends_at = CASE WHEN launch_promo_ends_at IS NULL THEN ? ELSE launch_promo_ends_at END", launchPromoEndsAt).
-			Set("zero_commission_ends_at = CASE WHEN zero_commission_ends_at IS NULL THEN ? ELSE zero_commission_ends_at END", zeroCommissionEndsAt)
+			q = q.
+				Set("first_opened_at = CASE WHEN first_opened_at IS NULL THEN ? ELSE first_opened_at END", now).
+				Set("launch_promo_ends_at = CASE WHEN launch_promo_ends_at IS NULL THEN ? ELSE launch_promo_ends_at END", launchPromoEndsAt).
+				Set("zero_commission_ends_at = CASE WHEN zero_commission_ends_at IS NULL THEN ? ELSE zero_commission_ends_at END", zeroCommissionEndsAt)
+		}
+
+		if _, err := q.Exec(ctx); err != nil {
+			slog.Error("error al actualizar estado del local", "error", err, "shopID", shopID)
+			return errcustom.ErrUnexpectedError
+		}
+
+		if open {
+			if err := ensureOpenBatch(ctx, tx, *shopID); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// ensureOpenBatch crea un lote abierto si el shop no tiene uno. Si ya existe
+// (reapertura con jornada viva), no hace nada.
+func ensureOpenBatch(ctx context.Context, tx bun.Tx, shopID uuid.UUID) error {
+	var existing uuid.UUID
+	err := tx.NewSelect().
+		TableExpr("business.batches").
+		Column("id").
+		Where("shop_id = ? AND opened = ?", shopID, true).
+		Limit(1).
+		Scan(ctx, &existing)
+	if err == nil {
+		return nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		slog.Error("error al buscar lote abierto", "error", err, "shopID", shopID)
+		return errcustom.ErrUnexpectedError
 	}
 
-	if _, err := q.Exec(ctx); err != nil {
-		slog.Error("error al actualizar estado del local", "error", err, "shopID", shopID)
+	var lastNum int
+	if err := tx.NewSelect().
+		TableExpr("business.batches").
+		ColumnExpr("COALESCE(MAX(batch), 0)").
+		Where("shop_id = ?", shopID).
+		Scan(ctx, &lastNum); err != nil {
+		slog.Error("error al obtener número de lote", "error", err, "shopID", shopID)
+		return errcustom.ErrUnexpectedError
+	}
+
+	batch := &shopsModels.Batch{
+		ID:        uuid.New(),
+		ShopID:    shopID,
+		Batch:     lastNum + 1,
+		Opened:    true,
+		CreatedAt: time.Now(),
+	}
+	if _, err := tx.NewInsert().Model(batch).Exec(ctx); err != nil {
+		slog.Error("error al crear lote", "error", err, "shopID", shopID)
 		return errcustom.ErrUnexpectedError
 	}
 	return nil
@@ -528,6 +583,39 @@ func (s *shopsRepo) SearchBatchByShopID(ctx context.Context, shopID uuid.UUID) (
 	}
 
 	return batchID, nil
+}
+
+func (s *shopsRepo) TryCloseOpenBatch(ctx context.Context, shopID uuid.UUID) error {
+	_, err := s.db.NewUpdate().
+		TableExpr("business.batches AS b").
+		Set("opened = ?", false).
+		Set("close_at = now()").
+		Where("b.shop_id = ?", shopID).
+		Where("b.opened = ?", true).
+		Where("NOT EXISTS (SELECT 1 FROM business.shops s WHERE s.id = b.shop_id AND s.opened = true)").
+		Where("NOT EXISTS (SELECT 1 FROM orders.orders o WHERE o.batch_id = b.id AND o.status IN (?))", bun.In(shopsModels.BatchBlockingOrderStatuses)).
+		Exec(ctx)
+	if err != nil {
+		slog.Error("error al cerrar lote", "error", err, "shopID", shopID)
+		return errcustom.ErrUnexpectedError
+	}
+	return nil
+}
+
+func (s *shopsRepo) TryCloseAllEligibleBatches(ctx context.Context) error {
+	_, err := s.db.NewUpdate().
+		TableExpr("business.batches AS b").
+		Set("opened = ?", false).
+		Set("close_at = now()").
+		Where("b.opened = ?", true).
+		Where("NOT EXISTS (SELECT 1 FROM business.shops s WHERE s.id = b.shop_id AND s.opened = true)").
+		Where("NOT EXISTS (SELECT 1 FROM orders.orders o WHERE o.batch_id = b.id AND o.status IN (?))", bun.In(shopsModels.BatchBlockingOrderStatuses)).
+		Exec(ctx)
+	if err != nil {
+		slog.Error("error al cerrar lotes elegibles", "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+	return nil
 }
 
 func calculateDistances(coords shopsDTO.Coords, shopsResult *shops.Shops) ([]entity.ShopDistance, error) {

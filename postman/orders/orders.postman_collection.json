@@ -85,7 +85,7 @@
           "host": ["{{base_url}}"],
           "path": ["orders", "quote"]
         },
-        "description": "Congela el total en Redis (TTL 30m + gracia 15m). Respuesta: quote_id, total_usd, total_bs, expires_at, proof_grace_until. Luego crear orden con quote_id. Cookie + rol Customer."
+        "description": "Congela el total en Redis (TTL 30m + gracia 15m). Respuesta: quote_id, total_usd, total_bs, expires_at, proof_grace_until. Falla 422 si el local está cerrado. Luego crear orden con quote_id. Cookie + rol Customer."
       }
     },
     {
@@ -116,7 +116,7 @@
             "orders"
           ]
         },
-        "description": "Crea orden usando quote_id (total congelado del servidor). shop/address/items salen del quote. balance_amount_usd opcional. Si queda resto PM, payment_proof_image obligatorio (también habilita gracia si expires_at ya pasó). Cookie + rol Customer."
+        "description": "Crea orden usando quote_id (total congelado del servidor). shop/address/items salen del quote. balance_amount_usd opcional. Si queda resto PM, payment_proof_image obligatorio (también habilita gracia si expires_at ya pasó). Falla 422 si el local está cerrado. Cookie + rol Customer."
       }
     },
     {

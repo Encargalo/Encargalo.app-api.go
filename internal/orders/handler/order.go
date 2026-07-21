@@ -41,7 +41,7 @@ func NewOrderHandler(svc ports.OrdersApp, svc2 ports.AppManagerOrder) OrderHandl
 // @Success      201    {object}  dtos.QuoteResponse   "Cotización creada"
 // @Failure      400    {object}  dtos.ErrorResponse   "Body invalido"
 // @Failure      401    {string}  string               "No autorizado"
-// @Failure      422    {object}  dtos.ErrorResponse   "Catalogo/lote no disponible"
+// @Failure      422    {object}  dtos.ErrorResponse   "Local cerrado o catalogo no disponible"
 // @Failure      500    {object}  dtos.ErrorResponse   "Error interno"
 // @Router       /orders/quote [post]
 func (o *orderHandler) CreateQuote(c echo.Context) error {
@@ -82,7 +82,7 @@ func (o *orderHandler) CreateQuote(c echo.Context) error {
 // @Failure      401    {string}  string                    "No autorizado"
 // @Failure      409    {object}  dtos.ErrorResponse        "La orden ya existe, precio cambió, o quote ya usado"
 // @Failure      410    {object}  dtos.ErrorResponse        "Quote expirado"
-// @Failure      422    {object}  dtos.ErrorResponse        "Uno o mas productos/adiciones no encontrados"
+// @Failure      422    {object}  dtos.ErrorResponse        "Local cerrado o productos/adiciones no encontrados"
 // @Failure      500    {object}  dtos.ErrorResponse        "Error interno del servidor"
 // @Router       /orders [post]
 func (o *orderHandler) CreateOrder(c echo.Context) error {

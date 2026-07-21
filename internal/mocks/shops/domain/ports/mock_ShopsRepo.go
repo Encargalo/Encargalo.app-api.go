@@ -244,6 +244,42 @@ func (_m *ShopsRepo) SetOpenClose(ctx context.Context, shopID *uuid.UUID, open b
 	return r0
 }
 
+// TryCloseAllEligibleBatches provides a mock function with given fields: ctx
+func (_m *ShopsRepo) TryCloseAllEligibleBatches(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for TryCloseAllEligibleBatches")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// TryCloseOpenBatch provides a mock function with given fields: ctx, shopID
+func (_m *ShopsRepo) TryCloseOpenBatch(ctx context.Context, shopID uuid.UUID) error {
+	ret := _m.Called(ctx, shopID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for TryCloseOpenBatch")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = rf(ctx, shopID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // NewShopsRepo creates a new instance of ShopsRepo. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewShopsRepo(t interface {

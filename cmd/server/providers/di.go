@@ -162,6 +162,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(appCustomer.NewRefundAlertWorker)
 	_ = Container.Provide(appAuth.NewAuthApp)
 	_ = Container.Provide(appShops.NewShopsApp)
+	_ = Container.Provide(appShops.NewBatchCloseWorker)
 	_ = Container.Provide(appProducts.NewProductsApp)
 	_ = Container.Provide(appCustomer.NewUsersAddressApp)
 	_ = Container.Provide(appOrders.NewStaffReviewHub)

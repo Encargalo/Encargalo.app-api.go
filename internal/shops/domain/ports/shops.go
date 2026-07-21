@@ -34,4 +34,9 @@ type ShopsRepo interface {
 	FindMatchedProducts(ctx context.Context, shopIDs []uuid.UUID, q string) (map[uuid.UUID][]dtos.MatchedProductItem, error)
 	SetOpenClose(ctx context.Context, shopID *uuid.UUID, open bool) error
 	GetLaunchPromoEndsAt(ctx context.Context, shopID uuid.UUID) (*time.Time, error)
+	// TryCloseOpenBatch cierra el lote abierto del shop si el local está cerrado
+	// y no quedan órdenes activas. Idempotente (0 filas si no aplica).
+	TryCloseOpenBatch(ctx context.Context, shopID uuid.UUID) error
+	// TryCloseAllEligibleBatches cierra todos los lotes elegibles (safety net).
+	TryCloseAllEligibleBatches(ctx context.Context) error
 }

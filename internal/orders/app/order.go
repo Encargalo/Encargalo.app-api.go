@@ -150,6 +150,13 @@ func (o *orderApp) CreateQuote(ctx context.Context, req *dtos.CreateQuote) (*dto
 	fingerprint := models.CartFingerprint(req.ShopID, req.Address, req.Items)
 
 	if existing, ok := o.reusableActiveQuote(ctx, req.CustomerID, fingerprint); ok {
+		shop, err := o.repo.SearchShopByID(ctx, existing.ShopID)
+		if err != nil {
+			return nil, err
+		}
+		if !shop.Opened {
+			return nil, errcustom.ErrShopClosed
+		}
 		return quoteResponseFromModel(existing), nil
 	}
 
@@ -267,15 +274,7 @@ type pricedOrderDraft struct {
 
 // priceOrderDraft calcula totales (items, delivery, promo) sin persistir ni cobrar.
 func (o *orderApp) priceOrderDraft(ctx context.Context, order *dtos.CreateOrder) (*pricedOrderDraft, error) {
-	batchID, err := o.shops.SearchBatchByShopID(ctx, order.ShopID)
-	if err != nil {
-		if errors.Is(err, errcustom.ErrNotFound) {
-			return nil, errcustom.ErrBatchNotOpen
-		}
-		return nil, err
-	}
-
-	shop, err := o.repo.SearchShopByID(ctx, order.ShopID)
+	shop, batchID, err := o.requireOpenShopAndBatch(ctx, order.ShopID)
 	if err != nil {
 		return nil, err
 	}
@@ -335,6 +334,34 @@ func (o *orderApp) priceOrderDraft(ctx context.Context, order *dtos.CreateOrder)
 	}, nil
 }
 
+// requireOpenShopAndBatch valida que el local esté abierto y resuelve el lote
+// de la jornada. Si el local está abierto sin lote, es inconsistencia (500).
+func (o *orderApp) requireOpenShopAndBatch(ctx context.Context, shopID uuid.UUID) (*models.ShopOrder, uuid.UUID, error) {
+	shop, err := o.repo.SearchShopByID(ctx, shopID)
+	if err != nil {
+		return nil, uuid.Nil, err
+	}
+	if !shop.Opened {
+		return nil, uuid.Nil, errcustom.ErrShopClosed
+	}
+
+	batchID, err := o.shops.SearchBatchByShopID(ctx, shopID)
+	if err != nil {
+		if errors.Is(err, errcustom.ErrNotFound) {
+			slog.Error("shop open without open batch", "shopID", shopID)
+			return nil, uuid.Nil, errcustom.ErrUnexpectedError
+		}
+		return nil, uuid.Nil, err
+	}
+	return shop, batchID, nil
+}
+
+func (o *orderApp) tryCloseShopBatch(ctx context.Context, shopID uuid.UUID) {
+	if err := o.shops.TryCloseOpenBatch(ctx, shopID); err != nil {
+		slog.Error("tryCloseShopBatch failed", "shopID", shopID, "error", err)
+	}
+}
+
 func (o *orderApp) loadQuoteForCreate(ctx context.Context, order *dtos.CreateOrder) (*models.OrderQuote, error) {
 	quote, err := o.quotes.Get(ctx, order.QuoteID)
 	if err != nil {
@@ -379,14 +406,8 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		order.Address = quote.Address
 		order.CreateItemsOrder = quote.Items
 
-		batchID, err := o.shops.SearchBatchByShopID(ctx, order.ShopID)
-		if err != nil {
-			if errors.Is(err, errcustom.ErrNotFound) {
-				return &models.Order{}, errcustom.ErrBatchNotOpen
-			}
-			return &models.Order{}, err
-		}
-		shop, err = o.repo.SearchShopByID(ctx, order.ShopID)
+		var batchID uuid.UUID
+		shop, batchID, err = o.requireOpenShopAndBatch(ctx, order.ShopID)
 		if err != nil {
 			return &models.Order{}, err
 		}
@@ -634,6 +655,10 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 
 	o.handleStatusTransition(ctx, newStatus, order)
 
+	if newStatus == models.StatusRejected || newStatus == models.StatusCompleted || newStatus == models.StatusCancelled {
+		o.tryCloseShopBatch(ctx, order.ShopID)
+	}
+
 	return *order, nil
 }
 
@@ -719,6 +744,7 @@ func (o *orderApp) AutoRejectStalePending(ctx context.Context) ([]models.Order, 
 		}
 		order.Status = string(models.StatusRejected)
 		o.refundCustomerOnShopRejectWithReason(ctx, &order, "El local no aceptó el pedido a tiempo")
+		o.tryCloseShopBatch(ctx, order.ShopID)
 		out = append(out, order)
 		slog.Info("AutoRejectStalePending rejected order", "orderID", order.ID, "shopID", order.ShopID)
 	}
@@ -881,6 +907,7 @@ func (o *orderApp) ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code 
 
 	if order.RiderID == nil {
 		slog.Error("order completed without rider assigned", "orderID", orderID)
+		o.tryCloseShopBatch(ctx, order.ShopID)
 		return *order, nil
 	}
 	if err := o.finance.RecordRideEarning(ctx, *order.RiderID, order.ID, order.DeliveryFee, order.TotalPrice, order.MethodPayment); err != nil {
@@ -892,6 +919,7 @@ func (o *orderApp) ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code 
 	}
 
 	o.notifyRiderUpdate(ctx, order)
+	o.tryCloseShopBatch(ctx, order.ShopID)
 
 	return *order, nil
 }
