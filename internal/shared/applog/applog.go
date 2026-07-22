@@ -16,7 +16,11 @@ import (
 
 // SetupJSON configura slog con salida JSON a stderr. Si extra no es nil (telemetría
 // habilitada, ver otelsetup.Setup), cada log se reenvía también a ese handler.
-func SetupJSON(level slog.Level, extra slog.Handler) {
+// serviceName etiqueta el campo "service" (ej. encargalo-api / encargalo-etl).
+func SetupJSON(level slog.Level, extra slog.Handler, serviceName string) {
+	if serviceName == "" {
+		serviceName = reqctx.ServiceName
+	}
 	stderrHandler := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
 		Level:     level,
 		AddSource: true,
@@ -27,7 +31,7 @@ func SetupJSON(level slog.Level, extra slog.Handler) {
 		handler = multiHandler{stderrHandler, extra}
 	}
 
-	slog.SetDefault(slog.New(handler).With("service", reqctx.ServiceName))
+	slog.SetDefault(slog.New(handler).With("service", serviceName))
 }
 
 // multiHandler reenvía cada registro a varios slog.Handler (stderr + exportador OTLP).

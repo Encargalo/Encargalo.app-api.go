@@ -16,6 +16,7 @@ import (
 	"Encargalo.app-api.go/internal/shared/applog"
 	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/otelsetup"
+	"Encargalo.app-api.go/internal/shared/reqctx"
 	appShops "Encargalo.app-api.go/internal/shops/app"
 	appCustomer "Encargalo.app-api.go/internal/users/app"
 	usersPorts "Encargalo.app-api.go/internal/users/domain/ports"
@@ -27,7 +28,7 @@ func main() {
 	cfg := config.Get()
 
 	ctx := context.Background()
-	logHandler, shutdownTelemetry, err := otelsetup.Setup(ctx, cfg.Observability, cfg.Environment.Current)
+	logHandler, shutdownTelemetry, err := otelsetup.Setup(ctx, cfg.Observability, cfg.Environment.Current, reqctx.ServiceName)
 	if err != nil {
 		slog.Error("fallo al iniciar telemetría", "error", err.Error())
 		os.Exit(1)
@@ -38,7 +39,7 @@ func main() {
 		}
 	}()
 
-	applog.SetupJSON(slog.LevelInfo, logHandler)
+	applog.SetupJSON(slog.LevelInfo, logHandler, reqctx.ServiceName)
 
 	defer func() {
 		if recovered := recover(); recovered != nil {

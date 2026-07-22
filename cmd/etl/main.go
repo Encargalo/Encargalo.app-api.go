@@ -14,6 +14,8 @@ import (
 	"Encargalo.app-api.go/internal/health/handler"
 	"Encargalo.app-api.go/internal/shared/applog"
 	"Encargalo.app-api.go/internal/shared/config"
+	"Encargalo.app-api.go/internal/shared/otelsetup"
+	"Encargalo.app-api.go/internal/shared/reqctx"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/robfig/cron/v3"
@@ -21,11 +23,25 @@ import (
 
 func main() {
 	config.ETLEnvironments()
-	applog.SetupJSON(slog.LevelInfo, nil)
+	cfg := config.GetETL()
+
+	ctx := context.Background()
+	logHandler, shutdownTelemetry, err := otelsetup.Setup(ctx, cfg.Observability, cfg.Environment.Current, reqctx.ServiceNameETL)
+	if err != nil {
+		slog.Error("fallo al iniciar telemetría", "error", err.Error())
+		os.Exit(1)
+	}
+	defer func() {
+		if err := shutdownTelemetry(ctx); err != nil {
+			slog.Error("fallo al cerrar telemetría", "error", err.Error())
+		}
+	}()
+
+	applog.SetupJSON(slog.LevelInfo, logHandler, reqctx.ServiceNameETL)
 
 	container := providers.BuildContainer()
 
-	err := container.Invoke(func(
+	err = container.Invoke(func(
 		server *echo.Echo,
 		etlApp ports.ETLApp,
 		cfg config.ETLConfig,

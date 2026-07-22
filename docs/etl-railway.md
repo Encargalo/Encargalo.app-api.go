@@ -31,6 +31,9 @@ OLAP_POSTGRES_DATABASE=${{PostgresOLAP.PGDATABASE}}
 
 RAILWAY_DOCKERFILE_PATH=Dockerfile.etl
 
+# Misma URL OTLP que la API (collector → Loki). Vacío = solo stderr.
+OBSERVABILITY_OTLP_ENDPOINT=http://otel-collector:4318
+
 # SERVER_PORT es opcional: si no está, se usa el PORT que inyecta Railway.
 # SERVER_PORT=${{PORT}}
 

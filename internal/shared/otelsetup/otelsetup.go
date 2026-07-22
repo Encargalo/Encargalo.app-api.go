@@ -24,14 +24,17 @@ func noopShutdown(context.Context) error { return nil }
 // Setup arma trazas (TracerProvider global) y logs (slog.Handler vía otelslog) apuntando
 // al OTLP endpoint configurado. Si cfg.Enabled() es false (sin collector, ej. en local),
 // devuelve un handler nil y un shutdown no-op sin tocar los providers globales.
-func Setup(ctx context.Context, cfg config.Observability, environment string) (slog.Handler, Shutdown, error) {
+func Setup(ctx context.Context, cfg config.Observability, environment, serviceName string) (slog.Handler, Shutdown, error) {
 	if !cfg.Enabled() {
 		return nil, noopShutdown, nil
+	}
+	if serviceName == "" {
+		serviceName = reqctx.ServiceName
 	}
 
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
-			semconv.ServiceName(reqctx.ServiceName),
+			semconv.ServiceName(serviceName),
 			semconv.DeploymentEnvironmentNameKey.String(environment),
 		),
 	)
@@ -66,7 +69,7 @@ func Setup(ctx context.Context, cfg config.Observability, environment string) (s
 		sdklog.WithResource(res),
 	)
 
-	handler := otelslog.NewHandler(reqctx.ServiceName, otelslog.WithLoggerProvider(loggerProvider))
+	handler := otelslog.NewHandler(serviceName, otelslog.WithLoggerProvider(loggerProvider))
 
 	shutdown := func(ctx context.Context) error {
 		if err := tracerProvider.Shutdown(ctx); err != nil {
