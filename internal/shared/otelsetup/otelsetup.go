@@ -39,7 +39,12 @@ func Setup(ctx context.Context, cfg config.Observability, environment string) (s
 		return nil, nil, err
 	}
 
-	traceExporter, err := otlptracehttp.New(ctx, otlptracehttp.WithEndpointURL(cfg.OtlpEndpoint))
+	// WithEndpointURL fija el path exacto de la URL (incluso vacío), pisando el default
+	// de la señal (/v1/traces, /v1/logs) — hay que pasarlo explícito con WithURLPath.
+	traceExporter, err := otlptracehttp.New(ctx,
+		otlptracehttp.WithEndpointURL(cfg.OtlpEndpoint),
+		otlptracehttp.WithURLPath("/v1/traces"),
+	)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -49,7 +54,10 @@ func Setup(ctx context.Context, cfg config.Observability, environment string) (s
 	)
 	otel.SetTracerProvider(tracerProvider)
 
-	logExporter, err := otlploghttp.New(ctx, otlploghttp.WithEndpointURL(cfg.OtlpEndpoint))
+	logExporter, err := otlploghttp.New(ctx,
+		otlploghttp.WithEndpointURL(cfg.OtlpEndpoint),
+		otlploghttp.WithURLPath("/v1/logs"),
+	)
 	if err != nil {
 		return nil, nil, err
 	}
