@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"errors"
 
 	"Encargalo.app-api.go/internal/pkg/bycript"
 	"Encargalo.app-api.go/internal/shared/errcustom"
@@ -101,7 +100,7 @@ func (c *customersApp) UpdateCustomer(ctx context.Context, customer_id uuid.UUID
 		}
 
 		if cust != nil {
-			return errors.New("phone al ready exist")
+			return errcustom.ErrPhoneAlreadyExist
 		}
 	}
 
@@ -123,7 +122,7 @@ func (c *customersApp) UpdatePassword(ctx context.Context, customer_id uuid.UUID
 	}
 
 	if customer == nil {
-		return errors.New("no encontrado")
+		return errcustom.ErrNotFound
 	}
 
 	customerModel := models.Account{}

@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -9,6 +8,7 @@ import (
 	"Encargalo.app-api.go/internal/users/domain/dto"
 	"Encargalo.app-api.go/internal/users/domain/ports"
 
+	"Encargalo.app-api.go/internal/shared/applog"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shared/jwt"
 	"github.com/labstack/echo/v4"
@@ -67,7 +67,8 @@ func (c *customersHandler) RegisterCustomer(e echo.Context) error {
 
 	sessionId, err := c.auth.SignInCustomer(ctx, customer.Phone, customer.Password)
 	if err != nil {
-		fmt.Println()
+		applog.Error(ctx, "auto-login tras registro falló", err, "phone", customer.Phone)
+		return e.JSON(http.StatusCreated, "customer successfully registered")
 	}
 
 	jwtSession, err := c.jwt.CreateSession(sessionId)

@@ -3610,7 +3610,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "address_id es requerido",
+                        "description": "address_id es requerido o inválido",
                         "schema": {
                             "type": "string"
                         }

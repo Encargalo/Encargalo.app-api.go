@@ -45,7 +45,8 @@ func (c *customersAddressRepo) SearchAllAddress(ctx context.Context, customer_id
 func (c *customersAddressRepo) DeleteAddress(ctx context.Context, customer_id uuid.UUID, address_id string) error {
 
 	if _, err := c.db.NewDelete().Model(&models.Address{}).Where("customer_id = ? AND id = ?", customer_id, address_id).Exec(ctx); err != nil {
-		return err
+		slog.Error("error al eliminar la dirección del cliente", "error", err)
+		return errcustom.ErrUnexpectedError
 	}
 
 	return nil

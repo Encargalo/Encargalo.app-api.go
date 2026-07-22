@@ -3,11 +3,15 @@ package models
 import (
 	"time"
 
-	"Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/users/domain/dto"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
+
+// defaultRole es el rol asumido cuando Account no viene de un JOIN con
+// user_roles (p. ej. justo tras un registro). Coincide con auth.models.Customer,
+// pero se declara localmente para no acoplar el dominio de users al de auth.
+const defaultRole = "Customer"
 
 type Account struct {
 	bun.BaseModel `bun:"table:users.accounts"`
@@ -91,7 +95,7 @@ func (c *Account) ToDomainDTO() dto.CustomerResponse {
 
 	role := c.Role
 	if role == "" {
-		role = string(models.Customer)
+		role = defaultRole
 	}
 
 	response := dto.CustomerResponse{
