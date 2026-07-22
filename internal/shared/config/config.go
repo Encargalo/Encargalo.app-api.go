@@ -20,15 +20,16 @@ func Get() *Config {
 }
 
 type Config struct {
-	Server      Server      `env:"server"`
-	Postgres    Postgres    `env:"postgres"`
-	Redis       Redis       `env:"redis"`
-	RedisStream RedisStream `env:"redis_stream"`
-	JWT         JWT         `env:"jwt"`
-	Slack       Slack       `env:"slack"`
-	Environment Environment `env:"environment"`
-	Google      Google      `env:"google"`
-	Cloudinary  Cloudinary  `env:"cloudinary"`
+	Server        Server        `env:"server"`
+	Postgres      Postgres      `env:"postgres"`
+	Redis         Redis         `env:"redis"`
+	RedisStream   RedisStream   `env:"redis_stream"`
+	JWT           JWT           `env:"jwt"`
+	Slack         Slack         `env:"slack"`
+	Environment   Environment   `env:"environment"`
+	Google        Google        `env:"google"`
+	Cloudinary    Cloudinary    `env:"cloudinary"`
+	Observability Observability `env:"observability"`
 }
 
 type Server struct {
@@ -74,6 +75,16 @@ type Google struct {
 type Cloudinary struct {
 	URL    string `validate:"required" env:"url"`
 	Folder string `validate:"required" env:"folder"`
+}
+
+// Observability configura el envío de trazas/logs al OTel Collector.
+// OtlpEndpoint vacío deshabilita la telemetría (útil en desarrollo local).
+type Observability struct {
+	OtlpEndpoint string `env:"otlp_endpoint"`
+}
+
+func (o Observability) Enabled() bool {
+	return o.OtlpEndpoint != ""
 }
 
 func Environments() {

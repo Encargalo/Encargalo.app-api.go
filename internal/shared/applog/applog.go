@@ -11,18 +11,79 @@ import (
 
 	"Encargalo.app-api.go/internal/shared/reqctx"
 	"github.com/labstack/echo/v4"
+	"go.opentelemetry.io/otel/trace"
 )
 
-// SetupJSON configura slog como JSON en stderr (errores/warnings en producción).
-func SetupJSON(level slog.Level) {
-	handler := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+// SetupJSON configura slog con salida JSON a stderr. Si extra no es nil (telemetría
+// habilitada, ver otelsetup.Setup), cada log se reenvía también a ese handler.
+func SetupJSON(level slog.Level, extra slog.Handler) {
+	stderrHandler := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
 		Level:     level,
 		AddSource: true,
 	})
+
+	var handler slog.Handler = stderrHandler
+	if extra != nil {
+		handler = multiHandler{stderrHandler, extra}
+	}
+
 	slog.SetDefault(slog.New(handler).With("service", reqctx.ServiceName))
 }
 
-func attrsFromMeta(meta reqctx.RequestMeta) []any {
+// multiHandler reenvía cada registro a varios slog.Handler (stderr + exportador OTLP).
+type multiHandler []slog.Handler
+
+func (m multiHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	for _, h := range m {
+		if h.Enabled(ctx, level) {
+			return true
+		}
+	}
+	return false
+}
+
+func (m multiHandler) Handle(ctx context.Context, record slog.Record) error {
+	for _, h := range m {
+		if !h.Enabled(ctx, record.Level) {
+			continue
+		}
+		if err := h.Handle(ctx, record.Clone()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m multiHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	next := make(multiHandler, len(m))
+	for i, h := range m {
+		next[i] = h.WithAttrs(attrs)
+	}
+	return next
+}
+
+func (m multiHandler) WithGroup(name string) slog.Handler {
+	next := make(multiHandler, len(m))
+	for i, h := range m {
+		next[i] = h.WithGroup(name)
+	}
+	return next
+}
+
+// traceAttrs agrega trace_id/span_id cuando el contexto trae un span activo,
+// para correlacionar logs (Loki) con trazas (Tempo) en Grafana.
+func traceAttrs(ctx context.Context) []any {
+	if ctx == nil {
+		return nil
+	}
+	sc := trace.SpanContextFromContext(ctx)
+	if !sc.IsValid() {
+		return nil
+	}
+	return []any{"trace_id", sc.TraceID().String(), "span_id", sc.SpanID().String()}
+}
+
+func attrsFromMeta(ctx context.Context, meta reqctx.RequestMeta) []any {
 	attrs := []any{
 		"request_id", meta.RequestID,
 		"endpoint", meta.Endpoint,
@@ -40,6 +101,7 @@ func attrsFromMeta(meta reqctx.RequestMeta) []any {
 	if meta.ShopID != "" {
 		attrs = append(attrs, "shop_id", meta.ShopID)
 	}
+	attrs = append(attrs, traceAttrs(ctx)...)
 	return attrs
 }
 
@@ -48,6 +110,7 @@ func Error(ctx context.Context, msg string, err error, extra ...any) {
 	if id := reqctx.RequestID(ctx); id != "" {
 		attrs = append(attrs, "request_id", id)
 	}
+	attrs = append(attrs, traceAttrs(ctx)...)
 	if err != nil {
 		attrs = append(attrs, "error", err.Error())
 	}
@@ -59,6 +122,7 @@ func Warn(ctx context.Context, msg string, err error, extra ...any) {
 	if id := reqctx.RequestID(ctx); id != "" {
 		attrs = append(attrs, "request_id", id)
 	}
+	attrs = append(attrs, traceAttrs(ctx)...)
 	if err != nil {
 		attrs = append(attrs, "error", err.Error())
 	}
@@ -73,7 +137,7 @@ func HTTPFailure(c echo.Context, status int, err error) {
 	}
 
 	meta := reqctx.MetaFromEcho(c)
-	attrs := attrsFromMeta(meta)
+	attrs := attrsFromMeta(c.Request().Context(), meta)
 	attrs = append(attrs,
 		"status", status,
 		"error", err.Error(),
@@ -112,7 +176,7 @@ func HTTPAccess(c echo.Context, status int, latency time.Duration) {
 	}
 
 	meta := reqctx.MetaFromEcho(c)
-	attrs := attrsFromMeta(meta)
+	attrs := attrsFromMeta(c.Request().Context(), meta)
 	attrs = append(attrs,
 		"status", status,
 		"latency_ms", latency.Milliseconds(),
