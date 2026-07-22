@@ -2,9 +2,7 @@ package config
 
 import (
 	"log"
-	"strings"
 	"sync"
-	"time"
 
 	"github.com/shepherd-go/gosuite/config"
 )
@@ -24,8 +22,6 @@ func Get() *Config {
 type Config struct {
 	Server        Server        `env:"server"`
 	Postgres      Postgres      `env:"postgres"`
-	OlapPostgres  OlapPostgres  `env:"olap_postgres"`
-	ETL           ETL           `env:"etl"`
 	Redis         Redis         `env:"redis"`
 	RedisStream   RedisStream   `env:"redis_stream"`
 	JWT           JWT           `env:"jwt"`
@@ -47,60 +43,6 @@ type Postgres struct {
 	User     string `validate:"required" env:"user"`
 	Password string `validate:"required" env:"password"`
 	Database string `validate:"required" env:"database"`
-}
-
-// OlapPostgres es opcional para la API; el servicio ETL exige Host != "".
-type OlapPostgres struct {
-	Host     string `env:"host"`
-	Port     int    `env:"port"`
-	User     string `env:"user"`
-	Password string `env:"password"`
-	Database string `env:"database"`
-}
-
-func (o OlapPostgres) Configured() bool {
-	return o.Host != "" && o.Database != "" && o.User != "" && o.Port > 0
-}
-
-// ETL configura el worker de sincronización OLAP (solo usado por cmd/etl).
-type ETL struct {
-	// Schedule es expresión cron (5 campos). Vacío = "48 * * * *" (minuto 48 de cada hora).
-	Schedule string `env:"schedule"`
-	// LookbackHours: ventana de re-lectura tras watermark (default 48).
-	LookbackHours int `env:"lookback_hours"`
-	// InitialLookbackDays: backfill si no hay watermark (default 1825 = 5 años).
-	InitialLookbackDays int `env:"initial_lookback_days"`
-}
-
-func (e ETL) DefaultLookback() time.Duration {
-	h := e.LookbackHours
-	if h <= 0 {
-		h = 48
-	}
-	return time.Duration(h) * time.Hour
-}
-
-func (e ETL) InitialLookback() time.Duration {
-	d := e.InitialLookbackDays
-	if d <= 0 {
-		d = 365 * 5
-	}
-	return time.Duration(d) * 24 * time.Hour
-}
-
-const DefaultETLSchedule = "48 * * * *" // minuto 48 de cada hora
-
-// ResolvedSchedule devuelve el cron efectivo. Vacío tras "off" = desactivado.
-func (e ETL) ResolvedSchedule() string {
-	s := strings.TrimSpace(e.Schedule)
-	switch strings.ToLower(s) {
-	case "off", "disabled", "false", "-":
-		return ""
-	case "":
-		return DefaultETLSchedule
-	default:
-		return s
-	}
 }
 
 type Redis struct {

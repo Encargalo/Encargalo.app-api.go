@@ -56,14 +56,14 @@ func NewPostgresConnection(config config.Config) *bun.DB {
 }
 
 // NewOLTPConnection abre OLTP sin correr migraciones (ETL: solo lectura).
-func NewOLTPConnection(config config.Config) *bun.DB {
-	configPostgres := config.Postgres
+func NewOLTPConnection(cfg config.ETLConfig) *bun.DB {
+	p := cfg.Postgres
 	return connect(pgOptions{
-		host:     configPostgres.Host,
-		port:     configPostgres.Port,
-		user:     configPostgres.User,
-		password: configPostgres.Password,
-		database: configPostgres.Database,
+		host:     p.Host,
+		port:     p.Port,
+		user:     p.User,
+		password: p.Password,
+		database: p.Database,
 	})
 }
 

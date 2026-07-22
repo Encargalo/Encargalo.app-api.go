@@ -70,7 +70,7 @@ goose -dir internal/shared/adapters/postgres/migrations postgres "<DSN>" up
 # Correr API
 go run ./cmd/server
 
-# Correr ETL (requiere OLAP_POSTGRES_*; sync automático al minuto 48)
+# Correr ETL (config mínima: SERVER/POSTGRES/OLAP_POSTGRES/ENVIRONMENT)
 go run ./cmd/etl
 ```
 

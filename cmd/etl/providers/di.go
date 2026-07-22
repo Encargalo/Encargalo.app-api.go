@@ -14,9 +14,9 @@ import (
 func BuildContainer() *dig.Container {
 	c := dig.New()
 
-	_ = c.Provide(func() config.Config {
-		config.Environments()
-		return *config.Get()
+	_ = c.Provide(func() config.ETLConfig {
+		config.ETLEnvironments()
+		return *config.GetETL()
 	})
 
 	_ = c.Provide(func() *echo.Echo {
@@ -34,7 +34,7 @@ func BuildContainer() *dig.Container {
 		source ports.OLTPSourceRepo,
 		sink ports.OLAPSinkRepo,
 		syncLog ports.SyncLogRepo,
-		cfg config.Config,
+		cfg config.ETLConfig,
 	) ports.ETLApp {
 		return app.NewETLApp(source, sink, syncLog, app.Lookbacks{
 			Default: cfg.ETL.DefaultLookback(),

@@ -20,11 +20,7 @@ type OLAPDB struct {
 var embedOLAPMigrations embed.FS
 
 // NewOLAPConnection abre Postgres OLAP y aplica migraciones analytics.
-func NewOLAPConnection(cfg config.Config) *OLAPDB {
-	if !cfg.OlapPostgres.Configured() {
-		log.Fatal("olap_postgres no configurado: se requieren OLAP_POSTGRES_HOST, USER, PASSWORD, DATABASE y PORT")
-	}
-
+func NewOLAPConnection(cfg config.ETLConfig) *OLAPDB {
 	olap := cfg.OlapPostgres
 	db := connect(pgOptions{
 		host:     olap.Host,

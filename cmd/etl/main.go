@@ -20,21 +20,15 @@ import (
 )
 
 func main() {
-	config.Environments()
-	cfg := config.Get()
+	config.ETLEnvironments()
 	applog.SetupJSON(slog.LevelInfo, nil)
-
-	if !cfg.OlapPostgres.Configured() {
-		slog.Error("olap_postgres no configurado")
-		os.Exit(1)
-	}
 
 	container := providers.BuildContainer()
 
 	err := container.Invoke(func(
 		server *echo.Echo,
 		etlApp ports.ETLApp,
-		cfg config.Config,
+		cfg config.ETLConfig,
 	) error {
 		server.Use(middleware.Recover())
 		server.Use(middleware.RequestID())
