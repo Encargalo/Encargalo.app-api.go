@@ -8,6 +8,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Run the server
 go run ./cmd/server
 
+# Run the ETL / OLAP worker
+go run ./cmd/etl
+
 # Build
 go build -v ./...
 
@@ -25,6 +28,9 @@ swag init -g cmd/server/main.go --parseDependency --parseInternal
 
 # Run database migrations (goose)
 goose -dir internal/shared/adapters/postgres/migrations postgres "<DSN>" up
+
+# Run OLAP migrations (goose) — also applied automatically by cmd/etl on startup
+goose -dir internal/shared/adapters/postgres/migrations_olap postgres "<OLAP_DSN>" up
 ```
 
 ## Architecture
@@ -42,11 +48,11 @@ internal/<domain>/
   repo/        # Data access (implements ports.XxxRepo)
 ```
 
-Domains: `auth`, `customers`, `orders`, `products`, `shops`, `employee`, `health`.
+Domains: `auth`, `customers`, `orders`, `products`, `shops`, `employee`, `health`, `analytics` (ETL → OLAP).
 
 Shared infrastructure lives in `internal/shared/`:
 - `config/` — env-based config loaded via `gosuite`, read with `config.Get()`
-- `adapters/postgres/` — bun ORM + goose migrations
+- `adapters/postgres/` — bun ORM + goose migrations (OLTP en `migrations/`, OLAP en `migrations_olap/`)
 - `adapters/redis/` — Redis cache client + stream producer
 - `adapters/slack/` — Slack notifications
 - `jwt/` — JWT sign/validate

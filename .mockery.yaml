@@ -58,3 +58,7 @@ packages:
   Encargalo.app-api.go/internal/bcv/domain/ports:
     config:
       dir: "internal/mocks/bcv/domain/ports"
+
+  Encargalo.app-api.go/internal/analytics/domain/ports:
+    config:
+      dir: "internal/mocks/analytics/domain/ports"

@@ -44,6 +44,8 @@ var (
 	ErrRefundProofRequired    = errors.New("el comprobante de pago es requerido")
 	ErrRiderProfileIncomplete = errors.New("expediente de rider incompleto")
 	ErrRiderNotActive         = errors.New("cuenta de rider no activa")
+	ErrInvalidDateRange       = errors.New("rango de fechas inválido")
+	ErrUnknownETLEntity       = errors.New("entidad ETL desconocida")
 )
 
 var (

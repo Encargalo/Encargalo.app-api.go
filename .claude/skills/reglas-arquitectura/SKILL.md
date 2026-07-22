@@ -18,8 +18,9 @@ description: Reglas prescriptivas DEBE/NO DEBE para la arquitectura hexagonal de
 
 ## 2. Responsabilidades por capa
 
-- `domain/models/` DEBE contener solo entidades y value objects — sin lógica HTTP ni de persistencia.
-- `domain/ports/` DEBE contener únicamente interfaces `XxxApp` y `XxxRepo`.
+- `domain/models/` DEBE contener solo entidades y value objects — sin lógica HTTP.
+- Se PERMITE metadata de persistencia (`bun` tags / `bun.BaseModel`) en `domain/models/` como convención del proyecto; la lógica de negocio NO DEBE vivir en esos tags.
+- `domain/ports/` DEBE contener únicamente interfaces `XxxApp` y `XxxRepo` (u otros puertos de aplicación/persistencia del módulo, p. ej. `OLTPSourceRepo`).
 - `domain/dtos/` DEBE contener structs de request/response — sin métodos de negocio.
 - `handler/` DEBE hacer: bind/validate → llamar al app → mapear errores a HTTP.
 - `handler/` NO DEBE contener lógica de negocio.
@@ -38,7 +39,8 @@ description: Reglas prescriptivas DEBE/NO DEBE para la arquitectura hexagonal de
 ## 4. Persistencia
 
 - DEBE usarse bun ORM para todas las operaciones de base de datos.
-- Las migraciones DEBEN usarse goose — archivos en `internal/shared/adapters/postgres/migrations/`.
+- Las migraciones OLTP DEBEN usarse goose — archivos en `internal/shared/adapters/postgres/migrations/`.
+- Las migraciones OLAP DEBEN usarse goose — archivos en `internal/shared/adapters/postgres/migrations_olap/` (aplicadas por `cmd/etl`, nunca por la API).
 - Los archivos de migración DEBEN seguir el formato `000NN_descripcion.sql`.
 - El cache de Redis DEBE usarse a través del adaptador `shared/adapters/redis/`.
 - Las transacciones DEBEN manejarse en `repo/`.
@@ -53,11 +55,12 @@ description: Reglas prescriptivas DEBE/NO DEBE para la arquitectura hexagonal de
 - Las rutas con control de rol DEBEN encadenar `Auth.Require(models.RoleXxx)` después de `Auth`.
 - La sesión en handlers DEBE obtenerse con: `ctx.Value(models.SessionKey).(models.ActiveSession)`.
 - Los errores HTTP DEBEN crearse con `echo.NewHTTPError(code, message)`.
+- Workers sin API de negocio (p. ej. `cmd/etl`) PUEDEN omitir handler/Swagger/Postman si solo exponen health.
 
 ## 6. Inyección de dependencias
 
 - DEBE usarse uber/dig para toda la DI.
-- El registro DEBE hacerse en `cmd/server/providers/di.go`.
+- El registro DEBE hacerse en `cmd/<servicio>/providers/di.go` del binario correspondiente (`cmd/server`, `cmd/etl`, …).
 - NO DEBE hacerse DI manual fuera del contenedor.
 
 ## 7. Documentación
@@ -76,9 +79,9 @@ description: Reglas prescriptivas DEBE/NO DEBE para la arquitectura hexagonal de
 
 ## 9. Configuración y secretos
 
-- El logging DEBE usar `charmbracelet/log`.
+- El logging DEBE usar `slog` vía `internal/shared/applog` (JSON); charmbracelet/log queda deprecado para código nuevo.
 - La configuración DEBE cargarse exclusivamente con `config.Get()` (gosuite).
-- NO DEBE haber valores de configuración hardcodeados en el código.
+- NO DEBE haber valores de configuración hardcodeados en el código (defaults de fallback en `config` sí están permitidos).
 - NO DEBE loguearse información sensible (contraseñas, tokens, PII).
 
 ## Constraint Layer

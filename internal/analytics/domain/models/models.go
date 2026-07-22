@@ -1,0 +1,127 @@
+package models
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/uptrace/bun"
+)
+
+type ETLEntity string
+
+const (
+	EntityDimShop   ETLEntity = "dim_shop"
+	EntityDimUser   ETLEntity = "dim_user"
+	EntityDimRider  ETLEntity = "dim_rider"
+	EntityCubeOrder ETLEntity = "cube_order"
+)
+
+var DefaultETLEntities = []ETLEntity{
+	EntityDimShop,
+	EntityDimUser,
+	EntityDimRider,
+	EntityCubeOrder,
+}
+
+type DateRange struct {
+	From time.Time
+	To   time.Time
+}
+
+type SyncLog struct {
+	bun.BaseModel `bun:"table:analytics.etl_sync_logs"`
+
+	Entity       ETLEntity `bun:"entity,pk"`
+	LastSyncedTo time.Time `bun:"last_synced_to,notnull"`
+	UpdatedAt    time.Time `bun:"updated_at,notnull"`
+}
+
+type DimShop struct {
+	bun.BaseModel `bun:"table:analytics.dim_shop"`
+
+	ShopID        uuid.UUID `bun:"shop_id,pk,type:uuid"`
+	Name          string    `bun:"name,notnull"`
+	Tag           string    `bun:"tag"`
+	Address       string    `bun:"address"`
+	Type          string    `bun:"type"`
+	LicenseStatus string    `bun:"license_status"`
+	Opened        bool      `bun:"opened,notnull"`
+	CreatedAt     time.Time `bun:"created_at,notnull"`
+	UpdatedAt     time.Time `bun:"updated_at,notnull"`
+	SyncedAt      time.Time `bun:"synced_at,notnull"`
+}
+
+type DimUser struct {
+	bun.BaseModel `bun:"table:analytics.dim_user"`
+
+	UserID       uuid.UUID `bun:"user_id,pk,type:uuid"`
+	Name         string    `bun:"name,notnull"`
+	SurName      *string   `bun:"sur_name"`
+	Phone        *string   `bun:"phone"`
+	Email        *string   `bun:"email"`
+	Roles        []string  `bun:"roles,array,notnull"`
+	Enabled      bool      `bun:"enabled,notnull"`
+	RegisteredAt time.Time `bun:"registered_at,notnull"`
+	UpdatedAt    time.Time `bun:"updated_at,notnull"`
+	SyncedAt     time.Time `bun:"synced_at,notnull"`
+}
+
+type DimRider struct {
+	bun.BaseModel `bun:"table:analytics.dim_rider"`
+
+	RiderID      uuid.UUID  `bun:"rider_id,pk,type:uuid"`
+	Name         string     `bun:"name,notnull"`
+	SurName      *string    `bun:"sur_name"`
+	Phone        *string    `bun:"phone"`
+	Email        *string    `bun:"email"`
+	Status       string     `bun:"status,notnull"`
+	VehicleType  *string    `bun:"vehicle_type"`
+	RegisteredAt time.Time  `bun:"registered_at,notnull"`
+	ActivatedAt  *time.Time `bun:"activated_at"`
+	UpdatedAt    time.Time  `bun:"updated_at,notnull"`
+	SyncedAt     time.Time  `bun:"synced_at,notnull"`
+}
+
+type CubeOrder struct {
+	bun.BaseModel `bun:"table:analytics.cube_order"`
+
+	OrderID            uuid.UUID  `bun:"order_id,pk,type:uuid"`
+	ShopID             uuid.UUID  `bun:"shop_id,type:uuid,notnull"`
+	CustomerID         uuid.UUID  `bun:"customer_id,type:uuid,notnull"`
+	RiderID            *uuid.UUID `bun:"rider_id,type:uuid"`
+	Status             string     `bun:"status,notnull"`
+	MethodPayment      string     `bun:"method_payment"`
+	TotalPrice         float64    `bun:"total_price,notnull"`
+	DeliveryFee        float64    `bun:"delivery_fee,notnull"`
+	GMV                float64    `bun:"gmv,notnull"`
+	PromoSubsidyAmount float64    `bun:"promo_subsidy_amount,notnull"`
+	IsLaunchPromo      bool       `bun:"is_launch_promo,notnull"`
+	IsZeroCommission   bool       `bun:"is_zero_commission,notnull"`
+	OrderDate          time.Time  `bun:"order_date,notnull"`
+	CreatedAt          time.Time  `bun:"created_at,notnull"`
+	SyncedAt           time.Time  `bun:"synced_at,notnull"`
+}
+
+type ETLEntityResult struct {
+	Entity        ETLEntity `json:"entity"`
+	Success       bool      `json:"success"`
+	Rows          int       `json:"rows"`
+	Error         string    `json:"error,omitempty"`
+	ExecutionTime int64     `json:"execution_time_ms"`
+}
+
+type BatchResult struct {
+	From    time.Time         `json:"from"`
+	To      time.Time         `json:"to"`
+	Results []ETLEntityResult `json:"results"`
+	Message string            `json:"message"`
+}
+
+// GMV es el valor de mercancía: total del pedido menos el delivery fee (nunca negativo).
+func GMV(totalPrice, deliveryFee float64) float64 {
+	gmv := totalPrice - deliveryFee
+	if gmv < 0 {
+		return 0
+	}
+	return gmv
+}
