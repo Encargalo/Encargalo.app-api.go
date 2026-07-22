@@ -37,7 +37,7 @@
           "host": ["{{base_url}}"],
           "path": ["auth", "sign-in", "users"]
         },
-        "description": "Autentica un cliente con teléfono y contraseña. Retorna una cookie `encargalo-session` con el JWT de sesión."
+        "description": "Autentica un cliente con teléfono y contraseña. Retorna una cookie `encargalo-session` con el JWT de sesión. Limitado a 10 solicitudes por minuto por IP (HTTP 429 si se excede)."
       }
     },
     {
@@ -64,7 +64,7 @@
           "host": ["{{base_url}}"],
           "path": ["auth", "sign-in", "employees"]
         },
-        "description": "Autentica un empleado con teléfono y contraseña. Retorna una cookie `encargalo-session` con el JWT de sesión."
+        "description": "Autentica un empleado con teléfono y contraseña. Retorna una cookie `encargalo-session` con el JWT de sesión. Limitado a 10 solicitudes por minuto por IP (HTTP 429 si se excede)."
       }
     },
     {
@@ -91,7 +91,7 @@
           "host": ["{{base_url}}"],
           "path": ["auth", "sign-in", "riders"]
         },
-        "description": "Autentica un rider con teléfono y contraseña. Retorna una cookie `encargalo-session` con el JWT de sesión. Solo funciona con cuentas que tengan el rol Rider."
+        "description": "Autentica un rider con teléfono y contraseña. Retorna una cookie `encargalo-session` con el JWT de sesión. Solo funciona con cuentas que tengan el rol Rider. Limitado a 10 solicitudes por minuto por IP (HTTP 429 si se excede)."
       }
     },
     {
@@ -118,7 +118,7 @@
           "host": ["{{base_url}}"],
           "path": ["auth", "sign-in", "staff"]
         },
-        "description": "Autentica un miembro del staff (CRM) con teléfono y contraseña. Retorna una cookie `encargalo-session` con el JWT de sesión. Solo funciona con cuentas que tengan el rol Staff."
+        "description": "Autentica un miembro del staff (CRM) con teléfono y contraseña. Retorna una cookie `encargalo-session` con el JWT de sesión. Solo funciona con cuentas que tengan el rol Staff. Limitado a 10 solicitudes por minuto por IP (HTTP 429 si se excede)."
       }
     },
     {
@@ -145,7 +145,7 @@
           "host": ["{{base_url}}"],
           "path": ["auth", "sign-in", "google"]
         },
-        "description": "Inicia sesión o registra un customer a partir de un id_token de Google (emitido por la app móvil). Si el email ya existe, inicia sesión; si no, crea la cuenta automáticamente (sin teléfono, que se completa luego desde el perfil). Retorna una cookie `encargalo-session` con el JWT de sesión."
+        "description": "Inicia sesión o registra un customer a partir de un id_token de Google (emitido por la app móvil). Si el email ya existe, inicia sesión; si no, crea la cuenta automáticamente (sin teléfono, que se completa luego desde el perfil). Retorna una cookie `encargalo-session` con el JWT de sesión. Limitado a 10 solicitudes por minuto por IP (HTTP 429 si se excede)."
       }
     },
     {

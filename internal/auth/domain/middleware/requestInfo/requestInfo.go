@@ -36,3 +36,11 @@ func (r *request) GetRequestInfo(next echo.HandlerFunc) echo.HandlerFunc {
 		return next(c)
 	}
 }
+
+// FromContext expone la IP y el User-Agent guardados por GetRequestInfo.
+// Devuelve cadenas vacías si el middleware no se encadenó en la ruta.
+func FromContext(ctx context.Context) (ip, userAgent string) {
+	ip, _ = ctx.Value(keyIP).(string)
+	userAgent, _ = ctx.Value(keyUserAgent).(string)
+	return ip, userAgent
+}

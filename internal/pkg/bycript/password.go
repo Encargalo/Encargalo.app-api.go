@@ -5,7 +5,7 @@ import (
 )
 
 type Password interface {
-	HashPassword(pass *string)
+	HashPassword(pass *string) error
 	CheckPasswordHash(phash []byte, pass string) bool
 }
 
@@ -15,9 +15,13 @@ func NewHashPassword() Password {
 	return &password{}
 }
 
-func (p *password) HashPassword(pass *string) {
-	hash, _ := bcrypt.GenerateFromPassword([]byte(*pass), bcrypt.DefaultCost)
+func (p *password) HashPassword(pass *string) error {
+	hash, err := bcrypt.GenerateFromPassword([]byte(*pass), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
 	*pass = string(hash)
+	return nil
 }
 
 func (p *password) CheckPasswordHash(hash []byte, pass string) bool {

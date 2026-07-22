@@ -17,6 +17,7 @@ import (
 	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shared/jwt"
+	sharedmw "Encargalo.app-api.go/internal/shared/middleware"
 	appShops "Encargalo.app-api.go/internal/shops/app"
 	shopsPorts "Encargalo.app-api.go/internal/shops/domain/ports"
 	handShops "Encargalo.app-api.go/internal/shops/handler"
@@ -104,6 +105,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(repoPayment.NewPaymentMethodsRepo)
 
 	_ = Container.Provide(requestinfo.NewRequestMiddleware)
+	_ = Container.Provide(sharedmw.NewRateLimiter)
 	_ = Container.Provide(authMiddle.NewAuthMidlleware)
 	_ = Container.Provide(handAuth.NewAuthHandler)
 	_ = Container.Provide(handCustomer.NewUsersHandler)

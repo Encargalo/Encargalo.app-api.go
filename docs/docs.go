@@ -107,6 +107,15 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "429": {
+                        "description": "Demasiados intentos, intenta de nuevo más tarde",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Error inesperado del servidor",
                         "schema": {
@@ -161,6 +170,15 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "id_token inválido o expirado",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Demasiados intentos, intenta de nuevo más tarde",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -229,6 +247,15 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "429": {
+                        "description": "Demasiados intentos, intenta de nuevo más tarde",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Error inesperado del servidor",
                         "schema": {
@@ -290,6 +317,15 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "429": {
+                        "description": "Demasiados intentos, intenta de nuevo más tarde",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Error inesperado del servidor",
                         "schema": {
@@ -344,6 +380,15 @@ const docTemplate = `{
                     },
                     "422": {
                         "description": "Credenciales incorrectas",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Demasiados intentos, intenta de nuevo más tarde",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1420,7 +1465,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Cambia el estado de apertura del local asociado a la sesión del owner. La primera vez que un local se abre (open=true) se activan automáticamente sus ventanas de promoción de lanzamiento: 24h con 50% de descuento subsidiado por la plataforma y 192h (8 días) con comisión 0%.",
+                "description": "Cambia el estado de apertura del local asociado a la sesión del owner. Al abrir (` + "`" + `open=true` + "`" + `) se crea un lote de jornada si no hay uno abierto. Al cerrar solo se marca el local como cerrado: el lote sigue abierto para gestionar órdenes activas y se cierra automáticamente cuando ya no quedan. La primera vez que un local se abre se activan automáticamente sus ventanas de promoción de lanzamiento: 24h con 50% de descuento subsidiado por la plataforma y 192h (8 días) con comisión 0%.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1821,7 +1866,7 @@ const docTemplate = `{
                         }
                     },
                     "422": {
-                        "description": "Uno o mas productos/adiciones no encontrados",
+                        "description": "Local cerrado o productos/adiciones no encontrados",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
@@ -1963,7 +2008,7 @@ const docTemplate = `{
                         }
                     },
                     "422": {
-                        "description": "Catalogo/lote no disponible",
+                        "description": "Local cerrado o catalogo no disponible",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }

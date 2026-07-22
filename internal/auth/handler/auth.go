@@ -43,6 +43,7 @@ func NewAuthHandler(svc ports.AuthApp, jwt jwt.Sessions, cookie cookie.CookieHan
 // @Success      201    {string}  string  "session created"
 // @Failure      400    {object}  map[string]string  "Solicitud inválida (validación o JSON incorrecto)"
 // @Failure      422    {object}  map[string]string  "Credenciales incorrectas"
+// @Failure      429    {object}  map[string]string  "Demasiados intentos, intenta de nuevo más tarde"
 // @Failure      500    {object}  map[string]string  "Error inesperado del servidor"
 // @Router       /auth/sign-in/users [post]
 func (a *auth) SignInCustomer(e echo.Context) error {
@@ -85,6 +86,7 @@ func (a *auth) SignInCustomer(e echo.Context) error {
 // @Success      201    {string}  string  "session created"
 // @Failure      400    {object}  map[string]string  "Solicitud inválida (validación o JSON incorrecto)"
 // @Failure      422    {object}  map[string]string  "Credenciales incorrectas"
+// @Failure      429    {object}  map[string]string  "Demasiados intentos, intenta de nuevo más tarde"
 // @Failure      500    {object}  map[string]string  "Error inesperado del servidor"
 // @Router       /auth/sign-in/employees [post]
 func (a *auth) SignInEmployee(e echo.Context) error {
@@ -127,6 +129,7 @@ func (a *auth) SignInEmployee(e echo.Context) error {
 // @Success      201    {string}  string  "session created"
 // @Failure      400    {object}  map[string]string  "Solicitud inválida (validación o JSON incorrecto)"
 // @Failure      422    {object}  map[string]string  "Credenciales incorrectas"
+// @Failure      429    {object}  map[string]string  "Demasiados intentos, intenta de nuevo más tarde"
 // @Failure      500    {object}  map[string]string  "Error inesperado del servidor"
 // @Router       /auth/sign-in/riders [post]
 func (a *auth) SignInRider(e echo.Context) error {
@@ -168,6 +171,7 @@ func (a *auth) SignInRider(e echo.Context) error {
 // @Success      201    {string}  string  "session created"
 // @Failure      400    {object}  map[string]string  "Solicitud inválida (validación o JSON incorrecto)"
 // @Failure      422    {object}  map[string]string  "Credenciales incorrectas"
+// @Failure      429    {object}  map[string]string  "Demasiados intentos, intenta de nuevo más tarde"
 // @Failure      500    {object}  map[string]string  "Error inesperado del servidor"
 // @Router       /auth/sign-in/staff [post]
 func (a *auth) SignInStaff(e echo.Context) error {
@@ -211,6 +215,7 @@ func (a *auth) SignInStaff(e echo.Context) error {
 // @Success      201    {string}  string  "session created"
 // @Failure      400    {object}  map[string]string  "Solicitud inválida (validación o JSON incorrecto)"
 // @Failure      401    {object}  map[string]string  "id_token inválido o expirado"
+// @Failure      429    {object}  map[string]string  "Demasiados intentos, intenta de nuevo más tarde"
 // @Failure      500    {object}  map[string]string  "Error inesperado del servidor"
 // @Router       /auth/sign-in/google [post]
 func (a *auth) SignInGoogle(e echo.Context) error {

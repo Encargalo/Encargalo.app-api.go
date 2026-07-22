@@ -38,7 +38,9 @@ func (c *customersApp) RegisterCustomer(ctx context.Context, customer dto.Regist
 		return errcustom.ErrPhoneAlreadyExist
 	}
 
-	c.pass.HashPassword(&customer.Password)
+	if err := c.pass.HashPassword(&customer.Password); err != nil {
+		return errcustom.ErrUnexpectedError
+	}
 
 	customerModel := models.Account{}
 	customerModel.BuildCustomerRegisterModel(customer)
@@ -127,7 +129,9 @@ func (c *customersApp) UpdatePassword(ctx context.Context, customer_id uuid.UUID
 	customerModel := models.Account{}
 	customerModel.BuildCustomerUpdatePasswordModel(pass)
 
-	c.pass.HashPassword(&customerModel.Password)
+	if err := c.pass.HashPassword(&customerModel.Password); err != nil {
+		return errcustom.ErrUnexpectedError
+	}
 
 	return c.repo.UpdatePassword(ctx, customer_id, &customerModel)
 

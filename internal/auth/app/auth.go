@@ -3,14 +3,15 @@ package app
 import (
 	"context"
 	"errors"
-	"log/slog"
 
+	requestinfo "Encargalo.app-api.go/internal/auth/domain/middleware/requestInfo"
 	"Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/auth/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/bycript"
 	"Encargalo.app-api.go/internal/pkg/logs"
 	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/adapters/googleauth"
+	"Encargalo.app-api.go/internal/shared/applog"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/users/domain/dto"
 	portsCusto "Encargalo.app-api.go/internal/users/domain/ports"
@@ -55,8 +56,10 @@ func (a *appAuth) SignInCustomer(ctx context.Context, phone, password string) (u
 		return uuid.Nil, errcustom.ErrIncorrectAccessData
 	}
 
+	ip, userAgent := requestinfo.FromContext(ctx)
+
 	var session models.ActiveSession
-	session.BuildActiveSessionModel(custo.ID, string(models.Customer), []models.Role{models.Customer}, "", "", nil)
+	session.BuildActiveSessionModel(custo.ID, string(models.Customer), []models.Role{models.Customer}, ip, userAgent, nil)
 
 	if err := a.repo.SaveSession(ctx, &session); err != nil {
 		return uuid.Nil, err
@@ -79,8 +82,10 @@ func (a *appAuth) SignInEmployee(ctx context.Context, phone, password string) (u
 		return uuid.Nil, errcustom.ErrIncorrectAccessData
 	}
 
+	ip, userAgent := requestinfo.FromContext(ctx)
+
 	var session models.ActiveSession
-	session.BuildActiveSessionModel(empl.ID, empl.Role, []models.Role{models.Role(empl.Role)}, "", "", &empl.ShopID)
+	session.BuildActiveSessionModel(empl.ID, empl.Role, []models.Role{models.Role(empl.Role)}, ip, userAgent, &empl.ShopID)
 
 	if err := a.repo.SaveSession(ctx, &session); err != nil {
 		return uuid.Nil, err
@@ -112,8 +117,10 @@ func (a *appAuth) SignInRider(ctx context.Context, phone, password string) (uuid
 		}
 	}
 
+	ip, userAgent := requestinfo.FromContext(ctx)
+
 	var session models.ActiveSession
-	session.BuildActiveSessionModel(rider.ID, string(models.Rider), []models.Role{models.Rider}, "", "", nil)
+	session.BuildActiveSessionModel(rider.ID, string(models.Rider), []models.Role{models.Rider}, ip, userAgent, nil)
 
 	if err := a.repo.SaveSession(ctx, &session); err != nil {
 		return uuid.Nil, err
@@ -135,8 +142,10 @@ func (a *appAuth) SignInStaff(ctx context.Context, phone, password string) (uuid
 		return uuid.Nil, errcustom.ErrIncorrectAccessData
 	}
 
+	ip, userAgent := requestinfo.FromContext(ctx)
+
 	var session models.ActiveSession
-	session.BuildActiveSessionModel(staff.ID, string(models.Staff), []models.Role{models.Staff}, "", "", nil)
+	session.BuildActiveSessionModel(staff.ID, string(models.Staff), []models.Role{models.Staff}, ip, userAgent, nil)
 
 	if err := a.repo.SaveSession(ctx, &session); err != nil {
 		return uuid.Nil, err
@@ -168,8 +177,10 @@ func (a *appAuth) SignInGoogle(ctx context.Context, idToken string) (uuid.UUID, 
 		}
 	}
 
+	ip, userAgent := requestinfo.FromContext(ctx)
+
 	var session models.ActiveSession
-	session.BuildActiveSessionModel(custo.ID, string(models.Customer), []models.Role{models.Customer}, "", "", nil)
+	session.BuildActiveSessionModel(custo.ID, string(models.Customer), []models.Role{models.Customer}, ip, userAgent, nil)
 
 	if err := a.repo.SaveSession(ctx, &session); err != nil {
 		return uuid.Nil, err
@@ -190,7 +201,7 @@ func (a *appAuth) DeleteSession(ctx context.Context, session_id uuid.UUID) error
 	}
 
 	if session == nil {
-		slog.Warn("session " + session_id.String() + "not found from delete")
+		applog.Warn(ctx, "sesion no encontrada al intentar eliminarla", nil, "session_id", session_id.String())
 		return nil
 	}
 
