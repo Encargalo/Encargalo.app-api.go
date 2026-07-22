@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -78,6 +79,13 @@ func GetETL() *ETLConfig {
 
 func ETLEnvironments() {
 	etlOnce.Do(func() {
+		// Railway inyecta PORT; nuestro tag espera SERVER_PORT.
+		if os.Getenv("SERVER_PORT") == "" {
+			if p := os.Getenv("PORT"); p != "" {
+				_ = os.Setenv("SERVER_PORT", p)
+			}
+		}
+
 		etlCfg = new(ETLConfig)
 		if err := gosuite.GetConfigFromEnv(etlCfg); err != nil {
 			log.Panicf("error parsing ETL environment vars \n%v", err)

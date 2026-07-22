@@ -15,7 +15,6 @@
 El ETL **no** usa JWT/Redis/Google/Cloudinary. Solo:
 
 ```
-SERVER_PORT=${{PORT}}
 ENVIRONMENT_CURRENT=production
 
 POSTGRES_HOST=${{Postgres.PGHOST}}
@@ -31,6 +30,9 @@ OLAP_POSTGRES_PASSWORD=${{PostgresOLAP.PGPASSWORD}}
 OLAP_POSTGRES_DATABASE=${{PostgresOLAP.PGDATABASE}}
 
 RAILWAY_DOCKERFILE_PATH=Dockerfile.etl
+
+# SERVER_PORT es opcional: si no está, se usa el PORT que inyecta Railway.
+# SERVER_PORT=${{PORT}}
 
 # Opcionales
 # ETL_SCHEDULE=48 * * * *
