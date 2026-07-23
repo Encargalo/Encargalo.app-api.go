@@ -79,8 +79,11 @@ type Cloudinary struct {
 
 // Observability configura el envío de trazas/logs al OTel Collector.
 // OtlpEndpoint vacío deshabilita la telemetría (útil en desarrollo local).
+// OtlpToken viaja como "Authorization: Bearer <token>" — requerido cuando el
+// collector está expuesto públicamente (entorno "observabilidad" separado).
 type Observability struct {
 	OtlpEndpoint string `env:"otlp_endpoint"`
+	OtlpToken    string `env:"otlp_token"`
 }
 
 func (o Observability) Enabled() bool {

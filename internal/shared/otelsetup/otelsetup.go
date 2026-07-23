@@ -42,11 +42,17 @@ func Setup(ctx context.Context, cfg config.Observability, environment, serviceNa
 		return nil, nil, err
 	}
 
+	var headers map[string]string
+	if cfg.OtlpToken != "" {
+		headers = map[string]string{"Authorization": "Bearer " + cfg.OtlpToken}
+	}
+
 	// WithEndpointURL fija el path exacto de la URL (incluso vacío), pisando el default
 	// de la señal (/v1/traces, /v1/logs) — hay que pasarlo explícito con WithURLPath.
 	traceExporter, err := otlptracehttp.New(ctx,
 		otlptracehttp.WithEndpointURL(cfg.OtlpEndpoint),
 		otlptracehttp.WithURLPath("/v1/traces"),
+		otlptracehttp.WithHeaders(headers),
 	)
 	if err != nil {
 		return nil, nil, err
@@ -60,6 +66,7 @@ func Setup(ctx context.Context, cfg config.Observability, environment, serviceNa
 	logExporter, err := otlploghttp.New(ctx,
 		otlploghttp.WithEndpointURL(cfg.OtlpEndpoint),
 		otlploghttp.WithURLPath("/v1/logs"),
+		otlploghttp.WithHeaders(headers),
 	)
 	if err != nil {
 		return nil, nil, err
