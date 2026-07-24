@@ -3,6 +3,7 @@ package applog
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"runtime"
@@ -150,14 +151,16 @@ func HTTPFailure(c echo.Context, status int, err error) {
 		attrs = append(attrs, "cause", cause)
 	}
 
+	summary := fmt.Sprintf("%s %s -> %d: %s", meta.Method, meta.Endpoint, status, err.Error())
+
 	if status >= 500 {
 		attrs = append(attrs, "stack", captureStack(6))
-		slog.Error("solicitud fallida", attrs...)
+		slog.Error(summary, attrs...)
 		return
 	}
 
 	if status >= 400 {
-		slog.Warn("solicitud fallida", attrs...)
+		slog.Warn(summary, attrs...)
 	}
 }
 
@@ -192,7 +195,8 @@ func HTTPAccess(c echo.Context, status int, latency time.Duration) {
 		}
 	}
 
-	slog.Info("solicitud", attrs...)
+	summary := fmt.Sprintf("%s %s -> %d (%dms)", meta.Method, meta.Endpoint, status, latency.Milliseconds())
+	slog.Info(summary, attrs...)
 }
 
 func captureStack(skip int) string {
