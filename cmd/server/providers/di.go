@@ -180,6 +180,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(appOrders.NewOrderApp)
 	_ = Container.Provide(appOrders.NewManagerOrderApp)
 	_ = Container.Provide(appOrders.NewPendingAcceptWorker)
+	_ = Container.Provide(redis.NewStreamTrimWorker)
 	_ = Container.Provide(appRiders.New)
 	_ = Container.Provide(appRiders.NewFinanceApp)
 

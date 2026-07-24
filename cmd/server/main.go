@@ -13,6 +13,7 @@ import (
 	bcvPorts "Encargalo.app-api.go/internal/bcv/domain/ports"
 	appOrders "Encargalo.app-api.go/internal/orders/app"
 	ordersPorts "Encargalo.app-api.go/internal/orders/domain/ports"
+	"Encargalo.app-api.go/internal/shared/adapters/redis"
 	"Encargalo.app-api.go/internal/shared/applog"
 	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/otelsetup"
@@ -70,6 +71,7 @@ func run() error {
 		finance usersPorts.CustomerFinanceApp,
 		refundAlertWorker *appCustomer.RefundAlertWorker,
 		orderMgr ordersPorts.AppManagerOrder,
+		streamTrimWorker *redis.StreamTrimWorker,
 	) error {
 		hub.SetReviewsApp(reviews)
 		refundHub.SetFinanceApp(finance)
@@ -79,6 +81,7 @@ func run() error {
 		pendingWorker.Start(context.Background())
 		batchCloseWorker.Start(context.Background())
 		refundAlertWorker.Start(context.Background())
+		streamTrimWorker.Start(context.Background())
 		router.Init()
 
 		addr := fmt.Sprintf(":%d", cfg.Server.Port)
