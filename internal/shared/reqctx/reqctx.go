@@ -58,7 +58,10 @@ func MetaFromEcho(c echo.Context) RequestMeta {
 	}
 	if req := c.Request(); req != nil {
 		meta.Method = req.Method
-		meta.Endpoint = req.URL.Path
+		meta.Endpoint = c.Path()
+		if meta.Endpoint == "" {
+			meta.Endpoint = req.URL.Path
+		}
 		if session, ok := req.Context().Value(authmodels.SessionKey).(authmodels.ActiveSession); ok {
 			meta.UserID = session.UserID.String()
 			meta.SessionID = session.ID.String()
