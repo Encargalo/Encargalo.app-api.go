@@ -1,0 +1,32 @@
+$kind: http-request
+name: Create Order (EfectivoBs / EfectivoDolar)
+description: "Crea una orden en efectivo. `method_payment` acepta `EfectivoBs` o `EfectivoDolar`. Al aceptar pasa directo a In Preparation. `expected_total_price` es el total que el cliente vio en el catálogo (incluye delivery fee); si al recalcular en el servidor el total difiere (p. ej. cambió un descuento o la promo de lanzamiento venció), la orden se rechaza con 409. Requiere cookie `encargalo-session`. Rol: Customer."
+url: "{{base_url}}/orders"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "shop_id": "3fa85f64-5717-4562-b3fc-2c963f66afa7",
+      "method_payment": "EfectivoBs",
+      "expected_total_price": 65000,
+      "address": {
+        "address": "Av. Principal, Caracas",
+        "latitude": 10.488801,
+        "longitude": -66.879190,
+        "instructions": "Piso 3, apto 301"
+      },
+      "items": [
+        {
+          "item_id": "3fa85f64-5717-4562-b3fc-2c963f66afa8",
+          "amount": 2,
+          "observation": "Sin cebolla",
+          "flavors": {},
+          "additions": []
+        }
+      ]
+    }
+order: 2000

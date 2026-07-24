@@ -12,12 +12,14 @@ type ShopsGroup interface {
 }
 
 type shopGroup struct {
-	handlerShops handler.Shops
-	middleAuth   auth.AuthMiddleware
+	handlerShops   handler.Shops
+	handlerFinance handler.ShopFinanceHandler
+	handlerStats   handler.ShopStatsHandler
+	middleAuth     auth.AuthMiddleware
 }
 
-func NewShopsGroup(handlerShops handler.Shops, middleAuth auth.AuthMiddleware) ShopsGroup {
-	return &shopGroup{handlerShops, middleAuth}
+func NewShopsGroup(handlerShops handler.Shops, handlerFinance handler.ShopFinanceHandler, handlerStats handler.ShopStatsHandler, middleAuth auth.AuthMiddleware) ShopsGroup {
+	return &shopGroup{handlerShops, handlerFinance, handlerStats, middleAuth}
 }
 
 func (s *shopGroup) Resource(g *echo.Echo) {
@@ -26,6 +28,7 @@ func (s *shopGroup) Resource(g *echo.Echo) {
 		s.middleAuth.Require(models.Customer),
 	)
 	customerRoutes.GET("/all", s.handlerShops.GetAllShops)
+	customerRoutes.GET("/search", s.handlerShops.SearchShops)
 	customerRoutes.GET("", s.handlerShops.GetShopsBy)
 
 	businessRoutes := g.Group("/business/shops",
@@ -33,4 +36,22 @@ func (s *shopGroup) Resource(g *echo.Echo) {
 		s.middleAuth.Require(models.OrderManager, models.Owner),
 	)
 	businessRoutes.GET("/me", s.handlerShops.GetMyShop)
+	businessRoutes.GET("/balance", s.handlerFinance.GetBalance)
+	businessRoutes.GET("/transactions", s.handlerFinance.ListTransactions)
+
+	ownerRoutes := g.Group("/business/shops",
+		s.middleAuth.Auth,
+		s.middleAuth.Require(models.Owner),
+	)
+	ownerRoutes.PATCH("/me/status", s.handlerShops.SetOpenClose)
+
+	statsRoutes := g.Group("/business/shops/stats",
+		s.middleAuth.Auth,
+		s.middleAuth.Require(models.OrderManager, models.Owner),
+	)
+	statsRoutes.GET("/summary", s.handlerStats.GetSummary)
+	statsRoutes.GET("/top-products", s.handlerStats.GetTopProducts)
+	statsRoutes.GET("/sales-over-time", s.handlerStats.GetSalesOverTime)
+	statsRoutes.GET("/customers", s.handlerStats.GetCustomerStats)
+	statsRoutes.GET("/transactions/export", s.handlerStats.ExportTransactions)
 }

@@ -39,26 +39,26 @@ func (a *auth) Auth(next echo.HandlerFunc) echo.HandlerFunc {
 
 		claims, err := a.jwt.ValidateToken(tokenString)
 		if err != nil {
-			return echo.NewHTTPError(http.StatusUnauthorized, "invalid token")
+			return echo.NewHTTPError(http.StatusUnauthorized, "token inválido")
 		}
 
 		rawID, ok := claims["session_id"].(string)
 		if !ok {
-			return echo.NewHTTPError(http.StatusUnauthorized, "invalid session_id")
+			return echo.NewHTTPError(http.StatusUnauthorized, "session_id inválido")
 		}
 
 		sessionID, err := uuid.Parse(rawID)
 		if err != nil {
-			return echo.NewHTTPError(http.StatusUnauthorized, "invalid session_id")
+			return echo.NewHTTPError(http.StatusUnauthorized, "session_id inválido")
 		}
 
 		session, err := a.svc.SearchSessions(ctx, sessionID)
 		if err != nil {
-			return echo.NewHTTPError(http.StatusUnauthorized, "session not found")
+			return echo.NewHTTPError(http.StatusUnauthorized, "sesión no encontrada")
 		}
 
 		if time.Now().After(session.ExpiresAt) {
-			return echo.NewHTTPError(http.StatusUnauthorized, "session expired")
+			return echo.NewHTTPError(http.StatusUnauthorized, "sesión expirada")
 		}
 
 		ctx = context.WithValue(ctx, models.SessionKey, *session)
@@ -78,7 +78,7 @@ func (a *auth) Require(allowed ...models.Role) echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			session, ok := c.Request().Context().Value(models.SessionKey).(models.ActiveSession)
 			if !ok {
-				return echo.NewHTTPError(http.StatusUnauthorized, "session not found in context")
+				return echo.NewHTTPError(http.StatusUnauthorized, "sesión no encontrada en el contexto")
 			}
 
 			for _, role := range session.Roles {
@@ -87,7 +87,7 @@ func (a *auth) Require(allowed ...models.Role) echo.MiddlewareFunc {
 				}
 			}
 
-			return echo.NewHTTPError(http.StatusForbidden, "access denied")
+			return echo.NewHTTPError(http.StatusForbidden, "acceso denegado")
 		}
 	}
 }

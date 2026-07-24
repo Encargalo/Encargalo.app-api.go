@@ -10,6 +10,7 @@ import (
 
 type UsersApp interface {
 	RegisterCustomer(ctx context.Context, customer dto.RegisterCustomer) error
+	RegisterCustomerFromGoogle(ctx context.Context, customer dto.RegisterCustomerFromGoogle) (*models.Account, error)
 	SearchCustomerBy(ctx context.Context, criteria dto.SearchCustomerBy) (*models.Account, error)
 	SearchCustomerProfileByID(ctx context.Context, userID uuid.UUID) (*models.Account, error)
 	GetUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
@@ -20,6 +21,7 @@ type UsersApp interface {
 
 type UsersRepo interface {
 	RegisterCustomer(ctx context.Context, customer *models.Account) error
+	RegisterCustomerFromGoogle(ctx context.Context, customer *models.Account) error
 	SearchCustomerBy(ctx context.Context, criteria dto.SearchCustomerBy) (*models.Account, error)
 	SearchCustomerProfileByID(ctx context.Context, userID uuid.UUID) (*models.Account, error)
 	GetUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)

@@ -1,0 +1,14 @@
+$kind: http-request
+description: Autentica un empleado con teléfono y contraseña. Retorna una cookie `encargalo-session` con el JWT de sesión.
+url: "{{base_url}}/auth/sign-in/employees"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "phone_number": "+573001112233",
+      "password": "claveSegura123"
+    }
+order: 2000

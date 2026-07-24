@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	authmodels "Encargalo.app-api.go/internal/auth/domain/models"
-	mocksmanager "Encargalo.app-api.go/internal/mocks/orders/app"
 	mocksorders "Encargalo.app-api.go/internal/mocks/orders/domain/ports"
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	ordershandler "Encargalo.app-api.go/internal/orders/handler"
@@ -28,10 +27,10 @@ func buildBody(t *testing.T, v any) *bytes.Buffer {
 	return bytes.NewBuffer(b)
 }
 
-func newHandler(t *testing.T) (ordershandler.OrderHandler, *mocksorders.OrdersApp, *mocksmanager.AppManagerOrder) {
+func newHandler(t *testing.T) (ordershandler.OrderHandler, *mocksorders.OrdersApp, *mocksorders.AppManagerOrder) {
 	t.Helper()
 	svc := mocksorders.NewOrdersApp(t)
-	mgr := mocksmanager.NewAppManagerOrder(t)
+	mgr := mocksorders.NewAppManagerOrder(t)
 	return ordershandler.NewOrderHandler(svc, mgr), svc, mgr
 }
 
@@ -48,8 +47,8 @@ func session() authmodels.ActiveSession {
 
 // --- CreateOrder: Efectivo ---
 
-func TestCreateOrder_Success_EfectivoBs(t *testing.T) {
-	h, svc, mgr := newHandler(t)
+func TestCreateOrder_InvalidMethod_EfectivoBs(t *testing.T) {
+	h, _, _ := newHandler(t)
 
 	body := buildBody(t, map[string]any{
 		"id":             uuid.New().String(),
@@ -69,18 +68,17 @@ func TestCreateOrder_Success_EfectivoBs(t *testing.T) {
 	tc := buildhttptest.SetupControllerCase("/orders", http.MethodPost, body)
 	tc = withSession(tc, session())
 
-	order := &models.Order{ID: uuid.New()}
-	svc.On("CreateOrder", mock.Anything, mock.Anything).Return(order, nil)
-	mgr.On("BroadcastOrder", *order).Return(nil)
-
 	err := h.CreateOrder(tc.Ctx)
 
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusCreated, tc.Res.Code)
+	assert.Error(t, err)
+	he, ok := err.(*echo.HTTPError)
+	if assert.True(t, ok) {
+		assert.Equal(t, http.StatusBadRequest, he.Code)
+	}
 }
 
-func TestCreateOrder_Success_EfectivoDolar(t *testing.T) {
-	h, svc, mgr := newHandler(t)
+func TestCreateOrder_InvalidMethod_EfectivoDolar(t *testing.T) {
+	h, _, _ := newHandler(t)
 
 	body := buildBody(t, map[string]any{
 		"id":             uuid.New().String(),
@@ -100,14 +98,13 @@ func TestCreateOrder_Success_EfectivoDolar(t *testing.T) {
 	tc := buildhttptest.SetupControllerCase("/orders", http.MethodPost, body)
 	tc = withSession(tc, session())
 
-	order := &models.Order{ID: uuid.New()}
-	svc.On("CreateOrder", mock.Anything, mock.Anything).Return(order, nil)
-	mgr.On("BroadcastOrder", *order).Return(nil)
-
 	err := h.CreateOrder(tc.Ctx)
 
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusCreated, tc.Res.Code)
+	assert.Error(t, err)
+	he, ok := err.(*echo.HTTPError)
+	if assert.True(t, ok) {
+		assert.Equal(t, http.StatusBadRequest, he.Code)
+	}
 }
 
 func TestCreateOrder_Success_PagoMovil(t *testing.T) {
@@ -123,8 +120,9 @@ func TestCreateOrder_Success_PagoMovil(t *testing.T) {
 			"telefono": "0412-1234567",
 			"banco":    "Banco de Venezuela",
 		},
-		"payment_proof_image": "data:image/jpeg;base64,/9j/abc123",
-		"delivery_fee":        5000,
+		"payment_proof_image":  "data:image/jpeg;base64,/9j/abc123",
+		"delivery_fee":         5000,
+		"expected_total_price": 18.5,
 		"address": map[string]any{
 			"address":   "Av. Principal",
 			"latitude":  10.48,
@@ -138,9 +136,9 @@ func TestCreateOrder_Success_PagoMovil(t *testing.T) {
 	tc := buildhttptest.SetupControllerCase("/orders", http.MethodPost, body)
 	tc = withSession(tc, session())
 
-	order := &models.Order{ID: uuid.New()}
+	order := &models.Order{ID: uuid.New(), Status: string(models.StatusPaymentReview)}
 	svc.On("CreateOrder", mock.Anything, mock.Anything).Return(order, nil)
-	mgr.On("BroadcastOrder", *order).Return(nil)
+	mgr.On("BroadcastOrderToCustomer", *order).Return(nil)
 
 	err := h.CreateOrder(tc.Ctx)
 
@@ -158,7 +156,7 @@ func TestCreateOrder_NoSession(t *testing.T) {
 		"shop_id":        uuid.New().String(),
 		"method_payment": "EfectivoBs",
 		"delivery_fee":   5000,
-		"address": map[string]any{"address": "x", "latitude": 1.0, "longitude": 1.0},
+		"address":        map[string]any{"address": "x", "latitude": 1.0, "longitude": 1.0},
 		"items":          []any{},
 	})
 
@@ -180,7 +178,7 @@ func TestCreateOrder_InvalidPaymentMethod(t *testing.T) {
 		"shop_id":        uuid.New().String(),
 		"method_payment": "Nequi",
 		"delivery_fee":   5000,
-		"address": map[string]any{"address": "x", "latitude": 1.0, "longitude": 1.0},
+		"address":        map[string]any{"address": "x", "latitude": 1.0, "longitude": 1.0},
 		"items": []map[string]any{
 			{"item_id": uuid.New().String(), "amount": 1, "observation": "", "flavors": map[string]any{}, "additions": []any{}},
 		},
@@ -200,16 +198,17 @@ func TestCreateOrder_InvalidPaymentMethod(t *testing.T) {
 
 // --- CreateOrder: PagoMovil sin pago_movil_data ---
 
-func TestCreateOrder_PagoMovil_MissingData(t *testing.T) {
-	h, _, _ := newHandler(t)
+func TestCreateOrder_Success_PagoMovil_OnlyProof(t *testing.T) {
+	h, svc, mgr := newHandler(t)
 
 	body := buildBody(t, map[string]any{
-		"id":                  uuid.New().String(),
-		"shop_id":             uuid.New().String(),
-		"method_payment":      "PagoMovil",
-		"payment_proof_image": "data:image/jpeg;base64,/9j/abc",
-		"delivery_fee":        5000,
-		"address": map[string]any{"address": "x", "latitude": 1.0, "longitude": 1.0},
+		"id":                   uuid.New().String(),
+		"shop_id":              uuid.New().String(),
+		"method_payment":       "PagoMovil",
+		"payment_proof_image":  "data:image/jpeg;base64,/9j/abc",
+		"delivery_fee":         5000,
+		"expected_total_price": 18.5,
+		"address":              map[string]any{"address": "x", "latitude": 1.0, "longitude": 1.0},
 		"items": []map[string]any{
 			{"item_id": uuid.New().String(), "amount": 1, "observation": "", "flavors": map[string]any{}, "additions": []any{}},
 		},
@@ -218,13 +217,14 @@ func TestCreateOrder_PagoMovil_MissingData(t *testing.T) {
 	tc := buildhttptest.SetupControllerCase("/orders", http.MethodPost, body)
 	tc = withSession(tc, session())
 
+	order := &models.Order{ID: uuid.New(), Status: string(models.StatusPaymentReview)}
+	svc.On("CreateOrder", mock.Anything, mock.Anything).Return(order, nil)
+	mgr.On("BroadcastOrderToCustomer", *order).Return(nil)
+
 	err := h.CreateOrder(tc.Ctx)
 
-	assert.Error(t, err)
-	he, ok := err.(*echo.HTTPError)
-	if assert.True(t, ok) {
-		assert.Equal(t, http.StatusBadRequest, he.Code)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusCreated, tc.Res.Code)
 }
 
 // --- CreateOrder: PagoMovil sin comprobante ---
@@ -244,7 +244,7 @@ func TestCreateOrder_PagoMovil_MissingProofImage(t *testing.T) {
 		},
 		// sin payment_proof_image
 		"delivery_fee": 5000,
-		"address": map[string]any{"address": "x", "latitude": 1.0, "longitude": 1.0},
+		"address":      map[string]any{"address": "x", "latitude": 1.0, "longitude": 1.0},
 		"items": []map[string]any{
 			{"item_id": uuid.New().String(), "amount": 1, "observation": "", "flavors": map[string]any{}, "additions": []any{}},
 		},

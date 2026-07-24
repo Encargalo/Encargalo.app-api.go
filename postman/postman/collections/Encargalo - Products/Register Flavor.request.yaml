@@ -1,0 +1,15 @@
+$kind: http-request
+description: "Registra un nuevo sabor asociado a una categoría de la tienda del empleado autenticado. `shop_id` se obtiene automáticamente de la sesión y `category_id` debe pertenecer a esa misma tienda. Un sabor solo podrá asignarse (vía `flavor_ids` en Register/Update Item) a productos de esa misma categoría. Requiere cookie `encargalo-session`. Rol: Order Manager / Owner."
+url: "{{base_url}}/business/products/flavors"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "category_id": "b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2",
+      "name": "Picante",
+      "description": "Con salsa picante casera"
+    }
+order: 11000

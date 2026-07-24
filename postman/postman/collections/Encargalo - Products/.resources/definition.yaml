@@ -1,0 +1,4 @@
+$kind: collection
+description: Endpoints de productos. POST y PUT requieren cookie `encargalo-session` con rol Order Manager. Los GET son públicos.
+variables:
+  base_url: http://localhost:3000

@@ -1,0 +1,4 @@
+$kind: collection
+description: Endpoints de tiendas. No requieren autenticación.
+variables:
+  base_url: http://localhost:3000

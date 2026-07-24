@@ -23,6 +23,61 @@ type ItemsOrder struct {
 	Flavors     json.RawMessage `bun:"flavors,type:jsonb"`
 
 	Additions []AdditionsOrder `bun:"rel:has-many,join:id=order_item_id"`
+
+	// FlavorsDetails is resolved in-memory from Flavors (id -> amount) once
+	// the referenced flavors are looked up; it feeds Details.BuildDetails
+	// and is never persisted directly.
+	FlavorsDetails []ItemFlavor `bun:"-"`
+}
+
+// ItemFlavor is a chosen flavor with its resolved name and amount.
+type ItemFlavor struct {
+	ID     uuid.UUID `json:"id"`
+	Name   string    `json:"name"`
+	Amount int       `json:"amount"`
+}
+
+// SetFlavorsDetails resolves this item's chosen flavor IDs (stored as
+// {flavorID: amount} in Flavors) into named entries using the given catalog.
+func (io *ItemsOrder) SetFlavorsDetails(flavors []Flavor) {
+	nameMap := make(map[uuid.UUID]string, len(flavors))
+	for _, f := range flavors {
+		nameMap[f.ID] = f.Name
+	}
+
+	var chosen map[string]int
+	if err := json.Unmarshal(io.Flavors, &chosen); err != nil {
+		return
+	}
+
+	io.FlavorsDetails = make([]ItemFlavor, 0, len(chosen))
+	for idStr, amount := range chosen {
+		id, err := uuid.Parse(idStr)
+		if err != nil {
+			continue
+		}
+		io.FlavorsDetails = append(io.FlavorsDetails, ItemFlavor{
+			ID:     id,
+			Name:   nameMap[id],
+			Amount: amount,
+		})
+	}
+}
+
+func (io *ItemsOrder) GetFlavorIDs() []uuid.UUID {
+	var chosen map[string]int
+	if err := json.Unmarshal(io.Flavors, &chosen); err != nil {
+		return nil
+	}
+
+	ids := make([]uuid.UUID, 0, len(chosen))
+	for idStr := range chosen {
+		if id, err := uuid.Parse(idStr); err == nil {
+			ids = append(ids, id)
+		}
+	}
+
+	return ids
 }
 
 func (io *ItemsOrder) BuildDtoToModel(dto dtos.CreateItemsOrder, orderID uuid.UUID) {

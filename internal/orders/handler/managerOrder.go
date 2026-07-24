@@ -4,19 +4,17 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"time"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/employee/domain/ports"
+	modelsOrder "Encargalo.app-api.go/internal/orders/domain/models"
 	portsOrder "Encargalo.app-api.go/internal/orders/domain/ports"
+	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/errcustom"
-
-	"Encargalo.app-api.go/internal/orders/app"
+	"Encargalo.app-api.go/internal/shared/ws"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
-
-	modelsUpdateOrders "Encargalo.app-api.go/internal/orders/domain/models"
 )
 
 type ManagerOrder interface {
@@ -24,21 +22,24 @@ type ManagerOrder interface {
 }
 
 type managerOrder struct {
-	svc      app.AppManagerOrder
+	svc      portsOrder.AppManagerOrder
 	svc2     ports.EmployeeApp
 	svcOrder portsOrder.OrdersApp
+	upgrader websocket.Upgrader
 }
 
 func New(
-	svc app.AppManagerOrder,
+	svc portsOrder.AppManagerOrder,
 	svc2 ports.EmployeeApp,
 	svcOrder portsOrder.OrdersApp,
 ) ManagerOrder {
-	return &managerOrder{svc, svc2, svcOrder}
-}
-
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
+	cfg := config.Get()
+	return &managerOrder{
+		svc:      svc,
+		svc2:     svc2,
+		svcOrder: svcOrder,
+		upgrader: ws.BuildUpgrader(cfg.Environment.Current == "production", cfg.Server.AllowedOrigins),
+	}
 }
 
 // HandleWebSocket godoc
@@ -104,30 +105,27 @@ func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 		connectionID = session.UserID
 	}
 
-	conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
+	conn, err := h.upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
 		slog.Error("Error upgrading websocket", "error", err)
 		return err
 	}
 
-	client, err := h.svc.Register(ctx, connectionID, conn, isShop)
-	if err != nil {
+	client := ws.NewClient(conn)
+	go client.WritePump()
+
+	if err := h.svc.Register(ctx, connectionID, client, isShop); err != nil {
 		_ = conn.Close()
 		return err
 	}
 
+	slog.Info("manager WebSocket connected", "connectionID", connectionID, "isShop", isShop)
+
 	defer func() {
+		slog.Info("manager WebSocket disconnected", "connectionID", connectionID, "isShop", isShop)
 		h.svc.Unregister(connectionID, client, isShop)
 		_ = conn.Close()
 	}()
-
-	conn.SetReadLimit(4096)
-	_ = conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-
-	conn.SetPongHandler(func(string) error {
-		_ = conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-		return nil
-	})
 
 	client.Send([]byte(`{"type":"connected"}`))
 
@@ -159,7 +157,7 @@ func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 		switch base.Type {
 
 		case "update_status":
-			var payload modelsUpdateOrders.UpdateStatusOrder
+			var payload modelsOrder.UpdateStatusOrder
 			if err := json.Unmarshal(msg, &payload); err != nil {
 				slog.Warn("Payload inválido update_status", "error", err)
 				client.Send([]byte(`{"type":"error","message":"payload inválido"}`))

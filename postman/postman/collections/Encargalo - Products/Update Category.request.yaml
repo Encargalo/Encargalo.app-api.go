@@ -1,0 +1,21 @@
+$kind: http-request
+description: "Actualiza nombre, macro-categoría, `availability_status` y/o horario. Sin has_additions. Rol: Order Manager / Owner."
+url: "{{base_url}}/business/products/categories/00000000-0000-0000-0000-000000000000"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "Cena",
+      "macro_category_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "availability_status": "active",
+      "schedules": [
+        {
+          "start_time": "18:00:00",
+          "end_time": "02:00:00"
+        }
+      ]
+    }
+order: 9000

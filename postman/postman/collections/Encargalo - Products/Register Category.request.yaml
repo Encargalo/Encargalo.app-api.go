@@ -1,0 +1,30 @@
+$kind: http-request
+description: "Registra una categoría. `macro_category_id` obligatorio. Las adiciones NO van aquí: crea items en una categoría con macro Adiciones y asígnalos con `addition_ids` al crear productos. Rol: Order Manager / Owner."
+url: "{{base_url}}/business/products/categories"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "Pizzas",
+      "macro_category_id": "ac000000-0000-0000-0000-000000000002",
+      "selector_type": "single_select",
+      "flavors": [
+        {
+          "name": "Jamón",
+          "description": "Con jamón ahumado"
+        },
+        {
+          "name": "Pepperoni"
+        }
+      ],
+      "schedules": [
+        {
+          "start_time": "11:00:00",
+          "end_time": "22:00:00"
+        }
+      ]
+    }
+order: 3000

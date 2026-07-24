@@ -1,0 +1,33 @@
+$kind: http-request
+description: "Legacy sin quote_id: carrito + expected_total_price (409 si el precio cambió). Preferir Create Quote + Create Order con quote_id."
+url: "{{base_url}}/orders"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "shop_id": "3fa85f64-5717-4562-b3fc-2c963f66afa7",
+      "method_payment": "PagoMovil",
+      "expected_total_price": 18.5,
+      "balance_amount_usd": 4.0,
+      "payment_proof_image": "data:image/jpeg;base64,/9j/4AAQSkZJRgAB...",
+      "address": {
+        "address": "Av. Principal, Caracas",
+        "latitude": 10.488801,
+        "longitude": -66.879190,
+        "instructions": "Piso 3, apto 301"
+      },
+      "items": [
+        {
+          "item_id": "3fa85f64-5717-4562-b3fc-2c963f66afa8",
+          "amount": 2,
+          "observation": "",
+          "flavors": {},
+          "additions": []
+        }
+      ]
+    }
+order: 5000

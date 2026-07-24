@@ -13,10 +13,12 @@ type UsersGroup interface {
 }
 
 type usersGroup struct {
-	middle         requestinfo.Request
-	middleAuth     auth.AuthMiddleware
-	handlerAddress handler.UsersAddressHandler
-	handlerUsers   handler.UsersHandler
+	middle             requestinfo.Request
+	middleAuth         auth.AuthMiddleware
+	handlerAddress     handler.UsersAddressHandler
+	handlerUsers       handler.UsersHandler
+	handlerFinance     handler.CustomerFinanceHandler
+	handlerStaffRefund handler.StaffRefundHandler
 }
 
 func NewUsersGroup(
@@ -24,12 +26,16 @@ func NewUsersGroup(
 	middleAuth auth.AuthMiddleware,
 	handlerAddress handler.UsersAddressHandler,
 	handlerUsers handler.UsersHandler,
+	handlerFinance handler.CustomerFinanceHandler,
+	handlerStaffRefund handler.StaffRefundHandler,
 ) UsersGroup {
 	return &usersGroup{
 		middle,
 		middleAuth,
 		handlerAddress,
 		handlerUsers,
+		handlerFinance,
+		handlerStaffRefund,
 	}
 }
 
@@ -42,6 +48,14 @@ func (o *usersGroup) Resource(g *echo.Echo) {
 	group.GET("", o.handlerUsers.SearchCustomer, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer, models.OrderManager, models.Owner))
 	group.PUT("", o.handlerUsers.UpdateCustomer, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer, models.OrderManager, models.Owner))
 	group.PUT("/change-password", o.handlerUsers.UpdatePassword, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer, models.OrderManager, models.Owner))
+	group.GET("/balance", o.handlerFinance.GetBalance, o.middleAuth.Auth, o.middleAuth.Require(models.Customer))
+	group.GET("/pago-movil", o.handlerFinance.GetPagoMovil, o.middleAuth.Auth, o.middleAuth.Require(models.Customer))
+	group.PUT("/pago-movil", o.handlerFinance.UpsertPagoMovil, o.middleAuth.Auth, o.middleAuth.Require(models.Customer))
+	group.POST("/balance/refund-requests", o.handlerFinance.CreateRefundRequest, o.middleAuth.Auth, o.middleAuth.Require(models.Customer))
+	group.GET("/balance/refund-requests", o.handlerFinance.ListRefundRequests, o.middleAuth.Auth, o.middleAuth.Require(models.Customer))
+	group.GET("/balance/refund-requests/:id", o.handlerFinance.GetRefundRequest, o.middleAuth.Auth, o.middleAuth.Require(models.Customer))
+	group.GET("/staff/refund-requests", o.handlerStaffRefund.HandleWebSocket, o.middleAuth.Auth, o.middleAuth.Require(models.Staff))
+	group.POST("/staff/refund-requests/:id/complete", o.handlerStaffRefund.CompleteRefund, o.middleAuth.Auth, o.middleAuth.Require(models.Staff))
 	group.POST("/address", o.handlerAddress.RegisterAddress, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer, models.OrderManager, models.Owner))
 	group.GET("/address", o.handlerAddress.SearchAllAdrress, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer, models.OrderManager, models.Owner))
 	group.DELETE("/address", o.handlerAddress.DeleteAddress, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer, models.OrderManager, models.Owner))

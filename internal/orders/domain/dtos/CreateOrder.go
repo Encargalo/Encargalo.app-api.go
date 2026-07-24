@@ -14,48 +14,77 @@ var (
 	conform  = modifiers.New()
 )
 
-type PagoMovilData struct {
-	Nombre   string `json:"nombre" validate:"required"`
-	Cedula   string `json:"cedula" validate:"required"`
-	Telefono string `json:"telefono" validate:"required"`
-	Banco    string `json:"banco" validate:"required"`
-}
-
 type CreateOrder struct {
-	ID                  uuid.UUID      `json:"id" validate:"required,uuid4" example:"3fa85f64-5717-4562-b3fc-2c963f66afa6"`
-	ShopID              uuid.UUID      `json:"shop_id" validate:"required,uuid4" example:"3fa85f64-5717-4562-b3fc-2c963f66afa6"`
-	CustomerID          uuid.UUID      `json:"customer_id" swaggerignore:"true"`
-	MethodPayment       string         `json:"method_payment" validate:"required,oneof=EfectivoBs EfectivoDolar PagoMovil" example:"EfectivoBs"`
-	PagoMovilData       *PagoMovilData `json:"pago_movil_data,omitempty"`
-	PaymentProofImage   string         `json:"payment_proof_image,omitempty" example:"data:image/jpeg;base64,/9j/4AAQ..."`
-	DeliveryFee         int            `json:"delivery_fee" validate:"required" example:"5000"`
-	Address             Address        `json:"address" validate:"required"`
+	ID         uuid.UUID `json:"id" validate:"required,uuid4" example:"3fa85f64-5717-4562-b3fc-2c963f66afa6"`
+	CustomerID uuid.UUID `json:"customer_id" swaggerignore:"true"`
+	// QuoteID congela el total en el servidor (POST /orders/quote). Si viene,
+	// shop/address/items/expected_total_price se toman del quote (pueden omitirse).
+	QuoteID           uuid.UUID `json:"quote_id,omitempty" example:"3fa85f64-5717-4562-b3fc-2c963f66afa6"`
+	ShopID            uuid.UUID `json:"shop_id" example:"3fa85f64-5717-4562-b3fc-2c963f66afa6"`
+	MethodPayment     string    `json:"method_payment" validate:"required,oneof=PagoMovil" example:"PagoMovil"`
+	PaymentProofImage string    `json:"payment_proof_image" example:"data:image/jpeg;base64,/9j/4AAQ..."`
+	Address           Address   `json:"address"`
+	// ExpectedTotalPrice (legacy sin quote): total que el front mostró.
+	// Con quote_id se ignora. Sin quote_id sigue siendo obligatorio.
+	ExpectedTotalPrice float64 `json:"expected_total_price" example:"18.5"`
+	// BalanceAmountUSD es opcional. 0 = no usar balance. Si > 0 debe ser >= 1
+	// y <= min(balance, total). Si cubre el total no se requiere comprobante.
+	BalanceAmountUSD float64 `json:"balance_amount_usd" example:"4.0"`
 
-	CreateItemsOrder []CreateItemsOrder `json:"items" validate:"required,dive,required"`
+	CreateItemsOrder []CreateItemsOrder `json:"items"`
 }
 
 func (o *CreateOrder) Validate() error {
 	_ = conform.Struct(context.Background(), o)
 
+	if o.ID == uuid.Nil {
+		return errors.New("id es requerido")
+	}
+	if o.MethodPayment != "PagoMovil" {
+		return errors.New("method_payment inválido")
+	}
+
+	if o.QuoteID != uuid.Nil {
+		return o.validateBalanceOnly()
+	}
+
 	if err := validate.Struct(o); err != nil {
 		return err
 	}
-
-	if o.MethodPayment == "PagoMovil" {
-		if o.PagoMovilData == nil {
-			return errors.New("pago_movil_data es requerido para el método de pago PagoMovil")
-		}
-		if err := validate.Struct(o.PagoMovilData); err != nil {
+	if o.ShopID == uuid.Nil {
+		return errors.New("shop_id es requerido")
+	}
+	if err := o.Address.Validate(); err != nil {
+		return err
+	}
+	if len(o.CreateItemsOrder) == 0 {
+		return errors.New("items es requerido")
+	}
+	for i := range o.CreateItemsOrder {
+		if err := o.CreateItemsOrder[i].Validate(); err != nil {
 			return err
 		}
-		if o.PaymentProofImage == "" {
-			return errors.New("payment_proof_image es requerido para el método de pago PagoMovil")
-		}
+	}
+	if o.ExpectedTotalPrice <= 0 {
+		return errors.New("expected_total_price es requerido sin quote_id")
 	}
 
+	return o.validateBalanceOnly()
+}
+
+func (o *CreateOrder) validateBalanceOnly() error {
+	if o.BalanceAmountUSD < 0 {
+		return errors.New("balance_amount_usd no puede ser negativo")
+	}
+	if o.BalanceAmountUSD > 0 && o.BalanceAmountUSD < 1 {
+		return errors.New("balance_amount_usd mínimo es 1")
+	}
 	return nil
 }
 
 type CreateOrderResponse struct {
-	Message string `json:"message"`
+	Message            string  `json:"message"`
+	TotalPrice         float64 `json:"total_price"`
+	IsLaunchPromo      bool    `json:"is_launch_promo"`
+	PromoSubsidyAmount float64 `json:"promo_subsidy_amount"`
 }

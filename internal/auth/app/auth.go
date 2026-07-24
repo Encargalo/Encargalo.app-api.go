@@ -3,27 +3,39 @@ package app
 import (
 	"context"
 	"errors"
-	"log/slog"
 
+	requestinfo "Encargalo.app-api.go/internal/auth/domain/middleware/requestInfo"
 	"Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/auth/domain/ports"
-	"Encargalo.app-api.go/internal/users/domain/dto"
-	portsCusto "Encargalo.app-api.go/internal/users/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/bycript"
 	"Encargalo.app-api.go/internal/pkg/logs"
+	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
+	"Encargalo.app-api.go/internal/shared/adapters/googleauth"
+	"Encargalo.app-api.go/internal/shared/applog"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/users/domain/dto"
+	portsCusto "Encargalo.app-api.go/internal/users/domain/ports"
 	"github.com/google/uuid"
 )
 
 type appAuth struct {
-	svc       portsCusto.UsersApp
-	bycript   bycript.Password
-	repo      ports.AuthRepo
-	slackLogs logs.Logs
+	svc            portsCusto.UsersApp
+	bycript        bycript.Password
+	repo           ports.AuthRepo
+	slackLogs      logs.Logs
+	googleVerifier googleauth.Verifier
+	riderProfiles  ridersPorts.RiderProfileApp
 }
 
-func NewAuthApp(svc portsCusto.UsersApp, bycript bycript.Password, repo ports.AuthRepo, slackLogs logs.Logs) ports.AuthApp {
-	return &appAuth{svc, bycript, repo, slackLogs}
+func NewAuthApp(
+	svc portsCusto.UsersApp,
+	bycript bycript.Password,
+	repo ports.AuthRepo,
+	slackLogs logs.Logs,
+	googleVerifier googleauth.Verifier,
+	riderProfiles ridersPorts.RiderProfileApp,
+) ports.AuthApp {
+	return &appAuth{svc, bycript, repo, slackLogs, googleVerifier, riderProfiles}
 }
 
 func (a *appAuth) SignInCustomer(ctx context.Context, phone, password string) (uuid.UUID, error) {
@@ -44,18 +56,10 @@ func (a *appAuth) SignInCustomer(ctx context.Context, phone, password string) (u
 		return uuid.Nil, errcustom.ErrIncorrectAccessData
 	}
 
-	roleStrs, err := a.svc.GetUserRoles(ctx, custo.ID)
-	if err != nil {
-		slog.Warn("could not fetch user roles, falling back to Customer", "user_id", custo.ID, "error", err)
-		roleStrs = []string{string(models.Customer)}
-	}
-	roles := make([]models.Role, len(roleStrs))
-	for i, r := range roleStrs {
-		roles[i] = models.Role(r)
-	}
+	ip, userAgent := requestinfo.FromContext(ctx)
 
 	var session models.ActiveSession
-	session.BuildActiveSessionModel(custo.ID, string(models.Customer), roles, "", "", nil)
+	session.BuildActiveSessionModel(custo.ID, string(models.Customer), []models.Role{models.Customer}, ip, userAgent, nil)
 
 	if err := a.repo.SaveSession(ctx, &session); err != nil {
 		return uuid.Nil, err
@@ -78,18 +82,105 @@ func (a *appAuth) SignInEmployee(ctx context.Context, phone, password string) (u
 		return uuid.Nil, errcustom.ErrIncorrectAccessData
 	}
 
-	roleStrs, err := a.svc.GetUserRoles(ctx, empl.ID)
-	if err != nil {
-		slog.Warn("could not fetch user roles, falling back to primary role", "user_id", empl.ID, "error", err)
-		roleStrs = []string{empl.Role}
-	}
-	roles := make([]models.Role, len(roleStrs))
-	for i, r := range roleStrs {
-		roles[i] = models.Role(r)
-	}
+	ip, userAgent := requestinfo.FromContext(ctx)
 
 	var session models.ActiveSession
-	session.BuildActiveSessionModel(empl.ID, empl.Role, roles, "", "", &empl.ShopID)
+	session.BuildActiveSessionModel(empl.ID, empl.Role, []models.Role{models.Role(empl.Role)}, ip, userAgent, &empl.ShopID)
+
+	if err := a.repo.SaveSession(ctx, &session); err != nil {
+		return uuid.Nil, err
+	}
+
+	return session.ID, nil
+}
+
+func (a *appAuth) SignInRider(ctx context.Context, phone, password string) (uuid.UUID, error) {
+	rider, err := a.svc.SearchAccountByPhone(ctx, phone, []string{string(models.Rider)})
+	if err != nil {
+		if errors.Is(err, errcustom.ErrNotFound) {
+			return uuid.Nil, errcustom.ErrIncorrectAccessData
+		}
+		return uuid.Nil, errcustom.ErrUnexpectedError
+	}
+
+	if !a.bycript.CheckPasswordHash([]byte(rider.Password), password) {
+		return uuid.Nil, errcustom.ErrIncorrectAccessData
+	}
+
+	if a.riderProfiles != nil {
+		active, err := a.riderProfiles.IsActiveRider(ctx, rider.ID)
+		if err != nil {
+			return uuid.Nil, errcustom.ErrUnexpectedError
+		}
+		if !active {
+			return uuid.Nil, errcustom.ErrRiderNotActive
+		}
+	}
+
+	ip, userAgent := requestinfo.FromContext(ctx)
+
+	var session models.ActiveSession
+	session.BuildActiveSessionModel(rider.ID, string(models.Rider), []models.Role{models.Rider}, ip, userAgent, nil)
+
+	if err := a.repo.SaveSession(ctx, &session); err != nil {
+		return uuid.Nil, err
+	}
+
+	return session.ID, nil
+}
+
+func (a *appAuth) SignInStaff(ctx context.Context, phone, password string) (uuid.UUID, error) {
+	staff, err := a.svc.SearchAccountByPhone(ctx, phone, []string{string(models.Staff)})
+	if err != nil {
+		if errors.Is(err, errcustom.ErrNotFound) {
+			return uuid.Nil, errcustom.ErrIncorrectAccessData
+		}
+		return uuid.Nil, errcustom.ErrUnexpectedError
+	}
+
+	if !a.bycript.CheckPasswordHash([]byte(staff.Password), password) {
+		return uuid.Nil, errcustom.ErrIncorrectAccessData
+	}
+
+	ip, userAgent := requestinfo.FromContext(ctx)
+
+	var session models.ActiveSession
+	session.BuildActiveSessionModel(staff.ID, string(models.Staff), []models.Role{models.Staff}, ip, userAgent, nil)
+
+	if err := a.repo.SaveSession(ctx, &session); err != nil {
+		return uuid.Nil, err
+	}
+
+	return session.ID, nil
+}
+
+func (a *appAuth) SignInGoogle(ctx context.Context, idToken string) (uuid.UUID, error) {
+
+	userInfo, err := a.googleVerifier.Verify(ctx, idToken)
+	if err != nil {
+		return uuid.Nil, errcustom.ErrUnautorized
+	}
+
+	custo, err := a.svc.SearchCustomerBy(ctx, dto.SearchCustomerBy{Email: userInfo.Email})
+	if err != nil {
+		if !errors.Is(err, errcustom.ErrNotFound) {
+			return uuid.Nil, errcustom.ErrUnexpectedError
+		}
+
+		custo, err = a.svc.RegisterCustomerFromGoogle(ctx, dto.RegisterCustomerFromGoogle{
+			Name:    userInfo.Name,
+			SurName: userInfo.SurName,
+			Email:   userInfo.Email,
+		})
+		if err != nil {
+			return uuid.Nil, err
+		}
+	}
+
+	ip, userAgent := requestinfo.FromContext(ctx)
+
+	var session models.ActiveSession
+	session.BuildActiveSessionModel(custo.ID, string(models.Customer), []models.Role{models.Customer}, ip, userAgent, nil)
 
 	if err := a.repo.SaveSession(ctx, &session); err != nil {
 		return uuid.Nil, err
@@ -110,7 +201,7 @@ func (a *appAuth) DeleteSession(ctx context.Context, session_id uuid.UUID) error
 	}
 
 	if session == nil {
-		slog.Warn("session " + session_id.String() + "not found from delete")
+		applog.Warn(ctx, "sesion no encontrada al intentar eliminarla", nil, "session_id", session_id.String())
 		return nil
 	}
 

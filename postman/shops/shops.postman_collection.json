@@ -110,5 +110,82 @@
         "description": "Retorna una tienda con todos sus productos buscando por tag."
       }
     }
+    ,{
+      "name": "Set Shop Open/Close (Owner)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"open\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/business/shops/me/status",
+          "host": ["{{base_url}}"],
+          "path": ["business", "shops", "me", "status"]
+        },
+        "description": "Abre o cierra el local del owner autenticado. Solo accesible con rol Owner. Retorna 204 sin cuerpo. Al abrir se crea un lote de jornada si no hay uno abierto; al cerrar el lote no se cierra (sigue permitiendo gestionar órdenes activas) y se cierra solo cuando ya no quedan activas. La primera vez que el local se abre (`open: true`) se activan automáticamente sus ventanas de promoción de lanzamiento: 24h con 50% de descuento subsidiado por la plataforma y 192h (8 días) con comisión 0% para el negocio. Aperturas/cierres posteriores no vuelven a activarlas."
+      }
+    }
+    ,{
+      "name": "Get Customer Stats (OrderManager/Owner)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/business/shops/stats/customers?period=month",
+          "host": ["{{base_url}}"],
+          "path": ["business", "shops", "stats", "customers"],
+          "query": [
+            {
+              "key": "period",
+              "value": "month",
+              "description": "Período: day, week, month (default: month)"
+            }
+          ]
+        },
+        "description": "Retorna la cantidad de clientes nuevos (primera compra Completed histórica dentro del período) y recurrentes (ya habían comprado antes del período) del local, para el período actual y anterior. Requiere sesión con rol OrderManager u Owner."
+      }
+    }
+    ,{
+      "name": "Search Shops",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/shops/search?q=pizza&lat=4.678034&lon=-74.0496399",
+          "host": ["{{base_url}}"],
+          "path": ["shops", "search"],
+          "query": [
+            {
+              "key": "q",
+              "value": "pizza",
+              "description": "Texto a buscar (nombre de tienda o producto)"
+            },
+            {
+              "key": "lat",
+              "value": "4.678034",
+              "description": "Latitud del usuario"
+            },
+            {
+              "key": "lon",
+              "value": "-74.0496399",
+              "description": "Longitud del usuario"
+            }
+          ]
+        },
+        "description": "Busca tiendas dentro de 3 km que coincidan con el texto en nombre de tienda, categoría o macro. Cada matched_product incluye has_flavors/has_additions, flavor_selection/addition_selection y details (lista de sabores y adiciones disponibles)."
+      }
+    }
   ]
 }

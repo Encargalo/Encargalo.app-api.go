@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"errors"
 
 	"Encargalo.app-api.go/internal/pkg/bycript"
 	"Encargalo.app-api.go/internal/shared/errcustom"
@@ -38,7 +37,9 @@ func (c *customersApp) RegisterCustomer(ctx context.Context, customer dto.Regist
 		return errcustom.ErrPhoneAlreadyExist
 	}
 
-	c.pass.HashPassword(&customer.Password)
+	if err := c.pass.HashPassword(&customer.Password); err != nil {
+		return errcustom.ErrUnexpectedError
+	}
 
 	customerModel := models.Account{}
 	customerModel.BuildCustomerRegisterModel(customer)
@@ -49,6 +50,18 @@ func (c *customersApp) RegisterCustomer(ctx context.Context, customer dto.Regist
 	}
 
 	return nil
+}
+
+func (c *customersApp) RegisterCustomerFromGoogle(ctx context.Context, customer dto.RegisterCustomerFromGoogle) (*models.Account, error) {
+
+	customerModel := models.Account{}
+	customerModel.BuildCustomerRegisterFromGoogleModel(customer)
+
+	if err := c.repo.RegisterCustomerFromGoogle(ctx, &customerModel); err != nil {
+		return nil, err
+	}
+
+	return &customerModel, nil
 }
 
 func (c *customersApp) SearchCustomerBy(ctx context.Context, criteria dto.SearchCustomerBy) (*models.Account, error) {
@@ -78,15 +91,17 @@ func (c *customersApp) UpdateCustomer(ctx context.Context, customer_id uuid.UUID
 		return err
 	}
 
-	cust, err := c.repo.SearchCustomerByPhoneAndNotIDEquals(ctx, customer_id, customer.Phone)
-	if err != nil {
-		if err != errcustom.ErrNotFound {
-			return err
+	if customer.Phone != nil {
+		cust, err := c.repo.SearchCustomerByPhoneAndNotIDEquals(ctx, customer_id, *customer.Phone)
+		if err != nil {
+			if err != errcustom.ErrNotFound {
+				return err
+			}
 		}
-	}
 
-	if cust != nil {
-		return errors.New("phone al ready exist")
+		if cust != nil {
+			return errcustom.ErrPhoneAlreadyExist
+		}
 	}
 
 	customerModel := models.Account{}
@@ -107,13 +122,15 @@ func (c *customersApp) UpdatePassword(ctx context.Context, customer_id uuid.UUID
 	}
 
 	if customer == nil {
-		return errors.New("not found")
+		return errcustom.ErrNotFound
 	}
 
 	customerModel := models.Account{}
 	customerModel.BuildCustomerUpdatePasswordModel(pass)
 
-	c.pass.HashPassword(&customerModel.Password)
+	if err := c.pass.HashPassword(&customerModel.Password); err != nil {
+		return errcustom.ErrUnexpectedError
+	}
 
 	return c.repo.UpdatePassword(ctx, customer_id, &customerModel)
 

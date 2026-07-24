@@ -1,0 +1,9 @@
+$kind: http-request
+name: GET /riders/transactions
+description: Historial paginado de movimientos de balance del rider.
+url: "{{base_url}}/riders/transactions?page=1&limit=20"
+method: GET
+queryParams:
+  page: "1"
+  limit: "20"
+order: 13000

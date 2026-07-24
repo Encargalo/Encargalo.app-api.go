@@ -25,7 +25,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"category_id\": \"b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2\",\n  \"name\": \"Pizza Hawaiana Mediana\",\n  \"price\": 32000,\n  \"image\": \"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ...\",\n  \"description\": \"Pizza mediana con jamón, piña y queso mozzarella sobre una base de salsa napolitana.\",\n  \"flavor_ids\": [\n    \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"b2c3d4e5-f6a7-8901-bcde-f12345678901\"\n  ]\n}",
+          "raw": "{\n  \"category_id\": \"b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2\",\n  \"name\": \"Pizza Hawaiana Mediana\",\n  \"price\": 32000,\n  \"image\": \"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ...\",\n  \"description\": \"Pizza mediana con jamón, piña y queso mozzarella sobre una base de salsa napolitana.\",\n  \"flavor_ids\": [\n    \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\"\n  ],\n  \"min_selection\": 1,\n  \"max_selection\": 1,\n  \"addition_ids\": [\n    \"c3d4e5f6-a7b8-9012-cdef-123456789012\"\n  ]\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -33,11 +33,17 @@
           }
         },
         "url": {
-          "raw": "{{base_url}}/products/items",
-          "host": ["{{base_url}}"],
-          "path": ["products", "items"]
+          "raw": "{{base_url}}/business/products/items",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "business",
+            "products",
+            "items"
+          ]
         },
-        "description": "Registra un nuevo producto en la tienda del empleado autenticado. `shop_id` se obtiene automáticamente del empleado. Si se envía `flavor_ids`, el producto se marcará automáticamente como con sabores. Requiere cookie `encargalo-session`. Rol: Order Manager."
+        "description": "Registra un producto. `addition_ids` opcional: IDs de items de la macro Adiciones (`GET .../additions/catalog`). Snapshot id/name/price/available en details; selección fija multi_select max 5. Rol: Order Manager."
       }
     },
     {
@@ -52,7 +58,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"name\": \"Pizza Hawaiana Grande\",\n  \"price\": 45000,\n  \"description\": \"Pizza grande con jamón, piña y queso mozzarella sobre una base de salsa napolitana.\",\n  \"image\": \"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ...\",\n  \"flavor_ids\": [\n    \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\"\n  ]\n}",
+          "raw": "{\n  \"name\": \"Pizza Hawaiana Grande\",\n  \"price\": 45000,\n  \"description\": \"Pizza grande con jamón, piña y queso mozzarella sobre una base de salsa napolitana.\",\n  \"availability_status\": \"active\",\n  \"image\": \"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ...\",\n  \"flavor_ids\": [\n    \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\"\n  ],\n  \"min_selection\": 1,\n  \"max_selection\": 1\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -60,11 +66,307 @@
           }
         },
         "url": {
-          "raw": "{{base_url}}/products/00000000-0000-0000-0000-000000000000",
-          "host": ["{{base_url}}"],
-          "path": ["products", "00000000-0000-0000-0000-000000000000"]
+          "raw": "{{base_url}}/business/products/00000000-0000-0000-0000-000000000000",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "business",
+            "products",
+            "00000000-0000-0000-0000-000000000000"
+          ]
         },
-        "description": "Actualiza un producto existente por su `item_id` (UUID en el path). Solo puede actualizarlo el Order Manager de la tienda propietaria.\n\n- `image`: opcional. Solo se sube a Cloudinary si es diferente a la imagen actual (comparación por hash).\n- `flavor_ids`: opcional. Si se envía (incluso `[]`), reemplaza todos los sabores. Si no se envía, los sabores no se modifican. `has_flavors` se deriva automáticamente.\n\nRequiere cookie `encargalo-session`. Rol: Order Manager."
+        "description": "Actualiza un producto existente por su `item_id` (UUID en el path). Solo puede actualizarlo el Order Manager de la tienda propietaria.\n\n- `image`: opcional. Solo se sube a Cloudinary si es diferente a la imagen actual (comparación por hash).\n- `flavor_ids`: opcional. Si se envía (incluso `[]`), reemplaza todos los sabores. Si se envían sabores no vacíos, también deben ir `min_selection` y `max_selection`.\n- `min_selection` / `max_selection`: opcionales por separado si no cambias sabores.\n\nRequiere cookie `encargalo-session`. Rol: Order Manager."
+      }
+    },
+    {
+      "name": "Register Category",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Pizzas\",\n  \"macro_category_id\": \"ac000000-0000-0000-0000-000000000002\",\n  \"selector_type\": \"single_select\",\n  \"flavors\": [\n    {\n      \"name\": \"Jamón\",\n      \"description\": \"Con jamón ahumado\"\n    },\n    {\n      \"name\": \"Pepperoni\"\n    }\n  ],\n  \"schedules\": [\n    {\n      \"start_time\": \"11:00:00\",\n      \"end_time\": \"22:00:00\"\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/business/products/categories",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "business",
+            "products",
+            "categories"
+          ]
+        },
+        "description": "Registra una categoría. `macro_category_id` obligatorio. Las adiciones NO van aquí: crea items en una categoría con macro Adiciones y asígnalos con `addition_ids` al crear productos. Rol: Order Manager / Owner."
+      }
+    },
+    {
+      "name": "List Categories",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/business/products/categories",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "business",
+            "products",
+            "categories"
+          ]
+        },
+        "description": "Lista todas las categorías del negocio con details.flavors, selector_type, availability_status, macro_category_id y schedules. Sin items. Roles: Owner / Order Manager."
+      }
+    },
+    {
+      "name": "Get Flavors By Category (Business)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/business/products/flavors/category?category_id=00000000-0000-0000-0000-000000000000",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "business",
+            "products",
+            "flavors",
+            "category"
+          ],
+          "query": [
+            {
+              "key": "category_id",
+              "value": "00000000-0000-0000-0000-000000000000"
+            }
+          ]
+        },
+        "description": "Sabores del JSONB de una categoría. Roles: Owner / Order Manager."
+      }
+    },
+    {
+      "name": "Search Category Summaries",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/business/products/categories/summary",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "business",
+            "products",
+            "categories",
+            "summary"
+          ]
+        },
+        "description": "Retorna solo `id` y `name` de cada micro categoría del negocio autenticado, sin items ni horarios. Pensado para poblar selectores del panel del negocio, como el de `category_ids` al crear o editar una adición. `shop_id` se obtiene automáticamente de la sesión. Requiere cookie `encargalo-session`. Rol: Order Manager / Owner."
+      }
+    },
+    {
+      "name": "Search Category Summaries For Flavors",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/business/products/categories/summary?for=flavors",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "business",
+            "products",
+            "categories",
+            "summary"
+          ],
+          "query": [
+            {
+              "key": "for",
+              "value": "flavors"
+            }
+          ]
+        },
+        "description": "Igual que Search Category Summaries, pero solo devuelve categorías con `selector_type` `single_select` o `multi_select`. Usar al crear sabores: las categorías con `none` (sin soporte de sabores) no aparecen. Requiere cookie `encargalo-session`. Rol: Order Manager / Owner."
+      }
+    },
+    {
+      "name": "Search Category Summaries For Additions",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/business/products/categories/summary?for=additions",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "business",
+            "products",
+            "categories",
+            "summary"
+          ],
+          "query": [
+            {
+              "key": "for",
+              "value": "additions"
+            }
+          ]
+        },
+        "description": "Categorías del shop con macro Adiciones (slug adiciones)."
+      }
+    },
+    {
+      "name": "Update Category",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Cena\",\n  \"macro_category_id\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n  \"availability_status\": \"active\",\n  \"schedules\": [\n    {\n      \"start_time\": \"18:00:00\",\n      \"end_time\": \"02:00:00\"\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/business/products/categories/00000000-0000-0000-0000-000000000000",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "business",
+            "products",
+            "categories",
+            "00000000-0000-0000-0000-000000000000"
+          ]
+        },
+        "description": "Actualiza nombre, macro-categoría, `availability_status` y/o horario. Sin has_additions. Rol: Order Manager / Owner."
+      }
+    },
+    {
+      "name": "Get Macro Categories",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/business/products/macro-categories",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "business",
+            "products",
+            "macro-categories"
+          ]
+        },
+        "description": "Retorna el catálogo de macro categorías (Pizza, Parrilla, Pollo, etc.) usado para clasificar las categorías del negocio. No se pueden crear vía API, es un catálogo fijo. Requiere cookie `encargalo-session`. Rol: Order Manager / Owner."
+      }
+    },
+    {
+      "name": "Register Flavor",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"category_id\": \"b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2\",\n  \"name\": \"Picante\",\n  \"description\": \"Con salsa picante casera\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/business/products/flavors",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "business",
+            "products",
+            "flavors"
+          ]
+        },
+        "description": "Registra un nuevo sabor asociado a una categoría de la tienda del empleado autenticado. `shop_id` se obtiene automáticamente de la sesión y `category_id` debe pertenecer a esa misma tienda. Un sabor solo podrá asignarse (vía `flavor_ids` en Register/Update Item) a productos de esa misma categoría. Requiere cookie `encargalo-session`. Rol: Order Manager / Owner."
+      }
+    },
+    {
+      "name": "Update Flavor",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Muy picante\",\n  \"description\": \"Con salsa picante casera, extra picante\",\n  \"available\": false\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/business/products/flavors/00000000-0000-0000-0000-000000000000",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "business",
+            "products",
+            "flavors",
+            "00000000-0000-0000-0000-000000000000"
+          ]
+        },
+        "description": "Actualiza nombre y/o descripción de un sabor existente por su `flavor_id` (UUID en el path). Solo puede actualizarlo el Order Manager/Owner de la tienda propietaria. Requiere cookie `encargalo-session`. Rol: Order Manager / Owner."
+      }
+    },
+    {
+      "name": "Delete Flavor",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/business/products/flavors/00000000-0000-0000-0000-000000000000",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "business",
+            "products",
+            "flavors",
+            "00000000-0000-0000-0000-000000000000"
+          ]
+        },
+        "description": "Elimina (soft delete) un sabor por su `flavor_id` (UUID en el path) y lo desasocia de todos los productos que lo tenían asignado. Si un producto queda sin sabores, su `has_flavors` pasa a `false` automáticamente. Solo puede eliminarlo el Order Manager/Owner de la tienda propietaria. Requiere cookie `encargalo-session`. Rol: Order Manager / Owner."
       }
     },
     {
@@ -74,8 +376,12 @@
         "header": [],
         "url": {
           "raw": "{{base_url}}/products?shop_id=00000000-0000-0000-0000-000000000000&page=1&limit=10",
-          "host": ["{{base_url}}"],
-          "path": ["products"],
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "products"
+          ],
           "query": [
             {
               "key": "shop_id",
@@ -94,7 +400,37 @@
             }
           ]
         },
-        "description": "Retorna productos agrupados por categoría de una tienda, con paginación. Solo incluye productos disponibles, ordenados por precio ascendente. Respuesta incluye `data` (categorías con items) y `pagination` (page, limit, total, total_pages). Público."
+        "description": "Retorna productos agrupados por categoría de una tienda, con paginación. Solo incluye productos disponibles, ordenados por precio ascendente. Excluye categorías cuyo horario configurado no cubre la hora actual (America/Caracas). Respuesta incluye `data` (categorías con items) y `pagination` (page, limit, total, total_pages). Cada item incluye `effective_ref`/`effective_bs` (precio final ya con el descuento propio del negocio y, si aplica, la promo de lanzamiento de la plataforma), `has_shop_discount` y `has_launch_promo`. Público."
+      }
+    },
+    {
+      "name": "Get Trending Products Near Me",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/products/trending?lat=10.4806&lon=-66.9036",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "products",
+            "trending"
+          ],
+          "query": [
+            {
+              "key": "lat",
+              "value": "10.4806",
+              "description": "Latitud del usuario"
+            },
+            {
+              "key": "lon",
+              "value": "-66.9036",
+              "description": "Longitud del usuario"
+            }
+          ]
+        },
+        "description": "Retorna el producto más vendido de cada local abierto dentro de un radio de 1 km. Máximo 10 resultados, excluyendo productos cuya categoría tiene un horario configurado que no cubre la hora actual (America/Caracas). Cacheado 15 minutos. Cada `shop` incluye `delivery_fee`, `delivery_fee_bs` y `time` (minutos estimados) calculados con la distancia real entre `lat`/`lon` y el local, igual que en `/shops`. Requiere cookie `encargalo-session`. Rol: Customer."
       }
     },
     {
@@ -104,8 +440,13 @@
         "header": [],
         "url": {
           "raw": "{{base_url}}/products/best-sellers?shop_id=00000000-0000-0000-0000-000000000000&page=1&limit=5",
-          "host": ["{{base_url}}"],
-          "path": ["products", "best-sellers"],
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "products",
+            "best-sellers"
+          ],
           "query": [
             {
               "key": "shop_id",
@@ -124,37 +465,52 @@
             }
           ]
         },
-        "description": "Retorna los productos más vendidos de una tienda ordenados por ventas descendente, con paginación. Público."
+        "description": "Retorna los productos más vendidos de una tienda ordenados por ventas descendente, con paginación. Excluye productos cuya categoría tiene un horario configurado que no cubre la hora actual (America/Caracas). Cada item incluye `effective_ref`/`effective_bs` (precio final ya con el descuento propio del negocio y, si aplica, la promo de lanzamiento de la plataforma), `has_shop_discount` y `has_launch_promo`. Público."
       }
     },
     {
-      "name": "Get Additions by Category",
+      "name": "Get Additions by Item",
       "request": {
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{base_url}}/products/additions?category_id=00000000-0000-0000-0000-000000000000&page=1&limit=20",
-          "host": ["{{base_url}}"],
-          "path": ["products", "additions"],
+          "raw": "{{base_url}}/products/additions?item_id=00000000-0000-0000-0000-000000000000",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "products",
+            "additions"
+          ],
           "query": [
             {
-              "key": "category_id",
+              "key": "item_id",
               "value": "00000000-0000-0000-0000-000000000000",
-              "description": "UUID de la categoría"
-            },
-            {
-              "key": "page",
-              "value": "1",
-              "description": "Número de página (default: 1)"
-            },
-            {
-              "key": "limit",
-              "value": "20",
-              "description": "Resultados por página (default: 20)"
+              "description": "UUID del producto"
             }
           ]
         },
-        "description": "Retorna las adiciones disponibles de una categoría, ordenadas por precio ascendente, con paginación. Público."
+        "description": "Retorna las adiciones asignadas a un producto específico (subset del catálogo de su categoría). Público."
+      }
+    },
+    {
+      "name": "Get Additions Catalog by Category",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/business/products/additions/catalog",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "business",
+            "products",
+            "additions",
+            "catalog"
+          ]
+        },
+        "description": "Catálogo de adiciones del negocio: items cuya categoría tiene macro `adiciones`. Usar al asignar `addition_ids`. Rol: Order Manager / Owner."
       }
     },
     {
@@ -164,8 +520,13 @@
         "header": [],
         "url": {
           "raw": "{{base_url}}/products/flavors?item_id=00000000-0000-0000-0000-000000000000&page=1&limit=20",
-          "host": ["{{base_url}}"],
-          "path": ["products", "flavors"],
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "products",
+            "flavors"
+          ],
           "query": [
             {
               "key": "item_id",
@@ -194,8 +555,14 @@
         "header": [],
         "url": {
           "raw": "{{base_url}}/products/flavors/category?category_id=00000000-0000-0000-0000-000000000000&page=1&limit=20",
-          "host": ["{{base_url}}"],
-          "path": ["products", "flavors", "category"],
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "products",
+            "flavors",
+            "category"
+          ],
           "query": [
             {
               "key": "category_id",
@@ -215,6 +582,93 @@
           ]
         },
         "description": "Retorna todos los sabores asociados a una categoría específica, con paginación. Público."
+      }
+    },
+    {
+      "name": "Register Item Discount",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"item_id\": \"7e441237-a818-42d2-bb54-9b8747198305\",\n  \"discount_type\": \"percentage\",\n  \"value\": 20,\n  \"starts_at\": \"2026-07-11T00:00:00Z\",\n  \"ends_at\": \"2026-07-18T00:00:00Z\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/business/products/discounts",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "business",
+            "products",
+            "discounts"
+          ]
+        },
+        "description": "Registra un descuento propio del negocio (porcentaje o monto fijo) sobre un producto de la tienda del empleado autenticado. `shop_id` se obtiene automáticamente de la sesión. Solo puede existir un descuento activo por producto. `starts_at`/`ends_at` son opcionales: si se omiten, el descuento no tiene ventana de vigencia y depende únicamente de `is_active`. Este descuento se compone con la promo de lanzamiento de la plataforma (día 1): se aplica primero sobre el precio de catálogo, y luego, si el negocio está en su ventana de día 1, la promo de plataforma se aplica sobre ese precio ya rebajado. Requiere cookie `encargalo-session`. Rol: Order Manager / Owner."
+      }
+    },
+    {
+      "name": "Update Item Discount",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"discount_type\": \"fixed\",\n  \"value\": 5000,\n  \"starts_at\": null,\n  \"ends_at\": null,\n  \"is_active\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/business/products/discounts/00000000-0000-0000-0000-000000000000",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "business",
+            "products",
+            "discounts",
+            "00000000-0000-0000-0000-000000000000"
+          ]
+        },
+        "description": "Actualiza tipo, valor, vigencia o estado activo (`is_active`) de un descuento existente por su `discount_id` (UUID en el path). Solo puede actualizarlo el Order Manager/Owner de la tienda propietaria. Requiere cookie `encargalo-session`. Rol: Order Manager / Owner."
+      }
+    },
+    {
+      "name": "Delete Item Discount",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/business/products/discounts/00000000-0000-0000-0000-000000000000",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "business",
+            "products",
+            "discounts",
+            "00000000-0000-0000-0000-000000000000"
+          ]
+        },
+        "description": "Elimina (soft delete) un descuento de producto por su `discount_id` (UUID en el path). Solo puede eliminarlo el Order Manager/Owner de la tienda propietaria. Requiere cookie `encargalo-session`. Rol: Order Manager / Owner."
       }
     }
   ]

@@ -1,0 +1,11 @@
+$kind: http-request
+description: |-
+  WebSocket para el gestor de órdenes en tiempo real. Conectar con ws:// en lugar de http://. Requiere cookie `encargalo-session`. Roles: Customer, Order Manager.
+
+  NOTA: Para probar WebSockets en Postman, crea una nueva request de tipo WebSocket con la URL: ws://localhost:3000/orders/manager
+url: "{{base_url}}/orders/manager"
+method: GET
+headers:
+  Connection: Upgrade
+  Upgrade: websocket
+order: 8000

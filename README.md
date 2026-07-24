@@ -64,9 +64,17 @@ JWT_SECRET=...
 # Levantar dependencias (postgres + redis)
 make up
 
-# Correr migraciones
+# Correr migraciones OLTP
 goose -dir internal/shared/adapters/postgres/migrations postgres "<DSN>" up
+
+# Correr API
+go run ./cmd/server
+
+# Correr ETL (config mínima: SERVER/POSTGRES/OLAP_POSTGRES/ENVIRONMENT)
+go run ./cmd/etl
 ```
+
+Migraciones OLAP viven en `internal/shared/adapters/postgres/migrations_olap/` y se aplican al arrancar `cmd/etl`. Docs: [docs/etl-railway.md](docs/etl-railway.md), [docs/grafana-olap-queries.md](docs/grafana-olap-queries.md).
 
 ### Debug con VS Code
 

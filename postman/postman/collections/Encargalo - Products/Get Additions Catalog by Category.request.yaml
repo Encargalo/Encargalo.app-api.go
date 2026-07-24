@@ -1,0 +1,5 @@
+$kind: http-request
+description: "Catálogo de adiciones del negocio: items cuya categoría tiene macro `adiciones`. Usar al asignar `addition_ids`. Rol: Order Manager / Owner."
+url: "{{base_url}}/business/products/additions/catalog"
+method: GET
+order: 18000

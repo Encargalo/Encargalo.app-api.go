@@ -5,9 +5,10 @@ import (
 	"net/http"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
+	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/users/domain/dto"
 	"Encargalo.app-api.go/internal/users/domain/ports"
-	"Encargalo.app-api.go/internal/shared/errcustom"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
@@ -105,7 +106,7 @@ func (c *customersAddrssHandler) SearchAllAdrress(e echo.Context) error {
 // @Security     SessionCookie
 // @Param        address_id  query     string  true  "ID de la dirección (UUID)"
 // @Success      200         {string}  string  "address deleted success"
-// @Failure      400         {string}  string  "address_id es requerido"
+// @Failure      400         {string}  string  "address_id es requerido o inválido"
 // @Failure      401         {string}  string  "No autorizado"
 // @Failure      500         {string}  string  "Error interno del servidor"
 // @Router       /users/address [delete]
@@ -116,7 +117,11 @@ func (c *customersAddrssHandler) DeleteAddress(e echo.Context) error {
 	address_id := e.QueryParam("address_id")
 
 	if address_id == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "address id is required")
+		return echo.NewHTTPError(http.StatusBadRequest, "address_id es requerido")
+	}
+
+	if _, err := uuid.Parse(address_id); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "address_id inválido")
 	}
 
 	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)

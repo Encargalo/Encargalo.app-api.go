@@ -1,0 +1,5 @@
+$kind: http-request
+description: "Retorna el catálogo de macro categorías (Pizza, Parrilla, Pollo, etc.) usado para clasificar las categorías del negocio. No se pueden crear vía API, es un catálogo fijo. Requiere cookie `encargalo-session`. Rol: Order Manager / Owner."
+url: "{{base_url}}/business/products/macro-categories"
+method: GET
+order: 10000

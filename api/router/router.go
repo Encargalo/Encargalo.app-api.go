@@ -6,12 +6,15 @@ import (
 	"Encargalo.app-api.go/api/router/groups"
 	"Encargalo.app-api.go/internal/health/handler"
 	"Encargalo.app-api.go/internal/shared/config"
+	sharedmw "Encargalo.app-api.go/internal/shared/middleware"
+	"Encargalo.app-api.go/internal/shared/reqctx"
 	echoSwagger "github.com/swaggo/echo-swagger"
 
 	_ "Encargalo.app-api.go/docs"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 )
 
 type Router struct {
@@ -51,19 +54,18 @@ func New(
 
 func (r *Router) Init() {
 
-	r.server.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
-		Format: "remote_ip=${remote_ip}, method=${method}, uri=${uri}, status=${status}, latency=${latency_human}\n\n",
-	}))
+	r.server.Use(sharedmw.RequestID())
+	r.server.Use(otelecho.Middleware(reqctx.ServiceName))
+	r.server.Use(sharedmw.RequestLog())
+	r.server.Use(middleware.Recover())
 
 	r.server.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins:                             []string{"*"},
 		AllowMethods:                             []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete, http.MethodOptions},
-		AllowHeaders:                             []string{echo.HeaderContentType},
+		AllowHeaders:                             []string{echo.HeaderContentType, echo.HeaderXRequestID},
 		AllowCredentials:                         true,
 		UnsafeWildcardOriginWithAllowCredentials: true,
 	}))
-
-	r.server.Use(middleware.Recover())
 
 	r.server.GET("/health", handler.HealthCheck)
 	r.server.GET("/docs/*", echoSwagger.EchoWrapHandler())

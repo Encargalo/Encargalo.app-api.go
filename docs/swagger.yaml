@@ -1,4 +1,12 @@
 definitions:
+  Encargalo_app-api_go_internal_auth_handler_request.SignInGoogleRequest:
+    properties:
+      id_token:
+        example: eyJhbGciOiJSUzI1NiIsIn...
+        type: string
+    required:
+    - id_token
+    type: object
   Encargalo_app-api_go_internal_auth_handler_request.SignInRequest:
     properties:
       password:
@@ -16,6 +24,9 @@ definitions:
       address:
         example: 'Calle 123 # 45-67'
         type: string
+      instructions:
+        example: Piso 3, apto 301
+        type: string
       latitude:
         example: 37.7749
         type: number
@@ -26,6 +37,11 @@ definitions:
     - address
     - latitude
     - longitude
+    type: object
+  Encargalo_app-api_go_internal_orders_domain_dtos.ConfirmCodeRequest:
+    properties:
+      code:
+        type: string
     type: object
   Encargalo_app-api_go_internal_orders_domain_dtos.CreateAdditionsOrders:
     properties:
@@ -56,9 +72,18 @@ definitions:
     properties:
       address:
         $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.Address'
-      delivery_fee:
-        example: 5000
-        type: integer
+      balance_amount_usd:
+        description: |-
+          BalanceAmountUSD es opcional. 0 = no usar balance. Si > 0 debe ser >= 1
+          y <= min(balance, total). Si cubre el total no se requiere comprobante.
+        example: 4
+        type: number
+      expected_total_price:
+        description: |-
+          ExpectedTotalPrice (legacy sin quote): total que el front mostró.
+          Con quote_id se ignora. Sin quote_id sigue siendo obligatorio.
+        example: 18.5
+        type: number
       id:
         example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
         type: string
@@ -68,31 +93,50 @@ definitions:
         type: array
       method_payment:
         enum:
-        - EfectivoBs
-        - EfectivoDolar
         - PagoMovil
-        example: EfectivoBs
+        example: PagoMovil
         type: string
-      pago_movil_data:
-        $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.PagoMovilData'
       payment_proof_image:
         example: data:image/jpeg;base64,/9j/4AAQ...
+        type: string
+      quote_id:
+        description: |-
+          QuoteID congela el total en el servidor (POST /orders/quote). Si viene,
+          shop/address/items/expected_total_price se toman del quote (pueden omitirse).
+        example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
         type: string
       shop_id:
         example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
         type: string
     required:
-    - address
-    - delivery_fee
     - id
-    - items
     - method_payment
-    - shop_id
     type: object
   Encargalo_app-api_go_internal_orders_domain_dtos.CreateOrderResponse:
     properties:
+      is_launch_promo:
+        type: boolean
       message:
         type: string
+      promo_subsidy_amount:
+        type: number
+      total_price:
+        type: number
+    type: object
+  Encargalo_app-api_go_internal_orders_domain_dtos.CreateQuote:
+    properties:
+      address:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.Address'
+      items:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.CreateItemsOrder'
+        type: array
+      shop_id:
+        type: string
+    required:
+    - address
+    - items
+    - shop_id
     type: object
   Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse:
     properties:
@@ -103,21 +147,66 @@ definitions:
         example: invalid request
         type: string
     type: object
-  Encargalo_app-api_go_internal_orders_domain_dtos.PagoMovilData:
+  Encargalo_app-api_go_internal_orders_domain_dtos.OrderHistoryItem:
     properties:
-      banco:
+      address:
         type: string
-      cedula:
+      created_at:
         type: string
-      nombre:
+      delivery_fee:
+        type: number
+      id:
         type: string
-      telefono:
+      method_payment:
         type: string
-    required:
-    - banco
-    - cedula
-    - nombre
-    - telefono
+      number:
+        type: integer
+      shop_id:
+        type: string
+      status:
+        type: string
+      total_price:
+        type: number
+    type: object
+  Encargalo_app-api_go_internal_orders_domain_dtos.QuoteItemView:
+    properties:
+      amount:
+        type: integer
+      item_id:
+        type: string
+      name:
+        type: string
+      total_price:
+        type: integer
+      unit_price:
+        type: integer
+    type: object
+  Encargalo_app-api_go_internal_orders_domain_dtos.QuoteResponse:
+    properties:
+      bcv_rate:
+        type: number
+      delivery_fee_bs:
+        type: number
+      delivery_fee_usd:
+        type: number
+      expires_at:
+        type: string
+      is_launch_promo:
+        type: boolean
+      items:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.QuoteItemView'
+        type: array
+      promo_subsidy_amount:
+        type: number
+      proof_grace_until:
+        type: string
+      quote_id:
+        type: string
+      total_bs:
+        type: number
+      total_usd:
+        type: number
     type: object
   Encargalo_app-api_go_internal_payment_methods_domain_models.PaymentMethod:
     properties:
@@ -140,6 +229,8 @@ definitions:
     type: object
   Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse:
     properties:
+      available:
+        type: boolean
       bs:
         type: number
       id:
@@ -149,31 +240,127 @@ definitions:
       ref:
         type: number
     type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.AdditionSelectionResponse:
+    properties:
+      max_selection:
+        example: 5
+        type: integer
+      min_selection:
+        example: 0
+        type: integer
+      selector_type:
+        example: multi_select
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.CategoryDetailsResponse:
+    properties:
+      flavors:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse'
+        type: array
+      selector_type:
+        example: multi_select
+        type: string
+    type: object
   Encargalo_app-api_go_internal_products_domain_dtos.CategoryResponse:
     properties:
+      availability_status:
+        example: active
+        type: string
+      can_order:
+        example: true
+        type: boolean
+      details:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategoryDetailsResponse'
       id:
         type: string
       items:
         items:
           $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse'
         type: array
+      macro_category_id:
+        type: string
       name:
         type: string
+      schedules:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleResponse'
+        type: array
       shop_id:
         type: string
     type: object
-  Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse:
+  Encargalo_app-api_go_internal_products_domain_dtos.CategorySummaryResponse:
     properties:
       id:
         type: string
       name:
         type: string
     type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.FlavorInput:
+    properties:
+      description:
+        example: Con jamón ahumado
+        type: string
+      name:
+        example: Jamón
+        type: string
+    required:
+    - name
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse:
+    properties:
+      available:
+        type: boolean
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.FlavorSelectionResponse:
+    properties:
+      max_selection:
+        example: 1
+        type: integer
+      min_selection:
+        example: 1
+        type: integer
+      selector_type:
+        example: single_select
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.ItemDetailsResponse:
+    properties:
+      additions:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse'
+        type: array
+      flavors:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse'
+        type: array
+      max_additions_selection:
+        example: 5
+        type: integer
+      max_selection:
+        example: 2
+        type: integer
+      min_selection:
+        example: 1
+        type: integer
+    type: object
   Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse:
     properties:
+      addition_selection:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.AdditionSelectionResponse'
+      availability_status:
+        example: active
+        type: string
       bs:
         example: 7000
         type: number
+      can_order:
+        example: true
+        type: boolean
       category_id:
         example: b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2
         type: string
@@ -181,8 +368,35 @@ definitions:
         example: Pizza mediana con jamón, piña y queso mozzarella sobre una base de
           salsa napolitana.
         type: string
+      details:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemDetailsResponse'
+      effective_bs:
+        example: 7000
+        type: number
+      effective_ref:
+        description: |-
+          EffectiveRef/EffectiveBs son el precio final que paga el cliente tras
+          aplicar, en orden, el descuento propio del negocio y luego la promo de
+          lanzamiento (día 1). Ref/Bs siempre muestran el precio de catálogo
+          original, sin descuentos, para no romper compatibilidad.
+        example: 14
+        type: number
+      effective_status:
+        example: active
+        type: string
+      flavor_selection:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorSelectionResponse'
+      has_additions:
+        example: false
+        type: boolean
       has_flavors:
         example: true
+        type: boolean
+      has_launch_promo:
+        example: false
+        type: boolean
+      has_shop_discount:
+        example: false
         type: boolean
       id:
         example: 7e441237-a818-42d2-bb54-9b8747198305
@@ -196,9 +410,9 @@ definitions:
       ref:
         example: 14
         type: number
-      rules:
+      schedules:
         items:
-          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemRule'
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleResponse'
         type: array
       score:
         example: 4.7
@@ -207,26 +421,65 @@ definitions:
         example: d33aaf08-2c43-41c4-b2e7-882b019edb1e
         type: string
     type: object
-  Encargalo_app-api_go_internal_products_domain_dtos.ItemRule:
+  Encargalo_app-api_go_internal_products_domain_dtos.MacroCategoryResponse:
     properties:
       id:
-        example: 71c62783-820d-46f8-957d-c8d02db97264
         type: string
-      item_id:
-        example: 7e441237-a818-42d2-bb54-9b8747198305
+      name:
         type: string
-      rule_key:
-        example: max_flavors
+      slug:
         type: string
-      rule_value:
-        example: 2
-        type: integer
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.RegisterCategory:
+    properties:
+      flavors:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorInput'
+        type: array
+      macro_category_id:
+        example: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        type: string
+      name:
+        example: Desayuno
+        type: string
+      schedules:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleInput'
+        type: array
       selector_type:
-        example: multi_select
+        enum:
+        - none
+        - single_select
+        - multi_select
+        example: single_select
         type: string
+    required:
+    - macro_category_id
+    - name
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.RegisterFlavor:
+    properties:
+      category_id:
+        example: b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2
+        type: string
+      description:
+        example: Con salsa picante casera
+        type: string
+      name:
+        example: Picante
+        type: string
+    required:
+    - category_id
+    - name
     type: object
   Encargalo_app-api_go_internal_products_domain_dtos.RegisterItem:
     properties:
+      addition_ids:
+        example:
+        - '["a1b2c3d4-e5f6-7890-abcd-ef1234567890"]'
+        items:
+          type: string
+        type: array
       category_id:
         example: b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2
         type: string
@@ -243,6 +496,12 @@ definitions:
       image:
         example: data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEBLAEsAAD/4QC8RXhpZgAASUkqAAgAAAAGABIBAwABAAAAAQAAABoBBQABAAAAVgAAABsBBQABAAAAXgAAACgBAwABAAAAAgAAABMCAwABAAAA
         type: string
+      max_selection:
+        example: 2
+        type: integer
+      min_selection:
+        example: 1
+        type: integer
       name:
         example: Pizza Hawaiana Mediana
         type: string
@@ -256,8 +515,181 @@ definitions:
     - name
     - price
     type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.RegisterItemDiscount:
+    properties:
+      discount_type:
+        enum:
+        - percentage
+        - fixed
+        example: percentage
+        type: string
+      ends_at:
+        example: "2026-07-18T00:00:00Z"
+        type: string
+      item_id:
+        example: 7e441237-a818-42d2-bb54-9b8747198305
+        type: string
+      starts_at:
+        example: "2026-07-11T00:00:00Z"
+        type: string
+      value:
+        example: 20
+        type: number
+    required:
+    - discount_type
+    - item_id
+    - value
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.ScheduleInput:
+    properties:
+      enabled:
+        example: true
+        type: boolean
+      end_time:
+        example: "11:00:00"
+        type: string
+      start_time:
+        example: "06:00:00"
+        type: string
+    required:
+    - end_time
+    - start_time
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.ScheduleResponse:
+    properties:
+      day_of_week:
+        type: integer
+      enabled:
+        type: boolean
+      end_time:
+        example: "02:00:00"
+        type: string
+      id:
+        type: string
+      start_time:
+        example: "18:00:00"
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.TrendingEntry:
+    properties:
+      product:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.TrendingProduct'
+      shop:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.TrendingShop'
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.TrendingProduct:
+    properties:
+      bs:
+        type: number
+      category_id:
+        type: string
+      description:
+        type: string
+      effective_bs:
+        type: number
+      effective_ref:
+        type: number
+      has_launch_promo:
+        type: boolean
+      id:
+        type: string
+      image:
+        type: string
+      name:
+        type: string
+      ref:
+        type: number
+      schedules:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleResponse'
+        type: array
+      score:
+        type: number
+      sold:
+        type: integer
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.TrendingShop:
+    properties:
+      address:
+        type: string
+      delivery_fee:
+        type: number
+      delivery_fee_bs:
+        type: number
+      id:
+        type: string
+      logo:
+        type: string
+      name:
+        type: string
+      score:
+        type: number
+      tag:
+        type: string
+      time:
+        type: integer
+      type:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.UpdateCategory:
+    properties:
+      availability_status:
+        enum:
+        - active
+        - hidden
+        - out_of_stock
+        example: active
+        type: string
+      macro_category_id:
+        example: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        type: string
+      name:
+        example: Desayuno
+        type: string
+      schedules:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleInput'
+        type: array
+      selector_type:
+        enum:
+        - none
+        - single_select
+        - multi_select
+        example: single_select
+        type: string
+    required:
+    - macro_category_id
+    - name
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.UpdateFlavor:
+    properties:
+      available:
+        example: true
+        type: boolean
+      description:
+        example: Con salsa picante casera
+        type: string
+      name:
+        example: Picante
+        type: string
+    required:
+    - name
+    type: object
   Encargalo_app-api_go_internal_products_domain_dtos.UpdateItem:
     properties:
+      addition_ids:
+        example:
+        - '["a1b2c3d4-e5f6-7890-abcd-ef1234567890"]'
+        items:
+          type: string
+        type: array
+      availability_status:
+        enum:
+        - active
+        - hidden
+        - out_of_stock
+        example: active
+        type: string
       description:
         example: Pizza mediana con jamón, piña y queso mozzarella sobre una base de
           salsa napolitana.
@@ -271,6 +703,12 @@ definitions:
       image:
         example: data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ...
         type: string
+      max_selection:
+        example: 2
+        type: integer
+      min_selection:
+        example: 1
+        type: integer
       name:
         example: Pizza Hawaiana Mediana
         type: string
@@ -282,6 +720,425 @@ definitions:
     - name
     - price
     type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.UpdateItemDiscount:
+    properties:
+      discount_type:
+        enum:
+        - percentage
+        - fixed
+        example: percentage
+        type: string
+      ends_at:
+        example: "2026-07-18T00:00:00Z"
+        type: string
+      is_active:
+        example: true
+        type: boolean
+      starts_at:
+        example: "2026-07-11T00:00:00Z"
+        type: string
+      value:
+        example: 20
+        type: number
+    required:
+    - discount_type
+    - value
+    type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.ActivateErrorResponse:
+    properties:
+      message:
+        type: string
+      missing:
+        items:
+          type: string
+        type: array
+    type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.BalanceResponse:
+    properties:
+      balance:
+        type: number
+      transactions:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO'
+        type: array
+      zone:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_models.Zone'
+    type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.CandidateResponse:
+    properties:
+      email:
+        type: string
+      has_rider_role:
+        type: boolean
+      name:
+        type: string
+      phone:
+        type: string
+      profile:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse'
+      sur_name:
+        type: string
+      user_id:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.RiderCompletionDTO:
+    properties:
+      filled_count:
+        type: integer
+      is_complete:
+        type: boolean
+      missing:
+        items:
+          type: string
+        type: array
+      required_count:
+        type: integer
+    type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse:
+    properties:
+      activated_at:
+        type: string
+      carnet_photo_url:
+        type: string
+      circulation_card_url:
+        type: string
+      completion:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderCompletionDTO'
+      created_at:
+        type: string
+      email:
+        type: string
+      has_rider_role:
+        type: boolean
+      id_photo_url:
+        type: string
+      last_contacted_at:
+        type: string
+      license_photo_url:
+        type: string
+      name:
+        type: string
+      notes:
+        type: string
+      phone:
+        type: string
+      profile_photo_url:
+        type: string
+      status:
+        type: string
+      sur_name:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+      vehicle_brand:
+        type: string
+      vehicle_color:
+        type: string
+      vehicle_model:
+        type: string
+      vehicle_photo_1_url:
+        type: string
+      vehicle_photo_2_url:
+        type: string
+      vehicle_photo_3_url:
+        type: string
+      vehicle_photo_4_url:
+        type: string
+      vehicle_plate:
+        type: string
+      vehicle_type:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.TouchContactRequest:
+    properties:
+      notes:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO:
+    properties:
+      amount:
+        type: number
+      created_at:
+        type: string
+      distance_km:
+        type: number
+      id:
+        type: string
+      movement_type:
+        type: string
+      order_id:
+        type: string
+      payment_method:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.TransactionsResponse:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+      transactions:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO'
+        type: array
+    type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.UpsertRiderProfileRequest:
+    properties:
+      carnet_photo:
+        type: string
+      circulation_card:
+        type: string
+      id_photo:
+        type: string
+      license_photo:
+        type: string
+      notes:
+        type: string
+      profile_photo:
+        type: string
+      vehicle_brand:
+        type: string
+      vehicle_color:
+        type: string
+      vehicle_model:
+        type: string
+      vehicle_photo_1:
+        type: string
+      vehicle_photo_2:
+        type: string
+      vehicle_photo_3:
+        type: string
+      vehicle_photo_4:
+        type: string
+      vehicle_plate:
+        type: string
+      vehicle_type:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.WithdrawalResponse:
+    properties:
+      amount_withdrawn:
+        type: number
+    type: object
+  Encargalo_app-api_go_internal_riders_domain_models.Zone:
+    enum:
+    - normal
+    - withdrawal_available
+    type: string
+    x-enum-varnames:
+    - ZoneNormal
+    - ZoneWithdrawalAvailable
+  Encargalo_app-api_go_internal_shops_domain_dtos.CustomerMetrics:
+    properties:
+      new_customers:
+        type: integer
+      returning_customers:
+        type: integer
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.CustomerStatsResponse:
+    properties:
+      current:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.CustomerMetrics'
+      period:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StatsPeriod'
+      previous:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.CustomerMetrics'
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.MatchedAddition:
+    properties:
+      available:
+        type: boolean
+      id:
+        type: string
+      name:
+        type: string
+      ref:
+        type: number
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.MatchedAdditionSelection:
+    properties:
+      max_selection:
+        type: integer
+      min_selection:
+        type: integer
+      selector_type:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.MatchedFlavor:
+    properties:
+      available:
+        type: boolean
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.MatchedFlavorSelection:
+    properties:
+      max_selection:
+        type: integer
+      min_selection:
+        type: integer
+      selector_type:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.MatchedItemDetails:
+    properties:
+      additions:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedAddition'
+        type: array
+      flavors:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedFlavor'
+        type: array
+      max_additions_selection:
+        type: integer
+      max_selection:
+        type: integer
+      min_selection:
+        type: integer
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.MatchedProductItem:
+    properties:
+      addition_selection:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedAdditionSelection'
+      description:
+        type: string
+      details:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedItemDetails'
+      flavor_selection:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedFlavorSelection'
+      has_additions:
+        type: boolean
+      has_flavors:
+        type: boolean
+      id:
+        type: string
+      image:
+        type: string
+      name:
+        type: string
+      ref:
+        type: number
+      schedules:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedSchedule'
+        type: array
+      score:
+        type: number
+      shop_id:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.MatchedSchedule:
+    properties:
+      day_of_week:
+        type: integer
+      enabled:
+        type: boolean
+      end_time:
+        type: string
+      start_time:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.PeriodMetrics:
+    properties:
+      orders_completed:
+        type: integer
+      orders_rejected:
+        type: integer
+      rejection_rate:
+        type: number
+      total_earned:
+        type: number
+      total_lost_rejections:
+        type: number
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.SalesDataPoint:
+    properties:
+      date:
+        type: string
+      earned:
+        type: number
+      lost:
+        type: number
+      orders_completed:
+        type: integer
+      orders_rejected:
+        type: integer
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.SalesOverTimeResponse:
+    properties:
+      current:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.SalesDataPoint'
+        type: array
+      granularity:
+        type: string
+      next_cursor:
+        type: string
+      period:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StatsPeriod'
+      previous:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.SalesDataPoint'
+        type: array
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.SearchShopResponse:
+    properties:
+      address:
+        type: string
+      banner:
+        type: string
+      delivery_fee:
+        type: number
+      delivery_fee_bs:
+        type: number
+      has_launch_promo:
+        description: |-
+          HasLaunchPromo indica si el negocio está dentro de su ventana de
+          lanzamiento (día 1): los productos se muestran con 50% de descuento.
+        type: boolean
+      home_phone:
+        type: string
+      id:
+        type: string
+      latitude:
+        type: number
+      logo:
+        type: string
+      longitude:
+        type: number
+      matched_products:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedProductItem'
+        type: array
+      name:
+        type: string
+      opened:
+        type: boolean
+      score:
+        type: number
+      tag:
+        type: string
+      time:
+        type: integer
+      type:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.ShopBalanceResponse:
+    properties:
+      balance:
+        type: number
+      transactions:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionDTO'
+        type: array
+    type: object
   Encargalo_app-api_go_internal_shops_domain_dtos.ShopResponse:
     properties:
       address:
@@ -289,7 +1146,14 @@ definitions:
       banner:
         type: string
       delivery_fee:
-        type: integer
+        type: number
+      delivery_fee_bs:
+        type: number
+      has_launch_promo:
+        description: |-
+          HasLaunchPromo indica si el negocio está dentro de su ventana de
+          lanzamiento (día 1): los productos se muestran con 50% de descuento.
+        type: boolean
       home_phone:
         type: string
       id:
@@ -312,6 +1176,81 @@ definitions:
         type: integer
       type:
         type: string
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionDTO:
+    properties:
+      amount:
+        type: number
+      created_at:
+        type: string
+      id:
+        type: string
+      movement_type:
+        type: string
+      order_id:
+        type: string
+      payment_method:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionsResponse:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+      transactions:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionDTO'
+        type: array
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.StatsPeriod:
+    enum:
+    - day
+    - week
+    - month
+    type: string
+    x-enum-varnames:
+    - PeriodDay
+    - PeriodWeek
+    - PeriodMonth
+  Encargalo_app-api_go_internal_shops_domain_dtos.StatsSummaryResponse:
+    properties:
+      current:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.PeriodMetrics'
+      current_balance:
+        type: number
+      period:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StatsPeriod'
+      previous:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.PeriodMetrics'
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.TopProductItem:
+    properties:
+      image:
+        type: string
+      item_id:
+        type: string
+      name:
+        type: string
+      quantity_sold:
+        type: integer
+      total_revenue:
+        type: number
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.TopProductsResponse:
+    properties:
+      current:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.TopProductItem'
+        type: array
+      period:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StatsPeriod'
+      previous:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.TopProductItem'
+        type: array
     type: object
   Encargalo_app-api_go_internal_users_domain_dto.Address:
     properties:
@@ -342,6 +1281,32 @@ definitions:
     - long
     - type
     type: object
+  Encargalo_app-api_go_internal_users_domain_dto.CompleteRefundRequest:
+    properties:
+      amount_usd:
+        type: number
+      proof_image:
+        type: string
+    required:
+    - amount_usd
+    - proof_image
+    type: object
+  Encargalo_app-api_go_internal_users_domain_dto.CreateRefundRequest:
+    properties:
+      transaction_id:
+        type: string
+    required:
+    - transaction_id
+    type: object
+  Encargalo_app-api_go_internal_users_domain_dto.CustomerBalanceResponse:
+    properties:
+      balance:
+        type: number
+      transactions:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.CustomerTransactionItem'
+        type: array
+    type: object
   Encargalo_app-api_go_internal_users_domain_dto.CustomerResponse:
     properties:
       birthday_date:
@@ -371,6 +1336,71 @@ definitions:
         example: Ramírez
         type: string
     type: object
+  Encargalo_app-api_go_internal_users_domain_dto.CustomerTransactionItem:
+    properties:
+      amount:
+        type: number
+      can_request_refund:
+        type: boolean
+      created_at:
+        type: string
+      id:
+        type: string
+      movement_type:
+        type: string
+      order_id:
+        type: string
+      refund_eligible_until:
+        type: string
+      refund_request_id:
+        type: string
+      refundable_pm_usd:
+        type: number
+    type: object
+  Encargalo_app-api_go_internal_users_domain_dto.PagoMovilResponse:
+    properties:
+      bank_code:
+        type: string
+      national_id:
+        type: string
+      phone:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_users_domain_dto.RefundRequestResponse:
+    properties:
+      accepted_at:
+        type: string
+      amount_usd:
+        type: number
+      completed_at:
+        type: string
+      created_at:
+        type: string
+      expires_at:
+        type: string
+      id:
+        type: string
+      order_id:
+        type: string
+      pm_bank_code:
+        type: string
+      pm_national_id:
+        type: string
+      pm_phone:
+        type: string
+      proof_url:
+        type: string
+      rejection_reason:
+        type: string
+      resolved_at:
+        type: string
+      status:
+        type: string
+      transaction_id:
+        type: string
+    type: object
   Encargalo_app-api_go_internal_users_domain_dto.RegisterCustomer:
     properties:
       birthday_date:
@@ -395,7 +1425,6 @@ definitions:
         minLength: 3
         type: string
     required:
-    - birthday_date
     - name
     - password
     - phone
@@ -429,10 +1458,6 @@ definitions:
         example: Ramírez
         minLength: 3
         type: string
-    required:
-    - name
-    - phone
-    - sur_name
     type: object
   Encargalo_app-api_go_internal_users_domain_dto.UpdatePassword:
     properties:
@@ -442,6 +1467,19 @@ definitions:
         type: string
     required:
     - password
+    type: object
+  Encargalo_app-api_go_internal_users_domain_dto.UpsertPagoMovilRequest:
+    properties:
+      bank_code:
+        type: string
+      national_id:
+        type: string
+      phone:
+        type: string
+    required:
+    - bank_code
+    - national_id
+    - phone
     type: object
 info:
   contact: {}
@@ -507,6 +1545,12 @@ paths:
             additionalProperties:
               type: string
             type: object
+        "429":
+          description: Demasiados intentos, intenta de nuevo más tarde
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "500":
           description: Error inesperado del servidor
           schema:
@@ -514,6 +1558,152 @@ paths:
               type: string
             type: object
       summary: Iniciar sesión como empleado
+      tags:
+      - Auth
+  /auth/sign-in/google:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Verifica un id_token de Google emitido por la app móvil. Si el email ya
+        pertenece a un customer, inicia sesión; si no existe, crea la cuenta
+        automáticamente (sin teléfono, que se completa luego desde el perfil).
+        Si las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.
+      parameters:
+      - description: id_token de Google
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_auth_handler_request.SignInGoogleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: session created
+          schema:
+            type: string
+        "400":
+          description: Solicitud inválida (validación o JSON incorrecto)
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: id_token inválido o expirado
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "429":
+          description: Demasiados intentos, intenta de nuevo más tarde
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error inesperado del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Iniciar sesión o registrarse con Google
+      tags:
+      - Auth
+  /auth/sign-in/riders:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Autentica a un rider usando su número de teléfono y contraseña.
+        Si las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.
+      parameters:
+      - description: Datos de inicio de sesión
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_auth_handler_request.SignInRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: session created
+          schema:
+            type: string
+        "400":
+          description: Solicitud inválida (validación o JSON incorrecto)
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Credenciales incorrectas
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "429":
+          description: Demasiados intentos, intenta de nuevo más tarde
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error inesperado del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Iniciar sesión como rider
+      tags:
+      - Auth
+  /auth/sign-in/staff:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Autentica a un miembro del staff (CRM) usando teléfono y contraseña.
+        Si las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.
+      parameters:
+      - description: Datos de inicio de sesión
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_auth_handler_request.SignInRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: session created
+          schema:
+            type: string
+        "400":
+          description: Solicitud inválida (validación o JSON incorrecto)
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Credenciales incorrectas
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "429":
+          description: Demasiados intentos, intenta de nuevo más tarde
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error inesperado del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Iniciar sesión como staff
       tags:
       - Auth
   /auth/sign-in/users:
@@ -545,6 +1735,12 @@ paths:
             type: object
         "422":
           description: Credenciales incorrectas
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "429":
+          description: Demasiados intentos, intenta de nuevo más tarde
           schema:
             additionalProperties:
               type: string
@@ -596,7 +1792,10 @@ paths:
     put:
       consumes:
       - application/json
-      description: Actualiza la información de un producto existente del negocio autenticado.
+      description: 'Actualiza un producto. `availability_status`: active|hidden|out_of_stock.
+        Si es un item de la macro Adiciones, sincroniza name/price/available en los
+        productos que lo referencian. `addition_ids` asigna adiciones (max selección
+        5).'
       parameters:
       - description: ID del producto
         format: uuid
@@ -638,11 +1837,512 @@ paths:
       summary: Actualizar un producto
       tags:
       - Business
+  /business/products/additions/catalog:
+    get:
+      description: Retorna los items del negocio cuya categoría tiene macro `adiciones`.
+        Usar al crear/editar un producto para seleccionar `addition_ids`.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse'
+            type: array
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Catálogo de adiciones del negocio
+      tags:
+      - Business
+  /business/products/categories:
+    get:
+      description: Retorna todas las categorías del negocio autenticado con `details`
+        (flavors, selector_type), `availability_status`, `macro_category_id` y `schedules`.
+        No incluye items (usar `GET /business/products` para el catálogo con productos).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategoryResponse'
+            type: array
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: Categorías no encontradas
+          schema:
+            type: string
+        "422":
+          description: El usuario no tiene un negocio asociado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Listar categorías completas del negocio
+      tags:
+      - Business
+    post:
+      consumes:
+      - application/json
+      description: Registra una nueva categoría. Puede incluir `flavors` (name/description);
+        el backend genera el `id` de cada sabor y lo guarda en `details.flavors`.
+        Si hay sabores, `selector_type` debe ser `single_select` (cantidad 1 por sabor;
+        min/max = sabores distintos) o `multi_select` (cantidad N del mismo sabor).
+      parameters:
+      - description: Datos de la categoría a registrar
+        in: body
+        name: category
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.RegisterCategory'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: category registered successfully
+          schema:
+            type: string
+        "400":
+          description: JSON inválido o campos faltantes
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "422":
+          description: El usuario no tiene un negocio asociado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Registrar una nueva categoría
+      tags:
+      - Business
+  /business/products/categories/{category_id}:
+    put:
+      consumes:
+      - application/json
+      description: Actualiza el nombre, macro-categoría, `availability_status` (`active`
+        | `hidden` | `out_of_stock`) y/o horario de una categoría existente. Enviar
+        `schedules` reemplaza todo el horario; omitirlo lo deja sin cambios; `[]`
+        elimina el horario.
+      parameters:
+      - description: ID de la categoría
+        format: uuid
+        in: path
+        name: category_id
+        required: true
+        type: string
+      - description: Datos de la categoría a actualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.UpdateCategory'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: category update success
+          schema:
+            type: string
+        "400":
+          description: category_id inválido o JSON mal formado
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: Categoría no encontrada
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Actualizar una categoría
+      tags:
+      - Business
+  /business/products/categories/summary:
+    get:
+      description: Retorna solo id y nombre de cada micro categoría del negocio. Use
+        `for=flavors` o `for=additions` (macro Adiciones).
+      parameters:
+      - description: Filtrar categorías elegibles
+        enum:
+        - flavors
+        - additions
+        in: query
+        name: for
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategorySummaryResponse'
+            type: array
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "422":
+          description: El usuario no tiene un negocio asociado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Listar categorías del negocio (resumen)
+      tags:
+      - Business
+  /business/products/discounts:
+    post:
+      consumes:
+      - application/json
+      description: 'Registra un descuento (porcentaje o monto fijo) sobre un producto
+        del negocio autenticado. Solo puede existir un descuento activo por producto.
+        Este descuento se compone con la promo de lanzamiento de la plataforma: se
+        aplica primero sobre el precio de catálogo, y luego, si el negocio está en
+        su ventana de día 1, la promo se aplica sobre ese precio ya rebajado.'
+      parameters:
+      - description: Datos del descuento a registrar
+        in: body
+        name: discount
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.RegisterItemDiscount'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: item discount registered successfully
+          schema:
+            type: string
+        "400":
+          description: JSON inválido, campos faltantes o valor de descuento inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: Producto no encontrado
+          schema:
+            type: string
+        "422":
+          description: El usuario no tiene un negocio asociado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Registrar un descuento propio del negocio
+      tags:
+      - Business
+  /business/products/discounts/{discount_id}:
+    delete:
+      description: Elimina (soft delete) un descuento de producto del negocio autenticado.
+      parameters:
+      - description: ID del descuento
+        format: uuid
+        in: path
+        name: discount_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: item discount deleted successfully
+          schema:
+            type: string
+        "400":
+          description: discount_id inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: Descuento no encontrado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Eliminar un descuento propio del negocio
+      tags:
+      - Business
+    put:
+      consumes:
+      - application/json
+      description: Actualiza el tipo, valor, vigencia o estado activo de un descuento
+        existente del negocio autenticado.
+      parameters:
+      - description: ID del descuento
+        format: uuid
+        in: path
+        name: discount_id
+        required: true
+        type: string
+      - description: Datos del descuento a actualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.UpdateItemDiscount'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: item discount update success
+          schema:
+            type: string
+        "400":
+          description: discount_id inválido, JSON mal formado o valor de descuento
+            inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: Descuento no encontrado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Actualizar un descuento propio del negocio
+      tags:
+      - Business
+  /business/products/flavors:
+    post:
+      consumes:
+      - application/json
+      description: Registra un nuevo sabor asociado a una categoría del negocio autenticado.
+        Un sabor solo puede asignarse a productos que pertenezcan a esa misma categoría.
+      parameters:
+      - description: Datos del sabor a registrar
+        in: body
+        name: flavor
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.RegisterFlavor'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: flavor registered successfully
+          schema:
+            type: string
+        "400":
+          description: JSON inválido o campos faltantes
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: Categoría no encontrada
+          schema:
+            type: string
+        "422":
+          description: El usuario no tiene un negocio asociado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Registrar un nuevo sabor
+      tags:
+      - Business
+  /business/products/flavors/{flavor_id}:
+    delete:
+      description: Elimina un sabor del catálogo JSONB de la categoría y lo quita
+        de todos los productos de esa categoría que lo tenían asignado. Si un producto
+        queda sin sabores, has_flavors pasa a false.
+      parameters:
+      - description: ID del sabor
+        format: uuid
+        in: path
+        name: flavor_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: flavor deleted successfully
+          schema:
+            type: string
+        "400":
+          description: flavor_id inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: Sabor no encontrado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Eliminar un sabor
+      tags:
+      - Business
+    put:
+      consumes:
+      - application/json
+      description: Actualiza el nombre, descripción y/o disponibilidad (`available`)
+        de un sabor existente del negocio autenticado. Si desactivar sabores deja
+        al item con menos opciones que `min_selection`, el item pasa a no ser pedible
+        automáticamente.
+      parameters:
+      - description: ID del sabor
+        format: uuid
+        in: path
+        name: flavor_id
+        required: true
+        type: string
+      - description: Datos del sabor a actualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.UpdateFlavor'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: flavor update success
+          schema:
+            type: string
+        "400":
+          description: flavor_id inválido o JSON mal formado
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: Sabor no encontrado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Actualizar un sabor
+      tags:
+      - Business
+  /business/products/flavors/category:
+    get:
+      description: Retorna todos los sabores del catálogo JSONB de una categoría (`details.flavors`).
+        Disponible para Customer y para Owner/Order Manager.
+      parameters:
+      - description: ID de la categoría
+        format: uuid
+        in: query
+        name: category_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse'
+            type: array
+        "400":
+          description: category_id es requerido o inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: Sabores no encontrados
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Obtener sabores por categoría
+      tags:
+      - Products
   /business/products/items:
     post:
       consumes:
       - application/json
-      description: Registra un nuevo producto en el negocio asociado a la sesión autenticada.
+      description: 'Registra un nuevo producto. Con sabores: `flavor_ids` + opcional
+        `min_selection`/`max_selection` (defaults 1 y cantidad de sabores). `single_select`
+        = sabores distintos (cantidad 1 c/u); `multi_select` = cantidad N del mismo
+        sabor. `addition_ids` opcional: items de la macro Adiciones; selección fija
+        multi_select max 5.'
       parameters:
       - description: Datos del producto a registrar
         in: body
@@ -678,6 +2378,56 @@ paths:
       summary: Registrar un nuevo producto
       tags:
       - Business
+  /business/products/macro-categories:
+    get:
+      description: Retorna el catálogo de macro categorías (Pizza, Parrilla, Pollo,
+        etc.) usado para clasificar las categorías del negocio autenticado.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.MacroCategoryResponse'
+            type: array
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Obtener macro categorías
+      tags:
+      - Business
+  /business/shops/balance:
+    get:
+      description: Retorna el balance actual del local (90% acumulado de ventas completadas)
+        y los últimos 10 movimientos.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopBalanceResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Balance del local
+      tags:
+      - Shops Finance
   /business/shops/me:
     get:
       description: Retorna la información del negocio asociado a la sesión del empleado
@@ -710,14 +2460,245 @@ paths:
       summary: Obtener información del negocio propio
       tags:
       - Business
+  /business/shops/me/status:
+    patch:
+      consumes:
+      - application/json
+      description: 'Cambia el estado de apertura del local asociado a la sesión del
+        owner. Al abrir (`open=true`) se crea un lote de jornada si no hay uno abierto.
+        Al cerrar solo se marca el local como cerrado: el lote sigue abierto para
+        gestionar órdenes activas y se cierra automáticamente cuando ya no quedan.
+        La primera vez que un local se abre se activan automáticamente sus ventanas
+        de promoción de lanzamiento: 24h con 50% de descuento subsidiado por la plataforma
+        y 192h (8 días) con comisión 0%.'
+      parameters:
+      - description: Estado deseado
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            open:
+              type: boolean
+          type: object
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Estado actualizado
+        "400":
+          description: Body inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Abrir o cerrar el local
+      tags:
+      - Business
+  /business/shops/stats/customers:
+    get:
+      description: Retorna la cantidad de clientes nuevos (primera compra Completed
+        histórica dentro del período) y recurrentes (ya habían comprado antes del
+        período) del período actual y anterior.
+      parameters:
+      - description: 'Período: day, week, month (default: month)'
+        in: query
+        name: period
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.CustomerStatsResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Clientes nuevos vs recurrentes
+      tags:
+      - Shops Stats
+  /business/shops/stats/sales-over-time:
+    get:
+      description: Retorna la serie temporal de ventas (ganadas y perdidas) del período
+        actual y anterior, con granularidad por hora (day) o por día (week/month).
+      parameters:
+      - description: 'Período: day, week, month (default: month)'
+        in: query
+        name: period
+        type: string
+      - description: Cursor de paginación (fecha ISO 8601)
+        in: query
+        name: cursor
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.SalesOverTimeResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Ventas en el tiempo
+      tags:
+      - Shops Stats
+  /business/shops/stats/summary:
+    get:
+      description: 'Retorna KPIs del período actual y anterior: total ganado, pérdidas
+        por rechazos, órdenes completadas/rechazadas y tasa de rechazo.'
+      parameters:
+      - description: 'Período: day, week, month (default: month)'
+        in: query
+        name: period
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StatsSummaryResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Resumen estadístico del local
+      tags:
+      - Shops Stats
+  /business/shops/stats/top-products:
+    get:
+      description: Retorna el ranking de productos más vendidos en el período actual
+        y anterior (solo órdenes Completed).
+      parameters:
+      - description: 'Período: day, week, month (default: month)'
+        in: query
+        name: period
+        type: string
+      - description: Cantidad de productos (max 20, default 10)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.TopProductsResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Productos más vendidos
+      tags:
+      - Shops Stats
+  /business/shops/stats/transactions/export:
+    get:
+      description: Descarga el historial completo de movimientos del período como
+        archivo CSV.
+      parameters:
+      - description: 'Período: day, week, month (default: month)'
+        in: query
+        name: period
+        type: string
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: Archivo CSV
+          schema:
+            type: file
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Exportar movimientos en CSV
+      tags:
+      - Shops Stats
+  /business/shops/transactions:
+    get:
+      description: Retorna el historial paginado de movimientos de balance del local
+        (ventas completadas).
+      parameters:
+      - description: Página (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Límite por página, máx 50 (default 20)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionsResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Historial de movimientos del local
+      tags:
+      - Shops Finance
   /orders:
     post:
       consumes:
       - application/json
-      description: Crea una nueva orden con los productos e información de entrega
-        proporcionados. El customer_id se obtiene automáticamente del token de sesión.
-        Si el método de pago es PagoMovil, se debe enviar `pago_movil_data` y `payment_proof_image`
-        (base64).
+      description: 'Preferido: enviar `quote_id` de POST /orders/quote (total congelado;
+        shop/items/address salen del quote). Legacy: sin quote_id, enviar carrito
+        + `expected_total_price` (409 si el precio cambió). Opcionalmente `balance_amount_usd`.
+        Si queda resto Pago Móvil, requiere `payment_proof_image` y nace en Payment
+        Review.'
       parameters:
       - description: Datos de la orden
         in: body
@@ -733,7 +2714,7 @@ paths:
           schema:
             $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.CreateOrderResponse'
         "400":
-          description: Body inválido o validación fallida
+          description: Body invalido o validacion fallida
           schema:
             $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
         "401":
@@ -741,11 +2722,15 @@ paths:
           schema:
             type: string
         "409":
-          description: La orden ya existe
+          description: La orden ya existe, precio cambió, o quote ya usado
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+        "410":
+          description: Quote expirado
           schema:
             $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
         "422":
-          description: Uno o más productos/adiciones no encontrados
+          description: Local cerrado o productos/adiciones no encontrados
           schema:
             $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
         "500":
@@ -755,6 +2740,129 @@ paths:
       security:
       - SessionCookie: []
       summary: Crear una nueva orden
+      tags:
+      - Orders
+  /orders/{id}/confirm-delivery:
+    post:
+      consumes:
+      - application/json
+      description: El rider introduce el codigo de 4 digitos que le muestra el usuario
+        para confirmar la entrega. Transiciona el pedido de "On The Way" a "Completed".
+      parameters:
+      - description: ID del pedido
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Codigo de entrega
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ConfirmCodeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Pedido entregado
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Codigo invalido
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+        "404":
+          description: Pedido no encontrado
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+        "409":
+          description: Codigo ya utilizado
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+        "422":
+          description: Estado del pedido incorrecto
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+      security:
+      - SessionCookie: []
+      summary: Confirmar entrega del pedido
+      tags:
+      - Orders
+  /orders/{id}/confirm-pickup:
+    post:
+      consumes:
+      - application/json
+      description: El local introduce el codigo de 4 digitos que le muestra el rider
+        para confirmar que esta presente. Transiciona el pedido de "In Preparation"
+        o "Ready" a "On The Way" y genera el codigo de entrega para el usuario.
+      parameters:
+      - description: ID del pedido
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Codigo de recogida
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ConfirmCodeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Pedido en camino
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Codigo invalido
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+        "404":
+          description: Pedido no encontrado
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+        "409":
+          description: Codigo ya utilizado
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+        "422":
+          description: Estado del pedido incorrecto
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+      security:
+      - SessionCookie: []
+      summary: Confirmar recogida del pedido
+      tags:
+      - Orders
+  /orders/history:
+    get:
+      description: Devuelve todas las ordenes del customer autenticado, incluyendo
+        activas y completadas, ordenadas de mas reciente a mas antigua.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Historial de ordenes
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.OrderHistoryItem'
+            type: array
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+      security:
+      - SessionCookie: []
+      summary: Historial de ordenes del customer
       tags:
       - Orders
   /orders/manager:
@@ -779,6 +2887,90 @@ paths:
       security:
       - SessionCookie: []
       summary: WebSocket de gestión de órdenes
+      tags:
+      - Orders WebSocket
+  /orders/quote:
+    post:
+      consumes:
+      - application/json
+      description: Calcula y congela el total (descuentos, promo, delivery, BCV) en
+        Redis con TTL. El cliente debe pagar contra este quote y luego crear la orden
+        con `quote_id`. `expires_at` = 30m; `proof_grace_until` = +15m si al crear
+        ya envía comprobante.
+      parameters:
+      - description: Carrito a cotizar
+        in: body
+        name: quote
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.CreateQuote'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Cotización creada
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.QuoteResponse'
+        "400":
+          description: Body invalido
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "422":
+          description: Local cerrado o catalogo no disponible
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+        "500":
+          description: Error interno
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+      security:
+      - SessionCookie: []
+      summary: Crear cotización de orden (precio congelado)
+      tags:
+      - Orders
+  /orders/rider:
+    get:
+      consumes:
+      - application/json
+      description: Establece una conexión WebSocket exclusiva para el rol Rider.
+      produces:
+      - application/json
+      responses:
+        "401":
+          description: Sesión no encontrada o inválida
+          schema:
+            type: string
+        "403":
+          description: Acceso denegado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: WebSocket de gestión de órdenes para riders
+      tags:
+      - Riders WebSocket
+  /orders/staff/reviews:
+    get:
+      responses:
+        "401":
+          description: Sesión no encontrada o inválida
+          schema:
+            type: string
+        "403":
+          description: Acceso denegado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: WebSocket de revisión de comprobantes (Staff CRM)
       tags:
       - Orders WebSocket
   /payment-methods:
@@ -809,8 +3001,11 @@ paths:
       - Payment Methods
   /products:
     get:
-      description: Retorna todos los productos agrupados por categoría de una tienda.
-        Solo incluye productos disponibles, ordenados por precio ascendente.
+      description: 'Retorna productos agrupados por categoría para clientes. Excluye
+        categorías `hidden`, items `hidden`, sabores/adiciones no disponibles, y aplica
+        horario de categoría (America/Caracas). Items con `effective_status: out_of_stock`
+        o `can_order: false` se muestran pero no se pueden pedir (p. ej. cuando los
+        sabores activos son menos que `min_selection`).'
       parameters:
       - description: ID de la tienda
         format: uuid
@@ -850,13 +3045,13 @@ paths:
       - Products
   /products/additions:
     get:
-      description: Retorna todas las adiciones disponibles de una categoría, ordenadas
-        por precio ascendente.
+      description: Retorna las adiciones asignadas a un producto específico (subset
+        del catálogo de la categoría), ordenadas como están en items.details.additions.
       parameters:
-      - description: ID de la categoría
+      - description: ID del producto
         format: uuid
         in: query
-        name: category_id
+        name: item_id
         required: true
         type: string
       produces:
@@ -869,7 +3064,7 @@ paths:
               $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse'
             type: array
         "400":
-          description: category_id es requerido o inválido
+          description: item_id es requerido o inválido
           schema:
             type: string
         "401":
@@ -886,13 +3081,14 @@ paths:
             type: string
       security:
       - SessionCookie: []
-      summary: Obtener adiciones por categoría
+      summary: Obtener adiciones por producto
       tags:
       - Products
   /products/best-sellers:
     get:
       description: Retorna todos los productos más vendidos de una tienda específica,
-        ordenados por ventas descendente.
+        ordenados por ventas descendente. Excluye productos cuya categoría tiene un
+        horario configurado que no cubre la hora actual (America/Caracas).
       parameters:
       - description: ID de la tienda
         format: uuid
@@ -972,8 +3168,8 @@ paths:
       - Products
   /products/flavors/category:
     get:
-      description: Retorna todos los sabores disponibles asociados a una categoría
-        específica.
+      description: Retorna todos los sabores del catálogo JSONB de una categoría (`details.flavors`).
+        Disponible para Customer y para Owner/Order Manager.
       parameters:
       - description: ID de la categoría
         format: uuid
@@ -1011,6 +3207,339 @@ paths:
       summary: Obtener sabores por categoría
       tags:
       - Products
+  /products/trending:
+    get:
+      description: Retorna el producto más vendido de cada local abierto dentro de
+        un radio de 1 km de las coordenadas dadas. Máximo 10 resultados, excluyendo
+        productos cuya categoría tiene un horario configurado que no cubre la hora
+        actual (America/Caracas). Cacheado 15 minutos.
+      parameters:
+      - description: Latitud del usuario
+        in: query
+        name: lat
+        required: true
+        type: number
+      - description: Longitud del usuario
+        in: query
+        name: lon
+        required: true
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.TrendingEntry'
+            type: array
+        "400":
+          description: lat/lon requeridos o inválidos
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Productos más vendidos cerca del usuario
+      tags:
+      - Products
+  /riders/balance:
+    get:
+      description: Retorna el balance actual del rider, su zona de control y los últimos
+        10 movimientos.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: balance, zona y últimos 10 movimientos
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.BalanceResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Balance del rider
+      tags:
+      - Riders Finance
+  /riders/staff/candidates:
+    get:
+      description: Busca una cuenta (Customer) por teléfono y, si existe, el expediente
+        rider.
+      parameters:
+      - description: Teléfono
+        in: query
+        name: phone
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.CandidateResponse'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Buscar candidato a rider por teléfono
+      tags:
+      - Riders Staff
+  /riders/staff/profiles:
+    get:
+      description: Lista perfiles por status (default draft). Incluye completion para
+        follow-up.
+      parameters:
+      - default: draft
+        description: draft|active|suspended
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse'
+            type: array
+      security:
+      - SessionCookie: []
+      summary: Listar expedientes rider
+      tags:
+      - Riders Staff
+  /riders/staff/profiles/{userId}:
+    get:
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse'
+      security:
+      - SessionCookie: []
+      summary: Detalle expediente rider
+      tags:
+      - Riders Staff
+    put:
+      consumes:
+      - application/json
+      description: Upsert parcial. Fotos como data-URL/base64 (se suben a Cloudinary).
+        No asigna rol Rider.
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Campos parciales
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.UpsertRiderProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse'
+      security:
+      - SessionCookie: []
+      summary: Guardar borrador expediente rider
+      tags:
+      - Riders Staff
+  /riders/staff/profiles/{userId}/activate:
+    post:
+      description: Requiere checklist completo. Asigna rol Rider y status=active.
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.ActivateErrorResponse'
+      security:
+      - SessionCookie: []
+      summary: Activar rider
+      tags:
+      - Riders Staff
+  /riders/staff/profiles/{userId}/photos/{field}:
+    delete:
+      description: 'Pone NULL el campo en DB y elimina el asset en Cloudinary. field:
+        profile_photo|id_photo|carnet_photo|license_photo|circulation_card|vehicle_photo_1..4'
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Campo de foto
+        in: path
+        name: field
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Eliminar foto del expediente rider
+      tags:
+      - Riders Staff
+  /riders/staff/profiles/{userId}/suspend:
+    post:
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse'
+      security:
+      - SessionCookie: []
+      summary: Suspender rider
+      tags:
+      - Riders Staff
+  /riders/staff/profiles/{userId}/touch-contact:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Notas opcionales
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TouchContactRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse'
+      security:
+      - SessionCookie: []
+      summary: Marcar contacto de seguimiento
+      tags:
+      - Riders Staff
+  /riders/transactions:
+    get:
+      description: Retorna el historial paginado de movimientos de balance del rider.
+      parameters:
+      - description: Página (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Límite por página, máx 50 (default 20)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TransactionsResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Historial de movimientos del rider
+      tags:
+      - Riders Finance
+  /riders/withdrawal:
+    post:
+      description: El rider solicita retirar su balance acumulado. Requiere balance
+        >= +$15.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.WithdrawalResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "422":
+          description: Balance insuficiente para retiro
+          schema:
+            type: string
+        "500":
+          description: Error interno
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Solicitar retiro de balance
+      tags:
+      - Riders Finance
   /shops:
     get:
       description: 'Retorna la información de una tienda junto con sus productos.
@@ -1109,6 +3638,53 @@ paths:
       summary: Obtener todas las tiendas cercanas
       tags:
       - Shops
+  /shops/search:
+    get:
+      description: Retorna tiendas dentro de 3 km que coincidan con la búsqueda en
+        nombre de tienda, categoría o macro. matched_products incluye sabores y adiciones
+        disponibles del item (details).
+      parameters:
+      - description: 'Texto a buscar, ej: pizza'
+        in: query
+        name: q
+        required: true
+        type: string
+      - description: Latitud del usuario
+        in: query
+        name: lat
+        required: true
+        type: number
+      - description: Longitud del usuario
+        in: query
+        name: lon
+        required: true
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tiendas encontradas
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.SearchShopResponse'
+            type: array
+        "400":
+          description: Parámetros inválidos o faltantes
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Buscar tiendas por texto y proximidad
+      tags:
+      - Shops
   /users:
     get:
       description: Retorna los datos del usuario autenticado sin importar su rol.
@@ -1175,8 +3751,9 @@ paths:
     put:
       consumes:
       - application/json
-      description: Actualiza los datos del usuario usando la información enviada en
-        el cuerpo de la solicitud.
+      description: 'Actualización parcial: solo se modifican los campos presentes
+        en el cuerpo de la solicitud (name, sur_name, phone, email son todos opcionales),
+        el resto de la cuenta queda intacto.'
       parameters:
       - description: Datos del usuario a actualizar
         in: body
@@ -1234,7 +3811,7 @@ paths:
           schema:
             type: string
         "400":
-          description: address_id es requerido
+          description: address_id es requerido o inválido
           schema:
             type: string
         "401":
@@ -1315,6 +3892,120 @@ paths:
       summary: Registrar una nueva dirección
       tags:
       - Users Address
+  /users/balance:
+    get:
+      description: Retorna el balance en USD del cliente y los últimos 10 movimientos.
+        Créditos elegibles incluyen can_request_refund (ventana/monto/saldo; no exige
+        Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold
+        / processing / payout) y créditos balance_refund_restore incluyen refund_request_id
+        para abrir el detalle.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.CustomerBalanceResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Balance del cliente
+      tags:
+      - Users Finance
+  /users/balance/refund-requests:
+    get:
+      description: Lista las solicitudes de devolución del cliente autenticado.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.RefundRequestResponse'
+            type: array
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Listar solicitudes de devolución
+      tags:
+      - Users Finance
+    post:
+      consumes:
+      - application/json
+      description: Solicita devolución en efectivo de la porción Pago Móvil de un
+        crédito elegible (> $1, ventana 15 min). Requiere Pago Móvil registrado.
+      parameters:
+      - description: transaction_id del crédito
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.CreateRefundRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.RefundRequestResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "409":
+          description: Ya existe solicitud
+          schema:
+            type: string
+        "422":
+          description: No elegible / sin PM
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Solicitar devolución de crédito
+      tags:
+      - Users Finance
+  /users/balance/refund-requests/{id}:
+    get:
+      description: Detalle de una solicitud (incluye proof_url cuando status=completed).
+        Usar desde el historial con refund_request_id.
+      parameters:
+      - description: UUID de la solicitud
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.RefundRequestResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: No encontrada
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Detalle de solicitud de devolución
+      tags:
+      - Users Finance
   /users/change-password:
     put:
       consumes:
@@ -1356,4 +4047,120 @@ paths:
       summary: Actualiza la contraseña del usuario autenticado
       tags:
       - Users
+  /users/pago-movil:
+    get:
+      description: Retorna el Pago Móvil registrado para devoluciones.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.PagoMovilResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: No registrado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Pago Móvil del cliente
+      tags:
+      - Users Finance
+    put:
+      consumes:
+      - application/json
+      description: Registra o modifica el Pago Móvil destino del cliente para devoluciones.
+      parameters:
+      - description: Datos Pago Móvil
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.UpsertPagoMovilRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.PagoMovilResponse'
+        "400":
+          description: Datos inválidos
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Crear o actualizar Pago Móvil
+      tags:
+      - Users Finance
+  /users/staff/refund-requests:
+    get:
+      responses:
+        "401":
+          description: Sesión no encontrada o inválida
+          schema:
+            type: string
+        "403":
+          description: Acceso denegado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: WebSocket de devoluciones de balance (Staff CRM)
+      tags:
+      - Users Finance
+  /users/staff/refund-requests/{id}/complete:
+    post:
+      consumes:
+      - application/json
+      description: 'Registra el pago de una solicitud accepted: valida amount_usd,
+        sube proof_image (base64) a Cloudinary y marca completed.'
+      parameters:
+      - description: ID de la solicitud
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Monto pagado + imagen del comprobante
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.CompleteRefundRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.RefundRequestResponse'
+        "400":
+          description: Datos inválidos / falta comprobante
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "403":
+          description: Acceso denegado
+          schema:
+            type: string
+        "422":
+          description: Monto no coincide / estado inválido
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Completar devolución (staff)
+      tags:
+      - Users Finance
 swagger: "2.0"

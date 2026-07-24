@@ -1,0 +1,4 @@
+$kind: collection
+description: Endpoints de usuarios. Los endpoints protegidos requieren cookie `encargalo-session` con rol Customer o customer.
+variables:
+  base_url: http://localhost:3000

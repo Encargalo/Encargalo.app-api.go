@@ -29,10 +29,12 @@ type Config struct {
 	Environment   Environment   `env:"environment"`
 	Google        Google        `env:"google"`
 	Cloudinary    Cloudinary    `env:"cloudinary"`
+	Observability Observability `env:"observability"`
 }
 
 type Server struct {
-	Port int `validate:"required" env:"port"`
+	Port           int    `validate:"required" env:"port"`
+	AllowedOrigins string `env:"allowed_origins"`
 }
 
 type Postgres struct {
@@ -48,12 +50,8 @@ type Redis struct {
 }
 
 type RedisStream struct {
-	Host       string `validate:"required" env:"host"`
-	Port       int    `validate:"required" env:"port"`
 	StreamName string `validate:"required" env:"stream_name"`
 	Db         int    `validate:"min=0" env:"db"`
-	User       string `validate:"required" env:"user"`
-	Password   string `validate:"required" env:"password"`
 }
 
 type JWT struct {
@@ -70,12 +68,26 @@ type Environment struct {
 }
 
 type Google struct {
-	Matrix string `validate:"required" env:"matrix"`
+	Matrix   string `validate:"required" env:"matrix"`
+	ClientID string `validate:"required" env:"client_id"`
 }
 
 type Cloudinary struct {
 	URL    string `validate:"required" env:"url"`
 	Folder string `validate:"required" env:"folder"`
+}
+
+// Observability configura el envío de trazas/logs al OTel Collector.
+// OtlpEndpoint vacío deshabilita la telemetría (útil en desarrollo local).
+// OtlpToken viaja como "Authorization: Bearer <token>" — requerido cuando el
+// collector está expuesto públicamente (entorno "observabilidad" separado).
+type Observability struct {
+	OtlpEndpoint string `env:"otlp_endpoint"`
+	OtlpToken    string `env:"otlp_token"`
+}
+
+func (o Observability) Enabled() bool {
+	return o.OtlpEndpoint != ""
 }
 
 func Environments() {

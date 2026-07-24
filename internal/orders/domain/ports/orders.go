@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/orders/domain/models"
@@ -10,10 +11,21 @@ import (
 )
 
 type OrdersApp interface {
+	CreateQuote(ctx context.Context, req *dtos.CreateQuote) (*dtos.QuoteResponse, error)
 	CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*models.Order, error)
 	SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*models.Order, error)
 	SearchActiveOrdersByCriteria(ctx context.Context, criteria uuid.UUID, isShop bool) ([]models.Order, error)
 	UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string, requesterID uuid.UUID, isShop bool) (models.Order, error)
+	ConfirmPickup(ctx context.Context, orderID uuid.UUID, code string) (models.Order, error)
+	ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code string) (models.Order, error)
+	GetOrderHistory(ctx context.Context, customerID uuid.UUID) (dtos.OrderHistoryResponse, error)
+	// AutoRejectStalePending rechaza órdenes Pending sin aceptación del local
+	// tras PendingAcceptTimeout. Devuelve las órdenes efectivamente rechazadas
+	// (para que el worker las broadcastée sin ciclo DI OrdersApp↔Manager).
+	AutoRejectStalePending(ctx context.Context) ([]models.Order, error)
+	// NotifyPendingUnassigned publica order_pending_unassigned en los minutos 4 y 8
+	// mientras la orden sigue Pending sin aceptación del local.
+	NotifyPendingUnassigned(ctx context.Context) error
 }
 
 type OrdersRepo interface {
@@ -22,6 +34,75 @@ type OrdersRepo interface {
 	SearchItemsByID(ctx context.Context, ItemsID []uuid.UUID) (items.Items, error)
 	SearchShopByID(ctx context.Context, shopID uuid.UUID) (*models.ShopOrder, error)
 	SearchAdditionsByID(ctx context.Context, additionID []uuid.UUID) ([]models.Addition, error)
+	SearchFlavorsForItem(ctx context.Context, itemID uuid.UUID) ([]models.Flavor, error)
 	SearchActiveOrdersByCriteria(ctx context.Context, criteria uuid.UUID, isShop bool) ([]models.Order, error)
 	UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string) error
+	SearchAvailableOrders(ctx context.Context) ([]models.Order, error)
+	SavePickupCode(ctx context.Context, orderID uuid.UUID, code string) error
+	SaveDeliveryCode(ctx context.Context, orderID uuid.UUID, code string) error
+	MarkPickupCodeUsed(ctx context.Context, orderID uuid.UUID) error
+	MarkDeliveryCodeUsed(ctx context.Context, orderID uuid.UUID) error
+	AssignRider(ctx context.Context, orderID uuid.UUID, riderID uuid.UUID) error
+	SearchActiveOrdersByRiderID(ctx context.Context, riderID uuid.UUID) ([]models.Order, error)
+	SearchOrderHistoryByCustomer(ctx context.Context, customerID uuid.UUID) ([]models.Order, error)
+	UpdateOrderDetails(ctx context.Context, orderID uuid.UUID, details []byte) error
+	MarkPendingAt(ctx context.Context, orderID uuid.UUID, at time.Time) error
+	ListStalePending(ctx context.Context, olderThan time.Time) ([]models.Order, error)
+	// RejectIfPending CAS Pending → Rejected. Returns false if already left Pending.
+	RejectIfPending(ctx context.Context, orderID uuid.UUID) (bool, error)
+	// ListPendingUnassignedForAlert: Pending past first alert minute, still due for Discord.
+	ListPendingUnassignedForAlert(ctx context.Context, olderThan time.Time) ([]models.Order, error)
+	// MarkPendingAlertMinute CAS advances pending_alert_minute if still Pending and behind.
+	MarkPendingAlertMinute(ctx context.Context, orderID uuid.UUID, minute int) (bool, error)
+}
+
+// OrderQuotesRepo stores frozen checkout quotes (typically Redis with TTL).
+type OrderQuotesRepo interface {
+	Save(ctx context.Context, quote *models.OrderQuote, ttl time.Duration) error
+	Get(ctx context.Context, quoteID uuid.UUID) (*models.OrderQuote, error)
+	Delete(ctx context.Context, quoteID uuid.UUID) error
+	// TryConsume marks the quote as used once. Returns false if already consumed.
+	TryConsume(ctx context.Context, quoteID uuid.UUID, ttl time.Duration) (bool, error)
+	IsConsumed(ctx context.Context, quoteID uuid.UUID) (bool, error)
+	// Active quote pointer per customer (at most one reusable checkout quote).
+	GetActiveID(ctx context.Context, customerID uuid.UUID) (uuid.UUID, error)
+	SetActiveID(ctx context.Context, customerID, quoteID uuid.UUID, ttl time.Duration) error
+	ClearActiveID(ctx context.Context, customerID uuid.UUID) error
+}
+
+// OrderRiderBroadcaster is implemented by the riders module to receive order lifecycle events.
+// Defined here so orders/app has no import dependency on riders/domain/ports.
+type OrderRiderBroadcaster interface {
+	BroadcastNewOrder(ctx context.Context, order models.Order)
+	BroadcastOrderUpdate(ctx context.Context, order models.Order)
+}
+
+// RideEarningRecorder is implemented by the finance module to record rider earnings on delivery.
+// Defined here to avoid a cross-domain import from orders → riders.
+type RideEarningRecorder interface {
+	RecordRideEarning(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee, totalPrice float64, method string) error
+}
+
+// ShopCommissionRecorder is implemented by shops/finance to record the shop's commission on delivery completion.
+// Defined here to avoid a cross-domain import from orders → shops.
+// isZeroCommission (días 1-8 desde la primera apertura) hace que el negocio reciba el 100% en vez del 90% habitual.
+// isLaunchPromo + promoSubsidyAmount (solo día 1) registran el desembolso real que la plataforma puso para cubrir el 50% del cliente.
+type ShopCommissionRecorder interface {
+	RecordSaleCommission(ctx context.Context, shopID uuid.UUID, orderID uuid.UUID, totalPrice, deliveryFee float64, method string, isLaunchPromo, isZeroCommission bool, promoSubsidyAmount float64) error
+}
+
+// ManagerConn abstracts the WebSocket transport for order-manager connections.
+type ManagerConn interface {
+	Send(msg []byte)
+	Close()
+}
+
+type AppManagerOrder interface {
+	Register(ctx context.Context, connectionID uuid.UUID, conn ManagerConn, isShop bool) error
+	Unregister(connectionID uuid.UUID, conn ManagerConn, isShop bool)
+	BroadcastOrder(order models.Order) error
+	BroadcastOrderToCustomer(order models.Order) error
+	BroadcastShopStatus(shopID uuid.UUID, open bool) error
+	// NotifyCustomer envía un payload arbitrario a las conexiones del customer (p. ej. refund_request_update).
+	NotifyCustomer(customerID uuid.UUID, msg []byte) error
 }

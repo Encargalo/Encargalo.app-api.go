@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log/slog"
 	"net/http"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
@@ -13,6 +14,8 @@ type Shops interface {
 	GetAllShops(c echo.Context) error
 	GetShopsBy(c echo.Context) error
 	GetMyShop(c echo.Context) error
+	SearchShops(c echo.Context) error
+	SetOpenClose(c echo.Context) error
 }
 
 type shops struct {
@@ -21,6 +24,41 @@ type shops struct {
 
 func NewShopsHandler(app ports.ShopsApp) Shops {
 	return &shops{app}
+}
+
+// SetOpenClose godoc
+// @Summary      Abrir o cerrar el local
+// @Description  Cambia el estado de apertura del local asociado a la sesión del owner. Al abrir (`open=true`) se crea un lote de jornada si no hay uno abierto. Al cerrar solo se marca el local como cerrado: el lote sigue abierto para gestionar órdenes activas y se cierra automáticamente cuando ya no quedan. La primera vez que un local se abre se activan automáticamente sus ventanas de promoción de lanzamiento: 24h con 50% de descuento subsidiado por la plataforma y 192h (8 días) con comisión 0%.
+// @Tags         Business
+// @Accept       json
+// @Produce      json
+// @Security     SessionCookie
+// @Param        body  body      object{open=bool}  true  "Estado deseado"
+// @Success      204  "Estado actualizado"
+// @Failure      400  {string}  string  "Body inválido"
+// @Failure      401  {string}  string  "No autorizado"
+// @Failure      500  {string}  string  "Error interno del servidor"
+// @Router       /business/shops/me/status [patch]
+func (s *shops) SetOpenClose(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
+	}
+
+	var req struct {
+		Open bool `json:"open"`
+	}
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := s.app.SetOpenClose(ctx, session.ShopID, req.Open); err != nil {
+		return err
+	}
+
+	return c.NoContent(http.StatusNoContent)
 }
 
 // GetMyShop godoc
@@ -40,7 +78,7 @@ func (s *shops) GetMyShop(c echo.Context) error {
 
 	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
 	if !ok {
-		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
+		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
 	}
 
 	if session.ShopID == nil {
@@ -53,6 +91,41 @@ func (s *shops) GetMyShop(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, shop)
+}
+
+// SearchShops godoc
+// @Summary      Buscar tiendas por texto y proximidad
+// @Description  Retorna tiendas dentro de 3 km que coincidan con la búsqueda en nombre de tienda, categoría o macro. matched_products incluye sabores y adiciones disponibles del item (details).
+// @Tags         Shops
+// @Produce      json
+// @Security     SessionCookie
+// @Param        q    query     string  true  "Texto a buscar, ej: pizza"
+// @Param        lat  query     number  true  "Latitud del usuario"
+// @Param        lon  query     number  true  "Longitud del usuario"
+// @Success      200  {array}   dtos.SearchShopResponse  "Tiendas encontradas"
+// @Failure      400  {string}  string                   "Parámetros inválidos o faltantes"
+// @Failure      401  {string}  string                   "No autorizado"
+// @Failure      500  {string}  string                   "Error interno del servidor"
+// @Router       /shops/search [get]
+func (s *shops) SearchShops(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	query := dtos.SearchShopsQuery{}
+	if err := c.Bind(&query); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := query.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	result, err := s.app.SearchShops(ctx, query)
+	if err != nil {
+		slog.Error("error en SearchShops", "error", err, "query", query.Q, "lat", query.Latitude, "lon", query.Longitude)
+		return err
+	}
+
+	return c.JSON(http.StatusOK, result)
 }
 
 // GetAllShops godoc

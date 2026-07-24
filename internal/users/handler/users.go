@@ -1,14 +1,14 @@
 package handler
 
 import (
-	"fmt"
 	"log/slog"
 	"net/http"
 
+	"Encargalo.app-api.go/internal/pkg/cookie"
 	"Encargalo.app-api.go/internal/users/domain/dto"
 	"Encargalo.app-api.go/internal/users/domain/ports"
-	"Encargalo.app-api.go/internal/pkg/cookie"
 
+	"Encargalo.app-api.go/internal/shared/applog"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shared/jwt"
 	"github.com/labstack/echo/v4"
@@ -67,7 +67,8 @@ func (c *customersHandler) RegisterCustomer(e echo.Context) error {
 
 	sessionId, err := c.auth.SignInCustomer(ctx, customer.Phone, customer.Password)
 	if err != nil {
-		fmt.Println()
+		applog.Error(ctx, "auto-login tras registro falló", err, "phone", customer.Phone)
+		return e.JSON(http.StatusCreated, "customer successfully registered")
 	}
 
 	jwtSession, err := c.jwt.CreateSession(sessionId)
@@ -111,7 +112,7 @@ func (c *customersHandler) SearchCustomer(e echo.Context) error {
 
 // UpdateCustomer godoc
 // @Summary      Actualiza la información del usuario autenticado
-// @Description  Actualiza los datos del usuario usando la información enviada en el cuerpo de la solicitud.
+// @Description  Actualización parcial: solo se modifican los campos presentes en el cuerpo de la solicitud (name, sur_name, phone, email son todos opcionales), el resto de la cuenta queda intacto.
 // @Tags         Users
 // @Accept       json
 // @Produce      json

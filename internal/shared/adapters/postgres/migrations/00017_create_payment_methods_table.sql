@@ -10,15 +10,17 @@ CREATE TABLE IF NOT EXISTS orders.payment_methods (
     created_at  TIMESTAMP   NOT NULL DEFAULT NOW()
 );
 
-INSERT INTO orders.payment_methods (type, name, description, fields) VALUES
+INSERT INTO orders.payment_methods (type, name, description, fields, qr_url) VALUES
     ('EfectivoBs',
      'Efectivo en Bolívares',
      'Pago en efectivo en moneda venezolana (Bs)',
-     '[]'),
+     '[]',
+     NULL),
     ('EfectivoDolar',
      'Efectivo en Dólares',
      'Pago en efectivo en dólares americanos (USD)',
-     '[]'),
+     '[]',
+     NULL),
     ('PagoMovil',
      'Pago Móvil',
      'Pago electrónico interbancario venezolano',

@@ -1,0 +1,17 @@
+#build stage
+FROM golang:1.26-alpine3.23 AS builder
+RUN apk add --no-cache git upx
+WORKDIR /app
+COPY ["go.mod", "go.sum", "./"]
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -tags timetzdata -o app ./cmd/etl
+RUN upx app
+
+#final stage
+FROM scratch
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /app/app ./app
+EXPOSE 3000
+USER 65534
+ENTRYPOINT ["./app"]

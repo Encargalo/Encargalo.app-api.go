@@ -1,0 +1,5 @@
+$kind: http-request
+description: Retorna el Pago Móvil registrado del customer para devoluciones. 404 si no tiene. Cookie + rol Customer.
+url: "{{base_url}}/users/pago-movil"
+method: GET
+order: 4000

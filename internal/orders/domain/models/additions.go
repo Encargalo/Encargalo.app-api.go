@@ -1,15 +1,10 @@
 package models
 
-import (
-	"github.com/google/uuid"
-	"github.com/uptrace/bun"
-)
+import "github.com/google/uuid"
 
 type Addition struct {
-	bun.BaseModel `bun:"table:products.additions"`
-
-	ID     uuid.UUID `bun:"id,pk,type:uuid,default:uuid_generate_v4()" json:"id"`
-	ShopID uuid.UUID `bun:"shop_id,type:uuid,notnull" json:"shop_id"`
-	Name   string    `bun:"name,notnull" json:"name"`
-	Price  int       `bun:"price,notnull" json:"price"`
+	ID     uuid.UUID `json:"id"`
+	ShopID uuid.UUID `json:"shop_id"`
+	Name   string    `json:"name"`
+	Price  int       `json:"price"`
 }

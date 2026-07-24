@@ -107,6 +107,225 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "429": {
+                        "description": "Demasiados intentos, intenta de nuevo más tarde",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error inesperado del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/sign-in/google": {
+            "post": {
+                "description": "Verifica un id_token de Google emitido por la app móvil. Si el email ya\npertenece a un customer, inicia sesión; si no existe, crea la cuenta\nautomáticamente (sin teléfono, que se completa luego desde el perfil).\nSi las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Iniciar sesión o registrarse con Google",
+                "parameters": [
+                    {
+                        "description": "id_token de Google",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_auth_handler_request.SignInGoogleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "session created",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Solicitud inválida (validación o JSON incorrecto)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "id_token inválido o expirado",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Demasiados intentos, intenta de nuevo más tarde",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error inesperado del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/sign-in/riders": {
+            "post": {
+                "description": "Autentica a un rider usando su número de teléfono y contraseña.\nSi las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Iniciar sesión como rider",
+                "parameters": [
+                    {
+                        "description": "Datos de inicio de sesión",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_auth_handler_request.SignInRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "session created",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Solicitud inválida (validación o JSON incorrecto)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Credenciales incorrectas",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Demasiados intentos, intenta de nuevo más tarde",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error inesperado del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/sign-in/staff": {
+            "post": {
+                "description": "Autentica a un miembro del staff (CRM) usando teléfono y contraseña.\nSi las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Iniciar sesión como staff",
+                "parameters": [
+                    {
+                        "description": "Datos de inicio de sesión",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_auth_handler_request.SignInRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "session created",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Solicitud inválida (validación o JSON incorrecto)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Credenciales incorrectas",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Demasiados intentos, intenta de nuevo más tarde",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Error inesperado del servidor",
                         "schema": {
@@ -161,6 +380,15 @@ const docTemplate = `{
                     },
                     "422": {
                         "description": "Credenciales incorrectas",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Demasiados intentos, intenta de nuevo más tarde",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -232,6 +460,744 @@ const docTemplate = `{
                 }
             }
         },
+        "/business/products/additions/catalog": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna los items del negocio cuya categoría tiene macro ` + "`" + `adiciones` + "`" + `. Usar al crear/editar un producto para seleccionar ` + "`" + `addition_ids` + "`" + `.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Catálogo de adiciones del negocio",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/business/products/categories": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna todas las categorías del negocio autenticado con ` + "`" + `details` + "`" + ` (flavors, selector_type), ` + "`" + `availability_status` + "`" + `, ` + "`" + `macro_category_id` + "`" + ` y ` + "`" + `schedules` + "`" + `. No incluye items (usar ` + "`" + `GET /business/products` + "`" + ` para el catálogo con productos).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Listar categorías completas del negocio",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategoryResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Categorías no encontradas",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "El usuario no tiene un negocio asociado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Registra una nueva categoría. Puede incluir ` + "`" + `flavors` + "`" + ` (name/description); el backend genera el ` + "`" + `id` + "`" + ` de cada sabor y lo guarda en ` + "`" + `details.flavors` + "`" + `. Si hay sabores, ` + "`" + `selector_type` + "`" + ` debe ser ` + "`" + `single_select` + "`" + ` (cantidad 1 por sabor; min/max = sabores distintos) o ` + "`" + `multi_select` + "`" + ` (cantidad N del mismo sabor).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Registrar una nueva categoría",
+                "parameters": [
+                    {
+                        "description": "Datos de la categoría a registrar",
+                        "name": "category",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.RegisterCategory"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "category registered successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "JSON inválido o campos faltantes",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "El usuario no tiene un negocio asociado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/business/products/categories/summary": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna solo id y nombre de cada micro categoría del negocio. Use ` + "`" + `for=flavors` + "`" + ` o ` + "`" + `for=additions` + "`" + ` (macro Adiciones).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Listar categorías del negocio (resumen)",
+                "parameters": [
+                    {
+                        "enum": [
+                            "flavors",
+                            "additions"
+                        ],
+                        "type": "string",
+                        "description": "Filtrar categorías elegibles",
+                        "name": "for",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategorySummaryResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "El usuario no tiene un negocio asociado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/business/products/categories/{category_id}": {
+            "put": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Actualiza el nombre, macro-categoría, ` + "`" + `availability_status` + "`" + ` (` + "`" + `active` + "`" + ` | ` + "`" + `hidden` + "`" + ` | ` + "`" + `out_of_stock` + "`" + `) y/o horario de una categoría existente. Enviar ` + "`" + `schedules` + "`" + ` reemplaza todo el horario; omitirlo lo deja sin cambios; ` + "`" + `[]` + "`" + ` elimina el horario.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Actualizar una categoría",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID de la categoría",
+                        "name": "category_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos de la categoría a actualizar",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.UpdateCategory"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "category update success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "category_id inválido o JSON mal formado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Categoría no encontrada",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/business/products/discounts": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Registra un descuento (porcentaje o monto fijo) sobre un producto del negocio autenticado. Solo puede existir un descuento activo por producto. Este descuento se compone con la promo de lanzamiento de la plataforma: se aplica primero sobre el precio de catálogo, y luego, si el negocio está en su ventana de día 1, la promo se aplica sobre ese precio ya rebajado.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Registrar un descuento propio del negocio",
+                "parameters": [
+                    {
+                        "description": "Datos del descuento a registrar",
+                        "name": "discount",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.RegisterItemDiscount"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "item discount registered successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "JSON inválido, campos faltantes o valor de descuento inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Producto no encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "El usuario no tiene un negocio asociado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/business/products/discounts/{discount_id}": {
+            "put": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Actualiza el tipo, valor, vigencia o estado activo de un descuento existente del negocio autenticado.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Actualizar un descuento propio del negocio",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID del descuento",
+                        "name": "discount_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos del descuento a actualizar",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.UpdateItemDiscount"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "item discount update success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "discount_id inválido, JSON mal formado o valor de descuento inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Descuento no encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Elimina (soft delete) un descuento de producto del negocio autenticado.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Eliminar un descuento propio del negocio",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID del descuento",
+                        "name": "discount_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "item discount deleted successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "discount_id inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Descuento no encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/business/products/flavors": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Registra un nuevo sabor asociado a una categoría del negocio autenticado. Un sabor solo puede asignarse a productos que pertenezcan a esa misma categoría.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Registrar un nuevo sabor",
+                "parameters": [
+                    {
+                        "description": "Datos del sabor a registrar",
+                        "name": "flavor",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.RegisterFlavor"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "flavor registered successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "JSON inválido o campos faltantes",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Categoría no encontrada",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "El usuario no tiene un negocio asociado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/business/products/flavors/category": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna todos los sabores del catálogo JSONB de una categoría (` + "`" + `details.flavors` + "`" + `). Disponible para Customer y para Owner/Order Manager.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Obtener sabores por categoría",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID de la categoría",
+                        "name": "category_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "category_id es requerido o inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Sabores no encontrados",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/business/products/flavors/{flavor_id}": {
+            "put": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Actualiza el nombre, descripción y/o disponibilidad (` + "`" + `available` + "`" + `) de un sabor existente del negocio autenticado. Si desactivar sabores deja al item con menos opciones que ` + "`" + `min_selection` + "`" + `, el item pasa a no ser pedible automáticamente.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Actualizar un sabor",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID del sabor",
+                        "name": "flavor_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos del sabor a actualizar",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.UpdateFlavor"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "flavor update success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "flavor_id inválido o JSON mal formado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Sabor no encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Elimina un sabor del catálogo JSONB de la categoría y lo quita de todos los productos de esa categoría que lo tenían asignado. Si un producto queda sin sabores, has_flavors pasa a false.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Eliminar un sabor",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID del sabor",
+                        "name": "flavor_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "flavor deleted successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "flavor_id inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Sabor no encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/business/products/items": {
             "post": {
                 "security": [
@@ -239,7 +1205,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Registra un nuevo producto en el negocio asociado a la sesión autenticada.",
+                "description": "Registra un nuevo producto. Con sabores: ` + "`" + `flavor_ids` + "`" + ` + opcional ` + "`" + `min_selection` + "`" + `/` + "`" + `max_selection` + "`" + ` (defaults 1 y cantidad de sabores). ` + "`" + `single_select` + "`" + ` = sabores distintos (cantidad 1 c/u); ` + "`" + `multi_select` + "`" + ` = cantidad N del mismo sabor. ` + "`" + `addition_ids` + "`" + ` opcional: items de la macro Adiciones; selección fija multi_select max 5.",
                 "consumes": [
                     "application/json"
                 ],
@@ -295,6 +1261,46 @@ const docTemplate = `{
                 }
             }
         },
+        "/business/products/macro-categories": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna el catálogo de macro categorías (Pizza, Parrilla, Pollo, etc.) usado para clasificar las categorías del negocio autenticado.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Obtener macro categorías",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.MacroCategoryResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/business/products/{item_id}": {
             "put": {
                 "security": [
@@ -302,7 +1308,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Actualiza la información de un producto existente del negocio autenticado.",
+                "description": "Actualiza un producto. ` + "`" + `availability_status` + "`" + `: active|hidden|out_of_stock. Si es un item de la macro Adiciones, sincroniza name/price/available en los productos que lo referencian. ` + "`" + `addition_ids` + "`" + ` asigna adiciones (max selección 5).",
                 "consumes": [
                     "application/json"
                 ],
@@ -366,6 +1372,43 @@ const docTemplate = `{
                 }
             }
         },
+        "/business/shops/balance": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna el balance actual del local (90% acumulado de ventas completadas) y los últimos 10 movimientos.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Finance"
+                ],
+                "summary": "Balance del local",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopBalanceResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/business/shops/me": {
             "get": {
                 "security": [
@@ -415,6 +1458,353 @@ const docTemplate = `{
                 }
             }
         },
+        "/business/shops/me/status": {
+            "patch": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Cambia el estado de apertura del local asociado a la sesión del owner. Al abrir (` + "`" + `open=true` + "`" + `) se crea un lote de jornada si no hay uno abierto. Al cerrar solo se marca el local como cerrado: el lote sigue abierto para gestionar órdenes activas y se cierra automáticamente cuando ya no quedan. La primera vez que un local se abre se activan automáticamente sus ventanas de promoción de lanzamiento: 24h con 50% de descuento subsidiado por la plataforma y 192h (8 días) con comisión 0%.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Abrir o cerrar el local",
+                "parameters": [
+                    {
+                        "description": "Estado deseado",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "open": {
+                                    "type": "boolean"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Estado actualizado"
+                    },
+                    "400": {
+                        "description": "Body inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/business/shops/stats/customers": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna la cantidad de clientes nuevos (primera compra Completed histórica dentro del período) y recurrentes (ya habían comprado antes del período) del período actual y anterior.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Stats"
+                ],
+                "summary": "Clientes nuevos vs recurrentes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Período: day, week, month (default: month)",
+                        "name": "period",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.CustomerStatsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/business/shops/stats/sales-over-time": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna la serie temporal de ventas (ganadas y perdidas) del período actual y anterior, con granularidad por hora (day) o por día (week/month).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Stats"
+                ],
+                "summary": "Ventas en el tiempo",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Período: day, week, month (default: month)",
+                        "name": "period",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Cursor de paginación (fecha ISO 8601)",
+                        "name": "cursor",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.SalesOverTimeResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/business/shops/stats/summary": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna KPIs del período actual y anterior: total ganado, pérdidas por rechazos, órdenes completadas/rechazadas y tasa de rechazo.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Stats"
+                ],
+                "summary": "Resumen estadístico del local",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Período: day, week, month (default: month)",
+                        "name": "period",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StatsSummaryResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/business/shops/stats/top-products": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna el ranking de productos más vendidos en el período actual y anterior (solo órdenes Completed).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Stats"
+                ],
+                "summary": "Productos más vendidos",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Período: day, week, month (default: month)",
+                        "name": "period",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Cantidad de productos (max 20, default 10)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.TopProductsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/business/shops/stats/transactions/export": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Descarga el historial completo de movimientos del período como archivo CSV.",
+                "produces": [
+                    "text/csv"
+                ],
+                "tags": [
+                    "Shops Stats"
+                ],
+                "summary": "Exportar movimientos en CSV",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Período: day, week, month (default: month)",
+                        "name": "period",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Archivo CSV",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/business/shops/transactions": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna el historial paginado de movimientos de balance del local (ventas completadas).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Finance"
+                ],
+                "summary": "Historial de movimientos del local",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Página (default 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Límite por página, máx 50 (default 20)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/orders": {
             "post": {
                 "security": [
@@ -422,7 +1812,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Crea una nueva orden con los productos e información de entrega proporcionados. El customer_id se obtiene automáticamente del token de sesión. Si el método de pago es PagoMovil, se debe enviar ` + "`" + `pago_movil_data` + "`" + ` y ` + "`" + `payment_proof_image` + "`" + ` (base64).",
+                "description": "Preferido: enviar ` + "`" + `quote_id` + "`" + ` de POST /orders/quote (total congelado; shop/items/address salen del quote). Legacy: sin quote_id, enviar carrito + ` + "`" + `expected_total_price` + "`" + ` (409 si el precio cambió). Opcionalmente ` + "`" + `balance_amount_usd` + "`" + `. Si queda resto Pago Móvil, requiere ` + "`" + `payment_proof_image` + "`" + ` y nace en Payment Review.",
                 "consumes": [
                     "application/json"
                 ],
@@ -452,7 +1842,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Body inválido o validación fallida",
+                        "description": "Body invalido o validacion fallida",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
@@ -464,15 +1854,61 @@ const docTemplate = `{
                         }
                     },
                     "409": {
-                        "description": "La orden ya existe",
+                        "description": "La orden ya existe, precio cambió, o quote ya usado",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "410": {
+                        "description": "Quote expirado",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
                     },
                     "422": {
-                        "description": "Uno o más productos/adiciones no encontrados",
+                        "description": "Local cerrado o productos/adiciones no encontrados",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/orders/history": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Devuelve todas las ordenes del customer autenticado, incluyendo activas y completadas, ordenadas de mas reciente a mas antigua.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Historial de ordenes del customer",
+                "responses": {
+                    "200": {
+                        "description": "Historial de ordenes",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.OrderHistoryItem"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
                         }
                     },
                     "500": {
@@ -518,6 +1954,282 @@ const docTemplate = `{
                         "description": "Error interno del servidor",
                         "schema": {
                             "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/orders/quote": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Calcula y congela el total (descuentos, promo, delivery, BCV) en Redis con TTL. El cliente debe pagar contra este quote y luego crear la orden con ` + "`" + `quote_id` + "`" + `. ` + "`" + `expires_at` + "`" + ` = 30m; ` + "`" + `proof_grace_until` + "`" + ` = +15m si al crear ya envía comprobante.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Crear cotización de orden (precio congelado)",
+                "parameters": [
+                    {
+                        "description": "Carrito a cotizar",
+                        "name": "quote",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.CreateQuote"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Cotización creada",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.QuoteResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Body invalido",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "Local cerrado o catalogo no disponible",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/orders/rider": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Establece una conexión WebSocket exclusiva para el rol Rider.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders WebSocket"
+                ],
+                "summary": "WebSocket de gestión de órdenes para riders",
+                "responses": {
+                    "401": {
+                        "description": "Sesión no encontrada o inválida",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/orders/staff/reviews": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "tags": [
+                    "Orders WebSocket"
+                ],
+                "summary": "WebSocket de revisión de comprobantes (Staff CRM)",
+                "responses": {
+                    "401": {
+                        "description": "Sesión no encontrada o inválida",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/orders/{id}/confirm-delivery": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "El rider introduce el codigo de 4 digitos que le muestra el usuario para confirmar la entrega. Transiciona el pedido de \"On The Way\" a \"Completed\".",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Confirmar entrega del pedido",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID del pedido",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Codigo de entrega",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ConfirmCodeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Pedido entregado",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Codigo invalido",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Pedido no encontrado",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Codigo ya utilizado",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Estado del pedido incorrecto",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/orders/{id}/confirm-pickup": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "El local introduce el codigo de 4 digitos que le muestra el rider para confirmar que esta presente. Transiciona el pedido de \"In Preparation\" o \"Ready\" a \"On The Way\" y genera el codigo de entrega para el usuario.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Confirmar recogida del pedido",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID del pedido",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Codigo de recogida",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ConfirmCodeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Pedido en camino",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Codigo invalido",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Pedido no encontrado",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Codigo ya utilizado",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Estado del pedido incorrecto",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
                     }
                 }
@@ -570,7 +2282,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna todos los productos agrupados por categoría de una tienda. Solo incluye productos disponibles, ordenados por precio ascendente.",
+                "description": "Retorna productos agrupados por categoría para clientes. Excluye categorías ` + "`" + `hidden` + "`" + `, items ` + "`" + `hidden` + "`" + `, sabores/adiciones no disponibles, y aplica horario de categoría (America/Caracas). Items con ` + "`" + `effective_status: out_of_stock` + "`" + ` o ` + "`" + `can_order: false` + "`" + ` se muestran pero no se pueden pedir (p. ej. cuando los sabores activos son menos que ` + "`" + `min_selection` + "`" + `).",
                 "produces": [
                     "application/json"
                 ],
@@ -632,20 +2344,20 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna todas las adiciones disponibles de una categoría, ordenadas por precio ascendente.",
+                "description": "Retorna las adiciones asignadas a un producto específico (subset del catálogo de la categoría), ordenadas como están en items.details.additions.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Products"
                 ],
-                "summary": "Obtener adiciones por categoría",
+                "summary": "Obtener adiciones por producto",
                 "parameters": [
                     {
                         "type": "string",
                         "format": "uuid",
-                        "description": "ID de la categoría",
-                        "name": "category_id",
+                        "description": "ID del producto",
+                        "name": "item_id",
                         "in": "query",
                         "required": true
                     }
@@ -661,7 +2373,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "category_id es requerido o inválido",
+                        "description": "item_id es requerido o inválido",
                         "schema": {
                             "type": "string"
                         }
@@ -694,7 +2406,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna todos los productos más vendidos de una tienda específica, ordenados por ventas descendente.",
+                "description": "Retorna todos los productos más vendidos de una tienda específica, ordenados por ventas descendente. Excluye productos cuya categoría tiene un horario configurado que no cubre la hora actual (America/Caracas).",
                 "produces": [
                     "application/json"
                 ],
@@ -818,7 +2530,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna todos los sabores disponibles asociados a una categoría específica.",
+                "description": "Retorna todos los sabores del catálogo JSONB de una categoría (` + "`" + `details.flavors` + "`" + `). Disponible para Customer y para Owner/Order Manager.",
                 "produces": [
                     "application/json"
                 ],
@@ -866,6 +2578,523 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/products/trending": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna el producto más vendido de cada local abierto dentro de un radio de 1 km de las coordenadas dadas. Máximo 10 resultados, excluyendo productos cuya categoría tiene un horario configurado que no cubre la hora actual (America/Caracas). Cacheado 15 minutos.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Productos más vendidos cerca del usuario",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "Latitud del usuario",
+                        "name": "lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Longitud del usuario",
+                        "name": "lon",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.TrendingEntry"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "lat/lon requeridos o inválidos",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/balance": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna el balance actual del rider, su zona de control y los últimos 10 movimientos.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Finance"
+                ],
+                "summary": "Balance del rider",
+                "responses": {
+                    "200": {
+                        "description": "balance, zona y últimos 10 movimientos",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.BalanceResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/staff/candidates": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Busca una cuenta (Customer) por teléfono y, si existe, el expediente rider.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff"
+                ],
+                "summary": "Buscar candidato a rider por teléfono",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Teléfono",
+                        "name": "phone",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.CandidateResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/staff/profiles": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Lista perfiles por status (default draft). Incluye completion para follow-up.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff"
+                ],
+                "summary": "Listar expedientes rider",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "draft",
+                        "description": "draft|active|suspended",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/staff/profiles/{userId}": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff"
+                ],
+                "summary": "Detalle expediente rider",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Upsert parcial. Fotos como data-URL/base64 (se suben a Cloudinary). No asigna rol Rider.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff"
+                ],
+                "summary": "Guardar borrador expediente rider",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Campos parciales",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.UpsertRiderProfileRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/staff/profiles/{userId}/activate": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Requiere checklist completo. Asigna rol Rider y status=active.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff"
+                ],
+                "summary": "Activar rider",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.ActivateErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/staff/profiles/{userId}/photos/{field}": {
+            "delete": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Pone NULL el campo en DB y elimina el asset en Cloudinary. field: profile_photo|id_photo|carnet_photo|license_photo|circulation_card|vehicle_photo_1..4",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff"
+                ],
+                "summary": "Eliminar foto del expediente rider",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Campo de foto",
+                        "name": "field",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/staff/profiles/{userId}/suspend": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff"
+                ],
+                "summary": "Suspender rider",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/staff/profiles/{userId}/touch-contact": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff"
+                ],
+                "summary": "Marcar contacto de seguimiento",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Notas opcionales",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TouchContactRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/transactions": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna el historial paginado de movimientos de balance del rider.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Finance"
+                ],
+                "summary": "Historial de movimientos del rider",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Página (default 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Límite por página, máx 50 (default 20)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TransactionsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/withdrawal": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "El rider solicita retirar su balance acumulado. Requiere balance \u003e= +$15.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Finance"
+                ],
+                "summary": "Solicitar retiro de balance",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.WithdrawalResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "Balance insuficiente para retiro",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
                         "schema": {
                             "type": "string"
                         }
@@ -1021,6 +3250,75 @@ const docTemplate = `{
                 }
             }
         },
+        "/shops/search": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna tiendas dentro de 3 km que coincidan con la búsqueda en nombre de tienda, categoría o macro. matched_products incluye sabores y adiciones disponibles del item (details).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops"
+                ],
+                "summary": "Buscar tiendas por texto y proximidad",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Texto a buscar, ej: pizza",
+                        "name": "q",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Latitud del usuario",
+                        "name": "lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Longitud del usuario",
+                        "name": "lon",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Tiendas encontradas",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.SearchShopResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Parámetros inválidos o faltantes",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "get": {
                 "security": [
@@ -1069,7 +3367,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Actualiza los datos del usuario usando la información enviada en el cuerpo de la solicitud.",
+                "description": "Actualización parcial: solo se modifican los campos presentes en el cuerpo de la solicitud (name, sur_name, phone, email son todos opcionales), el resto de la cuenta queda intacto.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1312,7 +3610,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "address_id es requerido",
+                        "description": "address_id es requerido o inválido",
                         "schema": {
                             "type": "string"
                         }
@@ -1325,6 +3623,178 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/balance": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna el balance en USD del cliente y los últimos 10 movimientos. Créditos elegibles incluyen can_request_refund (ventana/monto/saldo; no exige Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold / processing / payout) y créditos balance_refund_restore incluyen refund_request_id para abrir el detalle.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Finance"
+                ],
+                "summary": "Balance del cliente",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.CustomerBalanceResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/balance/refund-requests": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Lista las solicitudes de devolución del cliente autenticado.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Finance"
+                ],
+                "summary": "Listar solicitudes de devolución",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.RefundRequestResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Solicita devolución en efectivo de la porción Pago Móvil de un crédito elegible (\u003e $1, ventana 15 min). Requiere Pago Móvil registrado.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Finance"
+                ],
+                "summary": "Solicitar devolución de crédito",
+                "parameters": [
+                    {
+                        "description": "transaction_id del crédito",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.CreateRefundRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.RefundRequestResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "Ya existe solicitud",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "No elegible / sin PM",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/balance/refund-requests/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Detalle de una solicitud (incluye proof_url cuando status=completed). Usar desde el historial con refund_request_id.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Finance"
+                ],
+                "summary": "Detalle de solicitud de devolución",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "UUID de la solicitud",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.RefundRequestResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrada",
                         "schema": {
                             "type": "string"
                         }
@@ -1394,9 +3864,204 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/users/pago-movil": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna el Pago Móvil registrado para devoluciones.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Finance"
+                ],
+                "summary": "Pago Móvil del cliente",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.PagoMovilResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "No registrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Registra o modifica el Pago Móvil destino del cliente para devoluciones.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Finance"
+                ],
+                "summary": "Crear o actualizar Pago Móvil",
+                "parameters": [
+                    {
+                        "description": "Datos Pago Móvil",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.UpsertPagoMovilRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.PagoMovilResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/staff/refund-requests": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "tags": [
+                    "Users Finance"
+                ],
+                "summary": "WebSocket de devoluciones de balance (Staff CRM)",
+                "responses": {
+                    "401": {
+                        "description": "Sesión no encontrada o inválida",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/staff/refund-requests/{id}/complete": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Registra el pago de una solicitud accepted: valida amount_usd, sube proof_image (base64) a Cloudinary y marca completed.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Finance"
+                ],
+                "summary": "Completar devolución (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID de la solicitud",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Monto pagado + imagen del comprobante",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.CompleteRefundRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.RefundRequestResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos / falta comprobante",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "Monto no coincide / estado inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "Encargalo_app-api_go_internal_auth_handler_request.SignInGoogleRequest": {
+            "type": "object",
+            "required": [
+                "id_token"
+            ],
+            "properties": {
+                "id_token": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJSUzI1NiIsIn..."
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_auth_handler_request.SignInRequest": {
             "type": "object",
             "required": [
@@ -1426,6 +4091,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Calle 123 # 45-67"
                 },
+                "instructions": {
+                    "type": "string",
+                    "example": "Piso 3, apto 301"
+                },
                 "latitude": {
                     "type": "number",
                     "example": 37.7749
@@ -1433,6 +4102,14 @@ const docTemplate = `{
                 "longitude": {
                     "type": "number",
                     "example": -74.08175
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_orders_domain_dtos.ConfirmCodeRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
                 }
             }
         },
@@ -1477,20 +4154,22 @@ const docTemplate = `{
         "Encargalo_app-api_go_internal_orders_domain_dtos.CreateOrder": {
             "type": "object",
             "required": [
-                "address",
-                "delivery_fee",
                 "id",
-                "items",
-                "method_payment",
-                "shop_id"
+                "method_payment"
             ],
             "properties": {
                 "address": {
                     "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.Address"
                 },
-                "delivery_fee": {
-                    "type": "integer",
-                    "example": 5000
+                "balance_amount_usd": {
+                    "description": "BalanceAmountUSD es opcional. 0 = no usar balance. Si \u003e 0 debe ser \u003e= 1\ny \u003c= min(balance, total). Si cubre el total no se requiere comprobante.",
+                    "type": "number",
+                    "example": 4
+                },
+                "expected_total_price": {
+                    "description": "ExpectedTotalPrice (legacy sin quote): total que el front mostró.\nCon quote_id se ignora. Sin quote_id sigue siendo obligatorio.",
+                    "type": "number",
+                    "example": 18.5
                 },
                 "id": {
                     "type": "string",
@@ -1505,18 +4184,18 @@ const docTemplate = `{
                 "method_payment": {
                     "type": "string",
                     "enum": [
-                        "EfectivoBs",
-                        "EfectivoDolar",
                         "PagoMovil"
                     ],
-                    "example": "EfectivoBs"
-                },
-                "pago_movil_data": {
-                    "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.PagoMovilData"
+                    "example": "PagoMovil"
                 },
                 "payment_proof_image": {
                     "type": "string",
                     "example": "data:image/jpeg;base64,/9j/4AAQ..."
+                },
+                "quote_id": {
+                    "description": "QuoteID congela el total en el servidor (POST /orders/quote). Si viene,\nshop/address/items/expected_total_price se toman del quote (pueden omitirse).",
+                    "type": "string",
+                    "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
                 },
                 "shop_id": {
                     "type": "string",
@@ -1527,7 +4206,38 @@ const docTemplate = `{
         "Encargalo_app-api_go_internal_orders_domain_dtos.CreateOrderResponse": {
             "type": "object",
             "properties": {
+                "is_launch_promo": {
+                    "type": "boolean"
+                },
                 "message": {
+                    "type": "string"
+                },
+                "promo_subsidy_amount": {
+                    "type": "number"
+                },
+                "total_price": {
+                    "type": "number"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_orders_domain_dtos.CreateQuote": {
+            "type": "object",
+            "required": [
+                "address",
+                "items",
+                "shop_id"
+            ],
+            "properties": {
+                "address": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.Address"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.CreateItemsOrder"
+                    }
+                },
+                "shop_id": {
                     "type": "string"
                 }
             }
@@ -1545,26 +4255,96 @@ const docTemplate = `{
                 }
             }
         },
-        "Encargalo_app-api_go_internal_orders_domain_dtos.PagoMovilData": {
+        "Encargalo_app-api_go_internal_orders_domain_dtos.OrderHistoryItem": {
             "type": "object",
-            "required": [
-                "banco",
-                "cedula",
-                "nombre",
-                "telefono"
-            ],
             "properties": {
-                "banco": {
+                "address": {
                     "type": "string"
                 },
-                "cedula": {
+                "created_at": {
                     "type": "string"
                 },
-                "nombre": {
+                "delivery_fee": {
+                    "type": "number"
+                },
+                "id": {
                     "type": "string"
                 },
-                "telefono": {
+                "method_payment": {
                     "type": "string"
+                },
+                "number": {
+                    "type": "integer"
+                },
+                "shop_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "total_price": {
+                    "type": "number"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_orders_domain_dtos.QuoteItemView": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer"
+                },
+                "item_id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "total_price": {
+                    "type": "integer"
+                },
+                "unit_price": {
+                    "type": "integer"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_orders_domain_dtos.QuoteResponse": {
+            "type": "object",
+            "properties": {
+                "bcv_rate": {
+                    "type": "number"
+                },
+                "delivery_fee_bs": {
+                    "type": "number"
+                },
+                "delivery_fee_usd": {
+                    "type": "number"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "is_launch_promo": {
+                    "type": "boolean"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.QuoteItemView"
+                    }
+                },
+                "promo_subsidy_amount": {
+                    "type": "number"
+                },
+                "proof_grace_until": {
+                    "type": "string"
+                },
+                "quote_id": {
+                    "type": "string"
+                },
+                "total_bs": {
+                    "type": "number"
+                },
+                "total_usd": {
+                    "type": "number"
                 }
             }
         },
@@ -1600,6 +4380,9 @@ const docTemplate = `{
         "Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse": {
             "type": "object",
             "properties": {
+                "available": {
+                    "type": "boolean"
+                },
                 "bs": {
                     "type": "number"
                 },
@@ -1614,9 +4397,52 @@ const docTemplate = `{
                 }
             }
         },
+        "Encargalo_app-api_go_internal_products_domain_dtos.AdditionSelectionResponse": {
+            "type": "object",
+            "properties": {
+                "max_selection": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "min_selection": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "selector_type": {
+                    "type": "string",
+                    "example": "multi_select"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.CategoryDetailsResponse": {
+            "type": "object",
+            "properties": {
+                "flavors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse"
+                    }
+                },
+                "selector_type": {
+                    "type": "string",
+                    "example": "multi_select"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_products_domain_dtos.CategoryResponse": {
             "type": "object",
             "properties": {
+                "availability_status": {
+                    "type": "string",
+                    "example": "active"
+                },
+                "can_order": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "details": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategoryDetailsResponse"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -1626,15 +4452,24 @@ const docTemplate = `{
                         "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse"
                     }
                 },
+                "macro_category_id": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string"
+                },
+                "schedules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleResponse"
+                    }
                 },
                 "shop_id": {
                     "type": "string"
                 }
             }
         },
-        "Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse": {
+        "Encargalo_app-api_go_internal_products_domain_dtos.CategorySummaryResponse": {
             "type": "object",
             "properties": {
                 "id": {
@@ -1645,12 +4480,99 @@ const docTemplate = `{
                 }
             }
         },
+        "Encargalo_app-api_go_internal_products_domain_dtos.FlavorInput": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "Con jamón ahumado"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Jamón"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse": {
+            "type": "object",
+            "properties": {
+                "available": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.FlavorSelectionResponse": {
+            "type": "object",
+            "properties": {
+                "max_selection": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "min_selection": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "selector_type": {
+                    "type": "string",
+                    "example": "single_select"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.ItemDetailsResponse": {
+            "type": "object",
+            "properties": {
+                "additions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse"
+                    }
+                },
+                "flavors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorResponse"
+                    }
+                },
+                "max_additions_selection": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "max_selection": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "min_selection": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse": {
             "type": "object",
             "properties": {
+                "addition_selection": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.AdditionSelectionResponse"
+                },
+                "availability_status": {
+                    "type": "string",
+                    "example": "active"
+                },
                 "bs": {
                     "type": "number",
                     "example": 7000
+                },
+                "can_order": {
+                    "type": "boolean",
+                    "example": true
                 },
                 "category_id": {
                     "type": "string",
@@ -1660,9 +4582,40 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Pizza mediana con jamón, piña y queso mozzarella sobre una base de salsa napolitana."
                 },
+                "details": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemDetailsResponse"
+                },
+                "effective_bs": {
+                    "type": "number",
+                    "example": 7000
+                },
+                "effective_ref": {
+                    "description": "EffectiveRef/EffectiveBs son el precio final que paga el cliente tras\naplicar, en orden, el descuento propio del negocio y luego la promo de\nlanzamiento (día 1). Ref/Bs siempre muestran el precio de catálogo\noriginal, sin descuentos, para no romper compatibilidad.",
+                    "type": "number",
+                    "example": 14
+                },
+                "effective_status": {
+                    "type": "string",
+                    "example": "active"
+                },
+                "flavor_selection": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorSelectionResponse"
+                },
+                "has_additions": {
+                    "type": "boolean",
+                    "example": false
+                },
                 "has_flavors": {
                     "type": "boolean",
                     "example": true
+                },
+                "has_launch_promo": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "has_shop_discount": {
+                    "type": "boolean",
+                    "example": false
                 },
                 "id": {
                     "type": "string",
@@ -1680,10 +4633,10 @@ const docTemplate = `{
                     "type": "number",
                     "example": 14
                 },
-                "rules": {
+                "schedules": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemRule"
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleResponse"
                     }
                 },
                 "score": {
@@ -1696,28 +4649,76 @@ const docTemplate = `{
                 }
             }
         },
-        "Encargalo_app-api_go_internal_products_domain_dtos.ItemRule": {
+        "Encargalo_app-api_go_internal_products_domain_dtos.MacroCategoryResponse": {
             "type": "object",
             "properties": {
                 "id": {
-                    "type": "string",
-                    "example": "71c62783-820d-46f8-957d-c8d02db97264"
+                    "type": "string"
                 },
-                "item_id": {
-                    "type": "string",
-                    "example": "7e441237-a818-42d2-bb54-9b8747198305"
+                "name": {
+                    "type": "string"
                 },
-                "rule_key": {
-                    "type": "string",
-                    "example": "max_flavors"
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.RegisterCategory": {
+            "type": "object",
+            "required": [
+                "macro_category_id",
+                "name"
+            ],
+            "properties": {
+                "flavors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.FlavorInput"
+                    }
                 },
-                "rule_value": {
-                    "type": "integer",
-                    "example": 2
+                "macro_category_id": {
+                    "type": "string",
+                    "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Desayuno"
+                },
+                "schedules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleInput"
+                    }
                 },
                 "selector_type": {
                     "type": "string",
-                    "example": "multi_select"
+                    "enum": [
+                        "none",
+                        "single_select",
+                        "multi_select"
+                    ],
+                    "example": "single_select"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.RegisterFlavor": {
+            "type": "object",
+            "required": [
+                "category_id",
+                "name"
+            ],
+            "properties": {
+                "category_id": {
+                    "type": "string",
+                    "example": "b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Con salsa picante casera"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Picante"
                 }
             }
         },
@@ -1731,6 +4732,15 @@ const docTemplate = `{
                 "price"
             ],
             "properties": {
+                "addition_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "[\"a1b2c3d4-e5f6-7890-abcd-ef1234567890\"]"
+                    ]
+                },
                 "category_id": {
                     "type": "string",
                     "example": "b01e3f7a-ff6e-45c0-842b-7f89ab48f9e2"
@@ -1752,6 +4762,14 @@ const docTemplate = `{
                     "type": "string",
                     "example": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEBLAEsAAD/4QC8RXhpZgAASUkqAAgAAAAGABIBAwABAAAAAQAAABoBBQABAAAAVgAAABsBBQABAAAAXgAAACgBAwABAAAAAgAAABMCAwABAAAA"
                 },
+                "max_selection": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "min_selection": {
+                    "type": "integer",
+                    "example": 1
+                },
                 "name": {
                     "type": "string",
                     "example": "Pizza Hawaiana Mediana"
@@ -1759,6 +4777,237 @@ const docTemplate = `{
                 "price": {
                     "type": "integer",
                     "example": 32000
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.RegisterItemDiscount": {
+            "type": "object",
+            "required": [
+                "discount_type",
+                "item_id",
+                "value"
+            ],
+            "properties": {
+                "discount_type": {
+                    "type": "string",
+                    "enum": [
+                        "percentage",
+                        "fixed"
+                    ],
+                    "example": "percentage"
+                },
+                "ends_at": {
+                    "type": "string",
+                    "example": "2026-07-18T00:00:00Z"
+                },
+                "item_id": {
+                    "type": "string",
+                    "example": "7e441237-a818-42d2-bb54-9b8747198305"
+                },
+                "starts_at": {
+                    "type": "string",
+                    "example": "2026-07-11T00:00:00Z"
+                },
+                "value": {
+                    "type": "number",
+                    "example": 20
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.ScheduleInput": {
+            "type": "object",
+            "required": [
+                "end_time",
+                "start_time"
+            ],
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "end_time": {
+                    "type": "string",
+                    "example": "11:00:00"
+                },
+                "start_time": {
+                    "type": "string",
+                    "example": "06:00:00"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.ScheduleResponse": {
+            "type": "object",
+            "properties": {
+                "day_of_week": {
+                    "type": "integer"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "end_time": {
+                    "type": "string",
+                    "example": "02:00:00"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "start_time": {
+                    "type": "string",
+                    "example": "18:00:00"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.TrendingEntry": {
+            "type": "object",
+            "properties": {
+                "product": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.TrendingProduct"
+                },
+                "shop": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.TrendingShop"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.TrendingProduct": {
+            "type": "object",
+            "properties": {
+                "bs": {
+                    "type": "number"
+                },
+                "category_id": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "effective_bs": {
+                    "type": "number"
+                },
+                "effective_ref": {
+                    "type": "number"
+                },
+                "has_launch_promo": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "image": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ref": {
+                    "type": "number"
+                },
+                "schedules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleResponse"
+                    }
+                },
+                "score": {
+                    "type": "number"
+                },
+                "sold": {
+                    "type": "integer"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.TrendingShop": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "delivery_fee": {
+                    "type": "number"
+                },
+                "delivery_fee_bs": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "logo": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "score": {
+                    "type": "number"
+                },
+                "tag": {
+                    "type": "string"
+                },
+                "time": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.UpdateCategory": {
+            "type": "object",
+            "required": [
+                "macro_category_id",
+                "name"
+            ],
+            "properties": {
+                "availability_status": {
+                    "type": "string",
+                    "enum": [
+                        "active",
+                        "hidden",
+                        "out_of_stock"
+                    ],
+                    "example": "active"
+                },
+                "macro_category_id": {
+                    "type": "string",
+                    "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Desayuno"
+                },
+                "schedules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ScheduleInput"
+                    }
+                },
+                "selector_type": {
+                    "type": "string",
+                    "enum": [
+                        "none",
+                        "single_select",
+                        "multi_select"
+                    ],
+                    "example": "single_select"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.UpdateFlavor": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "available": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Con salsa picante casera"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Picante"
                 }
             }
         },
@@ -1770,6 +5019,24 @@ const docTemplate = `{
                 "price"
             ],
             "properties": {
+                "addition_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "[\"a1b2c3d4-e5f6-7890-abcd-ef1234567890\"]"
+                    ]
+                },
+                "availability_status": {
+                    "type": "string",
+                    "enum": [
+                        "active",
+                        "hidden",
+                        "out_of_stock"
+                    ],
+                    "example": "active"
+                },
                 "description": {
                     "type": "string",
                     "example": "Pizza mediana con jamón, piña y queso mozzarella sobre una base de salsa napolitana."
@@ -1787,6 +5054,14 @@ const docTemplate = `{
                     "type": "string",
                     "example": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ..."
                 },
+                "max_selection": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "min_selection": {
+                    "type": "integer",
+                    "example": 1
+                },
                 "name": {
                     "type": "string",
                     "example": "Pizza Hawaiana Mediana"
@@ -1794,6 +5069,639 @@ const docTemplate = `{
                 "price": {
                     "type": "integer",
                     "example": 32000
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.UpdateItemDiscount": {
+            "type": "object",
+            "required": [
+                "discount_type",
+                "value"
+            ],
+            "properties": {
+                "discount_type": {
+                    "type": "string",
+                    "enum": [
+                        "percentage",
+                        "fixed"
+                    ],
+                    "example": "percentage"
+                },
+                "ends_at": {
+                    "type": "string",
+                    "example": "2026-07-18T00:00:00Z"
+                },
+                "is_active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "starts_at": {
+                    "type": "string",
+                    "example": "2026-07-11T00:00:00Z"
+                },
+                "value": {
+                    "type": "number",
+                    "example": 20
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.ActivateErrorResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "missing": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.BalanceResponse": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "number"
+                },
+                "transactions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO"
+                    }
+                },
+                "zone": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_models.Zone"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.CandidateResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "has_rider_role": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "profile": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse"
+                },
+                "sur_name": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.RiderCompletionDTO": {
+            "type": "object",
+            "properties": {
+                "filled_count": {
+                    "type": "integer"
+                },
+                "is_complete": {
+                    "type": "boolean"
+                },
+                "missing": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "required_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse": {
+            "type": "object",
+            "properties": {
+                "activated_at": {
+                    "type": "string"
+                },
+                "carnet_photo_url": {
+                    "type": "string"
+                },
+                "circulation_card_url": {
+                    "type": "string"
+                },
+                "completion": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderCompletionDTO"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "has_rider_role": {
+                    "type": "boolean"
+                },
+                "id_photo_url": {
+                    "type": "string"
+                },
+                "last_contacted_at": {
+                    "type": "string"
+                },
+                "license_photo_url": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "profile_photo_url": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "sur_name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                },
+                "vehicle_brand": {
+                    "type": "string"
+                },
+                "vehicle_color": {
+                    "type": "string"
+                },
+                "vehicle_model": {
+                    "type": "string"
+                },
+                "vehicle_photo_1_url": {
+                    "type": "string"
+                },
+                "vehicle_photo_2_url": {
+                    "type": "string"
+                },
+                "vehicle_photo_3_url": {
+                    "type": "string"
+                },
+                "vehicle_photo_4_url": {
+                    "type": "string"
+                },
+                "vehicle_plate": {
+                    "type": "string"
+                },
+                "vehicle_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.TouchContactRequest": {
+            "type": "object",
+            "properties": {
+                "notes": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "distance_km": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "movement_type": {
+                    "type": "string"
+                },
+                "order_id": {
+                    "type": "string"
+                },
+                "payment_method": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.TransactionsResponse": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "transactions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO"
+                    }
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.UpsertRiderProfileRequest": {
+            "type": "object",
+            "properties": {
+                "carnet_photo": {
+                    "type": "string"
+                },
+                "circulation_card": {
+                    "type": "string"
+                },
+                "id_photo": {
+                    "type": "string"
+                },
+                "license_photo": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "profile_photo": {
+                    "type": "string"
+                },
+                "vehicle_brand": {
+                    "type": "string"
+                },
+                "vehicle_color": {
+                    "type": "string"
+                },
+                "vehicle_model": {
+                    "type": "string"
+                },
+                "vehicle_photo_1": {
+                    "type": "string"
+                },
+                "vehicle_photo_2": {
+                    "type": "string"
+                },
+                "vehicle_photo_3": {
+                    "type": "string"
+                },
+                "vehicle_photo_4": {
+                    "type": "string"
+                },
+                "vehicle_plate": {
+                    "type": "string"
+                },
+                "vehicle_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.WithdrawalResponse": {
+            "type": "object",
+            "properties": {
+                "amount_withdrawn": {
+                    "type": "number"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_models.Zone": {
+            "type": "string",
+            "enum": [
+                "normal",
+                "withdrawal_available"
+            ],
+            "x-enum-varnames": [
+                "ZoneNormal",
+                "ZoneWithdrawalAvailable"
+            ]
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.CustomerMetrics": {
+            "type": "object",
+            "properties": {
+                "new_customers": {
+                    "type": "integer"
+                },
+                "returning_customers": {
+                    "type": "integer"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.CustomerStatsResponse": {
+            "type": "object",
+            "properties": {
+                "current": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.CustomerMetrics"
+                },
+                "period": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StatsPeriod"
+                },
+                "previous": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.CustomerMetrics"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.MatchedAddition": {
+            "type": "object",
+            "properties": {
+                "available": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ref": {
+                    "type": "number"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.MatchedAdditionSelection": {
+            "type": "object",
+            "properties": {
+                "max_selection": {
+                    "type": "integer"
+                },
+                "min_selection": {
+                    "type": "integer"
+                },
+                "selector_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.MatchedFlavor": {
+            "type": "object",
+            "properties": {
+                "available": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.MatchedFlavorSelection": {
+            "type": "object",
+            "properties": {
+                "max_selection": {
+                    "type": "integer"
+                },
+                "min_selection": {
+                    "type": "integer"
+                },
+                "selector_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.MatchedItemDetails": {
+            "type": "object",
+            "properties": {
+                "additions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedAddition"
+                    }
+                },
+                "flavors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedFlavor"
+                    }
+                },
+                "max_additions_selection": {
+                    "type": "integer"
+                },
+                "max_selection": {
+                    "type": "integer"
+                },
+                "min_selection": {
+                    "type": "integer"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.MatchedProductItem": {
+            "type": "object",
+            "properties": {
+                "addition_selection": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedAdditionSelection"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "details": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedItemDetails"
+                },
+                "flavor_selection": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedFlavorSelection"
+                },
+                "has_additions": {
+                    "type": "boolean"
+                },
+                "has_flavors": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "image": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ref": {
+                    "type": "number"
+                },
+                "schedules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedSchedule"
+                    }
+                },
+                "score": {
+                    "type": "number"
+                },
+                "shop_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.MatchedSchedule": {
+            "type": "object",
+            "properties": {
+                "day_of_week": {
+                    "type": "integer"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "start_time": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.PeriodMetrics": {
+            "type": "object",
+            "properties": {
+                "orders_completed": {
+                    "type": "integer"
+                },
+                "orders_rejected": {
+                    "type": "integer"
+                },
+                "rejection_rate": {
+                    "type": "number"
+                },
+                "total_earned": {
+                    "type": "number"
+                },
+                "total_lost_rejections": {
+                    "type": "number"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.SalesDataPoint": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "earned": {
+                    "type": "number"
+                },
+                "lost": {
+                    "type": "number"
+                },
+                "orders_completed": {
+                    "type": "integer"
+                },
+                "orders_rejected": {
+                    "type": "integer"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.SalesOverTimeResponse": {
+            "type": "object",
+            "properties": {
+                "current": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.SalesDataPoint"
+                    }
+                },
+                "granularity": {
+                    "type": "string"
+                },
+                "next_cursor": {
+                    "type": "string"
+                },
+                "period": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StatsPeriod"
+                },
+                "previous": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.SalesDataPoint"
+                    }
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.SearchShopResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "banner": {
+                    "type": "string"
+                },
+                "delivery_fee": {
+                    "type": "number"
+                },
+                "delivery_fee_bs": {
+                    "type": "number"
+                },
+                "has_launch_promo": {
+                    "description": "HasLaunchPromo indica si el negocio está dentro de su ventana de\nlanzamiento (día 1): los productos se muestran con 50% de descuento.",
+                    "type": "boolean"
+                },
+                "home_phone": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "logo": {
+                    "type": "string"
+                },
+                "longitude": {
+                    "type": "number"
+                },
+                "matched_products": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.MatchedProductItem"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "opened": {
+                    "type": "boolean"
+                },
+                "score": {
+                    "type": "number"
+                },
+                "tag": {
+                    "type": "string"
+                },
+                "time": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.ShopBalanceResponse": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "number"
+                },
+                "transactions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionDTO"
+                    }
                 }
             }
         },
@@ -1807,7 +5715,14 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "delivery_fee": {
-                    "type": "integer"
+                    "type": "number"
+                },
+                "delivery_fee_bs": {
+                    "type": "number"
+                },
+                "has_launch_promo": {
+                    "description": "HasLaunchPromo indica si el negocio está dentro de su ventana de\nlanzamiento (día 1): los productos se muestran con 50% de descuento.",
+                    "type": "boolean"
                 },
                 "home_phone": {
                     "type": "string"
@@ -1841,6 +5756,119 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionDTO": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "movement_type": {
+                    "type": "string"
+                },
+                "order_id": {
+                    "type": "string"
+                },
+                "payment_method": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionsResponse": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "transactions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionDTO"
+                    }
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.StatsPeriod": {
+            "type": "string",
+            "enum": [
+                "day",
+                "week",
+                "month"
+            ],
+            "x-enum-varnames": [
+                "PeriodDay",
+                "PeriodWeek",
+                "PeriodMonth"
+            ]
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.StatsSummaryResponse": {
+            "type": "object",
+            "properties": {
+                "current": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.PeriodMetrics"
+                },
+                "current_balance": {
+                    "type": "number"
+                },
+                "period": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StatsPeriod"
+                },
+                "previous": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.PeriodMetrics"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.TopProductItem": {
+            "type": "object",
+            "properties": {
+                "image": {
+                    "type": "string"
+                },
+                "item_id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "quantity_sold": {
+                    "type": "integer"
+                },
+                "total_revenue": {
+                    "type": "number"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.TopProductsResponse": {
+            "type": "object",
+            "properties": {
+                "current": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.TopProductItem"
+                    }
+                },
+                "period": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StatsPeriod"
+                },
+                "previous": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.TopProductItem"
+                    }
                 }
             }
         },
@@ -1879,6 +5907,46 @@ const docTemplate = `{
                 "type": {
                     "type": "string",
                     "example": "Casa"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_users_domain_dto.CompleteRefundRequest": {
+            "type": "object",
+            "required": [
+                "amount_usd",
+                "proof_image"
+            ],
+            "properties": {
+                "amount_usd": {
+                    "type": "number"
+                },
+                "proof_image": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_users_domain_dto.CreateRefundRequest": {
+            "type": "object",
+            "required": [
+                "transaction_id"
+            ],
+            "properties": {
+                "transaction_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_users_domain_dto.CustomerBalanceResponse": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "number"
+                },
+                "transactions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.CustomerTransactionItem"
+                    }
                 }
             }
         },
@@ -1922,10 +5990,108 @@ const docTemplate = `{
                 }
             }
         },
+        "Encargalo_app-api_go_internal_users_domain_dto.CustomerTransactionItem": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "can_request_refund": {
+                    "type": "boolean"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "movement_type": {
+                    "type": "string"
+                },
+                "order_id": {
+                    "type": "string"
+                },
+                "refund_eligible_until": {
+                    "type": "string"
+                },
+                "refund_request_id": {
+                    "type": "string"
+                },
+                "refundable_pm_usd": {
+                    "type": "number"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_users_domain_dto.PagoMovilResponse": {
+            "type": "object",
+            "properties": {
+                "bank_code": {
+                    "type": "string"
+                },
+                "national_id": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_users_domain_dto.RefundRequestResponse": {
+            "type": "object",
+            "properties": {
+                "accepted_at": {
+                    "type": "string"
+                },
+                "amount_usd": {
+                    "type": "number"
+                },
+                "completed_at": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "order_id": {
+                    "type": "string"
+                },
+                "pm_bank_code": {
+                    "type": "string"
+                },
+                "pm_national_id": {
+                    "type": "string"
+                },
+                "pm_phone": {
+                    "type": "string"
+                },
+                "proof_url": {
+                    "type": "string"
+                },
+                "rejection_reason": {
+                    "type": "string"
+                },
+                "resolved_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "transaction_id": {
+                    "type": "string"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_users_domain_dto.RegisterCustomer": {
             "type": "object",
             "required": [
-                "birthday_date",
                 "name",
                 "password",
                 "phone",
@@ -1980,11 +6146,6 @@ const docTemplate = `{
         },
         "Encargalo_app-api_go_internal_users_domain_dto.UpdateCustomer": {
             "type": "object",
-            "required": [
-                "name",
-                "phone",
-                "sur_name"
-            ],
             "properties": {
                 "email": {
                     "type": "string",
@@ -2016,6 +6177,25 @@ const docTemplate = `{
                     "type": "string",
                     "minLength": 8,
                     "example": "claveSegura123"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_users_domain_dto.UpsertPagoMovilRequest": {
+            "type": "object",
+            "required": [
+                "bank_code",
+                "national_id",
+                "phone"
+            ],
+            "properties": {
+                "bank_code": {
+                    "type": "string"
+                },
+                "national_id": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
                 }
             }
         }

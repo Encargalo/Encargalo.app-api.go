@@ -2,6 +2,8 @@ package redis
 
 import (
 	"context"
+	"net/url"
+	"strconv"
 
 	"Encargalo.app-api.go/internal/shared/config"
 	"github.com/andresxlp/redsumer/pkg/client"
@@ -10,16 +12,22 @@ import (
 )
 
 func NewProducerRedisStreamConnection(config config.Config) *producer.Producer {
-	configRedis := config.RedisStream
+	u, err := url.Parse(config.Redis.URL)
+	if err != nil {
+		log.Fatalf("Error parsing redis URL: %v", err)
+	}
+	port, _ := strconv.Atoi(u.Port())
+	password, _ := u.User.Password()
+
 	redisArgs := client.RedisArgs{
-		RedisHost:  configRedis.Host,
-		RedisPort:  configRedis.Port,
-		Db:         1,
-		ClientName: configRedis.User,
-		Password:   configRedis.Password,
+		RedisHost:  u.Hostname(),
+		RedisPort:  port,
+		Db:         config.RedisStream.Db,
+		ClientName: u.User.Username(),
+		Password:   password,
 	}
 
-	producerArgs := producer.ProducerArgs{StreamName: configRedis.StreamName}
+	producerArgs := producer.ProducerArgs{StreamName: config.RedisStream.StreamName}
 
 	ctx := context.Background()
 	newProducer, err := producer.NewProducer(ctx, redisArgs, producerArgs)

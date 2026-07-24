@@ -20,7 +20,7 @@ type RegisterCustomer struct {
 	SurName      string `json:"sur_name" validate:"required,min=3" example:"Ramírez"`
 	Phone        string `json:"phone" validate:"required,e164" example:"+573001112233"`
 	Email        string `json:"email" example:"carlos.ramirez@example.com"`
-	BirthdayDate string `json:"birthday_date" validate:"required,datetime=2006-01-02" example:"1990-05-20"`
+	BirthdayDate string `json:"birthday_date" validate:"omitempty,datetime=2006-01-02" example:"1990-05-20"`
 	Password     string `json:"password" validate:"required,min=8" example:"claveSegura123"`
 }
 
@@ -32,7 +32,14 @@ func (c *RegisterCustomer) Validate() error {
 		return err
 	}
 
+	if c.BirthdayDate == "" {
+		return nil
+	}
+
 	birthDate, err := time.Parse("2006-01-02", c.BirthdayDate)
+	if err != nil {
+		return err
+	}
 	hoy := time.Now()
 	edad := hoy.Year() - birthDate.Year()
 	if hoy.YearDay() < birthDate.YearDay() {
@@ -43,14 +50,25 @@ func (c *RegisterCustomer) Validate() error {
 		return errors.New("the age requirement is not met")
 	}
 
-	return err
+	return nil
 }
 
+// RegisterCustomerFromGoogle registra un customer a partir de un login de
+// Google: no incluye phone ni password porque Google ya verificó la
+// propiedad del email; el teléfono se completa más adelante desde el perfil.
+type RegisterCustomerFromGoogle struct {
+	Name    string `example:"Carlos"`
+	SurName string `example:"Ramírez"`
+	Email   string `validate:"required,email" example:"carlos.ramirez@example.com"`
+}
+
+// UpdateCustomer es una actualización parcial: solo los campos presentes en
+// el body se modifican, el resto de la cuenta queda intacto.
 type UpdateCustomer struct {
-	Name    string `json:"name" validate:"required,min=3" example:"Carlos"`
-	SurName string `json:"sur_name" validate:"required,min=3" example:"Ramírez"`
-	Phone   string `json:"phone" validate:"required,e164" example:"+573001112233"`
-	Email   string `json:"email" example:"carlos.ramirez@example.com"`
+	Name    *string `json:"name" validate:"omitempty,min=3" example:"Carlos"`
+	SurName *string `json:"sur_name" validate:"omitempty,min=3" example:"Ramírez"`
+	Phone   *string `json:"phone" validate:"omitempty,e164" example:"+573001112233"`
+	Email   *string `json:"email" validate:"omitempty,email" example:"carlos.ramirez@example.com"`
 }
 
 func (c *UpdateCustomer) Validate() error {

@@ -1,0 +1,26 @@
+$kind: http-request
+description: |-
+  WebSocket exclusivo para el rol Rider. Al conectar el rider entra al pool de disponibles y recibe sus órdenes activas con `pickup_code`.
+
+  NOTA: Para probar, crea una request de tipo WebSocket con la URL: ws://localhost:3000/orders/rider
+
+  Mensajes entrantes:
+  - accept_order: {"type":"accept_order","order_id":"<uuid>"}
+
+  Mensajes salientes (new_order, order_accepted, order_update) incluyen:
+  - `order`: sin address/latitude/longitude/total_price/total_price_bs/details/delivery_code (delivery_code lo muestra el customer al rider en persona, nunca se envía al rider por este canal). `items[]` y `pickup_code` solo vienen en order_accepted y order_update; en new_order NO se incluyen (el rider aún no aceptó la orden)
+  - `shop`: info completa del local (name, logo, phone, address, latitude, longitude)
+  - `customer`: en new_order solo address/latitude/longitude/instructions; en order_accepted y order_update además incluye name, last_name y phone
+
+  - {"type":"connected"}
+  - {"type":"new_order","order":{...},"shop":{...},"customer":{...}} — orden disponible (sin códigos, sin items, sin datos del customer)
+  - {"type":"order_accepted","order":{...},"shop":{...},"customer":{...}} — asignación exitosa (con pickup_code e items)
+  - {"type":"order_taken","order_id":"<uuid>"} — otro rider se adelantó
+  - {"type":"order_update","order":{...},"shop":{...},"customer":{...}} — actualización de orden asignada (con pickup_code e items)
+  - {"type":"error","message":"..."}
+url: "{{base_url}}/orders/rider"
+method: GET
+headers:
+  Connection: Upgrade
+  Upgrade: websocket
+order: 10000

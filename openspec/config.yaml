@@ -1,0 +1,61 @@
+schema: spec-driven
+
+context: |
+  Tech stack: Go 1.26, Echo v4 framework
+  Architecture: Hexagonal (Ports & Adapters)
+  ORM: bun v1 + goose migrations
+  DI: uber/dig
+  Auth: JWT en cookie `encargalo-session`
+  WebSocket: gorilla/websocket (gestión de pedidos en tiempo real)
+  Cache/Streams: Redis (redsumer, Redis Streams)
+  Storage: Cloudinary (imágenes)
+  Testing: mockery (generación de mocks), buildhttptest (handler tests)
+
+  Bounded Contexts:
+  - auth: Autenticación, sesiones, roles
+  - users: Gestión de usuarios/clientes
+  - shops: Tiendas y búsqueda por categoría/proximidad
+  - products: Productos y adiciones del catálogo
+  - orders: Ciclo de vida completo de pedidos
+  - employee: Empleados de tienda
+
+  Roles disponibles: Customer, OrderManager, Owner, Rider
+
+  Lenguaje ubicuo del dominio (Product Language):
+  - Pedido (Order): solicitud de compra creada por un Customer
+  - Tienda (Shop): local comercial que atiende pedidos en batches
+  - Batch: agrupación de órdenes de un mismo período de atención de una tienda
+  - Rider: mensajero que transporta el pedido al cliente
+  - Código de recogida (Pickup code): código de 6 dígitos que el rider presenta al local para confirmar que llegó
+  - Código de entrega (Delivery code): código de 6 dígitos que el cliente presenta al rider para confirmar la entrega
+  - Estado del pedido (Order Status): Pending → Accepted → In Preparation → Ready → On The Way → Completed | Cancelled
+
+  Convenciones de implementación:
+  - Rutas HTTP bajo el prefijo /api/v1/
+  - Errores: sentinel errors en internal/shared/errcustom/ mapeados a HTTP en errcustom/http.go
+  - Todo handler nuevo requiere anotaciones Swagger godoc completas
+  - Todo endpoint nuevo requiere actualización del Postman collection del dominio
+
+rules:
+  specs:
+    - Escribir specs en español (es-VE) usando el lenguaje ubicuo del dominio
+    - Todo endpoint debe especificar: método HTTP, path completo, rol requerido, shape de request y response
+    - Separar claramente comandos (escritura) de queries (lectura)
+    - Los invariantes de negocio y condiciones de guarda son requisitos explícitos, no notas al margen
+    - Si hay cambio en BD, especificarlo como requisito de migración separado con los campos afectados
+    - Los eventos Redis Stream (transición a "On The Way") son requisitos explícitos cuando aplican
+    - La comisión de crédito (10% de totalPrice - deliveryFee) es un requisito explícito para "On The Way"
+  tasks:
+    - Ordenar tareas por capa hexagonal: domain/models → domain/dtos → domain/ports → app → repo → migration → handler → router → DI → tests → docs
+    - Regenerar mocks con `mockery` es siempre una tarea cuando cambian los ports
+    - La migración de BD es una tarea separada que precede la implementación del repo
+    - Las tareas de documentación (Swagger `swag init` + Postman) son siempre las últimas
+    - Incluir `go build -v ./...` como tarea de validación post-implementación
+    - Incluir `go test ./...` como tarea de validación antes de docs
+  design:
+    - Seguir el orden hexagonal: domain/models → domain/ports → app → repo → handler → router
+    - Documentar todos los nuevos providers que deben registrarse en cmd/server/providers/di.go
+    - Documentar si la transición de estado "On The Way" activa eventos Redis Stream o comisión de crédito
+    - Los nuevos roles deben agregarse en internal/auth/domain/models/role.go
+    - La migración debe nombrarse siguiendo la secuencia `000NN_<descripcion>.sql`
+    - Los nuevos errores sentinel van en internal/shared/errcustom/errors.go + su mapeo HTTP en http.go

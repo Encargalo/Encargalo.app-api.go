@@ -6,11 +6,11 @@ import (
 	"errors"
 	"log/slog"
 
+	"Encargalo.app-api.go/internal/pkg/logs"
+	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/users/domain/dto"
 	"Encargalo.app-api.go/internal/users/domain/models"
 	"Encargalo.app-api.go/internal/users/domain/ports"
-	"Encargalo.app-api.go/internal/pkg/logs"
-	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
@@ -66,9 +66,39 @@ func (c *customersRepo) RegisterCustomer(ctx context.Context, customer *models.A
 	return nil
 }
 
+// RegisterCustomerFromGoogle inserta una cuenta cuya identidad ya fue
+// verificada por Google: a diferencia de RegisterCustomer, no crea fila en
+// activate_account (no hace falta OTP) porque el email ya está confirmado.
+func (c *customersRepo) RegisterCustomerFromGoogle(ctx context.Context, customer *models.Account) error {
+
+	if err := c.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+
+		if _, err := tx.NewInsert().Model(customer).Exec(ctx); err != nil {
+			slog.Error("error al insertar el customer de google", "error", err)
+			c.slackLogs.Slack(err)
+			return errcustom.ErrUnexpectedError
+		}
+
+		if _, err := tx.NewRaw(`
+			INSERT INTO users.user_roles (user_id, role_id)
+			SELECT ?, id FROM users.roles WHERE name = 'Customer'
+		`, customer.ID).Exec(ctx); err != nil {
+			slog.Error("error al asignar rol Customer", "error", err)
+			c.slackLogs.Slack(err)
+			return errcustom.ErrUnexpectedError
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c *customersRepo) SearchCustomerBy(ctx context.Context, criteria dto.SearchCustomerBy) (*models.Account, error) {
 
-	if criteria.ID == uuid.Nil && criteria.Phone == "" {
+	if criteria.ID == uuid.Nil && criteria.Phone == "" && criteria.Email == "" {
 		return nil, errcustom.ErrNotFound
 	}
 
@@ -87,6 +117,14 @@ func (c *customersRepo) SearchCustomerBy(ctx context.Context, criteria dto.Searc
 				sq.WhereOr("phone = ?", criteria.Phone)
 			} else {
 				sq.Where("phone = ?", criteria.Phone)
+			}
+		}
+
+		if criteria.Email != "" {
+			if criteria.ID != uuid.Nil || criteria.Phone != "" {
+				sq.WhereOr("LOWER(email) = LOWER(?)", criteria.Email)
+			} else {
+				sq.Where("LOWER(email) = LOWER(?)", criteria.Email)
 			}
 		}
 		return sq
@@ -196,7 +234,7 @@ func (c *customersRepo) SearchCustomerProfileByID(ctx context.Context, userID uu
 	}
 
 	result.Account.ShopID = result.ShopID
-	result.Account.Role = result.RoleName
+	result.Role = result.RoleName
 
 	if result.ShopID != (uuid.UUID{}) {
 		type shopRow struct {
@@ -210,7 +248,7 @@ func (c *customersRepo) SearchCustomerProfileByID(ctx context.Context, userID uu
 			ColumnExpr("id, name, opened").
 			Where("id = ?", result.ShopID).
 			Scan(ctx, &shop); err == nil {
-			result.Account.Shop = &dto.ShopInfo{
+			result.Shop = &dto.ShopInfo{
 				ID:     shop.ID,
 				Name:   shop.Name,
 				Opened: shop.Opened,

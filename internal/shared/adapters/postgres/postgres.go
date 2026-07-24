@@ -27,18 +27,8 @@ func (p *pgOptions) getDNS() string {
 	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", p.user, p.password, p.host, p.port, p.database)
 }
 
-func NewPostgresConnection(config config.Config) *bun.DB {
-
-	configPostgres := config.Postgres
-	dns := pgOptions{
-		host:     configPostgres.Host,
-		port:     configPostgres.Port,
-		user:     configPostgres.User,
-		password: configPostgres.Password,
-		database: configPostgres.Database,
-	}
-
-	sqldb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(dns.getDNS())))
+func connect(opts pgOptions) *bun.DB {
+	sqldb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(opts.getDNS())))
 
 	if err := sqldb.Ping(); err != nil {
 		log.Fatalf("Error al hacer ping a la base de datos: %v", err)
@@ -48,11 +38,33 @@ func NewPostgresConnection(config config.Config) *bun.DB {
 	db.WithQueryHook(bundebug.NewQueryHook(
 		bundebug.WithVerbose(true),
 	))
-
-	migrate(sqldb)
-
 	return db
+}
 
+// NewPostgresConnection abre OLTP y aplica migraciones goose (API).
+func NewPostgresConnection(config config.Config) *bun.DB {
+	configPostgres := config.Postgres
+	db := connect(pgOptions{
+		host:     configPostgres.Host,
+		port:     configPostgres.Port,
+		user:     configPostgres.User,
+		password: configPostgres.Password,
+		database: configPostgres.Database,
+	})
+	migrate(db.DB)
+	return db
+}
+
+// NewOLTPConnection abre OLTP sin correr migraciones (ETL: solo lectura).
+func NewOLTPConnection(cfg config.ETLConfig) *bun.DB {
+	p := cfg.Postgres
+	return connect(pgOptions{
+		host:     p.Host,
+		port:     p.Port,
+		user:     p.User,
+		password: p.Password,
+		database: p.Database,
+	})
 }
 
 //go:embed migrations/*.sql

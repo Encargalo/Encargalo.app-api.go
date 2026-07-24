@@ -36,17 +36,129 @@ func (_m *ProductsRepo) AddSoldItem(ctx context.Context, item models.DataProduce
 	return r0
 }
 
-// DeleteItemFlavors provides a mock function with given fields: ctx, itemID
-func (_m *ProductsRepo) DeleteItemFlavors(ctx context.Context, itemID uuid.UUID) error {
-	ret := _m.Called(ctx, itemID)
+// DeleteFlavor provides a mock function with given fields: ctx, flavor
+func (_m *ProductsRepo) DeleteFlavor(ctx context.Context, flavor models.CatalogFlavor) error {
+	ret := _m.Called(ctx, flavor)
 
 	if len(ret) == 0 {
-		panic("no return value specified for DeleteItemFlavors")
+		panic("no return value specified for DeleteFlavor")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, models.CatalogFlavor) error); ok {
+		r0 = rf(ctx, flavor)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// DeleteItemDiscount provides a mock function with given fields: ctx, discount
+func (_m *ProductsRepo) DeleteItemDiscount(ctx context.Context, discount *models.ItemDiscount) error {
+	ret := _m.Called(ctx, discount)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteItemDiscount")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *models.ItemDiscount) error); ok {
+		r0 = rf(ctx, discount)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// GetTrendingByCoords provides a mock function with given fields: ctx, coords
+func (_m *ProductsRepo) GetTrendingByCoords(ctx context.Context, coords dtos.TrendingCoords) (dtos.TrendingResponse, error) {
+	ret := _m.Called(ctx, coords)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetTrendingByCoords")
+	}
+
+	var r0 dtos.TrendingResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, dtos.TrendingCoords) (dtos.TrendingResponse, error)); ok {
+		return rf(ctx, coords)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, dtos.TrendingCoords) dtos.TrendingResponse); ok {
+		r0 = rf(ctx, coords)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(dtos.TrendingResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, dtos.TrendingCoords) error); ok {
+		r1 = rf(ctx, coords)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// IsAdditionItem provides a mock function with given fields: ctx, itemID
+func (_m *ProductsRepo) IsAdditionItem(ctx context.Context, itemID uuid.UUID) (bool, error) {
+	ret := _m.Called(ctx, itemID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsAdditionItem")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (bool, error)); ok {
+		return rf(ctx, itemID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) bool); ok {
 		r0 = rf(ctx, itemID)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, itemID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RegisterCategory provides a mock function with given fields: ctx, category
+func (_m *ProductsRepo) RegisterCategory(ctx context.Context, category *models.Category) error {
+	ret := _m.Called(ctx, category)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RegisterCategory")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *models.Category) error); ok {
+		r0 = rf(ctx, category)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// RegisterFlavor provides a mock function with given fields: ctx, flavor
+func (_m *ProductsRepo) RegisterFlavor(ctx context.Context, flavor models.CatalogFlavor) error {
+	ret := _m.Called(ctx, flavor)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RegisterFlavor")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, models.CatalogFlavor) error); ok {
+		r0 = rf(ctx, flavor)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -72,17 +184,17 @@ func (_m *ProductsRepo) RegisterItem(_a0 context.Context, _a1 *models.Item) erro
 	return r0
 }
 
-// RegisterItemFlavors provides a mock function with given fields: ctx, itemID, flavorIDs
-func (_m *ProductsRepo) RegisterItemFlavors(ctx context.Context, itemID uuid.UUID, flavorIDs []uuid.UUID) error {
-	ret := _m.Called(ctx, itemID, flavorIDs)
+// RegisterItemDiscount provides a mock function with given fields: ctx, discount
+func (_m *ProductsRepo) RegisterItemDiscount(ctx context.Context, discount *models.ItemDiscount) error {
+	ret := _m.Called(ctx, discount)
 
 	if len(ret) == 0 {
-		panic("no return value specified for RegisterItemFlavors")
+		panic("no return value specified for RegisterItemDiscount")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, []uuid.UUID) error); ok {
-		r0 = rf(ctx, itemID, flavorIDs)
+	if rf, ok := ret.Get(0).(func(context.Context, *models.ItemDiscount) error); ok {
+		r0 = rf(ctx, discount)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -90,21 +202,69 @@ func (_m *ProductsRepo) RegisterItemFlavors(ctx context.Context, itemID uuid.UUI
 	return r0
 }
 
-// SearchAdditionsByShopID provides a mock function with given fields: ctx, categoryID
-func (_m *ProductsRepo) SearchAdditionsByShopID(ctx context.Context, categoryID uuid.UUID) (dtos.AdditionsResponse, error) {
-	ret := _m.Called(ctx, categoryID)
+// ReplaceCategorySchedules provides a mock function with given fields: ctx, categoryID, shopID, schedules
+func (_m *ProductsRepo) ReplaceCategorySchedules(ctx context.Context, categoryID uuid.UUID, shopID uuid.UUID, schedules []models.Schedule) error {
+	ret := _m.Called(ctx, categoryID, shopID, schedules)
 
 	if len(ret) == 0 {
-		panic("no return value specified for SearchAdditionsByShopID")
+		panic("no return value specified for ReplaceCategorySchedules")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, []models.Schedule) error); ok {
+		r0 = rf(ctx, categoryID, shopID, schedules)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SearchAdditionItemsByIDs provides a mock function with given fields: ctx, shopID, additionIDs
+func (_m *ProductsRepo) SearchAdditionItemsByIDs(ctx context.Context, shopID uuid.UUID, additionIDs []uuid.UUID) (models.Items, error) {
+	ret := _m.Called(ctx, shopID, additionIDs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SearchAdditionItemsByIDs")
+	}
+
+	var r0 models.Items
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, []uuid.UUID) (models.Items, error)); ok {
+		return rf(ctx, shopID, additionIDs)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, []uuid.UUID) models.Items); ok {
+		r0 = rf(ctx, shopID, additionIDs)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(models.Items)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, []uuid.UUID) error); ok {
+		r1 = rf(ctx, shopID, additionIDs)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SearchAdditionsByItemID provides a mock function with given fields: ctx, itemID
+func (_m *ProductsRepo) SearchAdditionsByItemID(ctx context.Context, itemID uuid.UUID) (dtos.AdditionsResponse, error) {
+	ret := _m.Called(ctx, itemID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SearchAdditionsByItemID")
 	}
 
 	var r0 dtos.AdditionsResponse
 	var r1 error
 	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (dtos.AdditionsResponse, error)); ok {
-		return rf(ctx, categoryID)
+		return rf(ctx, itemID)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) dtos.AdditionsResponse); ok {
-		r0 = rf(ctx, categoryID)
+		r0 = rf(ctx, itemID)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(dtos.AdditionsResponse)
@@ -112,7 +272,37 @@ func (_m *ProductsRepo) SearchAdditionsByShopID(ctx context.Context, categoryID 
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
-		r1 = rf(ctx, categoryID)
+		r1 = rf(ctx, itemID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SearchAdditionsCatalogByShopID provides a mock function with given fields: ctx, shopID
+func (_m *ProductsRepo) SearchAdditionsCatalogByShopID(ctx context.Context, shopID uuid.UUID) (dtos.AdditionsResponse, error) {
+	ret := _m.Called(ctx, shopID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SearchAdditionsCatalogByShopID")
+	}
+
+	var r0 dtos.AdditionsResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (dtos.AdditionsResponse, error)); ok {
+		return rf(ctx, shopID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) dtos.AdditionsResponse); ok {
+		r0 = rf(ctx, shopID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(dtos.AdditionsResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, shopID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -143,6 +333,156 @@ func (_m *ProductsRepo) SearchBestSellersByShopID(ctx context.Context, shopID uu
 
 	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
 		r1 = rf(ctx, shopID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SearchCategoriesByIDs provides a mock function with given fields: ctx, shopID, categoryIDs
+func (_m *ProductsRepo) SearchCategoriesByIDs(ctx context.Context, shopID uuid.UUID, categoryIDs []uuid.UUID) (models.Categories, error) {
+	ret := _m.Called(ctx, shopID, categoryIDs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SearchCategoriesByIDs")
+	}
+
+	var r0 models.Categories
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, []uuid.UUID) (models.Categories, error)); ok {
+		return rf(ctx, shopID, categoryIDs)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, []uuid.UUID) models.Categories); ok {
+		r0 = rf(ctx, shopID, categoryIDs)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(models.Categories)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, []uuid.UUID) error); ok {
+		r1 = rf(ctx, shopID, categoryIDs)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SearchCategoriesByShopID provides a mock function with given fields: ctx, shopID
+func (_m *ProductsRepo) SearchCategoriesByShopID(ctx context.Context, shopID uuid.UUID) (models.Categories, error) {
+	ret := _m.Called(ctx, shopID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SearchCategoriesByShopID")
+	}
+
+	var r0 models.Categories
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (models.Categories, error)); ok {
+		return rf(ctx, shopID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) models.Categories); ok {
+		r0 = rf(ctx, shopID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(models.Categories)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, shopID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SearchCategoryByID provides a mock function with given fields: ctx, categoryID
+func (_m *ProductsRepo) SearchCategoryByID(ctx context.Context, categoryID uuid.UUID) (*models.Category, error) {
+	ret := _m.Called(ctx, categoryID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SearchCategoryByID")
+	}
+
+	var r0 *models.Category
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*models.Category, error)); ok {
+		return rf(ctx, categoryID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) *models.Category); ok {
+		r0 = rf(ctx, categoryID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.Category)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, categoryID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SearchCategorySummariesByShopID provides a mock function with given fields: ctx, shopID, filter
+func (_m *ProductsRepo) SearchCategorySummariesByShopID(ctx context.Context, shopID uuid.UUID, filter string) (models.Categories, error) {
+	ret := _m.Called(ctx, shopID, filter)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SearchCategorySummariesByShopID")
+	}
+
+	var r0 models.Categories
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) (models.Categories, error)); ok {
+		return rf(ctx, shopID, filter)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) models.Categories); ok {
+		r0 = rf(ctx, shopID, filter)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(models.Categories)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, string) error); ok {
+		r1 = rf(ctx, shopID, filter)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SearchFlavorByID provides a mock function with given fields: ctx, flavorID
+func (_m *ProductsRepo) SearchFlavorByID(ctx context.Context, flavorID uuid.UUID) (*models.CatalogFlavor, error) {
+	ret := _m.Called(ctx, flavorID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SearchFlavorByID")
+	}
+
+	var r0 *models.CatalogFlavor
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*models.CatalogFlavor, error)); ok {
+		return rf(ctx, flavorID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) *models.CatalogFlavor); ok {
+		r0 = rf(ctx, flavorID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.CatalogFlavor)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, flavorID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -240,9 +580,69 @@ func (_m *ProductsRepo) SearchItemByID(_a0 context.Context, _a1 uuid.UUID) (*mod
 	return r0, r1
 }
 
-// SearchProductsByShopID provides a mock function with given fields: ctx, shopID
-func (_m *ProductsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.UUID) (dtos.CategoriesResponse, error) {
-	ret := _m.Called(ctx, shopID)
+// SearchItemDiscountByID provides a mock function with given fields: ctx, discountID
+func (_m *ProductsRepo) SearchItemDiscountByID(ctx context.Context, discountID uuid.UUID) (*models.ItemDiscount, error) {
+	ret := _m.Called(ctx, discountID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SearchItemDiscountByID")
+	}
+
+	var r0 *models.ItemDiscount
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*models.ItemDiscount, error)); ok {
+		return rf(ctx, discountID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) *models.ItemDiscount); ok {
+		r0 = rf(ctx, discountID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.ItemDiscount)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, discountID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SearchMacroCategories provides a mock function with given fields: ctx
+func (_m *ProductsRepo) SearchMacroCategories(ctx context.Context) (models.MacroCategories, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SearchMacroCategories")
+	}
+
+	var r0 models.MacroCategories
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (models.MacroCategories, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) models.MacroCategories); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(models.MacroCategories)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SearchProductsByShopID provides a mock function with given fields: ctx, shopID, forCustomer
+func (_m *ProductsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.UUID, forCustomer bool) (dtos.CategoriesResponse, error) {
+	ret := _m.Called(ctx, shopID, forCustomer)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SearchProductsByShopID")
@@ -250,24 +650,78 @@ func (_m *ProductsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.
 
 	var r0 dtos.CategoriesResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (dtos.CategoriesResponse, error)); ok {
-		return rf(ctx, shopID)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, bool) (dtos.CategoriesResponse, error)); ok {
+		return rf(ctx, shopID, forCustomer)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) dtos.CategoriesResponse); ok {
-		r0 = rf(ctx, shopID)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, bool) dtos.CategoriesResponse); ok {
+		r0 = rf(ctx, shopID, forCustomer)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(dtos.CategoriesResponse)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
-		r1 = rf(ctx, shopID)
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, bool) error); ok {
+		r1 = rf(ctx, shopID, forCustomer)
 	} else {
 		r1 = ret.Error(1)
 	}
 
 	return r0, r1
+}
+
+// SyncAdditionSnapshots provides a mock function with given fields: ctx, shopID, entry
+func (_m *ProductsRepo) SyncAdditionSnapshots(ctx context.Context, shopID uuid.UUID, entry models.AdditionEntry) error {
+	ret := _m.Called(ctx, shopID, entry)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SyncAdditionSnapshots")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, models.AdditionEntry) error); ok {
+		r0 = rf(ctx, shopID, entry)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// UpdateCategory provides a mock function with given fields: ctx, category, shopID
+func (_m *ProductsRepo) UpdateCategory(ctx context.Context, category *models.UpdateCategory, shopID uuid.UUID) error {
+	ret := _m.Called(ctx, category, shopID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateCategory")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *models.UpdateCategory, uuid.UUID) error); ok {
+		r0 = rf(ctx, category, shopID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// UpdateFlavor provides a mock function with given fields: ctx, flavorID, entry, shopID, categoryID
+func (_m *ProductsRepo) UpdateFlavor(ctx context.Context, flavorID uuid.UUID, entry models.FlavorEntry, shopID uuid.UUID, categoryID uuid.UUID) error {
+	ret := _m.Called(ctx, flavorID, entry, shopID, categoryID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateFlavor")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, models.FlavorEntry, uuid.UUID, uuid.UUID) error); ok {
+		r0 = rf(ctx, flavorID, entry, shopID, categoryID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // UpdateItem provides a mock function with given fields: ctx, item, shopID
@@ -281,6 +735,24 @@ func (_m *ProductsRepo) UpdateItem(ctx context.Context, item *models.UpdateItem,
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, *models.UpdateItem, uuid.UUID) error); ok {
 		r0 = rf(ctx, item, shopID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// UpdateItemDiscount provides a mock function with given fields: ctx, discount, shopID, itemID
+func (_m *ProductsRepo) UpdateItemDiscount(ctx context.Context, discount *models.UpdateItemDiscount, shopID uuid.UUID, itemID uuid.UUID) error {
+	ret := _m.Called(ctx, discount, shopID, itemID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateItemDiscount")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *models.UpdateItemDiscount, uuid.UUID, uuid.UUID) error); ok {
+		r0 = rf(ctx, discount, shopID, itemID)
 	} else {
 		r0 = ret.Error(0)
 	}

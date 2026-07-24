@@ -1,0 +1,5 @@
+$kind: http-request
+description: "WebSocket CRM staff. Al conectar: snapshot pending/accepted + connected. Inbound: accept {request_id}, reject {request_id, reason?}, complete {request_id, amount_usd, proof_image base64}. Preferir POST /users/staff/refund-requests/:id/complete para subir comprobante. Cookie + rol Staff."
+url: "{{base_url}}/users/staff/refund-requests"
+method: GET
+order: 9000

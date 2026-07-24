@@ -5,7 +5,7 @@ WORKDIR /app
 COPY ["go.mod", "go.sum", "./"]
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -o app ./cmd/server
+RUN CGO_ENABLED=0 go build -tags timetzdata -o app ./cmd/server
 RUN upx app
 
 #final stage
