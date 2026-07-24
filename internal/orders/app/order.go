@@ -108,11 +108,11 @@ type orderApp struct {
 	staffHub        ports.StaffReviewHub
 	customerBalance ports.CustomerBalanceCreditor
 	quotes          ports.OrderQuotesRepo
-	products        productsPorts.ProductsApp
+	products        productsPorts.ProductsRepo
 	statusHandlers  map[models.OrderStatus]statusHandler
 }
 
-func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.UsersRepo, stream ports.RedisStream, uploadImage uploadimage.UploadImage, riderMgr ports.OrderRiderBroadcaster, finance ports.RideEarningRecorder, shopCommission ports.ShopCommissionRecorder, bcv bcvPorts.BcvApp, reviewsRepo ports.PaymentReviewsRepo, staffHub ports.StaffReviewHub, customerBalance ports.CustomerBalanceCreditor, quotes ports.OrderQuotesRepo, products productsPorts.ProductsApp) ports.OrdersApp {
+func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.UsersRepo, stream ports.RedisStream, uploadImage uploadimage.UploadImage, riderMgr ports.OrderRiderBroadcaster, finance ports.RideEarningRecorder, shopCommission ports.ShopCommissionRecorder, bcv bcvPorts.BcvApp, reviewsRepo ports.PaymentReviewsRepo, staffHub ports.StaffReviewHub, customerBalance ports.CustomerBalanceCreditor, quotes ports.OrderQuotesRepo, products productsPorts.ProductsRepo) ports.OrdersApp {
 	o := &orderApp{
 		repo:            repo,
 		shops:           shops,
