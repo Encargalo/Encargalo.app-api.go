@@ -18,6 +18,8 @@ import (
 	"Encargalo.app-api.go/internal/orders/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/money"
 	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
+	productsModels "Encargalo.app-api.go/internal/products/domain/models"
+	productsPorts "Encargalo.app-api.go/internal/products/domain/ports"
 	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/deliveryfee"
 	"Encargalo.app-api.go/internal/shared/errcustom"
@@ -106,10 +108,11 @@ type orderApp struct {
 	staffHub        ports.StaffReviewHub
 	customerBalance ports.CustomerBalanceCreditor
 	quotes          ports.OrderQuotesRepo
+	products        productsPorts.ProductsApp
 	statusHandlers  map[models.OrderStatus]statusHandler
 }
 
-func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.UsersRepo, stream ports.RedisStream, uploadImage uploadimage.UploadImage, riderMgr ports.OrderRiderBroadcaster, finance ports.RideEarningRecorder, shopCommission ports.ShopCommissionRecorder, bcv bcvPorts.BcvApp, reviewsRepo ports.PaymentReviewsRepo, staffHub ports.StaffReviewHub, customerBalance ports.CustomerBalanceCreditor, quotes ports.OrderQuotesRepo) ports.OrdersApp {
+func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.UsersRepo, stream ports.RedisStream, uploadImage uploadimage.UploadImage, riderMgr ports.OrderRiderBroadcaster, finance ports.RideEarningRecorder, shopCommission ports.ShopCommissionRecorder, bcv bcvPorts.BcvApp, reviewsRepo ports.PaymentReviewsRepo, staffHub ports.StaffReviewHub, customerBalance ports.CustomerBalanceCreditor, quotes ports.OrderQuotesRepo, products productsPorts.ProductsApp) ports.OrdersApp {
 	o := &orderApp{
 		repo:            repo,
 		shops:           shops,
@@ -124,6 +127,7 @@ func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustom
 		staffHub:        staffHub,
 		customerBalance: customerBalance,
 		quotes:          quotes,
+		products:        products,
 	}
 	o.statusHandlers = map[models.OrderStatus]statusHandler{
 		models.StatusInPreparation: func(ctx context.Context, order models.Order) error {
@@ -585,9 +589,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		}
 	}
 
-	if err := o.stream.PublisherEvent(ctx, buildToDataProduceOrder(*orderDB)); err != nil {
-		slog.Error("error producing order to stream", "error", err)
-	}
+	o.addSoldItemsAsync(*orderDB)
 
 	eventOrderCreateModel := models.DataEventOrderCreated{}
 	eventOrderCreateModel.BuidlToModelEvent(*orderDB)
@@ -948,18 +950,19 @@ func (o *orderApp) GetOrderHistory(ctx context.Context, customerID uuid.UUID) (d
 	return history, nil
 }
 
-func buildToDataProduceOrder(items models.Order) []models.DataProduceOrder {
-	dataProduceOrder := []models.DataProduceOrder{}
-
-	for _, item := range items.ItemsOrders {
-		dataProduceOrder = append(dataProduceOrder, models.DataProduceOrder{
-			MessageType: "add_sold_product",
-			ProductID:   item.ItemID,
-			Quantity:    item.Amount,
-		})
-	}
-
-	return dataProduceOrder
+// addSoldItemsAsync incrementa el contador "sold" de cada item vendido en segundo
+// plano, sin bloquear la respuesta ni la publicación del evento de la orden.
+func (o *orderApp) addSoldItemsAsync(order models.Order) {
+	items := order.ItemsOrders
+	go func() {
+		ctx := context.Background()
+		for _, item := range items {
+			soldItem := productsModels.DataProduceOrder{ProductID: item.ItemID, Quantity: item.Amount}
+			if err := o.products.AddSoldItem(ctx, soldItem); err != nil {
+				slog.Error("error incrementando sold del producto", "productID", item.ItemID, "error", err)
+			}
+		}
+	}()
 }
 
 func generateCode() (string, error) {
