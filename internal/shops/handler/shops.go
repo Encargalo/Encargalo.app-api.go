@@ -95,13 +95,14 @@ func (s *shops) GetMyShop(c echo.Context) error {
 
 // SearchShops godoc
 // @Summary      Buscar tiendas por texto y proximidad
-// @Description  Retorna tiendas dentro de 3 km que coincidan con la búsqueda en nombre de tienda, categoría o macro. matched_products incluye sabores y adiciones disponibles del item (details).
+// @Description  Retorna tiendas dentro de 3 km que coincidan con la búsqueda en nombre de tienda, categoría o macro. matched_products incluye sabores y adiciones disponibles del item (details). Query opcional `type` (`Restaurant`|`Supermarket`); si se omite, incluye ambos tipos.
 // @Tags         Shops
 // @Produce      json
 // @Security     SessionCookie
-// @Param        q    query     string  true  "Texto a buscar, ej: pizza"
-// @Param        lat  query     number  true  "Latitud del usuario"
-// @Param        lon  query     number  true  "Longitud del usuario"
+// @Param        q     query     string  true   "Texto a buscar, ej: pizza"
+// @Param        lat   query     number  true   "Latitud del usuario"
+// @Param        lon   query     number  true   "Longitud del usuario"
+// @Param        type  query     string  false  "Filtro de tipo: Restaurant o Supermarket"
 // @Success      200  {array}   dtos.SearchShopResponse  "Tiendas encontradas"
 // @Failure      400  {string}  string                   "Parámetros inválidos o faltantes"
 // @Failure      401  {string}  string                   "No autorizado"
@@ -121,7 +122,7 @@ func (s *shops) SearchShops(c echo.Context) error {
 
 	result, err := s.app.SearchShops(ctx, query)
 	if err != nil {
-		slog.Error("error en SearchShops", "error", err, "query", query.Q, "lat", query.Latitude, "lon", query.Longitude)
+		slog.Error("error en SearchShops", "error", err, "query", query.Q, "lat", query.Latitude, "lon", query.Longitude, "type", query.Type)
 		return err
 	}
 
@@ -130,14 +131,15 @@ func (s *shops) SearchShops(c echo.Context) error {
 
 // GetAllShops godoc
 // @Summary      Obtener todas las tiendas cercanas
-// @Description  Retorna todas las tiendas disponibles ordenadas por proximidad a las coordenadas proporcionadas.
+// @Description  Retorna todas las tiendas disponibles ordenadas por proximidad a las coordenadas proporcionadas. Query opcional `type` (`Restaurant`|`Supermarket`); si se omite, incluye ambos tipos.
 // @Tags         Shops
 // @Produce      json
 // @Security     SessionCookie
-// @Param        lat  query     number  true  "Latitud del usuario, ej: 4.678034"
-// @Param        lon  query     number  true  "Longitud del usuario, ej: -74.0496399"
+// @Param        lat   query     number  true   "Latitud del usuario, ej: 4.678034"
+// @Param        lon   query     number  true   "Longitud del usuario, ej: -74.0496399"
+// @Param        type  query     string  false  "Filtro de tipo: Restaurant o Supermarket"
 // @Success      200  {array}   dtos.ShopResponse  "Lista de tiendas"
-// @Failure      400  {string}  string             "Coordenadas inválidas o faltantes"
+// @Failure      400  {string}  string             "Coordenadas inválidas, type inválido o faltantes"
 // @Failure      401  {string}  string             "No autorizado"
 // @Failure      404  {string}  string             "No se encontraron tiendas"
 // @Failure      500  {string}  string             "Error interno del servidor"
@@ -146,17 +148,17 @@ func (s *shops) GetAllShops(c echo.Context) error {
 
 	ctx := c.Request().Context()
 
-	coords := dtos.Coords{}
+	query := dtos.ListShopsQuery{}
 
-	if err := c.Bind(&coords); err != nil {
+	if err := c.Bind(&query); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	if err := coords.Validate(); err != nil {
+	if err := query.Validate(); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	shops, err := s.app.GetAllShops(ctx, coords)
+	shops, err := s.app.GetAllShops(ctx, query)
 	if err != nil {
 		return err
 	}

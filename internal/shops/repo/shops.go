@@ -47,11 +47,14 @@ func NewShopsRepository(db *bun.DB, cache cache.Cache) ports.ShopsRepo {
 	return &shopsRepo{db, cache}
 }
 
-func (s *shopsRepo) GetAllShops(ctx context.Context, coords shopsDTO.Coords) (shopsDTO.ShopsResponse, error) {
+func (s *shopsRepo) GetAllShops(ctx context.Context, query shopsDTO.ListShopsQuery) (shopsDTO.ShopsResponse, error) {
 
-	lat := strconv.FormatFloat(coords.Latitude, 'f', -1, 64)
-	lon := strconv.FormatFloat(coords.Longitude, 'f', -1, 64)
+	lat := strconv.FormatFloat(query.Latitude, 'f', -1, 64)
+	lon := strconv.FormatFloat(query.Longitude, 'f', -1, 64)
 	keyCache := shops_all + lat + lon
+	if query.Type != "" {
+		keyCache += ":type:" + query.Type
+	}
 
 	cacheTTL := 2 * time.Minute
 
@@ -69,6 +72,12 @@ func (s *shopsRepo) GetAllShops(ctx context.Context, coords shopsDTO.Coords) (sh
 		Model(&shops).
 		Order("score DESC").
 		Where("license_status = ?", "active")
+
+	if query.Type != "" {
+		q = q.Where("type = ?", query.Type)
+	}
+
+	coords := query.Coords()
 
 	if config.Get().Environment.Current == "production" {
 		q.Where("latitude IS NOT NULL AND longitude IS NOT NULL").
@@ -234,6 +243,9 @@ func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.Sea
 	lat4 := strconv.FormatFloat(query.Latitude, 'f', 4, 64)
 	lon4 := strconv.FormatFloat(query.Longitude, 'f', 4, 64)
 	keyCache := "shops:search:" + qNorm + ":" + lat4 + ":" + lon4
+	if query.Type != "" {
+		keyCache += ":type:" + query.Type
+	}
 	cacheTTL := 2 * time.Minute
 
 	if cached, err := s.cache.Get(ctx, keyCache); err == nil && cached != "" {
@@ -242,6 +254,17 @@ func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.Sea
 			return resp, nil
 		}
 		slog.Error("error al deserializar búsqueda del cache", "error", err)
+	}
+
+	typeFilter := ""
+	args := []any{
+		qNorm, qNorm,
+		query.Latitude, query.Longitude, query.Latitude,
+		qNorm, qNorm, qNorm, qNorm, qNorm, qNorm,
+	}
+	if query.Type != "" {
+		typeFilter = " AND s.type = ?"
+		args = append(args, query.Type)
 	}
 
 	rawSQL := `
@@ -278,17 +301,12 @@ func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.Sea
 						OR mc.name ILIKE '%' || ? || '%'
 					)
 			  )
-		  )
+		  )` + typeFilter + `
 		ORDER BY s.score DESC
 	`
 
 	var rows []shops.SearchShopRow
-	if err := s.db.NewRaw(
-		rawSQL,
-		qNorm, qNorm,
-		query.Latitude, query.Longitude, query.Latitude,
-		qNorm, qNorm, qNorm, qNorm, qNorm, qNorm,
-	).Scan(ctx, &rows); err != nil {
+	if err := s.db.NewRaw(rawSQL, args...).Scan(ctx, &rows); err != nil {
 		slog.Error("error en búsqueda de tiendas", "error", err)
 		return nil, errcustom.ErrUnexpectedError
 	}

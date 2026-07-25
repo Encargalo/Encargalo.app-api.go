@@ -3189,7 +3189,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna todas las tiendas disponibles ordenadas por proximidad a las coordenadas proporcionadas.",
+                "description": "Retorna todas las tiendas disponibles ordenadas por proximidad a las coordenadas proporcionadas. Query opcional ` + "`" + `type` + "`" + ` (` + "`" + `Restaurant` + "`" + `|` + "`" + `Supermarket` + "`" + `); si se omite, incluye ambos tipos.",
                 "produces": [
                     "application/json"
                 ],
@@ -3211,6 +3211,12 @@ const docTemplate = `{
                         "name": "lon",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtro de tipo: Restaurant o Supermarket",
+                        "name": "type",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -3224,7 +3230,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Coordenadas inválidas o faltantes",
+                        "description": "Coordenadas inválidas, type inválido o faltantes",
                         "schema": {
                             "type": "string"
                         }
@@ -3257,7 +3263,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna tiendas dentro de 3 km que coincidan con la búsqueda en nombre de tienda, categoría o macro. matched_products incluye sabores y adiciones disponibles del item (details).",
+                "description": "Retorna tiendas dentro de 3 km que coincidan con la búsqueda en nombre de tienda, categoría o macro. matched_products incluye sabores y adiciones disponibles del item (details). Query opcional ` + "`" + `type` + "`" + ` (` + "`" + `Restaurant` + "`" + `|` + "`" + `Supermarket` + "`" + `); si se omite, incluye ambos tipos.",
                 "produces": [
                     "application/json"
                 ],
@@ -3286,6 +3292,12 @@ const docTemplate = `{
                         "name": "lon",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtro de tipo: Restaurant o Supermarket",
+                        "name": "type",
+                        "in": "query"
                     }
                 ],
                 "responses": {

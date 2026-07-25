@@ -15,7 +15,7 @@ type ShopStatusBroadcaster interface {
 }
 
 type ShopsApp interface {
-	GetAllShops(ctx context.Context, coords dtos.Coords) (dtos.ShopsResponse, error)
+	GetAllShops(ctx context.Context, query dtos.ListShopsQuery) (dtos.ShopsResponse, error)
 	GetShopsBy(ctx context.Context, criteria dtos.SearchShopsByID, coords dtos.Coords) (dtos.ShopsResponse, error)
 	GetShopByID(ctx context.Context, shopID uuid.UUID) (dtos.ShopResponse, error)
 	SearchShops(ctx context.Context, query dtos.SearchShopsQuery) (dtos.SearchShopsResult, error)
@@ -26,7 +26,7 @@ type ShopsApp interface {
 }
 
 type ShopsRepo interface {
-	GetAllShops(ctx context.Context, coords dtos.Coords) (dtos.ShopsResponse, error)
+	GetAllShops(ctx context.Context, query dtos.ListShopsQuery) (dtos.ShopsResponse, error)
 	GetShopsBy(ctx context.Context, criteria dtos.SearchShopsByID, coords dtos.Coords) (dtos.ShopsResponse, error)
 	GetShopByID(ctx context.Context, shopID uuid.UUID) (dtos.ShopResponse, error)
 	SearchBatchByShopID(ctx context.Context, shopID uuid.UUID) (uuid.UUID, error)

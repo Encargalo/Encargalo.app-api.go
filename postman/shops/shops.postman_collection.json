@@ -19,7 +19,7 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{base_url}}/shops/all?lat=4.678034&lon=-74.0496399",
+          "raw": "{{base_url}}/shops/all?lat=4.678034&lon=-74.0496399&type=Restaurant",
           "host": ["{{base_url}}"],
           "path": ["shops", "all"],
           "query": [
@@ -32,10 +32,15 @@
               "key": "lon",
               "value": "-74.0496399",
               "description": "Longitud del usuario"
+            },
+            {
+              "key": "type",
+              "value": "Restaurant",
+              "description": "Opcional: Restaurant | Supermarket. Si se omite, retorna ambos tipos."
             }
           ]
         },
-        "description": "Retorna todas las tiendas disponibles ordenadas por distancia al usuario."
+        "description": "Retorna todas las tiendas disponibles ordenadas por distancia al usuario. Query opcional `type` (Restaurant|Supermarket); sin type incluye ambos."
       }
     },
     {
@@ -163,7 +168,7 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{base_url}}/shops/search?q=pizza&lat=4.678034&lon=-74.0496399",
+          "raw": "{{base_url}}/shops/search?q=pizza&lat=4.678034&lon=-74.0496399&type=Restaurant",
           "host": ["{{base_url}}"],
           "path": ["shops", "search"],
           "query": [
@@ -181,10 +186,15 @@
               "key": "lon",
               "value": "-74.0496399",
               "description": "Longitud del usuario"
+            },
+            {
+              "key": "type",
+              "value": "Restaurant",
+              "description": "Opcional: Restaurant | Supermarket. Si se omite, busca en ambos tipos."
             }
           ]
         },
-        "description": "Busca tiendas dentro de 3 km que coincidan con el texto en nombre de tienda, categoría o macro. Cada matched_product incluye has_flavors/has_additions, flavor_selection/addition_selection y details (lista de sabores y adiciones disponibles)."
+        "description": "Busca tiendas dentro de 3 km que coincidan con el texto en nombre de tienda, categoría o macro. Query opcional `type` (Restaurant|Supermarket). Cada matched_product incluye has_flavors/has_additions, flavor_selection/addition_selection y details (lista de sabores y adiciones disponibles)."
       }
     }
   ]

@@ -39,8 +39,8 @@ func applyBsRate(shops dtos.ShopsResponse, rate float64) {
 	}
 }
 
-func (s *shopsApp) GetAllShops(ctx context.Context, coords dtos.Coords) (dtos.ShopsResponse, error) {
-	shops, err := s.repo.GetAllShops(ctx, coords)
+func (s *shopsApp) GetAllShops(ctx context.Context, query dtos.ListShopsQuery) (dtos.ShopsResponse, error) {
+	shops, err := s.repo.GetAllShops(ctx, query)
 	if err != nil {
 		return nil, err
 	}

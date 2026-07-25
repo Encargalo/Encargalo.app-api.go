@@ -3596,7 +3596,8 @@ paths:
   /shops/all:
     get:
       description: Retorna todas las tiendas disponibles ordenadas por proximidad
-        a las coordenadas proporcionadas.
+        a las coordenadas proporcionadas. Query opcional `type` (`Restaurant`|`Supermarket`);
+        si se omite, incluye ambos tipos.
       parameters:
       - description: 'Latitud del usuario, ej: 4.678034'
         in: query
@@ -3608,6 +3609,10 @@ paths:
         name: lon
         required: true
         type: number
+      - description: 'Filtro de tipo: Restaurant o Supermarket'
+        in: query
+        name: type
+        type: string
       produces:
       - application/json
       responses:
@@ -3618,7 +3623,7 @@ paths:
               $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopResponse'
             type: array
         "400":
-          description: Coordenadas inválidas o faltantes
+          description: Coordenadas inválidas, type inválido o faltantes
           schema:
             type: string
         "401":
@@ -3642,7 +3647,8 @@ paths:
     get:
       description: Retorna tiendas dentro de 3 km que coincidan con la búsqueda en
         nombre de tienda, categoría o macro. matched_products incluye sabores y adiciones
-        disponibles del item (details).
+        disponibles del item (details). Query opcional `type` (`Restaurant`|`Supermarket`);
+        si se omite, incluye ambos tipos.
       parameters:
       - description: 'Texto a buscar, ej: pizza'
         in: query
@@ -3659,6 +3665,10 @@ paths:
         name: lon
         required: true
         type: number
+      - description: 'Filtro de tipo: Restaurant o Supermarket'
+        in: query
+        name: type
+        type: string
       produces:
       - application/json
       responses:

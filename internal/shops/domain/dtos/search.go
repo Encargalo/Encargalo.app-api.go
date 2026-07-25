@@ -10,6 +10,7 @@ type SearchShopsQuery struct {
 	Q         string  `query:"q"   validate:"required"`
 	Latitude  float64 `query:"lat" validate:"required,latitude"`
 	Longitude float64 `query:"lon" validate:"required,longitude"`
+	Type      string  `query:"type" validate:"omitempty,oneof=Restaurant Supermarket"`
 }
 
 func (q *SearchShopsQuery) Validate() error {

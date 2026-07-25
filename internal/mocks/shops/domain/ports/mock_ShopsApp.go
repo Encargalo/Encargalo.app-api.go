@@ -18,9 +18,9 @@ type ShopsApp struct {
 	mock.Mock
 }
 
-// GetAllShops provides a mock function with given fields: ctx, coords
-func (_m *ShopsApp) GetAllShops(ctx context.Context, coords dtos.Coords) (dtos.ShopsResponse, error) {
-	ret := _m.Called(ctx, coords)
+// GetAllShops provides a mock function with given fields: ctx, query
+func (_m *ShopsApp) GetAllShops(ctx context.Context, query dtos.ListShopsQuery) (dtos.ShopsResponse, error) {
+	ret := _m.Called(ctx, query)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetAllShops")
@@ -28,19 +28,19 @@ func (_m *ShopsApp) GetAllShops(ctx context.Context, coords dtos.Coords) (dtos.S
 
 	var r0 dtos.ShopsResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, dtos.Coords) (dtos.ShopsResponse, error)); ok {
-		return rf(ctx, coords)
+	if rf, ok := ret.Get(0).(func(context.Context, dtos.ListShopsQuery) (dtos.ShopsResponse, error)); ok {
+		return rf(ctx, query)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, dtos.Coords) dtos.ShopsResponse); ok {
-		r0 = rf(ctx, coords)
+	if rf, ok := ret.Get(0).(func(context.Context, dtos.ListShopsQuery) dtos.ShopsResponse); ok {
+		r0 = rf(ctx, query)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(dtos.ShopsResponse)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, dtos.Coords) error); ok {
-		r1 = rf(ctx, coords)
+	if rf, ok := ret.Get(1).(func(context.Context, dtos.ListShopsQuery) error); ok {
+		r1 = rf(ctx, query)
 	} else {
 		r1 = ret.Error(1)
 	}
