@@ -36,11 +36,11 @@
             {
               "key": "type",
               "value": "Restaurant",
-              "description": "Opcional: Restaurant | Supermarket. Si se omite, retorna ambos tipos."
+              "description": "Opcional: Restaurant | Supermarket | Turbo. Si se omite, retorna Restaurant y Supermarket (Turbo se descubre vía /turbo/entry)."
             }
           ]
         },
-        "description": "Retorna todas las tiendas disponibles ordenadas por distancia al usuario. Query opcional `type` (Restaurant|Supermarket); sin type incluye ambos."
+        "description": "Retorna todas las tiendas disponibles ordenadas por distancia al usuario, dentro de 3 km (2 km si type=Turbo). Query opcional `type` (Restaurant|Supermarket|Turbo); sin type incluye Restaurant y Supermarket."
       }
     },
     {
@@ -190,11 +190,36 @@
             {
               "key": "type",
               "value": "Restaurant",
-              "description": "Opcional: Restaurant | Supermarket. Si se omite, busca en ambos tipos."
+              "description": "Opcional: Restaurant | Supermarket | Turbo. Si se omite, busca en Restaurant y Supermarket (Turbo se descubre vía /turbo/entry)."
             }
           ]
         },
-        "description": "Busca tiendas dentro de 3 km que coincidan con el texto en nombre de tienda, categoría o macro. Query opcional `type` (Restaurant|Supermarket). Cada matched_product incluye has_flavors/has_additions, flavor_selection/addition_selection y details (lista de sabores y adiciones disponibles)."
+        "description": "Busca tiendas dentro de 3 km (2 km si type=Turbo) que coincidan con el texto en nombre de tienda, categoría o macro. Query opcional `type` (Restaurant|Supermarket|Turbo). Cada matched_product incluye has_flavors/has_additions, flavor_selection/addition_selection y details (lista de sabores y adiciones disponibles)."
+      }
+    }
+    ,{
+      "name": "Turbo Entry",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/turbo/entry?lat=10.4806&lon=-66.9036",
+          "host": ["{{base_url}}"],
+          "path": ["turbo", "entry"],
+          "query": [
+            {
+              "key": "lat",
+              "value": "10.4806",
+              "description": "Latitud del usuario"
+            },
+            {
+              "key": "lon",
+              "value": "-66.9036",
+              "description": "Longitud del usuario"
+            }
+          ]
+        },
+        "description": "Asigna el nodo Turbo abierto más cercano (≤2 km) a las coordenadas dadas, estilo Rappi: el cliente no elige local, el backend asigna uno. Retorna `available=false` si no hay cobertura. Requiere sesión con rol Customer."
       }
     }
   ]

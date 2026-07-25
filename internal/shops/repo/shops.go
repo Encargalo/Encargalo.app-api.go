@@ -47,6 +47,24 @@ func NewShopsRepository(db *bun.DB, cache cache.Cache) ports.ShopsRepo {
 	return &shopsRepo{db, cache}
 }
 
+// coverageRadiusKm resuelve el radio de listado/búsqueda según el type
+// solicitado: Turbo usa un radio menor que Restaurant/Supermarket.
+func coverageRadiusKm(shopType string) float64 {
+	if shopType == shops.ShopTypeTurbo {
+		return shops.TurboCoverageRadiusKm
+	}
+	return shops.CoverageRadiusKm
+}
+
+// devTimeMinutes es el tiempo fijo mostrado fuera de production (sin llamar
+// a Google Maps). Turbo usa un valor menor porque no suma prep fija.
+func devTimeMinutes(shopType string) int {
+	if shopType == shops.ShopTypeTurbo {
+		return 8
+	}
+	return 12
+}
+
 func (s *shopsRepo) GetAllShops(ctx context.Context, query shopsDTO.ListShopsQuery) (shopsDTO.ShopsResponse, error) {
 
 	lat := strconv.FormatFloat(query.Latitude, 'f', -1, 64)
@@ -66,6 +84,9 @@ func (s *shopsRepo) GetAllShops(ctx context.Context, query shopsDTO.ListShopsQue
 		slog.Error("error al deserializar negocios del cache", "error", err)
 	}
 
+	turboType := shops.ShopTypeTurbo
+	radiusKm := coverageRadiusKm(query.Type)
+
 	var shops shops.Shops
 
 	q := s.db.NewSelect().
@@ -75,6 +96,10 @@ func (s *shopsRepo) GetAllShops(ctx context.Context, query shopsDTO.ListShopsQue
 
 	if query.Type != "" {
 		q = q.Where("type = ?", query.Type)
+	}
+	if query.Type == "" {
+		// Sin type, el feed general excluye Turbo: se descubre vía /turbo/entry.
+		q = q.Where("type != ?", turboType)
 	}
 
 	coords := query.Coords()
@@ -86,8 +111,8 @@ func (s *shopsRepo) GetAllShops(ctx context.Context, query shopsDTO.ListShopsQue
 			cos(radians(?)) * cos(radians(latitude)) *
 			cos(radians(longitude) - radians(?)) +
 			sin(radians(?)) * sin(radians(latitude))
-		) <= 3
-	`, coords.Latitude, coords.Longitude, coords.Latitude)
+		) <= ?
+	`, coords.Latitude, coords.Longitude, coords.Latitude, radiusKm)
 	}
 
 	if err := q.Scan(ctx); err != nil {
@@ -116,7 +141,7 @@ func (s *shopsRepo) GetAllShops(ctx context.Context, query shopsDTO.ListShopsQue
 		resp = shops.ToDomainDTO(dataDistance)
 		for i := range resp {
 			resp[i].DeliveryFee = deliveryfee.DevPlaceholderFee
-			resp[i].Time = 12
+			resp[i].Time = devTimeMinutes(resp[i].Type)
 		}
 	}
 
@@ -193,7 +218,7 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 		resp = shops.ToDomainDTO(dataDistance)
 		for i := range resp {
 			resp[i].DeliveryFee = deliveryfee.DevPlaceholderFee
-			resp[i].Time = 12
+			resp[i].Time = devTimeMinutes(resp[i].Type)
 		}
 	}
 
@@ -238,6 +263,78 @@ func (s *shopsRepo) GetShopByID(ctx context.Context, shopID uuid.UUID) (shopsDTO
 	}, nil
 }
 
+// ListTurboCandidates retorna todos los nodos Turbo con licencia activa y
+// coordenadas válidas, abiertos o no; la app decide cuál asignar.
+func (s *shopsRepo) ListTurboCandidates(ctx context.Context) (shopsDTO.ShopsResponse, error) {
+	var candidates shops.Shops
+
+	if err := s.db.NewSelect().
+		Model(&candidates).
+		Where("type = ?", shops.ShopTypeTurbo).
+		Where("license_status = ?", "active").
+		Where("latitude IS NOT NULL AND longitude IS NOT NULL").
+		Order("score DESC").
+		Scan(ctx); err != nil {
+		slog.Error("error al listar nodos turbo", "error", err)
+		return shopsDTO.ShopsResponse{}, errcustom.ErrUnexpectedError
+	}
+
+	resp := make(shopsDTO.ShopsResponse, 0, len(candidates))
+	for _, shop := range candidates {
+		resp = append(resp, shopsDTO.ShopResponse{
+			ID:        shop.ID,
+			Name:      shop.Name,
+			Tag:       shop.Tag,
+			Address:   shop.Address,
+			Latitude:  *shop.Latitude,
+			Longitude: *shop.Longitude,
+			HomePhone: shop.HomePhone,
+			Logo:      shop.LogoImage,
+			Banner:    shop.Banner,
+			Opened:    shop.Opened,
+			Type:      shop.Type,
+			Score:     shop.Score,
+		})
+	}
+
+	return resp, nil
+}
+
+// ResolveTurboShop calcula delivery_fee/time del nodo Turbo ya elegido para
+// las coordenadas del cliente, igual que ToDomainDTO pero fuera del flujo de
+// listado (production usa Google Maps; el resto, placeholders de dev).
+func (s *shopsRepo) ResolveTurboShop(ctx context.Context, shopID uuid.UUID, coords shopsDTO.Coords) (shopsDTO.ShopResponse, error) {
+	var shop shops.Shop
+	if err := s.db.NewSelect().Model(&shop).Where("id = ?", shopID).Scan(ctx); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return shopsDTO.ShopResponse{}, errcustom.ErrNotFound
+		}
+		slog.Error("error al obtener nodo turbo", "error", err, "shopID", shopID)
+		return shopsDTO.ShopResponse{}, errcustom.ErrUnexpectedError
+	}
+
+	distance := entity.ShopDistance{ShopID: shop.ID}
+	if config.Get().Environment.Current == "production" {
+		shopsToMeasure := shops.Shops{shop}
+		result, err := calculateDistances(coords, &shopsToMeasure)
+		if err != nil {
+			slog.Error("error al calcular distancia del nodo turbo", "error", err, "shopID", shopID)
+			return shopsDTO.ShopResponse{}, errcustom.ErrUnexpectedError
+		}
+		if len(result) > 0 {
+			distance = result[0]
+		}
+	}
+
+	resp := shop.ToDomainDTO(distance)
+	if config.Get().Environment.Current != "production" {
+		resp.DeliveryFee = deliveryfee.DevPlaceholderFee
+		resp.Time = devTimeMinutes(resp.Type)
+	}
+
+	return resp, nil
+}
+
 func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.SearchShopsQuery) ([]shopsDTO.SearchShopCandidate, error) {
 	qNorm := strings.ToLower(strings.TrimSpace(query.Q))
 	lat4 := strconv.FormatFloat(query.Latitude, 'f', 4, 64)
@@ -256,15 +353,23 @@ func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.Sea
 		slog.Error("error al deserializar búsqueda del cache", "error", err)
 	}
 
+	radiusKm := coverageRadiusKm(query.Type)
+
 	typeFilter := ""
 	args := []any{
 		qNorm, qNorm,
 		query.Latitude, query.Longitude, query.Latitude,
+		radiusKm,
 		qNorm, qNorm, qNorm, qNorm, qNorm, qNorm,
 	}
 	if query.Type != "" {
 		typeFilter = " AND s.type = ?"
 		args = append(args, query.Type)
+	}
+	if query.Type == "" {
+		// Sin type, la búsqueda general excluye Turbo (se descubre vía /turbo/entry).
+		typeFilter = " AND s.type != ?"
+		args = append(args, shops.ShopTypeTurbo)
 	}
 
 	rawSQL := `
@@ -286,7 +391,7 @@ func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.Sea
 				cos(radians(?)) * cos(radians(s.latitude)) *
 				cos(radians(s.longitude) - radians(?)) +
 				sin(radians(?)) * sin(radians(s.latitude))
-			) <= 3
+			) <= ?
 		  AND (
 			  to_tsvector('spanish', s.name) @@ plainto_tsquery('spanish', ?)
 			  OR s.name ILIKE '%' || ? || '%'
@@ -363,7 +468,7 @@ func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.Sea
 		shopResp := shopModels[i].ToDomainDTO(dist)
 		if !isProd {
 			shopResp.DeliveryFee = deliveryfee.DevPlaceholderFee
-			shopResp.Time = 12
+			shopResp.Time = devTimeMinutes(shopResp.Type)
 		}
 		candidates = append(candidates, shopsDTO.SearchShopCandidate{
 			ShopResponse:  shopResp,

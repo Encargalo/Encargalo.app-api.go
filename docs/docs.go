@@ -3189,7 +3189,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna todas las tiendas disponibles ordenadas por proximidad a las coordenadas proporcionadas. Query opcional ` + "`" + `type` + "`" + ` (` + "`" + `Restaurant` + "`" + `|` + "`" + `Supermarket` + "`" + `); si se omite, incluye ambos tipos.",
+                "description": "Retorna todas las tiendas disponibles ordenadas por proximidad a las coordenadas proporcionadas, dentro de 3 km (2 km si type=Turbo). Query opcional ` + "`" + `type` + "`" + ` (` + "`" + `Restaurant` + "`" + `|` + "`" + `Supermarket` + "`" + `|` + "`" + `Turbo` + "`" + `); si se omite, incluye Restaurant y Supermarket (Turbo se descubre vía /turbo/entry).",
                 "produces": [
                     "application/json"
                 ],
@@ -3214,7 +3214,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Filtro de tipo: Restaurant o Supermarket",
+                        "description": "Filtro de tipo: Restaurant, Supermarket o Turbo",
                         "name": "type",
                         "in": "query"
                     }
@@ -3263,7 +3263,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna tiendas dentro de 3 km que coincidan con la búsqueda en nombre de tienda, categoría o macro. matched_products incluye sabores y adiciones disponibles del item (details). Query opcional ` + "`" + `type` + "`" + ` (` + "`" + `Restaurant` + "`" + `|` + "`" + `Supermarket` + "`" + `); si se omite, incluye ambos tipos.",
+                "description": "Retorna tiendas que coincidan con la búsqueda en nombre de tienda, categoría o macro, dentro de 3 km (2 km si type=Turbo). matched_products incluye sabores y adiciones disponibles del item (details). Query opcional ` + "`" + `type` + "`" + ` (` + "`" + `Restaurant` + "`" + `|` + "`" + `Supermarket` + "`" + `|` + "`" + `Turbo` + "`" + `); si se omite, incluye Restaurant y Supermarket (Turbo se descubre vía /turbo/entry).",
                 "produces": [
                     "application/json"
                 ],
@@ -3295,7 +3295,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Filtro de tipo: Restaurant o Supermarket",
+                        "description": "Filtro de tipo: Restaurant, Supermarket o Turbo",
                         "name": "type",
                         "in": "query"
                     }
@@ -3312,6 +3312,65 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Parámetros inválidos o faltantes",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/turbo/entry": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Dadas las coordenadas del cliente, asigna el nodo Turbo abierto más cercano dentro de 2 km (estilo Rappi: el cliente no elige local). Si no hay cobertura, retorna available=false.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops"
+                ],
+                "summary": "Entrada Turbo: asignar nodo por geolocalización",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "Latitud del usuario",
+                        "name": "lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Longitud del usuario",
+                        "name": "lon",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.TurboEntryResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Coordenadas inválidas",
                         "schema": {
                             "type": "string"
                         }
@@ -5881,6 +5940,23 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.TopProductItem"
                     }
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.TurboEntryResponse": {
+            "type": "object",
+            "properties": {
+                "available": {
+                    "type": "boolean"
+                },
+                "coverage_km": {
+                    "type": "number"
+                },
+                "eta_minutes": {
+                    "type": "integer"
+                },
+                "shop": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopResponse"
                 }
             }
         },

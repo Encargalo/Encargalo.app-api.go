@@ -31,6 +31,12 @@ func (s *shopGroup) Resource(g *echo.Echo) {
 	customerRoutes.GET("/search", s.handlerShops.SearchShops)
 	customerRoutes.GET("", s.handlerShops.GetShopsBy)
 
+	turboRoutes := g.Group("/turbo",
+		s.middleAuth.Auth,
+		s.middleAuth.Require(models.Customer),
+	)
+	turboRoutes.GET("/entry", s.handlerShops.GetTurboEntry)
+
 	businessRoutes := g.Group("/business/shops",
 		s.middleAuth.Auth,
 		s.middleAuth.Require(models.OrderManager, models.Owner),

@@ -136,6 +136,34 @@ func (_m *ShopsApp) GetShopsBy(ctx context.Context, criteria dtos.SearchShopsByI
 	return r0, r1
 }
 
+// GetTurboEntry provides a mock function with given fields: ctx, coords
+func (_m *ShopsApp) GetTurboEntry(ctx context.Context, coords dtos.Coords) (dtos.TurboEntryResponse, error) {
+	ret := _m.Called(ctx, coords)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetTurboEntry")
+	}
+
+	var r0 dtos.TurboEntryResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, dtos.Coords) (dtos.TurboEntryResponse, error)); ok {
+		return rf(ctx, coords)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, dtos.Coords) dtos.TurboEntryResponse); ok {
+		r0 = rf(ctx, coords)
+	} else {
+		r0 = ret.Get(0).(dtos.TurboEntryResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, dtos.Coords) error); ok {
+		r1 = rf(ctx, coords)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // SearchShops provides a mock function with given fields: ctx, query
 func (_m *ShopsApp) SearchShops(ctx context.Context, query dtos.SearchShopsQuery) (dtos.SearchShopsResult, error) {
 	ret := _m.Called(ctx, query)

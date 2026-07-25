@@ -1252,6 +1252,17 @@ definitions:
           $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.TopProductItem'
         type: array
     type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.TurboEntryResponse:
+    properties:
+      available:
+        type: boolean
+      coverage_km:
+        type: number
+      eta_minutes:
+        type: integer
+      shop:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopResponse'
+    type: object
   Encargalo_app-api_go_internal_users_domain_dto.Address:
     properties:
       address:
@@ -3596,8 +3607,9 @@ paths:
   /shops/all:
     get:
       description: Retorna todas las tiendas disponibles ordenadas por proximidad
-        a las coordenadas proporcionadas. Query opcional `type` (`Restaurant`|`Supermarket`);
-        si se omite, incluye ambos tipos.
+        a las coordenadas proporcionadas, dentro de 3 km (2 km si type=Turbo). Query
+        opcional `type` (`Restaurant`|`Supermarket`|`Turbo`); si se omite, incluye
+        Restaurant y Supermarket (Turbo se descubre vía /turbo/entry).
       parameters:
       - description: 'Latitud del usuario, ej: 4.678034'
         in: query
@@ -3609,7 +3621,7 @@ paths:
         name: lon
         required: true
         type: number
-      - description: 'Filtro de tipo: Restaurant o Supermarket'
+      - description: 'Filtro de tipo: Restaurant, Supermarket o Turbo'
         in: query
         name: type
         type: string
@@ -3645,10 +3657,11 @@ paths:
       - Shops
   /shops/search:
     get:
-      description: Retorna tiendas dentro de 3 km que coincidan con la búsqueda en
-        nombre de tienda, categoría o macro. matched_products incluye sabores y adiciones
-        disponibles del item (details). Query opcional `type` (`Restaurant`|`Supermarket`);
-        si se omite, incluye ambos tipos.
+      description: Retorna tiendas que coincidan con la búsqueda en nombre de tienda,
+        categoría o macro, dentro de 3 km (2 km si type=Turbo). matched_products incluye
+        sabores y adiciones disponibles del item (details). Query opcional `type`
+        (`Restaurant`|`Supermarket`|`Turbo`); si se omite, incluye Restaurant y Supermarket
+        (Turbo se descubre vía /turbo/entry).
       parameters:
       - description: 'Texto a buscar, ej: pizza'
         in: query
@@ -3665,7 +3678,7 @@ paths:
         name: lon
         required: true
         type: number
-      - description: 'Filtro de tipo: Restaurant o Supermarket'
+      - description: 'Filtro de tipo: Restaurant, Supermarket o Turbo'
         in: query
         name: type
         type: string
@@ -3693,6 +3706,46 @@ paths:
       security:
       - SessionCookie: []
       summary: Buscar tiendas por texto y proximidad
+      tags:
+      - Shops
+  /turbo/entry:
+    get:
+      description: 'Dadas las coordenadas del cliente, asigna el nodo Turbo abierto
+        más cercano dentro de 2 km (estilo Rappi: el cliente no elige local). Si no
+        hay cobertura, retorna available=false.'
+      parameters:
+      - description: Latitud del usuario
+        in: query
+        name: lat
+        required: true
+        type: number
+      - description: Longitud del usuario
+        in: query
+        name: lon
+        required: true
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.TurboEntryResponse'
+        "400":
+          description: Coordenadas inválidas
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: 'Entrada Turbo: asignar nodo por geolocalización'
       tags:
       - Shops
   /users:

@@ -166,6 +166,64 @@ func (_m *ShopsRepo) GetShopsBy(ctx context.Context, criteria dtos.SearchShopsBy
 	return r0, r1
 }
 
+// ListTurboCandidates provides a mock function with given fields: ctx
+func (_m *ShopsRepo) ListTurboCandidates(ctx context.Context) (dtos.ShopsResponse, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListTurboCandidates")
+	}
+
+	var r0 dtos.ShopsResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (dtos.ShopsResponse, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) dtos.ShopsResponse); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(dtos.ShopsResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ResolveTurboShop provides a mock function with given fields: ctx, shopID, coords
+func (_m *ShopsRepo) ResolveTurboShop(ctx context.Context, shopID uuid.UUID, coords dtos.Coords) (dtos.ShopResponse, error) {
+	ret := _m.Called(ctx, shopID, coords)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ResolveTurboShop")
+	}
+
+	var r0 dtos.ShopResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, dtos.Coords) (dtos.ShopResponse, error)); ok {
+		return rf(ctx, shopID, coords)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, dtos.Coords) dtos.ShopResponse); ok {
+		r0 = rf(ctx, shopID, coords)
+	} else {
+		r0 = ret.Get(0).(dtos.ShopResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, dtos.Coords) error); ok {
+		r1 = rf(ctx, shopID, coords)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // SearchBatchByShopID provides a mock function with given fields: ctx, shopID
 func (_m *ShopsRepo) SearchBatchByShopID(ctx context.Context, shopID uuid.UUID) (uuid.UUID, error) {
 	ret := _m.Called(ctx, shopID)

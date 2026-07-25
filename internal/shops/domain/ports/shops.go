@@ -23,6 +23,9 @@ type ShopsApp interface {
 	// GetLaunchPromoEndsAt expone la ventana de descuento día 1 a otros dominios
 	// (products) sin que estos dependan de shops/domain/ports en general.
 	GetLaunchPromoEndsAt(ctx context.Context, shopID uuid.UUID) (*time.Time, error)
+	// GetTurboEntry asigna el nodo Turbo abierto más cercano (≤2 km) a las
+	// coordenadas dadas, o Available=false si no hay cobertura.
+	GetTurboEntry(ctx context.Context, coords dtos.Coords) (dtos.TurboEntryResponse, error)
 }
 
 type ShopsRepo interface {
@@ -39,4 +42,11 @@ type ShopsRepo interface {
 	TryCloseOpenBatch(ctx context.Context, shopID uuid.UUID) error
 	// TryCloseAllEligibleBatches cierra todos los lotes elegibles (safety net).
 	TryCloseAllEligibleBatches(ctx context.Context) error
+	// ListTurboCandidates retorna todos los shops type=Turbo con licencia
+	// activa y coordenadas válidas (abiertos o no); la selección del nodo
+	// (abierto, más cercano, ≤2 km) la resuelve la capa app.
+	ListTurboCandidates(ctx context.Context) (dtos.ShopsResponse, error)
+	// ResolveTurboShop calcula delivery_fee/time del nodo Turbo ya elegido
+	// para las coordenadas del cliente.
+	ResolveTurboShop(ctx context.Context, shopID uuid.UUID, coords dtos.Coords) (dtos.ShopResponse, error)
 }

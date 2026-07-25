@@ -49,6 +49,7 @@ var statusMap = map[error]int{
 	ErrRefundProofRequired:    http.StatusBadRequest,
 	ErrRiderProfileIncomplete: http.StatusUnprocessableEntity,
 	ErrRiderNotActive:         http.StatusForbidden,
+	ErrTurboOutOfCoverage:     http.StatusUnprocessableEntity,
 }
 
 func ToHTTPError(err error) error {

@@ -10,7 +10,10 @@ import (
 	"github.com/uptrace/bun"
 )
 
-const CoverageRadius = 3.0 // km, radio fijo para todos los locales
+const (
+	CoverageRadiusKm      = 3.0 // km, radio para Restaurant/Supermarket
+	TurboCoverageRadiusKm = 2.0 // km, radio para nodos Turbo
+)
 
 type Shops []Shop
 
@@ -65,9 +68,19 @@ func (s *Shop) ToDomainDTO(distance entity.ShopDistance) dtos.ShopResponse {
 		Type:           s.Type,
 		Score:          s.Score,
 		DeliveryFee:    deliveryfee.FromDistance(distance.Distance),
-		Time:           int(distance.Duration) + 20,
+		Time:           prepTimeMinutes(s.Type, distance.Duration),
 		HasLaunchPromo: s.HasActiveLaunchPromo(),
 	}
+}
+
+// prepTimeMinutes calcula el tiempo mostrado al cliente a partir de la
+// duración de manejo. Los shops Turbo no suman los 20 minutos de preparación
+// que sí aplican a Restaurant/Supermarket (ver design.md de add-turbo-modality).
+func prepTimeMinutes(shopType string, durationMin int64) int {
+	if shopType == ShopTypeTurbo {
+		return int(durationMin)
+	}
+	return int(durationMin) + 20
 }
 
 func (s *Shops) ToDomainDTO(distances []entity.ShopDistance) dtos.ShopsResponse {

@@ -16,6 +16,7 @@ type Shops interface {
 	GetMyShop(c echo.Context) error
 	SearchShops(c echo.Context) error
 	SetOpenClose(c echo.Context) error
+	GetTurboEntry(c echo.Context) error
 }
 
 type shops struct {
@@ -95,14 +96,14 @@ func (s *shops) GetMyShop(c echo.Context) error {
 
 // SearchShops godoc
 // @Summary      Buscar tiendas por texto y proximidad
-// @Description  Retorna tiendas dentro de 3 km que coincidan con la búsqueda en nombre de tienda, categoría o macro. matched_products incluye sabores y adiciones disponibles del item (details). Query opcional `type` (`Restaurant`|`Supermarket`); si se omite, incluye ambos tipos.
+// @Description  Retorna tiendas que coincidan con la búsqueda en nombre de tienda, categoría o macro, dentro de 3 km (2 km si type=Turbo). matched_products incluye sabores y adiciones disponibles del item (details). Query opcional `type` (`Restaurant`|`Supermarket`|`Turbo`); si se omite, incluye Restaurant y Supermarket (Turbo se descubre vía /turbo/entry).
 // @Tags         Shops
 // @Produce      json
 // @Security     SessionCookie
 // @Param        q     query     string  true   "Texto a buscar, ej: pizza"
 // @Param        lat   query     number  true   "Latitud del usuario"
 // @Param        lon   query     number  true   "Longitud del usuario"
-// @Param        type  query     string  false  "Filtro de tipo: Restaurant o Supermarket"
+// @Param        type  query     string  false  "Filtro de tipo: Restaurant, Supermarket o Turbo"
 // @Success      200  {array}   dtos.SearchShopResponse  "Tiendas encontradas"
 // @Failure      400  {string}  string                   "Parámetros inválidos o faltantes"
 // @Failure      401  {string}  string                   "No autorizado"
@@ -131,13 +132,13 @@ func (s *shops) SearchShops(c echo.Context) error {
 
 // GetAllShops godoc
 // @Summary      Obtener todas las tiendas cercanas
-// @Description  Retorna todas las tiendas disponibles ordenadas por proximidad a las coordenadas proporcionadas. Query opcional `type` (`Restaurant`|`Supermarket`); si se omite, incluye ambos tipos.
+// @Description  Retorna todas las tiendas disponibles ordenadas por proximidad a las coordenadas proporcionadas, dentro de 3 km (2 km si type=Turbo). Query opcional `type` (`Restaurant`|`Supermarket`|`Turbo`); si se omite, incluye Restaurant y Supermarket (Turbo se descubre vía /turbo/entry).
 // @Tags         Shops
 // @Produce      json
 // @Security     SessionCookie
 // @Param        lat   query     number  true   "Latitud del usuario, ej: 4.678034"
 // @Param        lon   query     number  true   "Longitud del usuario, ej: -74.0496399"
-// @Param        type  query     string  false  "Filtro de tipo: Restaurant o Supermarket"
+// @Param        type  query     string  false  "Filtro de tipo: Restaurant, Supermarket o Turbo"
 // @Success      200  {array}   dtos.ShopResponse  "Lista de tiendas"
 // @Failure      400  {string}  string             "Coordenadas inválidas, type inválido o faltantes"
 // @Failure      401  {string}  string             "No autorizado"
@@ -211,4 +212,36 @@ func (p *shops) GetShopsBy(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, products)
+}
+
+// GetTurboEntry godoc
+// @Summary      Entrada Turbo: asignar nodo por geolocalización
+// @Description  Dadas las coordenadas del cliente, asigna el nodo Turbo abierto más cercano dentro de 2 km (estilo Rappi: el cliente no elige local). Si no hay cobertura, retorna available=false.
+// @Tags         Shops
+// @Produce      json
+// @Security     SessionCookie
+// @Param        lat  query     number  true  "Latitud del usuario"
+// @Param        lon  query     number  true  "Longitud del usuario"
+// @Success      200  {object}  dtos.TurboEntryResponse
+// @Failure      400  {string}  string  "Coordenadas inválidas"
+// @Failure      401  {string}  string  "No autorizado"
+// @Failure      500  {string}  string  "Error interno del servidor"
+// @Router       /turbo/entry [get]
+func (s *shops) GetTurboEntry(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	coords := dtos.Coords{}
+	if err := c.Bind(&coords); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := coords.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	entry, err := s.app.GetTurboEntry(ctx, coords)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, entry)
 }

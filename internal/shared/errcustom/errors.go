@@ -46,6 +46,7 @@ var (
 	ErrRiderNotActive         = errors.New("cuenta de rider no activa")
 	ErrInvalidDateRange       = errors.New("rango de fechas inválido")
 	ErrUnknownETLEntity       = errors.New("entidad ETL desconocida")
+	ErrTurboOutOfCoverage     = errors.New("la dirección está fuera de la cobertura Turbo (2 km)")
 )
 
 var (

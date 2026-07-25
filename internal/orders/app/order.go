@@ -16,6 +16,7 @@ import (
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
+	"Encargalo.app-api.go/internal/pkg/geo"
 	"Encargalo.app-api.go/internal/pkg/money"
 	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
 	productsModels "Encargalo.app-api.go/internal/products/domain/models"
@@ -23,6 +24,7 @@ import (
 	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/deliveryfee"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	shopsmodels "Encargalo.app-api.go/internal/shops/domain/models/shops"
 	shops "Encargalo.app-api.go/internal/shops/domain/ports"
 	"Encargalo.app-api.go/internal/users/domain/dto"
 	portsCustomers "Encargalo.app-api.go/internal/users/domain/ports"
@@ -77,6 +79,21 @@ func (o *orderApp) resolveOrderItemFlavors(ctx context.Context, order *models.Or
 
 func PriceMismatch(actual, expected float64) bool {
 	return math.Abs(actual-expected) > priceTolerance
+}
+
+// ValidateTurboCoverage rechaza pedidos/cotizaciones a shops Turbo cuando la
+// dirección del cliente cae fuera del radio de cobertura (2 km). No-op para
+// shops que no son Turbo. Exportada como función pura para poder testearla
+// sin depender de red (ver comentario de PriceMismatch, arriba).
+func ValidateTurboCoverage(shop *models.ShopOrder, address dtos.Address) error {
+	if shop.Type != shopsmodels.ShopTypeTurbo {
+		return nil
+	}
+	distanceKm := geo.HaversineKm(shop.Latitude, shop.Longitude, address.Latitude, address.Longitude)
+	if distanceKm > shopsmodels.TurboCoverageRadiusKm {
+		return errcustom.ErrTurboOutOfCoverage
+	}
+	return nil
 }
 
 var allowedTransitionStatuses = map[models.OrderStatus]bool{
@@ -280,6 +297,10 @@ type pricedOrderDraft struct {
 func (o *orderApp) priceOrderDraft(ctx context.Context, order *dtos.CreateOrder) (*pricedOrderDraft, error) {
 	shop, batchID, err := o.requireOpenShopAndBatch(ctx, order.ShopID)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := ValidateTurboCoverage(shop, order.Address); err != nil {
 		return nil, err
 	}
 

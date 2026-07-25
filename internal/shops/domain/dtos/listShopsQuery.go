@@ -7,7 +7,7 @@ import "context"
 type ListShopsQuery struct {
 	Latitude  float64 `query:"lat" validate:"required,latitude"`
 	Longitude float64 `query:"lon" validate:"required,longitude"`
-	Type      string  `query:"type" validate:"omitempty,oneof=Restaurant Supermarket"`
+	Type      string  `query:"type" validate:"omitempty,oneof=Restaurant Supermarket Turbo"`
 }
 
 func (q *ListShopsQuery) Validate() error {
