@@ -8,12 +8,10 @@ import (
 	"Encargalo.app-api.go/internal/pkg/bycript"
 	"Encargalo.app-api.go/internal/pkg/cache"
 	"Encargalo.app-api.go/internal/pkg/cookie"
-	"Encargalo.app-api.go/internal/pkg/logs"
 	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
 	"Encargalo.app-api.go/internal/shared/adapters/googleauth"
 	"Encargalo.app-api.go/internal/shared/adapters/postgres"
 	"Encargalo.app-api.go/internal/shared/adapters/redis"
-	"Encargalo.app-api.go/internal/shared/adapters/slack"
 	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shared/jwt"
@@ -214,8 +212,6 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(googleauth.NewVerifier)
 	_ = Container.Provide(bycript.NewHashPassword)
 	_ = Container.Provide(jwt.NewSessionUtils)
-	_ = Container.Provide(slack.NewConnectionSlack)
-	_ = Container.Provide(logs.NewLogs)
 	_ = Container.Provide(cookie.NewCookieFactory)
 	_ = Container.Provide(uploadimage.NewUploadImage)
 

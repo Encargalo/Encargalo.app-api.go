@@ -7,7 +7,6 @@ import (
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/auth/domain/ports"
-	"Encargalo.app-api.go/internal/pkg/logs"
 	"Encargalo.app-api.go/internal/shared/applog"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
@@ -15,12 +14,11 @@ import (
 )
 
 type authRepo struct {
-	redis     *redis.Client
-	slackLogs logs.Logs
+	redis *redis.Client
 }
 
-func NewAuthRepo(redis *redis.Client, slackLogs logs.Logs) ports.AuthRepo {
-	return &authRepo{redis, slackLogs}
+func NewAuthRepo(redis *redis.Client) ports.AuthRepo {
+	return &authRepo{redis}
 }
 
 const sessionKeyPrefix = "sessions:"
@@ -33,7 +31,6 @@ func (s *authRepo) SaveSession(ctx context.Context, session *models.ActiveSessio
 
 	if err := s.redis.Set(ctx, sessionKey(session.ID), sessionData, 365*24*time.Hour).Err(); err != nil {
 		applog.Error(ctx, "error al registrar la sesion", err, "session_id", session.ID.String())
-		s.slackLogs.Slack(err)
 		return errcustom.ErrUnexpectedError
 	}
 
@@ -48,14 +45,12 @@ func (s *authRepo) SearchSession(ctx context.Context, sessionID uuid.UUID) (*mod
 			return nil, errcustom.ErrNotFound
 		}
 		applog.Error(ctx, "error al obtener la sesion", err, "session_id", sessionID.String())
-		s.slackLogs.Slack(err)
 		return nil, errcustom.ErrUnexpectedError
 	}
 
 	var session models.ActiveSession
 	if err := json.Unmarshal([]byte(sessionData), &session); err != nil {
 		applog.Error(ctx, "error al deserializar la sesion", err, "session_id", sessionID.String())
-		s.slackLogs.Slack(err)
 		return nil, errcustom.ErrUnexpectedError
 	}
 
@@ -65,7 +60,6 @@ func (s *authRepo) SearchSession(ctx context.Context, sessionID uuid.UUID) (*mod
 func (s *authRepo) DeleteSession(ctx context.Context, session_id uuid.UUID) error {
 	if err := s.redis.Del(ctx, sessionKey(session_id)).Err(); err != nil {
 		applog.Error(ctx, "error al eliminar la sesion", err, "session_id", session_id.String())
-		s.slackLogs.Slack(err)
 		return errcustom.ErrUnexpectedError
 	}
 

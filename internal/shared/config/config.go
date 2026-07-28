@@ -25,7 +25,6 @@ type Config struct {
 	Redis         Redis         `env:"redis"`
 	RedisStream   RedisStream   `env:"redis_stream"`
 	JWT           JWT           `env:"jwt"`
-	Slack         Slack         `env:"slack"`
 	Environment   Environment   `env:"environment"`
 	Google        Google        `env:"google"`
 	Cloudinary    Cloudinary    `env:"cloudinary"`
@@ -56,11 +55,6 @@ type RedisStream struct {
 
 type JWT struct {
 	Secret string `validate:"required" env:"secret"`
-}
-
-type Slack struct {
-	Token   string `env:"token"`
-	Channel string `env:"channel"`
 }
 
 type Environment struct {

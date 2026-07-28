@@ -54,11 +54,10 @@ Shared infrastructure lives in `internal/shared/`:
 - `config/` — env-based config loaded via `gosuite`, read with `config.Get()`
 - `adapters/postgres/` — bun ORM + goose migrations (OLTP en `migrations/`, OLAP en `migrations_olap/`)
 - `adapters/redis/` — Redis cache client + stream producer
-- `adapters/slack/` — Slack notifications
 - `jwt/` — JWT sign/validate
 - `errcustom/` — sentinel errors (`ErrNotFound`, `ErrUnautorized`, `ErrUnexpectedError`, etc.)
 
-Shared utilities in `internal/pkg/`: `bycript`, `cache`, `cookie`, `json`, `logs`, `uploadImage`.
+Shared utilities in `internal/pkg/`: `bycript`, `cache`, `cookie`, `json`, `uploadImage`.
 
 ## Dependency Injection
 
