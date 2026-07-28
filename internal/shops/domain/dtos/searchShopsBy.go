@@ -14,8 +14,8 @@ var (
 )
 
 type SearchShopsByID struct {
-	ID  uuid.UUID `query:"id"`
-	Tag string    `query:"tag"`
+	ID   uuid.UUID `query:"id"`
+	Slug string    `query:"slug"`
 }
 
 func (s *SearchShopsByID) Validate() error {

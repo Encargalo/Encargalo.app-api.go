@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func buildBody(t *testing.T, v any) *bytes.Buffer {
@@ -307,6 +308,10 @@ func TestLogout_Success(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, tc.Res.Code)
+
+	var body authhandler.LogoutResponse
+	require.NoError(t, json.Unmarshal(tc.Res.Body.Bytes(), &body))
+	assert.Equal(t, "session deleted success", body.Message)
 }
 
 func TestLogout_NoSession(t *testing.T) {

@@ -5,7 +5,7 @@ import "github.com/google/uuid"
 type SearchShopRow struct {
 	ID            uuid.UUID `bun:"id"`
 	Name          string    `bun:"name"`
-	Tag           string    `bun:"tag"`
+	Slug          string    `bun:"slug"`
 	Address       string    `bun:"address"`
 	Latitude      *float64  `bun:"latitude"`
 	Longitude     *float64  `bun:"longitude"`

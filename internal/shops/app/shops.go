@@ -10,6 +10,7 @@ import (
 	"Encargalo.app-api.go/internal/pkg/money"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shops/domain/dtos"
+	shopsmodels "Encargalo.app-api.go/internal/shops/domain/models/shops"
 	portsShops "Encargalo.app-api.go/internal/shops/domain/ports"
 	"github.com/google/uuid"
 )
@@ -39,8 +40,8 @@ func applyBsRate(shops dtos.ShopsResponse, rate float64) {
 	}
 }
 
-func (s *shopsApp) GetAllShops(ctx context.Context, coords dtos.Coords) (dtos.ShopsResponse, error) {
-	shops, err := s.repo.GetAllShops(ctx, coords)
+func (s *shopsApp) GetAllShops(ctx context.Context, query dtos.ListShopsQuery) (dtos.ShopsResponse, error) {
+	shops, err := s.repo.GetAllShops(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -64,6 +65,15 @@ func (s *shopsApp) GetShopByID(ctx context.Context, shopID uuid.UUID) (dtos.Shop
 func (s *shopsApp) SetOpenClose(ctx context.Context, shopID *uuid.UUID, open bool) error {
 	if shopID == nil {
 		return errcustom.ErrUnautorized
+	}
+	if open {
+		status, err := s.repo.GetShopStatus(ctx, *shopID)
+		if err != nil {
+			return err
+		}
+		if status != string(shopsmodels.ShopStatusActive) {
+			return errcustom.ErrShopNotActive
+		}
 	}
 	if err := s.repo.SetOpenClose(ctx, shopID, open); err != nil {
 		return err

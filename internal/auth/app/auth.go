@@ -8,7 +8,6 @@ import (
 	"Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/auth/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/bycript"
-	"Encargalo.app-api.go/internal/pkg/logs"
 	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/adapters/googleauth"
 	"Encargalo.app-api.go/internal/shared/applog"
@@ -22,7 +21,6 @@ type appAuth struct {
 	svc            portsCusto.UsersApp
 	bycript        bycript.Password
 	repo           ports.AuthRepo
-	slackLogs      logs.Logs
 	googleVerifier googleauth.Verifier
 	riderProfiles  ridersPorts.RiderProfileApp
 }
@@ -31,11 +29,10 @@ func NewAuthApp(
 	svc portsCusto.UsersApp,
 	bycript bycript.Password,
 	repo ports.AuthRepo,
-	slackLogs logs.Logs,
 	googleVerifier googleauth.Verifier,
 	riderProfiles ridersPorts.RiderProfileApp,
 ) ports.AuthApp {
-	return &appAuth{svc, bycript, repo, slackLogs, googleVerifier, riderProfiles}
+	return &appAuth{svc, bycript, repo, googleVerifier, riderProfiles}
 }
 
 func (a *appAuth) SignInCustomer(ctx context.Context, phone, password string) (uuid.UUID, error) {

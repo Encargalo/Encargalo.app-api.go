@@ -6,7 +6,6 @@ import (
 	"errors"
 	"log/slog"
 
-	"Encargalo.app-api.go/internal/pkg/logs"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/users/domain/dto"
 	"Encargalo.app-api.go/internal/users/domain/models"
@@ -22,12 +21,11 @@ type accountWithRole struct {
 }
 
 type customersRepo struct {
-	db        *bun.DB
-	slackLogs logs.Logs
+	db *bun.DB
 }
 
-func NewUsersRepo(db *bun.DB, slackLogs logs.Logs) ports.UsersRepo {
-	return &customersRepo{db, slackLogs}
+func NewUsersRepo(db *bun.DB) ports.UsersRepo {
+	return &customersRepo{db}
 }
 
 func (c *customersRepo) RegisterCustomer(ctx context.Context, customer *models.Account) error {
@@ -36,7 +34,6 @@ func (c *customersRepo) RegisterCustomer(ctx context.Context, customer *models.A
 
 		if _, err := tx.NewInsert().Model(customer).Exec(ctx); err != nil {
 			slog.Error("error al insertar el customer", "error", err)
-			c.slackLogs.Slack(err)
 			return errcustom.ErrUnexpectedError
 		}
 
@@ -45,7 +42,6 @@ func (c *customersRepo) RegisterCustomer(ctx context.Context, customer *models.A
 
 		if _, err := tx.NewInsert().Model(activationAccount).Exec(ctx); err != nil {
 			slog.Error("error al registrar el codigo de activación", "error", err)
-			c.slackLogs.Slack(err)
 			return errcustom.ErrUnexpectedError
 		}
 
@@ -54,7 +50,6 @@ func (c *customersRepo) RegisterCustomer(ctx context.Context, customer *models.A
 			SELECT ?, id FROM users.roles WHERE name = 'Customer'
 		`, customer.ID).Exec(ctx); err != nil {
 			slog.Error("error al asignar rol Customer", "error", err)
-			c.slackLogs.Slack(err)
 			return errcustom.ErrUnexpectedError
 		}
 
@@ -75,7 +70,6 @@ func (c *customersRepo) RegisterCustomerFromGoogle(ctx context.Context, customer
 
 		if _, err := tx.NewInsert().Model(customer).Exec(ctx); err != nil {
 			slog.Error("error al insertar el customer de google", "error", err)
-			c.slackLogs.Slack(err)
 			return errcustom.ErrUnexpectedError
 		}
 
@@ -84,7 +78,6 @@ func (c *customersRepo) RegisterCustomerFromGoogle(ctx context.Context, customer
 			SELECT ?, id FROM users.roles WHERE name = 'Customer'
 		`, customer.ID).Exec(ctx); err != nil {
 			slog.Error("error al asignar rol Customer", "error", err)
-			c.slackLogs.Slack(err)
 			return errcustom.ErrUnexpectedError
 		}
 
@@ -136,7 +129,6 @@ func (c *customersRepo) SearchCustomerBy(ctx context.Context, criteria dto.Searc
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errcustom.ErrNotFound
 		}
-		c.slackLogs.Slack(err)
 		return nil, errcustom.ErrUnexpectedError
 	}
 
@@ -156,7 +148,6 @@ func (c *customersRepo) SearchCustomerByPhoneAndNotIDEquals(ctx context.Context,
 		if err == sql.ErrNoRows {
 			return nil, errcustom.ErrNotFound
 		}
-		c.slackLogs.Slack(err)
 		return nil, errcustom.ErrUnexpectedError
 	}
 
@@ -168,7 +159,6 @@ func (c *customersRepo) UpdateCustomer(ctx context.Context, customer_id uuid.UUI
 
 	if _, err := c.db.NewUpdate().Model(customer).OmitZero().Where("id = ?", customer_id).Exec(ctx); err != nil {
 		slog.Error("error al modificar la información del cliente", "error", err)
-		c.slackLogs.Slack(err)
 		return errcustom.ErrUnexpectedError
 	}
 	return nil
@@ -178,7 +168,6 @@ func (c *customersRepo) UpdatePassword(ctx context.Context, customer_id uuid.UUI
 
 	if _, err := c.db.NewUpdate().Model(customer).OmitZero().Where("id = ?", customer_id).Exec(ctx); err != nil {
 		slog.Error("error al modificar la contraseña del customer", "error", err)
-		c.slackLogs.Slack(err)
 		return errcustom.ErrUnexpectedError
 	}
 
@@ -199,7 +188,6 @@ func (c *customersRepo) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]s
 		Scan(ctx, &rows)
 
 	if err != nil {
-		c.slackLogs.Slack(err)
 		return nil, errcustom.ErrUnexpectedError
 	}
 
@@ -229,7 +217,6 @@ func (c *customersRepo) SearchCustomerProfileByID(ctx context.Context, userID uu
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errcustom.ErrNotFound
 		}
-		c.slackLogs.Slack(err)
 		return nil, errcustom.ErrUnexpectedError
 	}
 
@@ -280,7 +267,6 @@ func (c *customersRepo) SearchAccountByPhone(ctx context.Context, phone string, 
 		if err == sql.ErrNoRows {
 			return nil, errcustom.ErrNotFound
 		}
-		c.slackLogs.Slack(err)
 		return nil, errcustom.ErrUnexpectedError
 	}
 

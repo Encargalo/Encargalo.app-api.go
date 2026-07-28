@@ -12,12 +12,13 @@ type ProductsGroup interface {
 }
 
 type productsGroup struct {
-	handlerProducts handler.ProductsHandler
-	middleAuth      auth.AuthMiddleware
+	handlerProducts      handler.ProductsHandler
+	handlerStaffProducts handler.StaffProductsHandler
+	middleAuth           auth.AuthMiddleware
 }
 
-func NewProductsGroup(handlerProducts handler.ProductsHandler, middleAuth auth.AuthMiddleware) ProductsGroup {
-	return &productsGroup{handlerProducts, middleAuth}
+func NewProductsGroup(handlerProducts handler.ProductsHandler, handlerStaffProducts handler.StaffProductsHandler, middleAuth auth.AuthMiddleware) ProductsGroup {
+	return &productsGroup{handlerProducts, handlerStaffProducts, middleAuth}
 }
 
 func (r *productsGroup) Resource(g *echo.Echo) {
@@ -52,4 +53,24 @@ func (r *productsGroup) Resource(g *echo.Echo) {
 	businessRoutes.DELETE("/discounts/:discount_id", r.handlerProducts.DeleteItemDiscount)
 	businessRoutes.GET("/additions/catalog", r.handlerProducts.SearchAdditionsCatalogByShopID)
 	businessRoutes.PUT("/:item_id", r.handlerProducts.UpdateItem)
+
+	staffRoutes := g.Group("/shops/staff/:id/products",
+		r.middleAuth.Auth,
+		r.middleAuth.Require(models.Staff),
+	)
+	staffRoutes.GET("", r.handlerStaffProducts.GetShopProducts)
+	staffRoutes.POST("/items", r.handlerStaffProducts.RegisterItem)
+	staffRoutes.PUT("/items/:item_id", r.handlerStaffProducts.UpdateItem)
+	staffRoutes.POST("/categories", r.handlerStaffProducts.RegisterCategory)
+	staffRoutes.GET("/categories", r.handlerStaffProducts.SearchCategoriesByShopID)
+	staffRoutes.GET("/categories/summary", r.handlerStaffProducts.SearchCategorySummariesByShopID)
+	staffRoutes.PUT("/categories/:category_id", r.handlerStaffProducts.UpdateCategory)
+	staffRoutes.GET("/macro-categories", r.handlerStaffProducts.SearchMacroCategories)
+	staffRoutes.POST("/flavors", r.handlerStaffProducts.RegisterFlavor)
+	staffRoutes.PUT("/flavors/:flavor_id", r.handlerStaffProducts.UpdateFlavor)
+	staffRoutes.DELETE("/flavors/:flavor_id", r.handlerStaffProducts.DeleteFlavor)
+	staffRoutes.POST("/discounts", r.handlerStaffProducts.RegisterItemDiscount)
+	staffRoutes.PUT("/discounts/:discount_id", r.handlerStaffProducts.UpdateItemDiscount)
+	staffRoutes.DELETE("/discounts/:discount_id", r.handlerStaffProducts.DeleteItemDiscount)
+	staffRoutes.GET("/additions/catalog", r.handlerStaffProducts.SearchAdditionsCatalogByShopID)
 }

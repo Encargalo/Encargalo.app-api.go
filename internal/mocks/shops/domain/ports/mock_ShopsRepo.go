@@ -48,9 +48,9 @@ func (_m *ShopsRepo) FindMatchedProducts(ctx context.Context, shopIDs []uuid.UUI
 	return r0, r1
 }
 
-// GetAllShops provides a mock function with given fields: ctx, coords
-func (_m *ShopsRepo) GetAllShops(ctx context.Context, coords dtos.Coords) (dtos.ShopsResponse, error) {
-	ret := _m.Called(ctx, coords)
+// GetAllShops provides a mock function with given fields: ctx, query
+func (_m *ShopsRepo) GetAllShops(ctx context.Context, query dtos.ListShopsQuery) (dtos.ShopsResponse, error) {
+	ret := _m.Called(ctx, query)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetAllShops")
@@ -58,19 +58,19 @@ func (_m *ShopsRepo) GetAllShops(ctx context.Context, coords dtos.Coords) (dtos.
 
 	var r0 dtos.ShopsResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, dtos.Coords) (dtos.ShopsResponse, error)); ok {
-		return rf(ctx, coords)
+	if rf, ok := ret.Get(0).(func(context.Context, dtos.ListShopsQuery) (dtos.ShopsResponse, error)); ok {
+		return rf(ctx, query)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, dtos.Coords) dtos.ShopsResponse); ok {
-		r0 = rf(ctx, coords)
+	if rf, ok := ret.Get(0).(func(context.Context, dtos.ListShopsQuery) dtos.ShopsResponse); ok {
+		r0 = rf(ctx, query)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(dtos.ShopsResponse)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, dtos.Coords) error); ok {
-		r1 = rf(ctx, coords)
+	if rf, ok := ret.Get(1).(func(context.Context, dtos.ListShopsQuery) error); ok {
+		r1 = rf(ctx, query)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -136,6 +136,34 @@ func (_m *ShopsRepo) GetShopByID(ctx context.Context, shopID uuid.UUID) (dtos.Sh
 	return r0, r1
 }
 
+// GetShopStatus provides a mock function with given fields: ctx, shopID
+func (_m *ShopsRepo) GetShopStatus(ctx context.Context, shopID uuid.UUID) (string, error) {
+	ret := _m.Called(ctx, shopID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetShopStatus")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (string, error)); ok {
+		return rf(ctx, shopID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) string); ok {
+		r0 = rf(ctx, shopID)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, shopID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetShopsBy provides a mock function with given fields: ctx, criteria, coords
 func (_m *ShopsRepo) GetShopsBy(ctx context.Context, criteria dtos.SearchShopsByID, coords dtos.Coords) (dtos.ShopsResponse, error) {
 	ret := _m.Called(ctx, criteria, coords)
@@ -159,6 +187,64 @@ func (_m *ShopsRepo) GetShopsBy(ctx context.Context, criteria dtos.SearchShopsBy
 
 	if rf, ok := ret.Get(1).(func(context.Context, dtos.SearchShopsByID, dtos.Coords) error); ok {
 		r1 = rf(ctx, criteria, coords)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ListTurboCandidates provides a mock function with given fields: ctx
+func (_m *ShopsRepo) ListTurboCandidates(ctx context.Context) (dtos.ShopsResponse, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListTurboCandidates")
+	}
+
+	var r0 dtos.ShopsResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (dtos.ShopsResponse, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) dtos.ShopsResponse); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(dtos.ShopsResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ResolveTurboShop provides a mock function with given fields: ctx, shopID, coords
+func (_m *ShopsRepo) ResolveTurboShop(ctx context.Context, shopID uuid.UUID, coords dtos.Coords) (dtos.ShopResponse, error) {
+	ret := _m.Called(ctx, shopID, coords)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ResolveTurboShop")
+	}
+
+	var r0 dtos.ShopResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, dtos.Coords) (dtos.ShopResponse, error)); ok {
+		return rf(ctx, shopID, coords)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, dtos.Coords) dtos.ShopResponse); ok {
+		r0 = rf(ctx, shopID, coords)
+	} else {
+		r0 = ret.Get(0).(dtos.ShopResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, dtos.Coords) error); ok {
+		r1 = rf(ctx, shopID, coords)
 	} else {
 		r1 = ret.Error(1)
 	}

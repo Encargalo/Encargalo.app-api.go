@@ -16,14 +16,16 @@ type MacroCategory struct {
 	ID        uuid.UUID `bun:"id,pk,type:uuid,default:uuid_generate_v4()" json:"id"`
 	Name      string    `bun:"name" json:"name"`
 	Slug      string    `bun:"slug" json:"slug"`
+	ShopType  string    `bun:"shop_type,notnull" json:"shop_type"`
 	CreatedAt time.Time `bun:"created_at,default:now()" json:"-"`
 }
 
 func (m *MacroCategory) ToDomainDTO() dtos.MacroCategoryResponse {
 	return dtos.MacroCategoryResponse{
-		ID:   m.ID,
-		Name: m.Name,
-		Slug: m.Slug,
+		ID:       m.ID,
+		Name:     m.Name,
+		Slug:     m.Slug,
+		ShopType: m.ShopType,
 	}
 }
 

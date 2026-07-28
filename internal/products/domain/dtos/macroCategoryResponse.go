@@ -5,9 +5,10 @@ import "github.com/google/uuid"
 type MacroCategoriesResponse []MacroCategoryResponse
 
 type MacroCategoryResponse struct {
-	ID   uuid.UUID `json:"id"`
-	Name string    `json:"name"`
-	Slug string    `json:"slug"`
+	ID       uuid.UUID `json:"id"`
+	Name     string    `json:"name"`
+	Slug     string    `json:"slug"`
+	ShopType string    `json:"shop_type"`
 }
 
 func (m *MacroCategoriesResponse) Add(macroCategory MacroCategoryResponse) {

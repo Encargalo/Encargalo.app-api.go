@@ -36,9 +36,9 @@ func (_m *ProductsApp) AddSoldItem(ctx context.Context, item models.DataProduceO
 	return r0
 }
 
-// DeleteFlavor provides a mock function with given fields: ctx, flavorID, userID
-func (_m *ProductsApp) DeleteFlavor(ctx context.Context, flavorID uuid.UUID, userID uuid.UUID) error {
-	ret := _m.Called(ctx, flavorID, userID)
+// DeleteFlavor provides a mock function with given fields: ctx, flavorID, shopID
+func (_m *ProductsApp) DeleteFlavor(ctx context.Context, flavorID uuid.UUID, shopID uuid.UUID) error {
+	ret := _m.Called(ctx, flavorID, shopID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for DeleteFlavor")
@@ -46,7 +46,7 @@ func (_m *ProductsApp) DeleteFlavor(ctx context.Context, flavorID uuid.UUID, use
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
-		r0 = rf(ctx, flavorID, userID)
+		r0 = rf(ctx, flavorID, shopID)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -54,9 +54,9 @@ func (_m *ProductsApp) DeleteFlavor(ctx context.Context, flavorID uuid.UUID, use
 	return r0
 }
 
-// DeleteItemDiscount provides a mock function with given fields: ctx, discountID, userID
-func (_m *ProductsApp) DeleteItemDiscount(ctx context.Context, discountID uuid.UUID, userID uuid.UUID) error {
-	ret := _m.Called(ctx, discountID, userID)
+// DeleteItemDiscount provides a mock function with given fields: ctx, discountID, shopID
+func (_m *ProductsApp) DeleteItemDiscount(ctx context.Context, discountID uuid.UUID, shopID uuid.UUID) error {
+	ret := _m.Called(ctx, discountID, shopID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for DeleteItemDiscount")
@@ -64,7 +64,7 @@ func (_m *ProductsApp) DeleteItemDiscount(ctx context.Context, discountID uuid.U
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
-		r0 = rf(ctx, discountID, userID)
+		r0 = rf(ctx, discountID, shopID)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -384,9 +384,9 @@ func (_m *ProductsApp) SearchFlavorsByItemID(ctx context.Context, itemID uuid.UU
 	return r0, r1
 }
 
-// SearchMacroCategories provides a mock function with given fields: ctx
-func (_m *ProductsApp) SearchMacroCategories(ctx context.Context) (dtos.MacroCategoriesResponse, error) {
-	ret := _m.Called(ctx)
+// SearchMacroCategories provides a mock function with given fields: ctx, shopType
+func (_m *ProductsApp) SearchMacroCategories(ctx context.Context, shopType string) (dtos.MacroCategoriesResponse, error) {
+	ret := _m.Called(ctx, shopType)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SearchMacroCategories")
@@ -394,19 +394,19 @@ func (_m *ProductsApp) SearchMacroCategories(ctx context.Context) (dtos.MacroCat
 
 	var r0 dtos.MacroCategoriesResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) (dtos.MacroCategoriesResponse, error)); ok {
-		return rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, string) (dtos.MacroCategoriesResponse, error)); ok {
+		return rf(ctx, shopType)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) dtos.MacroCategoriesResponse); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, string) dtos.MacroCategoriesResponse); ok {
+		r0 = rf(ctx, shopType)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(dtos.MacroCategoriesResponse)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = rf(ctx)
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, shopType)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -474,9 +474,27 @@ func (_m *ProductsApp) SearchProductsByShopIDForOwner(ctx context.Context, shopI
 	return r0, r1
 }
 
-// UpdateCategory provides a mock function with given fields: ctx, category, categoryID, userID
-func (_m *ProductsApp) UpdateCategory(ctx context.Context, category dtos.UpdateCategory, categoryID uuid.UUID, userID uuid.UUID) error {
-	ret := _m.Called(ctx, category, categoryID, userID)
+// SeedDefaultCategories provides a mock function with given fields: ctx, shopID, shopType
+func (_m *ProductsApp) SeedDefaultCategories(ctx context.Context, shopID uuid.UUID, shopType string) error {
+	ret := _m.Called(ctx, shopID, shopType)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SeedDefaultCategories")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) error); ok {
+		r0 = rf(ctx, shopID, shopType)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// UpdateCategory provides a mock function with given fields: ctx, category, categoryID, shopID
+func (_m *ProductsApp) UpdateCategory(ctx context.Context, category dtos.UpdateCategory, categoryID uuid.UUID, shopID uuid.UUID) error {
+	ret := _m.Called(ctx, category, categoryID, shopID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateCategory")
@@ -484,7 +502,7 @@ func (_m *ProductsApp) UpdateCategory(ctx context.Context, category dtos.UpdateC
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, dtos.UpdateCategory, uuid.UUID, uuid.UUID) error); ok {
-		r0 = rf(ctx, category, categoryID, userID)
+		r0 = rf(ctx, category, categoryID, shopID)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -492,9 +510,9 @@ func (_m *ProductsApp) UpdateCategory(ctx context.Context, category dtos.UpdateC
 	return r0
 }
 
-// UpdateFlavor provides a mock function with given fields: ctx, flavor, flavorID, userID
-func (_m *ProductsApp) UpdateFlavor(ctx context.Context, flavor dtos.UpdateFlavor, flavorID uuid.UUID, userID uuid.UUID) error {
-	ret := _m.Called(ctx, flavor, flavorID, userID)
+// UpdateFlavor provides a mock function with given fields: ctx, flavor, flavorID, shopID
+func (_m *ProductsApp) UpdateFlavor(ctx context.Context, flavor dtos.UpdateFlavor, flavorID uuid.UUID, shopID uuid.UUID) error {
+	ret := _m.Called(ctx, flavor, flavorID, shopID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateFlavor")
@@ -502,7 +520,7 @@ func (_m *ProductsApp) UpdateFlavor(ctx context.Context, flavor dtos.UpdateFlavo
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, dtos.UpdateFlavor, uuid.UUID, uuid.UUID) error); ok {
-		r0 = rf(ctx, flavor, flavorID, userID)
+		r0 = rf(ctx, flavor, flavorID, shopID)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -510,9 +528,9 @@ func (_m *ProductsApp) UpdateFlavor(ctx context.Context, flavor dtos.UpdateFlavo
 	return r0
 }
 
-// UpdateItem provides a mock function with given fields: ctx, item, itemID, userID
-func (_m *ProductsApp) UpdateItem(ctx context.Context, item dtos.UpdateItem, itemID uuid.UUID, userID uuid.UUID) error {
-	ret := _m.Called(ctx, item, itemID, userID)
+// UpdateItem provides a mock function with given fields: ctx, item, itemID, shopID
+func (_m *ProductsApp) UpdateItem(ctx context.Context, item dtos.UpdateItem, itemID uuid.UUID, shopID uuid.UUID) error {
+	ret := _m.Called(ctx, item, itemID, shopID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateItem")
@@ -520,7 +538,7 @@ func (_m *ProductsApp) UpdateItem(ctx context.Context, item dtos.UpdateItem, ite
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, dtos.UpdateItem, uuid.UUID, uuid.UUID) error); ok {
-		r0 = rf(ctx, item, itemID, userID)
+		r0 = rf(ctx, item, itemID, shopID)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -528,9 +546,9 @@ func (_m *ProductsApp) UpdateItem(ctx context.Context, item dtos.UpdateItem, ite
 	return r0
 }
 
-// UpdateItemDiscount provides a mock function with given fields: ctx, discount, discountID, userID
-func (_m *ProductsApp) UpdateItemDiscount(ctx context.Context, discount dtos.UpdateItemDiscount, discountID uuid.UUID, userID uuid.UUID) error {
-	ret := _m.Called(ctx, discount, discountID, userID)
+// UpdateItemDiscount provides a mock function with given fields: ctx, discount, discountID, shopID
+func (_m *ProductsApp) UpdateItemDiscount(ctx context.Context, discount dtos.UpdateItemDiscount, discountID uuid.UUID, shopID uuid.UUID) error {
+	ret := _m.Called(ctx, discount, discountID, shopID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateItemDiscount")
@@ -538,7 +556,7 @@ func (_m *ProductsApp) UpdateItemDiscount(ctx context.Context, discount dtos.Upd
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, dtos.UpdateItemDiscount, uuid.UUID, uuid.UUID) error); ok {
-		r0 = rf(ctx, discount, discountID, userID)
+		r0 = rf(ctx, discount, discountID, shopID)
 	} else {
 		r0 = ret.Error(0)
 	}

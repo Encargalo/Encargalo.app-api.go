@@ -346,6 +346,10 @@ func (p *productsHandler) UpdateCategory(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
 	}
 
+	if session.ShopID == nil {
+		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
+	}
+
 	categoryIDParam := e.Param("category_id")
 	categoryID, err := uuid.Parse(categoryIDParam)
 	if err != nil {
@@ -360,7 +364,7 @@ func (p *productsHandler) UpdateCategory(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	if err := p.svc.UpdateCategory(ctx, category, categoryID, session.UserID); err != nil {
+	if err := p.svc.UpdateCategory(ctx, category, categoryID, *session.ShopID); err != nil {
 		return err
 	}
 
@@ -465,6 +469,10 @@ func (p *productsHandler) UpdateItem(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
 	}
 
+	if session.ShopID == nil {
+		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
+	}
+
 	itemIDParam := e.Param("item_id")
 	itemID, err := uuid.Parse(itemIDParam)
 	if err != nil {
@@ -479,7 +487,7 @@ func (p *productsHandler) UpdateItem(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	if err := p.svc.UpdateItem(ctx, item, itemID, session.UserID); err != nil {
+	if err := p.svc.UpdateItem(ctx, item, itemID, *session.ShopID); err != nil {
 		return err
 	}
 
@@ -553,6 +561,10 @@ func (p *productsHandler) UpdateFlavor(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
 	}
 
+	if session.ShopID == nil {
+		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
+	}
+
 	flavorIDParam := e.Param("flavor_id")
 	flavorID, err := uuid.Parse(flavorIDParam)
 	if err != nil {
@@ -567,7 +579,7 @@ func (p *productsHandler) UpdateFlavor(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	if err := p.svc.UpdateFlavor(ctx, flavor, flavorID, session.UserID); err != nil {
+	if err := p.svc.UpdateFlavor(ctx, flavor, flavorID, *session.ShopID); err != nil {
 		return err
 	}
 
@@ -595,13 +607,17 @@ func (p *productsHandler) DeleteFlavor(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
 	}
 
+	if session.ShopID == nil {
+		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
+	}
+
 	flavorIDParam := e.Param("flavor_id")
 	flavorID, err := uuid.Parse(flavorIDParam)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "flavor_id inválido")
 	}
 
-	if err := p.svc.DeleteFlavor(ctx, flavorID, session.UserID); err != nil {
+	if err := p.svc.DeleteFlavor(ctx, flavorID, *session.ShopID); err != nil {
 		return err
 	}
 
@@ -610,18 +626,21 @@ func (p *productsHandler) DeleteFlavor(e echo.Context) error {
 
 // SearchMacroCategories godoc
 // @Summary      Obtener macro categorías
-// @Description  Retorna el catálogo de macro categorías (Pizza, Parrilla, Pollo, etc.) usado para clasificar las categorías del negocio autenticado.
+// @Description  Retorna el catálogo de macro categorías (Pizza, Parrilla, Pollo, etc.) usado para clasificar las categorías del negocio autenticado. Filtro opcional shop_type (Restaurant|Supermarket|Turbo); sin filtro retorna todas.
 // @Tags         Business
 // @Produce      json
 // @Security     SessionCookie
+// @Param        shop_type  query  string  false  "Restaurant|Supermarket|Turbo"
 // @Success      200  {object}  dtos.MacroCategoriesResponse
+// @Failure      400  {string}  string  "shop_type inválido"
 // @Failure      401  {string}  string  "No autorizado"
 // @Failure      500  {string}  string  "Error interno del servidor"
 // @Router       /business/products/macro-categories [get]
 func (p *productsHandler) SearchMacroCategories(e echo.Context) error {
 	ctx := e.Request().Context()
+	shopType := e.QueryParam("shop_type")
 
-	macroCategories, err := p.svc.SearchMacroCategories(ctx)
+	macroCategories, err := p.svc.SearchMacroCategories(ctx, shopType)
 	if err != nil {
 		return err
 	}
@@ -696,6 +715,10 @@ func (p *productsHandler) UpdateItemDiscount(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
 	}
 
+	if session.ShopID == nil {
+		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
+	}
+
 	discountIDParam := e.Param("discount_id")
 	discountID, err := uuid.Parse(discountIDParam)
 	if err != nil {
@@ -710,7 +733,7 @@ func (p *productsHandler) UpdateItemDiscount(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	if err := p.svc.UpdateItemDiscount(ctx, discount, discountID, session.UserID); err != nil {
+	if err := p.svc.UpdateItemDiscount(ctx, discount, discountID, *session.ShopID); err != nil {
 		return err
 	}
 
@@ -738,13 +761,17 @@ func (p *productsHandler) DeleteItemDiscount(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
 	}
 
+	if session.ShopID == nil {
+		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
+	}
+
 	discountIDParam := e.Param("discount_id")
 	discountID, err := uuid.Parse(discountIDParam)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "discount_id inválido")
 	}
 
-	if err := p.svc.DeleteItemDiscount(ctx, discountID, session.UserID); err != nil {
+	if err := p.svc.DeleteItemDiscount(ctx, discountID, *session.ShopID); err != nil {
 		return err
 	}
 

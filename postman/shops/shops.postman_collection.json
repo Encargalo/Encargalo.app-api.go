@@ -1,191 +1,428 @@
 {
-  "info": {
-    "_postman_id": "a1b2c3d4-0030-4000-8000-000000000000",
-    "name": "Encargalo - Shops",
-    "description": "Endpoints de tiendas. No requieren autenticación.",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "variable": [
-    {
-      "key": "base_url",
-      "value": "http://localhost:3000",
-      "type": "string"
-    }
-  ],
-  "item": [
-    {
-      "name": "Get All Shops",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{base_url}}/shops/all?lat=4.678034&lon=-74.0496399",
-          "host": ["{{base_url}}"],
-          "path": ["shops", "all"],
-          "query": [
-            {
-              "key": "lat",
-              "value": "4.678034",
-              "description": "Latitud del usuario"
-            },
-            {
-              "key": "lon",
-              "value": "-74.0496399",
-              "description": "Longitud del usuario"
-            }
-          ]
-        },
-        "description": "Retorna todas las tiendas disponibles ordenadas por distancia al usuario."
-      }
-    },
-    {
-      "name": "Get Shop by ID",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{base_url}}/shops?id=00000000-0000-0000-0000-000000000000&lat=4.678034&lon=-74.0496399",
-          "host": ["{{base_url}}"],
-          "path": ["shops"],
-          "query": [
-            {
-              "key": "id",
-              "value": "00000000-0000-0000-0000-000000000000",
-              "description": "UUID de la tienda"
-            },
-            {
-              "key": "tag",
-              "value": "",
-              "description": "Tag de la tienda (alternativo al id)",
-              "disabled": true
-            },
-            {
-              "key": "lat",
-              "value": "4.678034",
-              "description": "Latitud del usuario"
-            },
-            {
-              "key": "lon",
-              "value": "-74.0496399",
-              "description": "Longitud del usuario"
-            }
-          ]
-        },
-        "description": "Retorna una tienda con todos sus productos. Se puede buscar por `id` (UUID) o por `tag` (ej: dmo). Ambos parámetros lat y lon son requeridos."
-      }
-    },
-    {
-      "name": "Get Shop by Tag",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{base_url}}/shops?tag=dmo&lat=4.678034&lon=-74.0496399",
-          "host": ["{{base_url}}"],
-          "path": ["shops"],
-          "query": [
-            {
-              "key": "id",
-              "value": "",
-              "description": "UUID de la tienda (alternativo al tag)",
-              "disabled": true
-            },
-            {
-              "key": "tag",
-              "value": "dmo",
-              "description": "Tag de la tienda"
-            },
-            {
-              "key": "lat",
-              "value": "4.678034",
-              "description": "Latitud del usuario"
-            },
-            {
-              "key": "lon",
-              "value": "-74.0496399",
-              "description": "Longitud del usuario"
-            }
-          ]
-        },
-        "description": "Retorna una tienda con todos sus productos buscando por tag."
-      }
-    }
-    ,{
-      "name": "Set Shop Open/Close (Owner)",
-      "request": {
-        "method": "PATCH",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"open\": true\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "{{base_url}}/business/shops/me/status",
-          "host": ["{{base_url}}"],
-          "path": ["business", "shops", "me", "status"]
-        },
-        "description": "Abre o cierra el local del owner autenticado. Solo accesible con rol Owner. Retorna 204 sin cuerpo. Al abrir se crea un lote de jornada si no hay uno abierto; al cerrar el lote no se cierra (sigue permitiendo gestionar órdenes activas) y se cierra solo cuando ya no quedan activas. La primera vez que el local se abre (`open: true`) se activan automáticamente sus ventanas de promoción de lanzamiento: 24h con 50% de descuento subsidiado por la plataforma y 192h (8 días) con comisión 0% para el negocio. Aperturas/cierres posteriores no vuelven a activarlas."
-      }
-    }
-    ,{
-      "name": "Get Customer Stats (OrderManager/Owner)",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{base_url}}/business/shops/stats/customers?period=month",
-          "host": ["{{base_url}}"],
-          "path": ["business", "shops", "stats", "customers"],
-          "query": [
-            {
-              "key": "period",
-              "value": "month",
-              "description": "Período: day, week, month (default: month)"
-            }
-          ]
-        },
-        "description": "Retorna la cantidad de clientes nuevos (primera compra Completed histórica dentro del período) y recurrentes (ya habían comprado antes del período) del local, para el período actual y anterior. Requiere sesión con rol OrderManager u Owner."
-      }
-    }
-    ,{
-      "name": "Search Shops",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{base_url}}/shops/search?q=pizza&lat=4.678034&lon=-74.0496399",
-          "host": ["{{base_url}}"],
-          "path": ["shops", "search"],
-          "query": [
-            {
-              "key": "q",
-              "value": "pizza",
-              "description": "Texto a buscar (nombre de tienda o producto)"
-            },
-            {
-              "key": "lat",
-              "value": "4.678034",
-              "description": "Latitud del usuario"
-            },
-            {
-              "key": "lon",
-              "value": "-74.0496399",
-              "description": "Longitud del usuario"
-            }
-          ]
-        },
-        "description": "Busca tiendas dentro de 3 km que coincidan con el texto en nombre de tienda, categoría o macro. Cada matched_product incluye has_flavors/has_additions, flavor_selection/addition_selection y details (lista de sabores y adiciones disponibles)."
-      }
-    }
-  ]
+	"info": {
+		"_postman_id": "a1b2c3d4-0030-4000-8000-000000000000",
+		"name": "Encargalo - Shops",
+		"description": "Endpoints de tiendas. No requieren autenticación.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Get All Shops",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/shops/all?lat=4.678034&lon=-74.0496399&type=Restaurant",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"shops",
+						"all"
+					],
+					"query": [
+						{
+							"key": "lat",
+							"value": "4.678034",
+							"description": "Latitud del usuario"
+						},
+						{
+							"key": "lon",
+							"value": "-74.0496399",
+							"description": "Longitud del usuario"
+						},
+						{
+							"key": "type",
+							"value": "Restaurant",
+							"description": "Opcional: Restaurant | Supermarket | Turbo. Si se omite, retorna Restaurant y Supermarket (Turbo se descubre vía /turbo/entry)."
+						}
+					]
+				},
+				"description": "Retorna todas las tiendas disponibles ordenadas por distancia al usuario, dentro de 3 km (2 km si type=Turbo). Query opcional `type` (Restaurant|Supermarket|Turbo); sin type incluye Restaurant y Supermarket."
+			}
+		},
+		{
+			"name": "Get Shop by ID",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/shops?id=00000000-0000-0000-0000-000000000000&lat=4.678034&lon=-74.0496399",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"shops"
+					],
+					"query": [
+						{
+							"key": "id",
+							"value": "00000000-0000-0000-0000-000000000000",
+							"description": "UUID de la tienda"
+						},
+						{
+							"key": "slug",
+							"value": "",
+							"description": "Slug de la tienda (alternativo al id)",
+							"disabled": true
+						},
+						{
+							"key": "lat",
+							"value": "4.678034",
+							"description": "Latitud del usuario"
+						},
+						{
+							"key": "lon",
+							"value": "-74.0496399",
+							"description": "Longitud del usuario"
+						}
+					]
+				},
+				"description": "Retorna una tienda con todos sus productos. Se puede buscar por `id` (UUID) o por `slug` (ej: dmo). Ambos parámetros lat y lon son requeridos."
+			}
+		},
+		{
+			"name": "Get Shop by Slug",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/shops?slug=dmo&lat=4.678034&lon=-74.0496399",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"shops"
+					],
+					"query": [
+						{
+							"key": "id",
+							"value": "",
+							"description": "UUID de la tienda (alternativo al slug)",
+							"disabled": true
+						},
+						{
+							"key": "slug",
+							"value": "dmo",
+							"description": "Slug de la tienda"
+						},
+						{
+							"key": "lat",
+							"value": "4.678034",
+							"description": "Latitud del usuario"
+						},
+						{
+							"key": "lon",
+							"value": "-74.0496399",
+							"description": "Longitud del usuario"
+						}
+					]
+				},
+				"description": "Retorna una tienda con todos sus productos buscando por slug."
+			}
+		},
+		{
+			"name": "Set Shop Open/Close (Owner)",
+			"request": {
+				"method": "PATCH",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"open\": true\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/business/shops/me/status",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"business",
+						"shops",
+						"me",
+						"status"
+					]
+				},
+				"description": "Abre o cierra el local del owner autenticado. Solo accesible con rol Owner. Retorna 204 sin cuerpo. Al abrir se crea un lote de jornada si no hay uno abierto; al cerrar el lote no se cierra (sigue permitiendo gestionar órdenes activas) y se cierra solo cuando ya no quedan activas. La primera vez que el local se abre (`open: true`) se activan automáticamente sus ventanas de promoción de lanzamiento: 24h con 50% de descuento subsidiado por la plataforma y 192h (8 días) con comisión 0% para el negocio. Aperturas/cierres posteriores no vuelven a activarlas."
+			}
+		},
+		{
+			"name": "Get Customer Stats (OrderManager/Owner)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/business/shops/stats/customers?period=month",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"business",
+						"shops",
+						"stats",
+						"customers"
+					],
+					"query": [
+						{
+							"key": "period",
+							"value": "month",
+							"description": "Período: day, week, month (default: month)"
+						}
+					]
+				},
+				"description": "Retorna la cantidad de clientes nuevos (primera compra Completed histórica dentro del período) y recurrentes (ya habían comprado antes del período) del local, para el período actual y anterior. Requiere sesión con rol OrderManager u Owner."
+			}
+		},
+		{
+			"name": "Search Shops",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/shops/search?q=pizza&lat=4.678034&lon=-74.0496399&type=Restaurant",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"shops",
+						"search"
+					],
+					"query": [
+						{
+							"key": "q",
+							"value": "pizza",
+							"description": "Texto a buscar (nombre de tienda o producto)"
+						},
+						{
+							"key": "lat",
+							"value": "4.678034",
+							"description": "Latitud del usuario"
+						},
+						{
+							"key": "lon",
+							"value": "-74.0496399",
+							"description": "Longitud del usuario"
+						},
+						{
+							"key": "type",
+							"value": "Restaurant",
+							"description": "Opcional: Restaurant | Supermarket | Turbo. Si se omite, busca en Restaurant y Supermarket (Turbo se descubre vía /turbo/entry)."
+						}
+					]
+				},
+				"description": "Busca tiendas dentro de 3 km (2 km si type=Turbo) que coincidan con el texto en nombre de tienda, categoría o macro. Query opcional `type` (Restaurant|Supermarket|Turbo). Cada matched_product incluye has_flavors/has_additions, flavor_selection/addition_selection y details (lista de sabores y adiciones disponibles)."
+			}
+		},
+		{
+			"name": "Turbo Entry",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/turbo/entry?lat=10.4806&lon=-66.9036",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"turbo",
+						"entry"
+					],
+					"query": [
+						{
+							"key": "lat",
+							"value": "10.4806",
+							"description": "Latitud del usuario"
+						},
+						{
+							"key": "lon",
+							"value": "-66.9036",
+							"description": "Longitud del usuario"
+						}
+					]
+				},
+				"description": "Asigna el nodo Turbo abierto más cercano (≤2 km) a las coordenadas dadas, estilo Rappi: el cliente no elige local, el backend asigna uno. Retorna `available=false` si no hay cobertura. Requiere sesión con rol Customer."
+			}
+		},
+		{
+			"name": "Staff - Find Owner Candidate",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/shops/staff/candidates?phone=+584121234567",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"shops",
+						"staff",
+						"candidates"
+					],
+					"query": [
+						{
+							"key": "phone",
+							"value": "+584121234567",
+							"description": "Teléfono de la cuenta a vincular como Owner"
+						}
+					]
+				},
+				"description": "Busca una cuenta existente por teléfono para vincularla como Owner de un shop nuevo. Requiere sesión con rol Staff. Rate limit: 30 solicitudes/min por IP."
+			}
+		},
+		{
+			"name": "Staff - Create Draft Shop",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Pizzería Don Luigi\",\n  \"type\": \"Restaurant\",\n  \"owner_id\": \"00000000-0000-0000-0000-000000000000\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/shops/staff",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"shops",
+						"staff"
+					]
+				},
+				"description": "Crea el shop en estado draft y vincula el rol Owner (sin remover los roles que la cuenta ya tenga, ej. Customer) al owner_id indicado. El owner_id se obtiene del endpoint de candidatos. Requiere sesión con rol Staff."
+			}
+		},
+		{
+			"name": "Staff - List Shops",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/shops/staff?status=draft&page=1&limit=20",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"shops",
+						"staff"
+					],
+					"query": [
+						{
+							"key": "status",
+							"value": "draft",
+							"description": "draft|active (default draft)"
+						},
+						{
+							"key": "page",
+							"value": "1",
+							"description": "Página (default 1)"
+						},
+						{
+							"key": "limit",
+							"value": "20",
+							"description": "Límite por página, máx 50 (default 20)"
+						}
+					]
+				},
+				"description": "Lista shops en onboarding por status, paginado. Requiere sesión con rol Staff."
+			}
+		},
+		{
+			"name": "Staff - Get Shop",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/shops/staff/00000000-0000-0000-0000-000000000000",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"shops",
+						"staff",
+						"00000000-0000-0000-0000-000000000000"
+					]
+				},
+				"description": "Detalle de un shop en onboarding, incluye el checklist de completitud (`completion`). Requiere sesión con rol Staff."
+			}
+		},
+		{
+			"name": "Staff - Update Draft Shop",
+			"request": {
+				"method": "PATCH",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"address\": \"Av. Principal, local 3\",\n  \"home_phone\": \"+584121234567\",\n  \"latitude\": 10.4806,\n  \"longitude\": -66.9036\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/shops/staff/00000000-0000-0000-0000-000000000000",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"shops",
+						"staff",
+						"00000000-0000-0000-0000-000000000000"
+					]
+				},
+				"description": "Completa el shop por partes: campos omitidos no se tocan; enviar un campo en null lo limpia (ej. {\"latitude\": null}). logo_image/banner van como data-URL/base64 (se suben a Cloudinary). Rechaza la edición (409) mientras el local esté abierto (opened: true). Requiere sesión con rol Staff."
+			}
+		},
+		{
+			"name": "Staff - Activate Shop",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/shops/staff/00000000-0000-0000-0000-000000000000/activate",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"shops",
+						"staff",
+						"00000000-0000-0000-0000-000000000000",
+						"activate"
+					]
+				},
+				"description": "Activa el shop (draft → active), requiere checklist completo (logo, banner, dirección, teléfono, coordenadas). A partir de aquí el owner puede abrir el local. Devuelve 422 con el listado de campos faltantes si el checklist no está completo. Requiere sesión con rol Staff."
+			}
+		}
+	]
 }

@@ -17,7 +17,7 @@ description: Contexto completo del proyecto Encargalo.app-api.go — módulos, s
 - **Auth**: JWT en cookie `encargalo-session`
 - **WebSocket**: gorilla/websocket (gestión de órdenes en tiempo real)
 - **Storage**: Cloudinary (imágenes)
-- **Notificaciones**: Slack, Discord
+- **Notificaciones**: Discord
 
 ## Estructura de carpetas
 
@@ -37,7 +37,6 @@ internal/shared/
   config/               — variables de entorno (gosuite)
   adapters/postgres/    — conexión bun + migraciones goose
   adapters/redis/       — cliente Redis + stream producer
-  adapters/slack/       — notificaciones Slack
   jwt/                  — sign/validate JWT
   errcustom/            — errores centinela
 internal/pkg/           — utilidades: bycript, cache, cookie, json, logs, uploadImage

@@ -427,6 +427,8 @@ definitions:
         type: string
       name:
         type: string
+      shop_type:
+        type: string
       slug:
         type: string
     type: object
@@ -624,7 +626,7 @@ definitions:
         type: string
       score:
         type: number
-      tag:
+      slug:
         type: string
       time:
         type: integer
@@ -932,6 +934,26 @@ definitions:
     x-enum-varnames:
     - ZoneNormal
     - ZoneWithdrawalAvailable
+  Encargalo_app-api_go_internal_shops_domain_dtos.CreateDraftShopRequest:
+    properties:
+      name:
+        example: Pizzería Don Luigi
+        type: string
+      owner_id:
+        example: d33aaf08-2c43-41c4-b2e7-882b019edb1e
+        type: string
+      type:
+        enum:
+        - Restaurant
+        - Supermarket
+        - Turbo
+        example: Restaurant
+        type: string
+    required:
+    - name
+    - owner_id
+    - type
+    type: object
   Encargalo_app-api_go_internal_shops_domain_dtos.CustomerMetrics:
     properties:
       new_customers:
@@ -1045,6 +1067,21 @@ definitions:
       start_time:
         type: string
     type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.OwnerCandidateResponse:
+    properties:
+      email:
+        type: string
+      has_owner_role:
+        type: boolean
+      name:
+        type: string
+      phone:
+        type: string
+      sur_name:
+        type: string
+      user_id:
+        type: string
+    type: object
   Encargalo_app-api_go_internal_shops_domain_dtos.PeriodMetrics:
     properties:
       orders_completed:
@@ -1123,12 +1160,21 @@ definitions:
         type: boolean
       score:
         type: number
-      tag:
+      slug:
         type: string
       time:
         type: integer
       type:
         type: string
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.ShopActivateErrorResponse:
+    properties:
+      message:
+        type: string
+      missing:
+        items:
+          type: string
+        type: array
     type: object
   Encargalo_app-api_go_internal_shops_domain_dtos.ShopBalanceResponse:
     properties:
@@ -1138,6 +1184,19 @@ definitions:
         items:
           $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionDTO'
         type: array
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.ShopCompletionDTO:
+    properties:
+      filled_count:
+        type: integer
+      is_complete:
+        type: boolean
+      missing:
+        items:
+          type: string
+        type: array
+      required_count:
+        type: integer
     type: object
   Encargalo_app-api_go_internal_shops_domain_dtos.ShopResponse:
     properties:
@@ -1170,7 +1229,7 @@ definitions:
         type: boolean
       score:
         type: number
-      tag:
+      slug:
         type: string
       time:
         type: integer
@@ -1204,6 +1263,56 @@ definitions:
         items:
           $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionDTO'
         type: array
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.StaffShopResponse:
+    properties:
+      activated_at:
+        type: string
+      address:
+        type: string
+      banner:
+        type: string
+      completion:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopCompletionDTO'
+      created_at:
+        type: string
+      home_phone:
+        type: string
+      id:
+        type: string
+      latitude:
+        type: number
+      logo_image:
+        type: string
+      longitude:
+        type: number
+      name:
+        type: string
+      opened:
+        type: boolean
+      owner_id:
+        type: string
+      slug:
+        type: string
+      status:
+        type: string
+      type:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.StaffShopsResponse:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      shops:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StaffShopResponse'
+        type: array
+      total:
+        type: integer
     type: object
   Encargalo_app-api_go_internal_shops_domain_dtos.StatsPeriod:
     enum:
@@ -1251,6 +1360,38 @@ definitions:
         items:
           $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.TopProductItem'
         type: array
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.TurboEntryResponse:
+    properties:
+      available:
+        type: boolean
+      coverage_km:
+        type: number
+      eta_minutes:
+        type: integer
+      shop:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopResponse'
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.UpdateDraftShopRequest:
+    properties:
+      address:
+        type: string
+      banner:
+        example: data:image/jpeg;base64,/9j/4AAQSkZJRg...
+        type: string
+      home_phone:
+        type: string
+      latitude:
+        type: number
+      logo_image:
+        example: data:image/jpeg;base64,/9j/4AAQSkZJRg...
+        type: string
+      longitude:
+        type: number
+      name:
+        type: string
+      slug:
+        type: string
     type: object
   Encargalo_app-api_go_internal_users_domain_dto.Address:
     properties:
@@ -1481,6 +1622,11 @@ definitions:
     - national_id
     - phone
     type: object
+  internal_auth_handler.LogoutResponse:
+    properties:
+      message:
+        type: string
+    type: object
 info:
   contact: {}
 paths:
@@ -1492,9 +1638,9 @@ paths:
       - application/json
       responses:
         "200":
-          description: session deleted success
+          description: OK
           schema:
-            type: string
+            $ref: '#/definitions/internal_auth_handler.LogoutResponse'
         "401":
           description: No autorizado
           schema:
@@ -2381,7 +2527,13 @@ paths:
   /business/products/macro-categories:
     get:
       description: Retorna el catálogo de macro categorías (Pizza, Parrilla, Pollo,
-        etc.) usado para clasificar las categorías del negocio autenticado.
+        etc.) usado para clasificar las categorías del negocio autenticado. Filtro
+        opcional shop_type (Restaurant|Supermarket|Turbo); sin filtro retorna todas.
+      parameters:
+      - description: Restaurant|Supermarket|Turbo
+        in: query
+        name: shop_type
+        type: string
       produces:
       - application/json
       responses:
@@ -2391,6 +2543,10 @@ paths:
             items:
               $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.MacroCategoryResponse'
             type: array
+        "400":
+          description: shop_type inválido
+          schema:
+            type: string
         "401":
           description: No autorizado
           schema:
@@ -3543,15 +3699,15 @@ paths:
   /shops:
     get:
       description: 'Retorna la información de una tienda junto con sus productos.
-        Se debe enviar al menos uno de los parámetros: `id` o `tag`.'
+        Se debe enviar al menos uno de los parámetros: `id` o `slug`.'
       parameters:
       - description: ID de la tienda (UUID)
         in: query
         name: id
         type: string
-      - description: 'Tag de la tienda, ej: dmo'
+      - description: 'Slug de la tienda, ej: dmo'
         in: query
-        name: tag
+        name: slug
         type: string
       - description: 'Latitud del usuario, ej: 4.678034'
         in: query
@@ -3590,13 +3746,15 @@ paths:
             type: string
       security:
       - SessionCookie: []
-      summary: Obtener tienda por ID o tag
+      summary: Obtener tienda por ID o slug
       tags:
       - Shops
   /shops/all:
     get:
       description: Retorna todas las tiendas disponibles ordenadas por proximidad
-        a las coordenadas proporcionadas.
+        a las coordenadas proporcionadas, dentro de 3 km (2 km si type=Turbo). Query
+        opcional `type` (`Restaurant`|`Supermarket`|`Turbo`); si se omite, incluye
+        Restaurant y Supermarket (Turbo se descubre vía /turbo/entry).
       parameters:
       - description: 'Latitud del usuario, ej: 4.678034'
         in: query
@@ -3608,6 +3766,10 @@ paths:
         name: lon
         required: true
         type: number
+      - description: 'Filtro de tipo: Restaurant, Supermarket o Turbo'
+        in: query
+        name: type
+        type: string
       produces:
       - application/json
       responses:
@@ -3618,7 +3780,7 @@ paths:
               $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopResponse'
             type: array
         "400":
-          description: Coordenadas inválidas o faltantes
+          description: Coordenadas inválidas, type inválido o faltantes
           schema:
             type: string
         "401":
@@ -3640,9 +3802,11 @@ paths:
       - Shops
   /shops/search:
     get:
-      description: Retorna tiendas dentro de 3 km que coincidan con la búsqueda en
-        nombre de tienda, categoría o macro. matched_products incluye sabores y adiciones
-        disponibles del item (details).
+      description: Retorna tiendas que coincidan con la búsqueda en nombre de tienda,
+        categoría o macro, dentro de 3 km (2 km si type=Turbo). matched_products incluye
+        sabores y adiciones disponibles del item (details). Query opcional `type`
+        (`Restaurant`|`Supermarket`|`Turbo`); si se omite, incluye Restaurant y Supermarket
+        (Turbo se descubre vía /turbo/entry).
       parameters:
       - description: 'Texto a buscar, ej: pizza'
         in: query
@@ -3659,6 +3823,10 @@ paths:
         name: lon
         required: true
         type: number
+      - description: 'Filtro de tipo: Restaurant, Supermarket o Turbo'
+        in: query
+        name: type
+        type: string
       produces:
       - application/json
       responses:
@@ -3683,6 +3851,832 @@ paths:
       security:
       - SessionCookie: []
       summary: Buscar tiendas por texto y proximidad
+      tags:
+      - Shops
+  /shops/staff:
+    get:
+      description: Lista shops por status (default draft), paginado.
+      parameters:
+      - default: draft
+        description: draft|active
+        in: query
+        name: status
+        type: string
+      - description: Página (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Límite por página, máx 50 (default 20)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StaffShopsResponse'
+        "400":
+          description: status inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Listar shops en onboarding
+      tags:
+      - Shops Staff
+    post:
+      consumes:
+      - application/json
+      description: Crea el shop en estado draft y vincula el rol Owner (sin remover
+        los roles que la cuenta ya tenga) a la cuenta indicada.
+      parameters:
+      - description: Datos mínimos
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.CreateDraftShopRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StaffShopResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Crear shop en borrador
+      tags:
+      - Shops Staff
+  /shops/staff/{id}:
+    get:
+      parameters:
+      - description: Shop ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StaffShopResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: No encontrado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Detalle de shop (staff)
+      tags:
+      - Shops Staff
+    patch:
+      consumes:
+      - application/json
+      description: 'Actualización parcial: los campos omitidos no se tocan; enviar
+        un campo en `null` lo limpia. logo_image/banner van como data-URL/base64 (se
+        suben a Cloudinary). Rechaza la edición mientras el local esté abierto (`opened:
+        true`).'
+      parameters:
+      - description: Shop ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Campos parciales
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.UpdateDraftShopRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StaffShopResponse'
+        "400":
+          description: id inválido / payload inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "409":
+          description: El local está abierto
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Completar shop por partes
+      tags:
+      - Shops Staff
+  /shops/staff/{id}/activate:
+    post:
+      description: Requiere checklist completo (logo, banner, dirección, teléfono,
+        coordenadas). A partir de aquí el owner puede abrir el local.
+      parameters:
+      - description: Shop ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StaffShopResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopActivateErrorResponse'
+      security:
+      - SessionCookie: []
+      summary: Activar shop
+      tags:
+      - Shops Staff
+  /shops/staff/{id}/products:
+    get:
+      description: Retorna todos los productos agrupados por categoría del shop indicado.
+      parameters:
+      - description: Shop ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategoryResponse'
+            type: array
+        "400":
+          description: id inválido
+          schema:
+            type: string
+        "404":
+          description: Productos no encontrados
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Obtener productos del negocio (staff)
+      tags:
+      - Shops Staff
+  /shops/staff/{id}/products/additions/catalog:
+    get:
+      parameters:
+      - description: Shop ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse'
+            type: array
+        "400":
+          description: id inválido
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Catálogo de adiciones del negocio (staff)
+      tags:
+      - Shops Staff
+  /shops/staff/{id}/products/categories:
+    get:
+      parameters:
+      - description: Shop ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategoryResponse'
+            type: array
+        "400":
+          description: id inválido
+          schema:
+            type: string
+        "404":
+          description: Categorías no encontradas
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Listar categorías completas del negocio (staff)
+      tags:
+      - Shops Staff
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Shop ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Datos de la categoría a registrar
+        in: body
+        name: category
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.RegisterCategory'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: category registered successfully
+          schema:
+            type: string
+        "400":
+          description: JSON inválido, campos faltantes o id inválido
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Registrar una categoría (staff)
+      tags:
+      - Shops Staff
+  /shops/staff/{id}/products/categories/{category_id}:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Shop ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: ID de la categoría
+        format: uuid
+        in: path
+        name: category_id
+        required: true
+        type: string
+      - description: Datos de la categoría a actualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.UpdateCategory'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: category update success
+          schema:
+            type: string
+        "400":
+          description: id/category_id inválido o JSON mal formado
+          schema:
+            type: string
+        "404":
+          description: Categoría no encontrada
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Actualizar una categoría (staff)
+      tags:
+      - Shops Staff
+  /shops/staff/{id}/products/categories/summary:
+    get:
+      parameters:
+      - description: Shop ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Filtrar categorías elegibles
+        enum:
+        - flavors
+        - additions
+        in: query
+        name: for
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategorySummaryResponse'
+            type: array
+        "400":
+          description: id inválido
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Listar categorías del negocio en resumen (staff)
+      tags:
+      - Shops Staff
+  /shops/staff/{id}/products/discounts:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Shop ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Datos del descuento a registrar
+        in: body
+        name: discount
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.RegisterItemDiscount'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: item discount registered successfully
+          schema:
+            type: string
+        "400":
+          description: JSON inválido, campos faltantes o id inválido
+          schema:
+            type: string
+        "404":
+          description: Producto no encontrado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Registrar un descuento (staff)
+      tags:
+      - Shops Staff
+  /shops/staff/{id}/products/discounts/{discount_id}:
+    delete:
+      parameters:
+      - description: Shop ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: ID del descuento
+        format: uuid
+        in: path
+        name: discount_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: item discount deleted successfully
+          schema:
+            type: string
+        "400":
+          description: id/discount_id inválido
+          schema:
+            type: string
+        "404":
+          description: Descuento no encontrado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Eliminar un descuento (staff)
+      tags:
+      - Shops Staff
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Shop ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: ID del descuento
+        format: uuid
+        in: path
+        name: discount_id
+        required: true
+        type: string
+      - description: Datos del descuento a actualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.UpdateItemDiscount'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: item discount update success
+          schema:
+            type: string
+        "400":
+          description: id/discount_id inválido o JSON mal formado
+          schema:
+            type: string
+        "404":
+          description: Descuento no encontrado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Actualizar un descuento (staff)
+      tags:
+      - Shops Staff
+  /shops/staff/{id}/products/flavors:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Shop ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Datos del sabor a registrar
+        in: body
+        name: flavor
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.RegisterFlavor'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: flavor registered successfully
+          schema:
+            type: string
+        "400":
+          description: JSON inválido, campos faltantes o id inválido
+          schema:
+            type: string
+        "404":
+          description: Categoría no encontrada
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Registrar un sabor (staff)
+      tags:
+      - Shops Staff
+  /shops/staff/{id}/products/flavors/{flavor_id}:
+    delete:
+      parameters:
+      - description: Shop ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: ID del sabor
+        format: uuid
+        in: path
+        name: flavor_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: flavor deleted successfully
+          schema:
+            type: string
+        "400":
+          description: id/flavor_id inválido
+          schema:
+            type: string
+        "404":
+          description: Sabor no encontrado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Eliminar un sabor (staff)
+      tags:
+      - Shops Staff
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Shop ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: ID del sabor
+        format: uuid
+        in: path
+        name: flavor_id
+        required: true
+        type: string
+      - description: Datos del sabor a actualizar
+        in: body
+        name: flavor
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.UpdateFlavor'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: flavor update success
+          schema:
+            type: string
+        "400":
+          description: id/flavor_id inválido o JSON mal formado
+          schema:
+            type: string
+        "404":
+          description: Sabor no encontrado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Actualizar un sabor (staff)
+      tags:
+      - Shops Staff
+  /shops/staff/{id}/products/items:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Shop ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Datos del producto a registrar
+        in: body
+        name: item
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.RegisterItem'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: product registered successfully
+          schema:
+            type: string
+        "400":
+          description: JSON inválido, campos faltantes o id inválido
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Registrar un producto (staff)
+      tags:
+      - Shops Staff
+  /shops/staff/{id}/products/items/{item_id}:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Shop ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: ID del producto
+        format: uuid
+        in: path
+        name: item_id
+        required: true
+        type: string
+      - description: Datos del producto a actualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.UpdateItem'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: item update success
+          schema:
+            type: string
+        "400":
+          description: id/item_id inválido o JSON mal formado
+          schema:
+            type: string
+        "404":
+          description: Producto no encontrado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Actualizar un producto (staff)
+      tags:
+      - Shops Staff
+  /shops/staff/{id}/products/macro-categories:
+    get:
+      description: Catálogo de macro categorías. Filtro opcional shop_type (Restaurant|Supermarket|Turbo);
+        sin filtro retorna todas. El shop_id del path no se usa (catálogo global)
+        pero se mantiene por consistencia de ruteo.
+      parameters:
+      - description: Shop ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Restaurant|Supermarket|Turbo
+        in: query
+        name: shop_type
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.MacroCategoryResponse'
+            type: array
+        "400":
+          description: id inválido / shop_type inválido
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Obtener macro categorías (staff)
+      tags:
+      - Shops Staff
+  /shops/staff/candidates:
+    get:
+      description: Busca una cuenta existente por teléfono para vincularla como Owner
+        de un shop nuevo. Sujeto a rate limit por IP.
+      parameters:
+      - description: Teléfono
+        in: query
+        name: phone
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.OwnerCandidateResponse'
+        "400":
+          description: phone requerido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Buscar candidato a owner por teléfono
+      tags:
+      - Shops Staff
+  /turbo/entry:
+    get:
+      description: 'Dadas las coordenadas del cliente, asigna el nodo Turbo abierto
+        más cercano dentro de 2 km (estilo Rappi: el cliente no elige local). Si no
+        hay cobertura, retorna available=false.'
+      parameters:
+      - description: Latitud del usuario
+        in: query
+        name: lat
+        required: true
+        type: number
+      - description: Longitud del usuario
+        in: query
+        name: lon
+        required: true
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.TurboEntryResponse'
+        "400":
+          description: Coordenadas inválidas
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: 'Entrada Turbo: asignar nodo por geolocalización'
       tags:
       - Shops
   /users:

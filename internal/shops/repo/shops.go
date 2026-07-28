@@ -47,11 +47,32 @@ func NewShopsRepository(db *bun.DB, cache cache.Cache) ports.ShopsRepo {
 	return &shopsRepo{db, cache}
 }
 
-func (s *shopsRepo) GetAllShops(ctx context.Context, coords shopsDTO.Coords) (shopsDTO.ShopsResponse, error) {
+// coverageRadiusKm resuelve el radio de listado/búsqueda según el type
+// solicitado: Turbo usa un radio menor que Restaurant/Supermarket.
+func coverageRadiusKm(shopType string) float64 {
+	if shopType == shops.ShopTypeTurbo {
+		return shops.TurboCoverageRadiusKm
+	}
+	return shops.CoverageRadiusKm
+}
 
-	lat := strconv.FormatFloat(coords.Latitude, 'f', -1, 64)
-	lon := strconv.FormatFloat(coords.Longitude, 'f', -1, 64)
+// devTimeMinutes es el tiempo fijo mostrado fuera de production (sin llamar
+// a Google Maps). Turbo usa un valor menor porque no suma prep fija.
+func devTimeMinutes(shopType string) int {
+	if shopType == shops.ShopTypeTurbo {
+		return 8
+	}
+	return 12
+}
+
+func (s *shopsRepo) GetAllShops(ctx context.Context, query shopsDTO.ListShopsQuery) (shopsDTO.ShopsResponse, error) {
+
+	lat := strconv.FormatFloat(query.Latitude, 'f', -1, 64)
+	lon := strconv.FormatFloat(query.Longitude, 'f', -1, 64)
 	keyCache := shops_all + lat + lon
+	if query.Type != "" {
+		keyCache += ":type:" + query.Type
+	}
 
 	cacheTTL := 2 * time.Minute
 
@@ -63,12 +84,27 @@ func (s *shopsRepo) GetAllShops(ctx context.Context, coords shopsDTO.Coords) (sh
 		slog.Error("error al deserializar negocios del cache", "error", err)
 	}
 
+	turboType := shops.ShopTypeTurbo
+	radiusKm := coverageRadiusKm(query.Type)
+	activeStatus := shops.ShopStatusActive
+
 	var shops shops.Shops
 
 	q := s.db.NewSelect().
 		Model(&shops).
 		Order("score DESC").
-		Where("license_status = ?", "active")
+		Where("license_status = ?", "active").
+		Where("status = ?", activeStatus)
+
+	if query.Type != "" {
+		q = q.Where("type = ?", query.Type)
+	}
+	if query.Type == "" {
+		// Sin type, el feed general excluye Turbo: se descubre vía /turbo/entry.
+		q = q.Where("type != ?", turboType)
+	}
+
+	coords := query.Coords()
 
 	if config.Get().Environment.Current == "production" {
 		q.Where("latitude IS NOT NULL AND longitude IS NOT NULL").
@@ -77,8 +113,8 @@ func (s *shopsRepo) GetAllShops(ctx context.Context, coords shopsDTO.Coords) (sh
 			cos(radians(?)) * cos(radians(latitude)) *
 			cos(radians(longitude) - radians(?)) +
 			sin(radians(?)) * sin(radians(latitude))
-		) <= 3
-	`, coords.Latitude, coords.Longitude, coords.Latitude)
+		) <= ?
+	`, coords.Latitude, coords.Longitude, coords.Latitude, radiusKm)
 	}
 
 	if err := q.Scan(ctx); err != nil {
@@ -107,7 +143,7 @@ func (s *shopsRepo) GetAllShops(ctx context.Context, coords shopsDTO.Coords) (sh
 		resp = shops.ToDomainDTO(dataDistance)
 		for i := range resp {
 			resp[i].DeliveryFee = deliveryfee.DevPlaceholderFee
-			resp[i].Time = 12
+			resp[i].Time = devTimeMinutes(resp[i].Type)
 		}
 	}
 
@@ -122,7 +158,7 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 
 	lat := strconv.FormatFloat(coords.Latitude, 'f', -1, 64)
 	lon := strconv.FormatFloat(coords.Longitude, 'f', -1, 64)
-	keyCache := shops_all + criteria.Tag + lat + lon
+	keyCache := shops_all + criteria.Slug + lat + lon
 
 	cacheTTL := 2 * time.Minute // 1*2*time.Minute → 2 min igual
 
@@ -134,17 +170,20 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 		slog.Error("error al deserializar cache de negocios", "error", err)
 	}
 
+	activeStatus := shops.ShopStatusActive
+
 	var shops shops.Shops
 
 	q := s.db.NewSelect().
 		Model(&shops).
-		Where("license_status = ?", "active")
+		Where("license_status = ?", "active").
+		Where("status = ?", activeStatus)
 
 	if criteria.ID != uuid.Nil {
 		q.Where("id = ?", criteria.ID)
 	}
-	if criteria.Tag != "" {
-		q.Where("tag = ?", criteria.Tag)
+	if criteria.Slug != "" {
+		q.Where("slug = ?", criteria.Slug)
 	}
 
 	if config.Get().Environment.Current == "production" {
@@ -184,7 +223,7 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 		resp = shops.ToDomainDTO(dataDistance)
 		for i := range resp {
 			resp[i].DeliveryFee = deliveryfee.DevPlaceholderFee
-			resp[i].Time = 12
+			resp[i].Time = devTimeMinutes(resp[i].Type)
 		}
 	}
 
@@ -216,7 +255,7 @@ func (s *shopsRepo) GetShopByID(ctx context.Context, shopID uuid.UUID) (shopsDTO
 	return shopsDTO.ShopResponse{
 		ID:        shop.ID,
 		Name:      shop.Name,
-		Tag:       shop.Tag,
+		Slug:      shop.Slug,
 		Address:   shop.Address,
 		Latitude:  lat,
 		Longitude: lon,
@@ -229,11 +268,87 @@ func (s *shopsRepo) GetShopByID(ctx context.Context, shopID uuid.UUID) (shopsDTO
 	}, nil
 }
 
+// ListTurboCandidates retorna todos los nodos Turbo con licencia activa y
+// coordenadas válidas, abiertos o no; la app decide cuál asignar.
+func (s *shopsRepo) ListTurboCandidates(ctx context.Context) (shopsDTO.ShopsResponse, error) {
+	var candidates shops.Shops
+
+	if err := s.db.NewSelect().
+		Model(&candidates).
+		Where("type = ?", shops.ShopTypeTurbo).
+		Where("license_status = ?", "active").
+		Where("status = ?", shops.ShopStatusActive).
+		Where("latitude IS NOT NULL AND longitude IS NOT NULL").
+		Order("score DESC").
+		Scan(ctx); err != nil {
+		slog.Error("error al listar nodos turbo", "error", err)
+		return shopsDTO.ShopsResponse{}, errcustom.ErrUnexpectedError
+	}
+
+	resp := make(shopsDTO.ShopsResponse, 0, len(candidates))
+	for _, shop := range candidates {
+		resp = append(resp, shopsDTO.ShopResponse{
+			ID:        shop.ID,
+			Name:      shop.Name,
+			Slug:      shop.Slug,
+			Address:   shop.Address,
+			Latitude:  *shop.Latitude,
+			Longitude: *shop.Longitude,
+			HomePhone: shop.HomePhone,
+			Logo:      shop.LogoImage,
+			Banner:    shop.Banner,
+			Opened:    shop.Opened,
+			Type:      shop.Type,
+			Score:     shop.Score,
+		})
+	}
+
+	return resp, nil
+}
+
+// ResolveTurboShop calcula delivery_fee/time del nodo Turbo ya elegido para
+// las coordenadas del cliente, igual que ToDomainDTO pero fuera del flujo de
+// listado (production usa Google Maps; el resto, placeholders de dev).
+func (s *shopsRepo) ResolveTurboShop(ctx context.Context, shopID uuid.UUID, coords shopsDTO.Coords) (shopsDTO.ShopResponse, error) {
+	var shop shops.Shop
+	if err := s.db.NewSelect().Model(&shop).Where("id = ?", shopID).Scan(ctx); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return shopsDTO.ShopResponse{}, errcustom.ErrNotFound
+		}
+		slog.Error("error al obtener nodo turbo", "error", err, "shopID", shopID)
+		return shopsDTO.ShopResponse{}, errcustom.ErrUnexpectedError
+	}
+
+	distance := entity.ShopDistance{ShopID: shop.ID}
+	if config.Get().Environment.Current == "production" {
+		shopsToMeasure := shops.Shops{shop}
+		result, err := calculateDistances(coords, &shopsToMeasure)
+		if err != nil {
+			slog.Error("error al calcular distancia del nodo turbo", "error", err, "shopID", shopID)
+			return shopsDTO.ShopResponse{}, errcustom.ErrUnexpectedError
+		}
+		if len(result) > 0 {
+			distance = result[0]
+		}
+	}
+
+	resp := shop.ToDomainDTO(distance)
+	if config.Get().Environment.Current != "production" {
+		resp.DeliveryFee = deliveryfee.DevPlaceholderFee
+		resp.Time = devTimeMinutes(resp.Type)
+	}
+
+	return resp, nil
+}
+
 func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.SearchShopsQuery) ([]shopsDTO.SearchShopCandidate, error) {
 	qNorm := strings.ToLower(strings.TrimSpace(query.Q))
 	lat4 := strconv.FormatFloat(query.Latitude, 'f', 4, 64)
 	lon4 := strconv.FormatFloat(query.Longitude, 'f', 4, 64)
 	keyCache := "shops:search:" + qNorm + ":" + lat4 + ":" + lon4
+	if query.Type != "" {
+		keyCache += ":type:" + query.Type
+	}
 	cacheTTL := 2 * time.Minute
 
 	if cached, err := s.cache.Get(ctx, keyCache); err == nil && cached != "" {
@@ -244,9 +359,28 @@ func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.Sea
 		slog.Error("error al deserializar búsqueda del cache", "error", err)
 	}
 
+	radiusKm := coverageRadiusKm(query.Type)
+
+	typeFilter := ""
+	args := []any{
+		qNorm, qNorm,
+		query.Latitude, query.Longitude, query.Latitude,
+		radiusKm,
+		qNorm, qNorm, qNorm, qNorm, qNorm, qNorm,
+	}
+	if query.Type != "" {
+		typeFilter = " AND s.type = ?"
+		args = append(args, query.Type)
+	}
+	if query.Type == "" {
+		// Sin type, la búsqueda general excluye Turbo (se descubre vía /turbo/entry).
+		typeFilter = " AND s.type != ?"
+		args = append(args, shops.ShopTypeTurbo)
+	}
+
 	rawSQL := `
 		SELECT
-			s.id, s.name, s.tag, s.address, s.latitude, s.longitude,
+			s.id, s.name, s.slug, s.address, s.latitude, s.longitude,
 			s.home_phone, s.logo_image, s.banner, s.opened, s.type,
 			s.score,
 			(
@@ -256,6 +390,7 @@ func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.Sea
 		FROM business.shops s
 		WHERE s.opened = true
 		  AND s.license_status = 'active'
+		  AND s.status = 'active'
 		  AND s.latitude IS NOT NULL
 		  AND s.longitude IS NOT NULL
 		  AND s.deleted_at IS NULL
@@ -263,7 +398,7 @@ func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.Sea
 				cos(radians(?)) * cos(radians(s.latitude)) *
 				cos(radians(s.longitude) - radians(?)) +
 				sin(radians(?)) * sin(radians(s.latitude))
-			) <= 3
+			) <= ?
 		  AND (
 			  to_tsvector('spanish', s.name) @@ plainto_tsquery('spanish', ?)
 			  OR s.name ILIKE '%' || ? || '%'
@@ -278,17 +413,12 @@ func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.Sea
 						OR mc.name ILIKE '%' || ? || '%'
 					)
 			  )
-		  )
+		  )` + typeFilter + `
 		ORDER BY s.score DESC
 	`
 
 	var rows []shops.SearchShopRow
-	if err := s.db.NewRaw(
-		rawSQL,
-		qNorm, qNorm,
-		query.Latitude, query.Longitude, query.Latitude,
-		qNorm, qNorm, qNorm, qNorm, qNorm, qNorm,
-	).Scan(ctx, &rows); err != nil {
+	if err := s.db.NewRaw(rawSQL, args...).Scan(ctx, &rows); err != nil {
 		slog.Error("error en búsqueda de tiendas", "error", err)
 		return nil, errcustom.ErrUnexpectedError
 	}
@@ -302,7 +432,7 @@ func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.Sea
 		shopModels[i] = shops.Shop{
 			ID:        row.ID,
 			Name:      row.Name,
-			Tag:       row.Tag,
+			Slug:      row.Slug,
 			Address:   row.Address,
 			HomePhone: row.HomePhone,
 			LogoImage: row.LogoImage,
@@ -345,7 +475,7 @@ func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.Sea
 		shopResp := shopModels[i].ToDomainDTO(dist)
 		if !isProd {
 			shopResp.DeliveryFee = deliveryfee.DevPlaceholderFee
-			shopResp.Time = 12
+			shopResp.Time = devTimeMinutes(shopResp.Type)
 		}
 		candidates = append(candidates, shopsDTO.SearchShopCandidate{
 			ShopResponse:  shopResp,
@@ -466,6 +596,24 @@ func (s *shopsRepo) FindMatchedProducts(ctx context.Context, shopIDs []uuid.UUID
 	}
 
 	return result, nil
+}
+
+func (s *shopsRepo) GetShopStatus(ctx context.Context, shopID uuid.UUID) (string, error) {
+	var status string
+	err := s.db.NewSelect().
+		TableExpr("business.shops").
+		ColumnExpr("status").
+		Where("id = ?", shopID).
+		Where("deleted_at IS NULL").
+		Scan(ctx, &status)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", errcustom.ErrNotFound
+		}
+		slog.Error("error al obtener status del shop", "error", err, "shopID", shopID)
+		return "", errcustom.ErrUnexpectedError
+	}
+	return status, nil
 }
 
 func (s *shopsRepo) SetOpenClose(ctx context.Context, shopID *uuid.UUID, open bool) error {
