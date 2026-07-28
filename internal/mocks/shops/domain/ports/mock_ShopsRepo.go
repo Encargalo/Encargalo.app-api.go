@@ -136,6 +136,34 @@ func (_m *ShopsRepo) GetShopByID(ctx context.Context, shopID uuid.UUID) (dtos.Sh
 	return r0, r1
 }
 
+// GetShopStatus provides a mock function with given fields: ctx, shopID
+func (_m *ShopsRepo) GetShopStatus(ctx context.Context, shopID uuid.UUID) (string, error) {
+	ret := _m.Called(ctx, shopID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetShopStatus")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (string, error)); ok {
+		return rf(ctx, shopID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) string); ok {
+		r0 = rf(ctx, shopID)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, shopID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetShopsBy provides a mock function with given fields: ctx, criteria, coords
 func (_m *ShopsRepo) GetShopsBy(ctx context.Context, criteria dtos.SearchShopsByID, coords dtos.Coords) (dtos.ShopsResponse, error) {
 	ret := _m.Called(ctx, criteria, coords)

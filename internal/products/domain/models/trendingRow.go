@@ -5,7 +5,7 @@ import "time"
 type TrendingRow struct {
 	ShopID                string     `bun:"shop_id"`
 	ShopName              string     `bun:"shop_name"`
-	ShopTag               string     `bun:"shop_tag"`
+	ShopSlug              string     `bun:"shop_slug"`
 	ShopLogo              string     `bun:"shop_logo"`
 	ShopAddress           string     `bun:"shop_address"`
 	ShopScore             float64    `bun:"shop_score"`

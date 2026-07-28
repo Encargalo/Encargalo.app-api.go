@@ -562,7 +562,7 @@ func (p *productsRepo) GetTrendingByCoords(ctx context.Context, coords dtos.Tren
 		SELECT
 			s.id::text        AS shop_id,
 			s.name            AS shop_name,
-			s.tag             AS shop_tag,
+			s.slug            AS shop_slug,
 			s.logo_image      AS shop_logo,
 			s.address         AS shop_address,
 			s.score           AS shop_score,
@@ -634,7 +634,7 @@ func buildTrendingResponse(bundle trendingCacheBundle) dtos.TrendingResponse {
 			Shop: dtos.TrendingShop{
 				ID:          shopID,
 				Name:        r.ShopName,
-				Tag:         r.ShopTag,
+				Slug:        r.ShopSlug,
 				Logo:        r.ShopLogo,
 				Address:     r.ShopAddress,
 				Score:       r.ShopScore,
@@ -974,27 +974,36 @@ func (p *productsRepo) clearFlavorRelatedCaches(ctx context.Context, shopID, cat
 	}
 }
 
-func (p *productsRepo) SearchMacroCategories(ctx context.Context) (models.MacroCategories, error) {
-	cached, _ := p.cache.Get(ctx, prefix_macro_categories)
+func (p *productsRepo) SearchMacroCategories(ctx context.Context, shopType string) (models.MacroCategories, error) {
+	keyCache := prefix_macro_categories
+	if shopType != "" {
+		keyCache += ":" + shopType
+	}
+
+	cached, _ := p.cache.Get(ctx, keyCache)
 	if cached != "" {
 		var data models.MacroCategories
 		if err := json.Unmarshal([]byte(cached), &data); err == nil {
 			return data, nil
 		}
-		slog.Error("error al hacer unmarshal de las macro categorías", "key", prefix_macro_categories)
+		slog.Error("error al hacer unmarshal de las macro categorías", "key", keyCache)
 	}
 
 	var macroCategories models.MacroCategories
 
-	if err := p.db.NewSelect().
+	q := p.db.NewSelect().
 		Model(&macroCategories).
-		Order("name ASC").
-		Scan(ctx); err != nil {
+		Order("name ASC")
+	if shopType != "" {
+		q = q.Where("shop_type = ?", shopType)
+	}
+
+	if err := q.Scan(ctx); err != nil {
 		slog.Error("error al obtener las macro categorías", "error", err)
 		return nil, errcustom.ErrUnexpectedError
 	}
 
-	if err := p.cache.Set(ctx, prefix_macro_categories, macroCategories, 24*time.Hour); err != nil {
+	if err := p.cache.Set(ctx, keyCache, macroCategories, 24*time.Hour); err != nil {
 		slog.Error("error al guardar las macro categorías en el cache", "error", err)
 	}
 

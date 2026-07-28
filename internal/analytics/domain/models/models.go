@@ -41,7 +41,7 @@ type DimShop struct {
 
 	ShopID        uuid.UUID `bun:"shop_id,pk,type:uuid"`
 	Name          string    `bun:"name,notnull"`
-	Tag           string    `bun:"tag"`
+	Slug          string    `bun:"slug"`
 	Address       string    `bun:"address"`
 	Type          string    `bun:"type"`
 	LicenseStatus string    `bun:"license_status"`

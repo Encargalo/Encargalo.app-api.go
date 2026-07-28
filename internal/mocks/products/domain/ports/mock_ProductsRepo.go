@@ -610,9 +610,9 @@ func (_m *ProductsRepo) SearchItemDiscountByID(ctx context.Context, discountID u
 	return r0, r1
 }
 
-// SearchMacroCategories provides a mock function with given fields: ctx
-func (_m *ProductsRepo) SearchMacroCategories(ctx context.Context) (models.MacroCategories, error) {
-	ret := _m.Called(ctx)
+// SearchMacroCategories provides a mock function with given fields: ctx, shopType
+func (_m *ProductsRepo) SearchMacroCategories(ctx context.Context, shopType string) (models.MacroCategories, error) {
+	ret := _m.Called(ctx, shopType)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SearchMacroCategories")
@@ -620,19 +620,19 @@ func (_m *ProductsRepo) SearchMacroCategories(ctx context.Context) (models.Macro
 
 	var r0 models.MacroCategories
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) (models.MacroCategories, error)); ok {
-		return rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, string) (models.MacroCategories, error)); ok {
+		return rf(ctx, shopType)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) models.MacroCategories); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, string) models.MacroCategories); ok {
+		r0 = rf(ctx, shopType)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(models.MacroCategories)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = rf(ctx)
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, shopType)
 	} else {
 		r1 = ret.Error(1)
 	}

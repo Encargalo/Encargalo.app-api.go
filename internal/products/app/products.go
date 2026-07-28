@@ -10,7 +10,6 @@ import (
 	"time"
 
 	bcvPorts "Encargalo.app-api.go/internal/bcv/domain/ports"
-	emplService "Encargalo.app-api.go/internal/employee/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/bizclock"
 	"Encargalo.app-api.go/internal/pkg/money"
 	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
@@ -18,6 +17,7 @@ import (
 	"Encargalo.app-api.go/internal/products/domain/models"
 	"Encargalo.app-api.go/internal/products/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	shopsmodels "Encargalo.app-api.go/internal/shops/domain/models/shops"
 
 	"github.com/google/uuid"
 )
@@ -27,13 +27,12 @@ const trendingResultLimit = 10
 type productsApp struct {
 	repo        ports.ProductsRepo
 	uploadimage uploadimage.UploadImage
-	emplService emplService.EmployeeApp
 	bcv         bcvPorts.BcvApp
 	shopPromo   ports.ShopLaunchPromoProvider
 }
 
-func NewProductsApp(repo ports.ProductsRepo, uploadimage uploadimage.UploadImage, emplService emplService.EmployeeApp, bcv bcvPorts.BcvApp, shopPromo ports.ShopLaunchPromoProvider) ports.ProductsApp {
-	return &productsApp{repo, uploadimage, emplService, bcv, shopPromo}
+func NewProductsApp(repo ports.ProductsRepo, uploadimage uploadimage.UploadImage, bcv bcvPorts.BcvApp, shopPromo ports.ShopLaunchPromoProvider) ports.ProductsApp {
+	return &productsApp{repo, uploadimage, bcv, shopPromo}
 }
 
 // launchPromoEndsAt resuelve la ventana de promo día 1 del negocio; si el
@@ -334,7 +333,7 @@ func (p *productsApp) resolveItemAdditions(ctx context.Context, shopID uuid.UUID
 	return selected, nil
 }
 
-func (p *productsApp) UpdateItem(ctx context.Context, item dtos.UpdateItem, itemID, userID uuid.UUID) error {
+func (p *productsApp) UpdateItem(ctx context.Context, item dtos.UpdateItem, itemID, shopID uuid.UUID) error {
 
 	itemModel, err := p.repo.SearchItemByID(ctx, itemID)
 	if err != nil {
@@ -345,12 +344,7 @@ func (p *productsApp) UpdateItem(ctx context.Context, item dtos.UpdateItem, item
 		return errcustom.ErrNotFound
 	}
 
-	empl, err := p.emplService.SearchEmployeeByID(ctx, userID)
-	if err != nil {
-		return err
-	}
-
-	if itemModel.ShopID != empl.ShopID {
+	if itemModel.ShopID != shopID {
 		return errcustom.ErrUnautorized
 	}
 
@@ -568,7 +562,7 @@ func (p *productsApp) RegisterCategory(ctx context.Context, category dtos.Regist
 	return p.repo.ReplaceCategorySchedules(ctx, categoryModel.ID, categoryModel.ShopID, schedules)
 }
 
-func (p *productsApp) UpdateCategory(ctx context.Context, category dtos.UpdateCategory, categoryID, userID uuid.UUID) error {
+func (p *productsApp) UpdateCategory(ctx context.Context, category dtos.UpdateCategory, categoryID, shopID uuid.UUID) error {
 	categoryModel, err := p.repo.SearchCategoryByID(ctx, categoryID)
 	if err != nil {
 		return err
@@ -578,12 +572,7 @@ func (p *productsApp) UpdateCategory(ctx context.Context, category dtos.UpdateCa
 		return errcustom.ErrNotFound
 	}
 
-	empl, err := p.emplService.SearchEmployeeByID(ctx, userID)
-	if err != nil {
-		return err
-	}
-
-	if categoryModel.ShopID != empl.ShopID {
+	if categoryModel.ShopID != shopID {
 		return errcustom.ErrUnautorized
 	}
 
@@ -665,7 +654,7 @@ func (p *productsApp) RegisterFlavor(ctx context.Context, flavor dtos.RegisterFl
 	return p.repo.RegisterFlavor(ctx, catalogFlavor)
 }
 
-func (p *productsApp) UpdateFlavor(ctx context.Context, flavor dtos.UpdateFlavor, flavorID, userID uuid.UUID) error {
+func (p *productsApp) UpdateFlavor(ctx context.Context, flavor dtos.UpdateFlavor, flavorID, shopID uuid.UUID) error {
 	flavorModel, err := p.repo.SearchFlavorByID(ctx, flavorID)
 	if err != nil {
 		return err
@@ -675,12 +664,7 @@ func (p *productsApp) UpdateFlavor(ctx context.Context, flavor dtos.UpdateFlavor
 		return errcustom.ErrNotFound
 	}
 
-	empl, err := p.emplService.SearchEmployeeByID(ctx, userID)
-	if err != nil {
-		return err
-	}
-
-	if flavorModel.ShopID != empl.ShopID {
+	if flavorModel.ShopID != shopID {
 		return errcustom.ErrUnautorized
 	}
 
@@ -707,7 +691,7 @@ func (p *productsApp) UpdateFlavor(ctx context.Context, flavor dtos.UpdateFlavor
 	return p.repo.UpdateFlavor(ctx, flavorID, entry, flavorModel.ShopID, flavorModel.CategoryID)
 }
 
-func (p *productsApp) DeleteFlavor(ctx context.Context, flavorID, userID uuid.UUID) error {
+func (p *productsApp) DeleteFlavor(ctx context.Context, flavorID, shopID uuid.UUID) error {
 	flavorModel, err := p.repo.SearchFlavorByID(ctx, flavorID)
 	if err != nil {
 		return err
@@ -717,24 +701,46 @@ func (p *productsApp) DeleteFlavor(ctx context.Context, flavorID, userID uuid.UU
 		return errcustom.ErrNotFound
 	}
 
-	empl, err := p.emplService.SearchEmployeeByID(ctx, userID)
-	if err != nil {
-		return err
-	}
-
-	if flavorModel.ShopID != empl.ShopID {
+	if flavorModel.ShopID != shopID {
 		return errcustom.ErrUnautorized
 	}
 
 	return p.repo.DeleteFlavor(ctx, *flavorModel)
 }
 
-func (p *productsApp) SearchMacroCategories(ctx context.Context) (dtos.MacroCategoriesResponse, error) {
-	macroCategories, err := p.repo.SearchMacroCategories(ctx)
+func (p *productsApp) SearchMacroCategories(ctx context.Context, shopType string) (dtos.MacroCategoriesResponse, error) {
+	if shopType != "" && !shopsmodels.IsValidShopType(shopType) {
+		return nil, errcustom.ErrInvalidShopType
+	}
+	macroCategories, err := p.repo.SearchMacroCategories(ctx, shopType)
 	if err != nil {
 		return nil, err
 	}
 	return macroCategories.ToDomainDTO(), nil
+}
+
+// SeedDefaultCategories crea una categoría vacía por cada macro-categoría del
+// tipo de shop indicado, para que el staff/owner solo tenga que agregar
+// productos en vez de crear categorías desde cero (ver add-staff-shop-onboarding).
+func (p *productsApp) SeedDefaultCategories(ctx context.Context, shopID uuid.UUID, shopType string) error {
+	macros, err := p.repo.SearchMacroCategories(ctx, shopType)
+	if err != nil {
+		return err
+	}
+	for i := range macros {
+		macroID := macros[i].ID
+		category := &models.Category{
+			ShopID:             shopID,
+			Name:               macros[i].Name,
+			MacroCategoryID:    &macroID,
+			AvailabilityStatus: models.AvailabilityActive,
+			Details:            models.DefaultCategoryDetails(),
+		}
+		if err := p.repo.RegisterCategory(ctx, category); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // validateDiscountValue asegura que el valor del descuento tenga sentido
@@ -780,7 +786,7 @@ func (p *productsApp) RegisterItemDiscount(ctx context.Context, discount dtos.Re
 	return p.repo.RegisterItemDiscount(ctx, &discountModel)
 }
 
-func (p *productsApp) UpdateItemDiscount(ctx context.Context, discount dtos.UpdateItemDiscount, discountID, userID uuid.UUID) error {
+func (p *productsApp) UpdateItemDiscount(ctx context.Context, discount dtos.UpdateItemDiscount, discountID, shopID uuid.UUID) error {
 	discountModel, err := p.repo.SearchItemDiscountByID(ctx, discountID)
 	if err != nil {
 		return err
@@ -790,12 +796,7 @@ func (p *productsApp) UpdateItemDiscount(ctx context.Context, discount dtos.Upda
 		return errcustom.ErrNotFound
 	}
 
-	empl, err := p.emplService.SearchEmployeeByID(ctx, userID)
-	if err != nil {
-		return err
-	}
-
-	if discountModel.ShopID != empl.ShopID {
+	if discountModel.ShopID != shopID {
 		return errcustom.ErrUnautorized
 	}
 
@@ -814,7 +815,7 @@ func (p *productsApp) UpdateItemDiscount(ctx context.Context, discount dtos.Upda
 	return p.repo.UpdateItemDiscount(ctx, &updateModel, discountModel.ShopID, discountModel.ItemID)
 }
 
-func (p *productsApp) DeleteItemDiscount(ctx context.Context, discountID, userID uuid.UUID) error {
+func (p *productsApp) DeleteItemDiscount(ctx context.Context, discountID, shopID uuid.UUID) error {
 	discountModel, err := p.repo.SearchItemDiscountByID(ctx, discountID)
 	if err != nil {
 		return err
@@ -824,12 +825,7 @@ func (p *productsApp) DeleteItemDiscount(ctx context.Context, discountID, userID
 		return errcustom.ErrNotFound
 	}
 
-	empl, err := p.emplService.SearchEmployeeByID(ctx, userID)
-	if err != nil {
-		return err
-	}
-
-	if discountModel.ShopID != empl.ShopID {
+	if discountModel.ShopID != shopID {
 		return errcustom.ErrUnautorized
 	}
 

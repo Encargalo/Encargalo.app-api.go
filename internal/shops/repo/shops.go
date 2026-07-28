@@ -86,13 +86,15 @@ func (s *shopsRepo) GetAllShops(ctx context.Context, query shopsDTO.ListShopsQue
 
 	turboType := shops.ShopTypeTurbo
 	radiusKm := coverageRadiusKm(query.Type)
+	activeStatus := shops.ShopStatusActive
 
 	var shops shops.Shops
 
 	q := s.db.NewSelect().
 		Model(&shops).
 		Order("score DESC").
-		Where("license_status = ?", "active")
+		Where("license_status = ?", "active").
+		Where("status = ?", activeStatus)
 
 	if query.Type != "" {
 		q = q.Where("type = ?", query.Type)
@@ -156,7 +158,7 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 
 	lat := strconv.FormatFloat(coords.Latitude, 'f', -1, 64)
 	lon := strconv.FormatFloat(coords.Longitude, 'f', -1, 64)
-	keyCache := shops_all + criteria.Tag + lat + lon
+	keyCache := shops_all + criteria.Slug + lat + lon
 
 	cacheTTL := 2 * time.Minute // 1*2*time.Minute → 2 min igual
 
@@ -168,17 +170,20 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 		slog.Error("error al deserializar cache de negocios", "error", err)
 	}
 
+	activeStatus := shops.ShopStatusActive
+
 	var shops shops.Shops
 
 	q := s.db.NewSelect().
 		Model(&shops).
-		Where("license_status = ?", "active")
+		Where("license_status = ?", "active").
+		Where("status = ?", activeStatus)
 
 	if criteria.ID != uuid.Nil {
 		q.Where("id = ?", criteria.ID)
 	}
-	if criteria.Tag != "" {
-		q.Where("tag = ?", criteria.Tag)
+	if criteria.Slug != "" {
+		q.Where("slug = ?", criteria.Slug)
 	}
 
 	if config.Get().Environment.Current == "production" {
@@ -250,7 +255,7 @@ func (s *shopsRepo) GetShopByID(ctx context.Context, shopID uuid.UUID) (shopsDTO
 	return shopsDTO.ShopResponse{
 		ID:        shop.ID,
 		Name:      shop.Name,
-		Tag:       shop.Tag,
+		Slug:      shop.Slug,
 		Address:   shop.Address,
 		Latitude:  lat,
 		Longitude: lon,
@@ -272,6 +277,7 @@ func (s *shopsRepo) ListTurboCandidates(ctx context.Context) (shopsDTO.ShopsResp
 		Model(&candidates).
 		Where("type = ?", shops.ShopTypeTurbo).
 		Where("license_status = ?", "active").
+		Where("status = ?", shops.ShopStatusActive).
 		Where("latitude IS NOT NULL AND longitude IS NOT NULL").
 		Order("score DESC").
 		Scan(ctx); err != nil {
@@ -284,7 +290,7 @@ func (s *shopsRepo) ListTurboCandidates(ctx context.Context) (shopsDTO.ShopsResp
 		resp = append(resp, shopsDTO.ShopResponse{
 			ID:        shop.ID,
 			Name:      shop.Name,
-			Tag:       shop.Tag,
+			Slug:      shop.Slug,
 			Address:   shop.Address,
 			Latitude:  *shop.Latitude,
 			Longitude: *shop.Longitude,
@@ -374,7 +380,7 @@ func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.Sea
 
 	rawSQL := `
 		SELECT
-			s.id, s.name, s.tag, s.address, s.latitude, s.longitude,
+			s.id, s.name, s.slug, s.address, s.latitude, s.longitude,
 			s.home_phone, s.logo_image, s.banner, s.opened, s.type,
 			s.score,
 			(
@@ -384,6 +390,7 @@ func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.Sea
 		FROM business.shops s
 		WHERE s.opened = true
 		  AND s.license_status = 'active'
+		  AND s.status = 'active'
 		  AND s.latitude IS NOT NULL
 		  AND s.longitude IS NOT NULL
 		  AND s.deleted_at IS NULL
@@ -425,7 +432,7 @@ func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.Sea
 		shopModels[i] = shops.Shop{
 			ID:        row.ID,
 			Name:      row.Name,
-			Tag:       row.Tag,
+			Slug:      row.Slug,
 			Address:   row.Address,
 			HomePhone: row.HomePhone,
 			LogoImage: row.LogoImage,
@@ -589,6 +596,24 @@ func (s *shopsRepo) FindMatchedProducts(ctx context.Context, shopIDs []uuid.UUID
 	}
 
 	return result, nil
+}
+
+func (s *shopsRepo) GetShopStatus(ctx context.Context, shopID uuid.UUID) (string, error) {
+	var status string
+	err := s.db.NewSelect().
+		TableExpr("business.shops").
+		ColumnExpr("status").
+		Where("id = ?", shopID).
+		Where("deleted_at IS NULL").
+		Scan(ctx, &status)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", errcustom.ErrNotFound
+		}
+		slog.Error("error al obtener status del shop", "error", err, "shopID", shopID)
+		return "", errcustom.ErrUnexpectedError
+	}
+	return status, nil
 }
 
 func (s *shopsRepo) SetOpenClose(ctx context.Context, shopID *uuid.UUID, open bool) error {

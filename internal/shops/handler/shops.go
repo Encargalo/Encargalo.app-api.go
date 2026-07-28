@@ -168,13 +168,13 @@ func (s *shops) GetAllShops(c echo.Context) error {
 }
 
 // GetShopsBy godoc
-// @Summary      Obtener tienda por ID o tag
-// @Description  Retorna la información de una tienda junto con sus productos. Se debe enviar al menos uno de los parámetros: `id` o `tag`.
+// @Summary      Obtener tienda por ID o slug
+// @Description  Retorna la información de una tienda junto con sus productos. Se debe enviar al menos uno de los parámetros: `id` o `slug`.
 // @Tags         Shops
 // @Produce      json
 // @Security     SessionCookie
-// @Param        id   query     string  false  "ID de la tienda (UUID)"
-// @Param        tag  query     string  false  "Tag de la tienda, ej: dmo"
+// @Param        id    query     string  false  "ID de la tienda (UUID)"
+// @Param        slug  query     string  false  "Slug de la tienda, ej: dmo"
 // @Param        lat  query     number  true   "Latitud del usuario, ej: 4.678034"
 // @Param        lon  query     number  true   "Longitud del usuario, ej: -74.0496399"
 // @Success      200  {array}   dtos.ShopResponse  "Datos de la tienda"

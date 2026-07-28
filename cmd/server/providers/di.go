@@ -112,6 +112,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(handShops.NewShopsHandler)
 	_ = Container.Provide(handShops.NewShopFinanceHandler)
 	_ = Container.Provide(handShops.NewShopStatsHandler)
+	_ = Container.Provide(handShops.NewStaffShopHandler)
 	_ = Container.Provide(repoShops.NewShopFinanceRepo)
 	_ = Container.Provide(repoShops.NewShopStatsRepo)
 	_ = Container.Provide(appShops.NewShopFinanceApp)
@@ -122,6 +123,11 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(func(mgr ordersPorts.AppManagerOrder) shopsPorts.ShopStatusBroadcaster {
 		return mgr
 	})
+	// ProductsApp ya declara SeedDefaultCategories con la misma firma que
+	// ShopCategoriesSeeder: conversión de interfaz verificada en compilación.
+	_ = Container.Provide(func(pa productsPorts.ProductsApp) shopsPorts.ShopCategoriesSeeder {
+		return pa
+	})
 	// ShopsApp ya declara GetLaunchPromoEndsAt con la misma firma que
 	// ShopLaunchPromoProvider, así que esta es una conversión de interfaz
 	// implícita verificada en tiempo de compilación (no un type assertion en
@@ -131,6 +137,7 @@ func BuildContainer() *dig.Container {
 		return sa
 	})
 	_ = Container.Provide(handProducts.NewProducsHandler)
+	_ = Container.Provide(handProducts.NewStaffProductsHandler)
 	_ = Container.Provide(handCustomer.NewUsersAddressHandler)
 	_ = Container.Provide(handOrders.NewOrderHandler)
 	_ = Container.Provide(handOrders.New)
@@ -164,6 +171,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(appCustomer.NewRefundAlertWorker)
 	_ = Container.Provide(appAuth.NewAuthApp)
 	_ = Container.Provide(appShops.NewShopsApp)
+	_ = Container.Provide(appShops.NewStaffShopApp)
 	_ = Container.Provide(appShops.NewBatchCloseWorker)
 	_ = Container.Provide(appProducts.NewProductsApp)
 	_ = Container.Provide(appCustomer.NewUsersAddressApp)
@@ -186,6 +194,7 @@ func BuildContainer() *dig.Container {
 
 	_ = Container.Provide(repoAuth.NewAuthRepo)
 	_ = Container.Provide(repoShops.NewShopsRepository)
+	_ = Container.Provide(repoShops.NewStaffShopRepo)
 	_ = Container.Provide(repoProducts.NewProductsRepo)
 	_ = Container.Provide(repoCustomer.NewUsersRepo)
 	_ = Container.Provide(repoCustomer.NewUsersAddressRepo)

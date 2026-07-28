@@ -21,9 +21,9 @@
                 "summary": "Cerrar sesión",
                 "responses": {
                     "200": {
-                        "description": "session deleted success",
+                        "description": "OK",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/internal_auth_handler.LogoutResponse"
                         }
                     },
                     "401": {
@@ -1257,7 +1257,7 @@
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna el catálogo de macro categorías (Pizza, Parrilla, Pollo, etc.) usado para clasificar las categorías del negocio autenticado.",
+                "description": "Retorna el catálogo de macro categorías (Pizza, Parrilla, Pollo, etc.) usado para clasificar las categorías del negocio autenticado. Filtro opcional shop_type (Restaurant|Supermarket|Turbo); sin filtro retorna todas.",
                 "produces": [
                     "application/json"
                 ],
@@ -1265,6 +1265,14 @@
                     "Business"
                 ],
                 "summary": "Obtener macro categorías",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Restaurant|Supermarket|Turbo",
+                        "name": "shop_type",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1273,6 +1281,12 @@
                             "items": {
                                 "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.MacroCategoryResponse"
                             }
+                        }
+                    },
+                    "400": {
+                        "description": "shop_type inválido",
+                        "schema": {
+                            "type": "string"
                         }
                     },
                     "401": {
@@ -3098,14 +3112,14 @@
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna la información de una tienda junto con sus productos. Se debe enviar al menos uno de los parámetros: `id` o `tag`.",
+                "description": "Retorna la información de una tienda junto con sus productos. Se debe enviar al menos uno de los parámetros: `id` o `slug`.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Shops"
                 ],
-                "summary": "Obtener tienda por ID o tag",
+                "summary": "Obtener tienda por ID o slug",
                 "parameters": [
                     {
                         "type": "string",
@@ -3115,8 +3129,8 @@
                     },
                     {
                         "type": "string",
-                        "description": "Tag de la tienda, ej: dmo",
-                        "name": "tag",
+                        "description": "Slug de la tienda, ej: dmo",
+                        "name": "slug",
                         "in": "query"
                     },
                     {
@@ -3307,6 +3321,1224 @@
                     },
                     "401": {
                         "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shops/staff": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Lista shops por status (default draft), paginado.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff"
+                ],
+                "summary": "Listar shops en onboarding",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "draft",
+                        "description": "draft|active",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Página (default 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Límite por página, máx 50 (default 20)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StaffShopsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "status inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Crea el shop en estado draft y vincula el rol Owner (sin remover los roles que la cuenta ya tenga) a la cuenta indicada.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff"
+                ],
+                "summary": "Crear shop en borrador",
+                "parameters": [
+                    {
+                        "description": "Datos mínimos",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.CreateDraftShopRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StaffShopResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shops/staff/candidates": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Busca una cuenta existente por teléfono para vincularla como Owner de un shop nuevo. Sujeto a rate limit por IP.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff"
+                ],
+                "summary": "Buscar candidato a owner por teléfono",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Teléfono",
+                        "name": "phone",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.OwnerCandidateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "phone requerido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shops/staff/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff"
+                ],
+                "summary": "Detalle de shop (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shop ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StaffShopResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Actualización parcial: los campos omitidos no se tocan; enviar un campo en `null` lo limpia. logo_image/banner van como data-URL/base64 (se suben a Cloudinary). Rechaza la edición mientras el local esté abierto (`opened: true`).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff"
+                ],
+                "summary": "Completar shop por partes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shop ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Campos parciales",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.UpdateDraftShopRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StaffShopResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "id inválido / payload inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "El local está abierto",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shops/staff/{id}/activate": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Requiere checklist completo (logo, banner, dirección, teléfono, coordenadas). A partir de aquí el owner puede abrir el local.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff"
+                ],
+                "summary": "Activar shop",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shop ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StaffShopResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopActivateErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/shops/staff/{id}/products": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna todos los productos agrupados por categoría del shop indicado.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff"
+                ],
+                "summary": "Obtener productos del negocio (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shop ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategoryResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "id inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Productos no encontrados",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shops/staff/{id}/products/additions/catalog": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff"
+                ],
+                "summary": "Catálogo de adiciones del negocio (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shop ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.AdditionResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "id inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shops/staff/{id}/products/categories": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff"
+                ],
+                "summary": "Listar categorías completas del negocio (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shop ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategoryResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "id inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Categorías no encontradas",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff"
+                ],
+                "summary": "Registrar una categoría (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shop ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos de la categoría a registrar",
+                        "name": "category",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.RegisterCategory"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "category registered successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "JSON inválido, campos faltantes o id inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shops/staff/{id}/products/categories/summary": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff"
+                ],
+                "summary": "Listar categorías del negocio en resumen (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shop ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            "flavors",
+                            "additions"
+                        ],
+                        "type": "string",
+                        "description": "Filtrar categorías elegibles",
+                        "name": "for",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.CategorySummaryResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "id inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shops/staff/{id}/products/categories/{category_id}": {
+            "put": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff"
+                ],
+                "summary": "Actualizar una categoría (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shop ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID de la categoría",
+                        "name": "category_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos de la categoría a actualizar",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.UpdateCategory"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "category update success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "id/category_id inválido o JSON mal formado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Categoría no encontrada",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shops/staff/{id}/products/discounts": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff"
+                ],
+                "summary": "Registrar un descuento (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shop ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos del descuento a registrar",
+                        "name": "discount",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.RegisterItemDiscount"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "item discount registered successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "JSON inválido, campos faltantes o id inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Producto no encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shops/staff/{id}/products/discounts/{discount_id}": {
+            "put": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff"
+                ],
+                "summary": "Actualizar un descuento (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shop ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID del descuento",
+                        "name": "discount_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos del descuento a actualizar",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.UpdateItemDiscount"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "item discount update success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "id/discount_id inválido o JSON mal formado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Descuento no encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff"
+                ],
+                "summary": "Eliminar un descuento (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shop ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID del descuento",
+                        "name": "discount_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "item discount deleted successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "id/discount_id inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Descuento no encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shops/staff/{id}/products/flavors": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff"
+                ],
+                "summary": "Registrar un sabor (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shop ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos del sabor a registrar",
+                        "name": "flavor",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.RegisterFlavor"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "flavor registered successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "JSON inválido, campos faltantes o id inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Categoría no encontrada",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shops/staff/{id}/products/flavors/{flavor_id}": {
+            "put": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff"
+                ],
+                "summary": "Actualizar un sabor (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shop ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID del sabor",
+                        "name": "flavor_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos del sabor a actualizar",
+                        "name": "flavor",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.UpdateFlavor"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "flavor update success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "id/flavor_id inválido o JSON mal formado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Sabor no encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff"
+                ],
+                "summary": "Eliminar un sabor (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shop ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID del sabor",
+                        "name": "flavor_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "flavor deleted successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "id/flavor_id inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Sabor no encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shops/staff/{id}/products/items": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff"
+                ],
+                "summary": "Registrar un producto (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shop ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos del producto a registrar",
+                        "name": "item",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.RegisterItem"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "product registered successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "JSON inválido, campos faltantes o id inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shops/staff/{id}/products/items/{item_id}": {
+            "put": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff"
+                ],
+                "summary": "Actualizar un producto (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shop ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID del producto",
+                        "name": "item_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos del producto a actualizar",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.UpdateItem"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "item update success",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "id/item_id inválido o JSON mal formado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Producto no encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shops/staff/{id}/products/macro-categories": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Catálogo de macro categorías. Filtro opcional shop_type (Restaurant|Supermarket|Turbo); sin filtro retorna todas. El shop_id del path no se usa (catálogo global) pero se mantiene por consistencia de ruteo.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff"
+                ],
+                "summary": "Obtener macro categorías (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shop ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Restaurant|Supermarket|Turbo",
+                        "name": "shop_type",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.MacroCategoryResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "id inválido / shop_type inválido",
                         "schema": {
                             "type": "string"
                         }
@@ -4718,6 +5950,9 @@
                 "name": {
                     "type": "string"
                 },
+                "shop_type": {
+                    "type": "string"
+                },
                 "slug": {
                     "type": "string"
                 }
@@ -4999,7 +6234,7 @@
                 "score": {
                     "type": "number"
                 },
-                "tag": {
+                "slug": {
                     "type": "string"
                 },
                 "time": {
@@ -5451,6 +6686,33 @@
                 "ZoneWithdrawalAvailable"
             ]
         },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.CreateDraftShopRequest": {
+            "type": "object",
+            "required": [
+                "name",
+                "owner_id",
+                "type"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "Pizzería Don Luigi"
+                },
+                "owner_id": {
+                    "type": "string",
+                    "example": "d33aaf08-2c43-41c4-b2e7-882b019edb1e"
+                },
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "Restaurant",
+                        "Supermarket",
+                        "Turbo"
+                    ],
+                    "example": "Restaurant"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_shops_domain_dtos.CustomerMetrics": {
             "type": "object",
             "properties": {
@@ -5625,6 +6887,29 @@
                 }
             }
         },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.OwnerCandidateResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "has_owner_role": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "sur_name": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_shops_domain_dtos.PeriodMetrics": {
             "type": "object",
             "properties": {
@@ -5740,7 +7025,7 @@
                 "score": {
                     "type": "number"
                 },
-                "tag": {
+                "slug": {
                     "type": "string"
                 },
                 "time": {
@@ -5748,6 +7033,20 @@
                 },
                 "type": {
                     "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.ShopActivateErrorResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "missing": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -5762,6 +7061,26 @@
                     "items": {
                         "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionDTO"
                     }
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.ShopCompletionDTO": {
+            "type": "object",
+            "properties": {
+                "filled_count": {
+                    "type": "integer"
+                },
+                "is_complete": {
+                    "type": "boolean"
+                },
+                "missing": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "required_count": {
+                    "type": "integer"
                 }
             }
         },
@@ -5808,7 +7127,7 @@
                 "score": {
                     "type": "number"
                 },
-                "tag": {
+                "slug": {
                     "type": "string"
                 },
                 "time": {
@@ -5859,6 +7178,82 @@
                     "items": {
                         "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionDTO"
                     }
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.StaffShopResponse": {
+            "type": "object",
+            "properties": {
+                "activated_at": {
+                    "type": "string"
+                },
+                "address": {
+                    "type": "string"
+                },
+                "banner": {
+                    "type": "string"
+                },
+                "completion": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopCompletionDTO"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "home_phone": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "logo_image": {
+                    "type": "string"
+                },
+                "longitude": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "opened": {
+                    "type": "boolean"
+                },
+                "owner_id": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.StaffShopsResponse": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "shops": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.StaffShopResponse"
+                    }
+                },
+                "total": {
+                    "type": "integer"
                 }
             }
         },
@@ -5946,6 +7341,37 @@
                 },
                 "shop": {
                     "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopResponse"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.UpdateDraftShopRequest": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "banner": {
+                    "type": "string",
+                    "example": "data:image/jpeg;base64,/9j/4AAQSkZJRg..."
+                },
+                "home_phone": {
+                    "type": "string"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "logo_image": {
+                    "type": "string",
+                    "example": "data:image/jpeg;base64,/9j/4AAQSkZJRg..."
+                },
+                "longitude": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
                 }
             }
         },
@@ -6272,6 +7698,14 @@
                     "type": "string"
                 },
                 "phone": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_auth_handler.LogoutResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
                     "type": "string"
                 }
             }

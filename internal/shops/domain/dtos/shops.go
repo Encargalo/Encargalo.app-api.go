@@ -7,7 +7,7 @@ type ShopsResponse []ShopResponse
 type ShopResponse struct {
 	ID            uuid.UUID `json:"id"`
 	Name          string    `json:"name"`
-	Tag           string    `json:"tag"`
+	Slug          string    `json:"slug"`
 	Address       string    `json:"address"`
 	Latitude      float64   `json:"latitude"`
 	Longitude     float64   `json:"longitude"`

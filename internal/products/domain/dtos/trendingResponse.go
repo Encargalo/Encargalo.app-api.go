@@ -26,7 +26,7 @@ type TrendingEntry struct {
 type TrendingShop struct {
 	ID            uuid.UUID `json:"id"`
 	Name          string    `json:"name"`
-	Tag           string    `json:"tag"`
+	Slug          string    `json:"slug"`
 	Logo          string    `json:"logo"`
 	Address       string    `json:"address"`
 	Score         float64   `json:"score"`

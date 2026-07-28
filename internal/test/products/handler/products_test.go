@@ -170,8 +170,9 @@ func TestUpdateItem_Success(t *testing.T) {
 	h, svc := newHandler(t)
 
 	userID := uuid.New()
+	shopID := uuid.New()
 	itemID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: userID, ShopID: &shopID}
 
 	body := buildBody(t, map[string]any{
 		"name":        "Pizza actualizada",
@@ -183,7 +184,7 @@ func TestUpdateItem_Success(t *testing.T) {
 	tc.Ctx.SetParamNames("item_id")
 	tc.Ctx.SetParamValues(itemID.String())
 
-	svc.On("UpdateItem", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateItem"), itemID, userID).Return(nil)
+	svc.On("UpdateItem", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateItem"), itemID, shopID).Return(nil)
 
 	err := h.UpdateItem(tc.Ctx)
 
@@ -213,7 +214,8 @@ func TestUpdateItem_NoSession(t *testing.T) {
 func TestUpdateItem_InvalidItemID(t *testing.T) {
 	h, _ := newHandler(t)
 
-	session := authmodels.ActiveSession{UserID: uuid.New()}
+	shopID := uuid.New()
+	session := authmodels.ActiveSession{UserID: uuid.New(), ShopID: &shopID}
 	body := buildBody(t, map[string]any{
 		"name":        "Pizza",
 		"price":       35000,
@@ -234,8 +236,9 @@ func TestUpdateItem_ValidationFail(t *testing.T) {
 	h, _ := newHandler(t)
 
 	userID := uuid.New()
+	shopID := uuid.New()
 	itemID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: userID, ShopID: &shopID}
 
 	body := buildBody(t, map[string]any{"name": "Pizza"})
 	tc := buildhttptest.SetupControllerCase("/business/products/"+itemID.String(), http.MethodPut, body)
@@ -253,8 +256,9 @@ func TestUpdateItem_NotFound(t *testing.T) {
 	h, svc := newHandler(t)
 
 	userID := uuid.New()
+	shopID := uuid.New()
 	itemID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: userID, ShopID: &shopID}
 
 	body := buildBody(t, map[string]any{
 		"name":        "Pizza",
@@ -266,7 +270,7 @@ func TestUpdateItem_NotFound(t *testing.T) {
 	tc.Ctx.SetParamNames("item_id")
 	tc.Ctx.SetParamValues(itemID.String())
 
-	svc.On("UpdateItem", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateItem"), itemID, userID).Return(errcustom.ErrNotFound)
+	svc.On("UpdateItem", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateItem"), itemID, shopID).Return(errcustom.ErrNotFound)
 
 	err := h.UpdateItem(tc.Ctx)
 
@@ -278,8 +282,9 @@ func TestUpdateItem_UnexpectedError(t *testing.T) {
 	h, svc := newHandler(t)
 
 	userID := uuid.New()
+	shopID := uuid.New()
 	itemID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: userID, ShopID: &shopID}
 
 	body := buildBody(t, map[string]any{
 		"name":        "Pizza",
@@ -291,7 +296,7 @@ func TestUpdateItem_UnexpectedError(t *testing.T) {
 	tc.Ctx.SetParamNames("item_id")
 	tc.Ctx.SetParamValues(itemID.String())
 
-	svc.On("UpdateItem", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateItem"), itemID, userID).Return(errcustom.ErrUnexpectedError)
+	svc.On("UpdateItem", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateItem"), itemID, shopID).Return(errcustom.ErrUnexpectedError)
 
 	err := h.UpdateItem(tc.Ctx)
 
@@ -738,8 +743,9 @@ func TestUpdateCategory_Success(t *testing.T) {
 	h, svc := newHandler(t)
 
 	userID := uuid.New()
+	shopID := uuid.New()
 	categoryID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: userID, ShopID: &shopID}
 
 	body := buildBody(t, map[string]any{
 		"name":              "Cena",
@@ -750,7 +756,7 @@ func TestUpdateCategory_Success(t *testing.T) {
 	tc.Ctx.SetParamNames("category_id")
 	tc.Ctx.SetParamValues(categoryID.String())
 
-	svc.On("UpdateCategory", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateCategory"), categoryID, userID).Return(nil)
+	svc.On("UpdateCategory", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateCategory"), categoryID, shopID).Return(nil)
 
 	err := h.UpdateCategory(tc.Ctx)
 
@@ -779,7 +785,8 @@ func TestUpdateCategory_NoSession(t *testing.T) {
 func TestUpdateCategory_InvalidCategoryID(t *testing.T) {
 	h, _ := newHandler(t)
 
-	session := authmodels.ActiveSession{UserID: uuid.New()}
+	shopID := uuid.New()
+	session := authmodels.ActiveSession{UserID: uuid.New(), ShopID: &shopID}
 	body := buildBody(t, map[string]any{
 		"name":              "Cena",
 		"macro_category_id": uuid.New().String(),
@@ -799,8 +806,9 @@ func TestUpdateCategory_ValidationFail(t *testing.T) {
 	h, _ := newHandler(t)
 
 	userID := uuid.New()
+	shopID := uuid.New()
 	categoryID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: userID, ShopID: &shopID}
 
 	body := buildBody(t, map[string]any{})
 	tc := buildhttptest.SetupControllerCase("/business/products/categories/"+categoryID.String(), http.MethodPut, body)
@@ -818,8 +826,9 @@ func TestUpdateCategory_NotFound(t *testing.T) {
 	h, svc := newHandler(t)
 
 	userID := uuid.New()
+	shopID := uuid.New()
 	categoryID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: userID, ShopID: &shopID}
 
 	body := buildBody(t, map[string]any{
 		"name":              "Cena",
@@ -830,7 +839,7 @@ func TestUpdateCategory_NotFound(t *testing.T) {
 	tc.Ctx.SetParamNames("category_id")
 	tc.Ctx.SetParamValues(categoryID.String())
 
-	svc.On("UpdateCategory", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateCategory"), categoryID, userID).Return(errcustom.ErrNotFound)
+	svc.On("UpdateCategory", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateCategory"), categoryID, shopID).Return(errcustom.ErrNotFound)
 
 	err := h.UpdateCategory(tc.Ctx)
 
@@ -842,8 +851,9 @@ func TestUpdateCategory_Unauthorized(t *testing.T) {
 	h, svc := newHandler(t)
 
 	userID := uuid.New()
+	shopID := uuid.New()
 	categoryID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: userID, ShopID: &shopID}
 
 	body := buildBody(t, map[string]any{
 		"name":              "Cena",
@@ -854,7 +864,7 @@ func TestUpdateCategory_Unauthorized(t *testing.T) {
 	tc.Ctx.SetParamNames("category_id")
 	tc.Ctx.SetParamValues(categoryID.String())
 
-	svc.On("UpdateCategory", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateCategory"), categoryID, userID).Return(errcustom.ErrUnautorized)
+	svc.On("UpdateCategory", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateCategory"), categoryID, shopID).Return(errcustom.ErrUnautorized)
 
 	err := h.UpdateCategory(tc.Ctx)
 
@@ -866,8 +876,9 @@ func TestUpdateCategory_UnexpectedError(t *testing.T) {
 	h, svc := newHandler(t)
 
 	userID := uuid.New()
+	shopID := uuid.New()
 	categoryID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: userID, ShopID: &shopID}
 
 	body := buildBody(t, map[string]any{
 		"name":              "Cena",
@@ -878,7 +889,7 @@ func TestUpdateCategory_UnexpectedError(t *testing.T) {
 	tc.Ctx.SetParamNames("category_id")
 	tc.Ctx.SetParamValues(categoryID.String())
 
-	svc.On("UpdateCategory", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateCategory"), categoryID, userID).Return(errcustom.ErrUnexpectedError)
+	svc.On("UpdateCategory", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateCategory"), categoryID, shopID).Return(errcustom.ErrUnexpectedError)
 
 	err := h.UpdateCategory(tc.Ctx)
 
@@ -997,8 +1008,9 @@ func TestUpdateFlavor_Success(t *testing.T) {
 	h, svc := newHandler(t)
 
 	userID := uuid.New()
+	shopID := uuid.New()
 	flavorID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: userID, ShopID: &shopID}
 
 	body := buildBody(t, map[string]any{"name": "Muy picante"})
 	tc := buildhttptest.SetupControllerCase("/business/products/flavors/"+flavorID.String(), http.MethodPut, body)
@@ -1006,7 +1018,7 @@ func TestUpdateFlavor_Success(t *testing.T) {
 	tc.Ctx.SetParamNames("flavor_id")
 	tc.Ctx.SetParamValues(flavorID.String())
 
-	svc.On("UpdateFlavor", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateFlavor"), flavorID, userID).Return(nil)
+	svc.On("UpdateFlavor", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateFlavor"), flavorID, shopID).Return(nil)
 
 	err := h.UpdateFlavor(tc.Ctx)
 
@@ -1032,7 +1044,8 @@ func TestUpdateFlavor_NoSession(t *testing.T) {
 func TestUpdateFlavor_InvalidFlavorID(t *testing.T) {
 	h, _ := newHandler(t)
 
-	session := authmodels.ActiveSession{UserID: uuid.New()}
+	shopID := uuid.New()
+	session := authmodels.ActiveSession{UserID: uuid.New(), ShopID: &shopID}
 	body := buildBody(t, map[string]any{"name": "Muy picante"})
 	tc := buildhttptest.SetupControllerCase("/business/products/flavors/not-a-uuid", http.MethodPut, body)
 	tc = withSession(tc, session)
@@ -1049,8 +1062,9 @@ func TestUpdateFlavor_ValidationFail(t *testing.T) {
 	h, _ := newHandler(t)
 
 	userID := uuid.New()
+	shopID := uuid.New()
 	flavorID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: userID, ShopID: &shopID}
 
 	body := buildBody(t, map[string]any{})
 	tc := buildhttptest.SetupControllerCase("/business/products/flavors/"+flavorID.String(), http.MethodPut, body)
@@ -1068,8 +1082,9 @@ func TestUpdateFlavor_NotFound(t *testing.T) {
 	h, svc := newHandler(t)
 
 	userID := uuid.New()
+	shopID := uuid.New()
 	flavorID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: userID, ShopID: &shopID}
 
 	body := buildBody(t, map[string]any{"name": "Muy picante"})
 	tc := buildhttptest.SetupControllerCase("/business/products/flavors/"+flavorID.String(), http.MethodPut, body)
@@ -1077,7 +1092,7 @@ func TestUpdateFlavor_NotFound(t *testing.T) {
 	tc.Ctx.SetParamNames("flavor_id")
 	tc.Ctx.SetParamValues(flavorID.String())
 
-	svc.On("UpdateFlavor", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateFlavor"), flavorID, userID).Return(errcustom.ErrNotFound)
+	svc.On("UpdateFlavor", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateFlavor"), flavorID, shopID).Return(errcustom.ErrNotFound)
 
 	err := h.UpdateFlavor(tc.Ctx)
 
@@ -1089,8 +1104,9 @@ func TestUpdateFlavor_Unauthorized(t *testing.T) {
 	h, svc := newHandler(t)
 
 	userID := uuid.New()
+	shopID := uuid.New()
 	flavorID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: userID, ShopID: &shopID}
 
 	body := buildBody(t, map[string]any{"name": "Muy picante"})
 	tc := buildhttptest.SetupControllerCase("/business/products/flavors/"+flavorID.String(), http.MethodPut, body)
@@ -1098,7 +1114,7 @@ func TestUpdateFlavor_Unauthorized(t *testing.T) {
 	tc.Ctx.SetParamNames("flavor_id")
 	tc.Ctx.SetParamValues(flavorID.String())
 
-	svc.On("UpdateFlavor", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateFlavor"), flavorID, userID).Return(errcustom.ErrUnautorized)
+	svc.On("UpdateFlavor", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateFlavor"), flavorID, shopID).Return(errcustom.ErrUnautorized)
 
 	err := h.UpdateFlavor(tc.Ctx)
 
@@ -1112,15 +1128,16 @@ func TestDeleteFlavor_Success(t *testing.T) {
 	h, svc := newHandler(t)
 
 	userID := uuid.New()
+	shopID := uuid.New()
 	flavorID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: userID, ShopID: &shopID}
 
 	tc := buildhttptest.SetupControllerCase("/business/products/flavors/"+flavorID.String(), http.MethodDelete, nil)
 	tc = withSession(tc, session)
 	tc.Ctx.SetParamNames("flavor_id")
 	tc.Ctx.SetParamValues(flavorID.String())
 
-	svc.On("DeleteFlavor", tc.Req.Context(), flavorID, userID).Return(nil)
+	svc.On("DeleteFlavor", tc.Req.Context(), flavorID, shopID).Return(nil)
 
 	err := h.DeleteFlavor(tc.Ctx)
 
@@ -1145,7 +1162,8 @@ func TestDeleteFlavor_NoSession(t *testing.T) {
 func TestDeleteFlavor_InvalidFlavorID(t *testing.T) {
 	h, _ := newHandler(t)
 
-	session := authmodels.ActiveSession{UserID: uuid.New()}
+	shopID := uuid.New()
+	session := authmodels.ActiveSession{UserID: uuid.New(), ShopID: &shopID}
 	tc := buildhttptest.SetupControllerCase("/business/products/flavors/not-a-uuid", http.MethodDelete, nil)
 	tc = withSession(tc, session)
 	tc.Ctx.SetParamNames("flavor_id")
@@ -1161,15 +1179,16 @@ func TestDeleteFlavor_NotFound(t *testing.T) {
 	h, svc := newHandler(t)
 
 	userID := uuid.New()
+	shopID := uuid.New()
 	flavorID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: userID, ShopID: &shopID}
 
 	tc := buildhttptest.SetupControllerCase("/business/products/flavors/"+flavorID.String(), http.MethodDelete, nil)
 	tc = withSession(tc, session)
 	tc.Ctx.SetParamNames("flavor_id")
 	tc.Ctx.SetParamValues(flavorID.String())
 
-	svc.On("DeleteFlavor", tc.Req.Context(), flavorID, userID).Return(errcustom.ErrNotFound)
+	svc.On("DeleteFlavor", tc.Req.Context(), flavorID, shopID).Return(errcustom.ErrNotFound)
 
 	err := h.DeleteFlavor(tc.Ctx)
 
@@ -1181,15 +1200,16 @@ func TestDeleteFlavor_Unauthorized(t *testing.T) {
 	h, svc := newHandler(t)
 
 	userID := uuid.New()
+	shopID := uuid.New()
 	flavorID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: userID, ShopID: &shopID}
 
 	tc := buildhttptest.SetupControllerCase("/business/products/flavors/"+flavorID.String(), http.MethodDelete, nil)
 	tc = withSession(tc, session)
 	tc.Ctx.SetParamNames("flavor_id")
 	tc.Ctx.SetParamValues(flavorID.String())
 
-	svc.On("DeleteFlavor", tc.Req.Context(), flavorID, userID).Return(errcustom.ErrUnautorized)
+	svc.On("DeleteFlavor", tc.Req.Context(), flavorID, shopID).Return(errcustom.ErrUnautorized)
 
 	err := h.DeleteFlavor(tc.Ctx)
 
@@ -1204,7 +1224,20 @@ func TestSearchMacroCategories_Success(t *testing.T) {
 
 	tc := buildhttptest.SetupControllerCase("/business/products/macro-categories", http.MethodGet, nil)
 
-	svc.On("SearchMacroCategories", tc.Req.Context()).Return(dtos.MacroCategoriesResponse{}, nil)
+	svc.On("SearchMacroCategories", tc.Req.Context(), "").Return(dtos.MacroCategoriesResponse{}, nil)
+
+	err := h.SearchMacroCategories(tc.Ctx)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, tc.Res.Code)
+}
+
+func TestSearchMacroCategories_FiltersByShopType(t *testing.T) {
+	h, svc := newHandler(t)
+
+	tc := buildhttptest.SetupControllerCase("/business/products/macro-categories?shop_type=Turbo", http.MethodGet, nil)
+
+	svc.On("SearchMacroCategories", tc.Req.Context(), "Turbo").Return(dtos.MacroCategoriesResponse{}, nil)
 
 	err := h.SearchMacroCategories(tc.Ctx)
 
@@ -1217,7 +1250,7 @@ func TestSearchMacroCategories_UnexpectedError(t *testing.T) {
 
 	tc := buildhttptest.SetupControllerCase("/business/products/macro-categories", http.MethodGet, nil)
 
-	svc.On("SearchMacroCategories", tc.Req.Context()).Return(dtos.MacroCategoriesResponse(nil), errcustom.ErrUnexpectedError)
+	svc.On("SearchMacroCategories", tc.Req.Context(), "").Return(dtos.MacroCategoriesResponse(nil), errcustom.ErrUnexpectedError)
 
 	err := h.SearchMacroCategories(tc.Ctx)
 
@@ -1360,8 +1393,9 @@ func TestUpdateItemDiscount_Success(t *testing.T) {
 	h, svc := newHandler(t)
 
 	userID := uuid.New()
+	shopID := uuid.New()
 	discountID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: userID, ShopID: &shopID}
 
 	body := buildBody(t, map[string]any{
 		"discount_type": "fixed",
@@ -1373,7 +1407,7 @@ func TestUpdateItemDiscount_Success(t *testing.T) {
 	tc.Ctx.SetParamNames("discount_id")
 	tc.Ctx.SetParamValues(discountID.String())
 
-	svc.On("UpdateItemDiscount", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateItemDiscount"), discountID, userID).Return(nil)
+	svc.On("UpdateItemDiscount", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateItemDiscount"), discountID, shopID).Return(nil)
 
 	err := h.UpdateItemDiscount(tc.Ctx)
 
@@ -1399,7 +1433,8 @@ func TestUpdateItemDiscount_NoSession(t *testing.T) {
 func TestUpdateItemDiscount_InvalidDiscountID(t *testing.T) {
 	h, _ := newHandler(t)
 
-	session := authmodels.ActiveSession{UserID: uuid.New()}
+	shopID := uuid.New()
+	session := authmodels.ActiveSession{UserID: uuid.New(), ShopID: &shopID}
 	body := buildBody(t, map[string]any{"discount_type": "fixed", "value": 5000})
 	tc := buildhttptest.SetupControllerCase("/business/products/discounts/not-a-uuid", http.MethodPut, body)
 	tc = withSession(tc, session)
@@ -1416,8 +1451,9 @@ func TestUpdateItemDiscount_ValidationFail(t *testing.T) {
 	h, _ := newHandler(t)
 
 	userID := uuid.New()
+	shopID := uuid.New()
 	discountID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: userID, ShopID: &shopID}
 
 	body := buildBody(t, map[string]any{})
 	tc := buildhttptest.SetupControllerCase("/business/products/discounts/"+discountID.String(), http.MethodPut, body)
@@ -1435,8 +1471,9 @@ func TestUpdateItemDiscount_NotFound(t *testing.T) {
 	h, svc := newHandler(t)
 
 	userID := uuid.New()
+	shopID := uuid.New()
 	discountID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: userID, ShopID: &shopID}
 
 	body := buildBody(t, map[string]any{"discount_type": "fixed", "value": 5000})
 	tc := buildhttptest.SetupControllerCase("/business/products/discounts/"+discountID.String(), http.MethodPut, body)
@@ -1444,7 +1481,7 @@ func TestUpdateItemDiscount_NotFound(t *testing.T) {
 	tc.Ctx.SetParamNames("discount_id")
 	tc.Ctx.SetParamValues(discountID.String())
 
-	svc.On("UpdateItemDiscount", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateItemDiscount"), discountID, userID).Return(errcustom.ErrNotFound)
+	svc.On("UpdateItemDiscount", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateItemDiscount"), discountID, shopID).Return(errcustom.ErrNotFound)
 
 	err := h.UpdateItemDiscount(tc.Ctx)
 
@@ -1456,8 +1493,9 @@ func TestUpdateItemDiscount_Unauthorized(t *testing.T) {
 	h, svc := newHandler(t)
 
 	userID := uuid.New()
+	shopID := uuid.New()
 	discountID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: userID, ShopID: &shopID}
 
 	body := buildBody(t, map[string]any{"discount_type": "fixed", "value": 5000})
 	tc := buildhttptest.SetupControllerCase("/business/products/discounts/"+discountID.String(), http.MethodPut, body)
@@ -1465,7 +1503,7 @@ func TestUpdateItemDiscount_Unauthorized(t *testing.T) {
 	tc.Ctx.SetParamNames("discount_id")
 	tc.Ctx.SetParamValues(discountID.String())
 
-	svc.On("UpdateItemDiscount", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateItemDiscount"), discountID, userID).Return(errcustom.ErrUnautorized)
+	svc.On("UpdateItemDiscount", tc.Req.Context(), mock.AnythingOfType("dtos.UpdateItemDiscount"), discountID, shopID).Return(errcustom.ErrUnautorized)
 
 	err := h.UpdateItemDiscount(tc.Ctx)
 
@@ -1479,15 +1517,16 @@ func TestDeleteItemDiscount_Success(t *testing.T) {
 	h, svc := newHandler(t)
 
 	userID := uuid.New()
+	shopID := uuid.New()
 	discountID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: userID, ShopID: &shopID}
 
 	tc := buildhttptest.SetupControllerCase("/business/products/discounts/"+discountID.String(), http.MethodDelete, nil)
 	tc = withSession(tc, session)
 	tc.Ctx.SetParamNames("discount_id")
 	tc.Ctx.SetParamValues(discountID.String())
 
-	svc.On("DeleteItemDiscount", tc.Req.Context(), discountID, userID).Return(nil)
+	svc.On("DeleteItemDiscount", tc.Req.Context(), discountID, shopID).Return(nil)
 
 	err := h.DeleteItemDiscount(tc.Ctx)
 
@@ -1512,7 +1551,8 @@ func TestDeleteItemDiscount_NoSession(t *testing.T) {
 func TestDeleteItemDiscount_InvalidDiscountID(t *testing.T) {
 	h, _ := newHandler(t)
 
-	session := authmodels.ActiveSession{UserID: uuid.New()}
+	shopID := uuid.New()
+	session := authmodels.ActiveSession{UserID: uuid.New(), ShopID: &shopID}
 	tc := buildhttptest.SetupControllerCase("/business/products/discounts/not-a-uuid", http.MethodDelete, nil)
 	tc = withSession(tc, session)
 	tc.Ctx.SetParamNames("discount_id")
@@ -1528,15 +1568,16 @@ func TestDeleteItemDiscount_NotFound(t *testing.T) {
 	h, svc := newHandler(t)
 
 	userID := uuid.New()
+	shopID := uuid.New()
 	discountID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: userID, ShopID: &shopID}
 
 	tc := buildhttptest.SetupControllerCase("/business/products/discounts/"+discountID.String(), http.MethodDelete, nil)
 	tc = withSession(tc, session)
 	tc.Ctx.SetParamNames("discount_id")
 	tc.Ctx.SetParamValues(discountID.String())
 
-	svc.On("DeleteItemDiscount", tc.Req.Context(), discountID, userID).Return(errcustom.ErrNotFound)
+	svc.On("DeleteItemDiscount", tc.Req.Context(), discountID, shopID).Return(errcustom.ErrNotFound)
 
 	err := h.DeleteItemDiscount(tc.Ctx)
 
@@ -1548,15 +1589,16 @@ func TestDeleteItemDiscount_Unauthorized(t *testing.T) {
 	h, svc := newHandler(t)
 
 	userID := uuid.New()
+	shopID := uuid.New()
 	discountID := uuid.New()
-	session := authmodels.ActiveSession{UserID: userID}
+	session := authmodels.ActiveSession{UserID: userID, ShopID: &shopID}
 
 	tc := buildhttptest.SetupControllerCase("/business/products/discounts/"+discountID.String(), http.MethodDelete, nil)
 	tc = withSession(tc, session)
 	tc.Ctx.SetParamNames("discount_id")
 	tc.Ctx.SetParamValues(discountID.String())
 
-	svc.On("DeleteItemDiscount", tc.Req.Context(), discountID, userID).Return(errcustom.ErrUnautorized)
+	svc.On("DeleteItemDiscount", tc.Req.Context(), discountID, shopID).Return(errcustom.ErrUnautorized)
 
 	err := h.DeleteItemDiscount(tc.Ctx)
 

@@ -36,6 +36,9 @@ type ShopsRepo interface {
 	SearchShopCandidates(ctx context.Context, query dtos.SearchShopsQuery) ([]dtos.SearchShopCandidate, error)
 	FindMatchedProducts(ctx context.Context, shopIDs []uuid.UUID, q string) (map[uuid.UUID][]dtos.MatchedProductItem, error)
 	SetOpenClose(ctx context.Context, shopID *uuid.UUID, open bool) error
+	// GetShopStatus expone el estado de onboarding (draft/active) para el gate
+	// de apertura en ShopsApp.SetOpenClose.
+	GetShopStatus(ctx context.Context, shopID uuid.UUID) (string, error)
 	GetLaunchPromoEndsAt(ctx context.Context, shopID uuid.UUID) (*time.Time, error)
 	// TryCloseOpenBatch cierra el lote abierto del shop si el local está cerrado
 	// y no quedan órdenes activas. Idempotente (0 filas si no aplica).

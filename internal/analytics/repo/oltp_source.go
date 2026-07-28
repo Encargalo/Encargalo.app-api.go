@@ -22,7 +22,7 @@ func NewOLTPSourceRepo(db *bun.DB) ports.OLTPSourceRepo {
 type shopRow struct {
 	ID            uuid.UUID `bun:"id"`
 	Name          string    `bun:"name"`
-	Tag           string    `bun:"tag"`
+	Slug          string    `bun:"slug"`
 	Address       string    `bun:"address"`
 	Type          string    `bun:"type"`
 	LicenseStatus string    `bun:"license_status"`
@@ -35,7 +35,7 @@ func (r *oltpSourceRepo) FetchShops(ctx context.Context, from, to time.Time) ([]
 	var rows []shopRow
 	err := r.db.NewSelect().
 		TableExpr("business.shops AS s").
-		Column("s.id", "s.name", "s.tag", "s.address", "s.type", "s.license_status", "s.opened", "s.created_at", "s.updated_at").
+		Column("s.id", "s.name", "s.slug", "s.address", "s.type", "s.license_status", "s.opened", "s.created_at", "s.updated_at").
 		Where("s.deleted_at IS NULL").
 		Where("s.updated_at >= ? AND s.updated_at < ?", from, to).
 		Scan(ctx, &rows)
@@ -49,7 +49,7 @@ func (r *oltpSourceRepo) FetchShops(ctx context.Context, from, to time.Time) ([]
 		out[i] = models.DimShop{
 			ShopID:        row.ID,
 			Name:          row.Name,
-			Tag:           row.Tag,
+			Slug:          row.Slug,
 			Address:       row.Address,
 			Type:          row.Type,
 			LicenseStatus: row.LicenseStatus,
