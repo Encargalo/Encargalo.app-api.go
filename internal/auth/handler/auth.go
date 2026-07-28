@@ -247,13 +247,17 @@ func (a *auth) SignInGoogle(e echo.Context) error {
 	return e.JSON(http.StatusCreated, "session created")
 }
 
+type LogoutResponse struct {
+	Message string `json:"message"`
+}
+
 // Logout godoc
 // @Summary      Cerrar sesión
 // @Description  Elimina la sesión activa del cliente o empleado autenticado y borra la cookie de autenticación.
 // @Tags         Auth
 // @Produce      json
 // @Security     SessionCookie
-// @Success      200  {string}  string  "session deleted success"
+// @Success      200  {object}  handler.LogoutResponse
 // @Failure      401  {string}  string  "No autorizado"
 // @Failure      404  {string}  string  "Sesión no encontrada"
 // @Failure      500  {string}  string  "Error interno del servidor"
@@ -274,5 +278,7 @@ func (s *auth) Logout(e echo.Context) error {
 
 	e.SetCookie(s.cookie.DeleteCookieSession())
 
-	return e.JSON(http.StatusOK, "session deleted success")
+	return e.JSON(http.StatusOK, LogoutResponse{
+		Message: "session deleted success",
+	})
 }
