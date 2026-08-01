@@ -408,6 +408,43 @@ const docTemplate = `{
                 }
             }
         },
+        "/bcv/rate": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Retorna la última tasa de cambio USD/Bs publicada por el BCV, cacheada por el servidor.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Bcv"
+                ],
+                "summary": "Obtener tasa del dólar en bolívares",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_bcv_domain_models.ExchangeRate"
+                        }
+                    },
+                    "401": {
+                        "description": "token inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/business/products": {
             "get": {
                 "security": [
@@ -5379,6 +5416,20 @@ const docTemplate = `{
                 "phone_number": {
                     "type": "string",
                     "example": "+573001112233"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_bcv_domain_models.ExchangeRate": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "fetched_at": {
+                    "type": "string"
+                },
+                "rate": {
+                    "type": "number"
                 }
             }
         },
