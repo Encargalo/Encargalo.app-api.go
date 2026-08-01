@@ -29,6 +29,7 @@ type Config struct {
 	Google        Google        `env:"google"`
 	Cloudinary    Cloudinary    `env:"cloudinary"`
 	Observability Observability `env:"observability"`
+	ExternalAPI   ExternalAPI   `env:"external_api"`
 }
 
 type Server struct {
@@ -82,6 +83,13 @@ type Observability struct {
 
 func (o Observability) Enabled() bool {
 	return o.OtlpEndpoint != ""
+}
+
+// ExternalAPI contiene el API key estático que deben mandar los clientes
+// externos vía "Authorization: Bearer <key>" para consumir rutas públicas
+// no ligadas a la sesión de usuario (ej. /bcv/rate).
+type ExternalAPI struct {
+	Key string `validate:"required" env:"key"`
 }
 
 func Environments() {
