@@ -719,19 +719,16 @@ func (p *productsApp) SearchMacroCategories(ctx context.Context, shopType string
 	return macroCategories.ToDomainDTO(), nil
 }
 
-// SeedDefaultCategories crea una categoría vacía por cada macro-categoría del
-// tipo de shop indicado, para que el staff/owner solo tenga que agregar
-// productos en vez de crear categorías desde cero (ver add-staff-shop-onboarding).
 func (p *productsApp) SeedDefaultCategories(ctx context.Context, shopID uuid.UUID, shopType string) error {
-	macros, err := p.repo.SearchMacroCategories(ctx, shopType)
+	micros, err := p.repo.SearchMicroCategories(ctx, shopType)
 	if err != nil {
 		return err
 	}
-	for i := range macros {
-		macroID := macros[i].ID
+	for i := range micros {
+		macroID := micros[i].MacroCategoryID
 		category := &models.Category{
 			ShopID:             shopID,
-			Name:               macros[i].Name,
+			Name:               micros[i].Name,
 			MacroCategoryID:    &macroID,
 			AvailabilityStatus: models.AvailabilityActive,
 			Details:            models.DefaultCategoryDetails(),
