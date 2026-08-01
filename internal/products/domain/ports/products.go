@@ -67,6 +67,7 @@ type ProductsRepo interface {
 	UpdateFlavor(ctx context.Context, flavorID uuid.UUID, entry models.FlavorEntry, shopID, categoryID uuid.UUID) error
 	DeleteFlavor(ctx context.Context, flavor models.CatalogFlavor) error
 	SearchMacroCategories(ctx context.Context, shopType string) (models.MacroCategories, error)
+	SearchMicroCategories(ctx context.Context, shopType string) (models.MicroCategories, error)
 	RegisterItemDiscount(ctx context.Context, discount *models.ItemDiscount) error
 	SearchItemDiscountByID(ctx context.Context, discountID uuid.UUID) (*models.ItemDiscount, error)
 	UpdateItemDiscount(ctx context.Context, discount *models.UpdateItemDiscount, shopID, itemID uuid.UUID) error

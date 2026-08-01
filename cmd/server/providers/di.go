@@ -53,6 +53,7 @@ import (
 	repoEmployee "Encargalo.app-api.go/internal/employee/repo"
 
 	appBcv "Encargalo.app-api.go/internal/bcv/app"
+	handBcv "Encargalo.app-api.go/internal/bcv/handler"
 	repoBcv "Encargalo.app-api.go/internal/bcv/repo"
 
 	appPayment "Encargalo.app-api.go/internal/payment_methods/app"
@@ -98,12 +99,14 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(groups.NewUsersGroup)
 	_ = Container.Provide(groups.NewOrdersGroup)
 	_ = Container.Provide(groups.NewPaymentMethodsGroup)
+	_ = Container.Provide(groups.NewBcvGroup)
 	_ = Container.Provide(handPayment.NewPaymentMethodsHandler)
 	_ = Container.Provide(appPayment.NewPaymentMethodsApp)
 	_ = Container.Provide(repoPayment.NewPaymentMethodsRepo)
 
 	_ = Container.Provide(requestinfo.NewRequestMiddleware)
 	_ = Container.Provide(sharedmw.NewRateLimiter)
+	_ = Container.Provide(sharedmw.NewApiKeyAuth)
 	_ = Container.Provide(authMiddle.NewAuthMidlleware)
 	_ = Container.Provide(handAuth.NewAuthHandler)
 	_ = Container.Provide(handCustomer.NewUsersHandler)
@@ -208,6 +211,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(repoBcv.NewCacheRepo)
 	_ = Container.Provide(repoBcv.NewCalendarScraper)
 	_ = Container.Provide(repoBcv.NewHolidayRepo)
+	_ = Container.Provide(handBcv.NewBcvHandler)
 
 	_ = Container.Provide(googleauth.NewVerifier)
 	_ = Container.Provide(bycript.NewHashPassword)

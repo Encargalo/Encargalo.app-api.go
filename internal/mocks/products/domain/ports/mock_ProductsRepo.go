@@ -640,6 +640,36 @@ func (_m *ProductsRepo) SearchMacroCategories(ctx context.Context, shopType stri
 	return r0, r1
 }
 
+// SearchMicroCategories provides a mock function with given fields: ctx, shopType
+func (_m *ProductsRepo) SearchMicroCategories(ctx context.Context, shopType string) (models.MicroCategories, error) {
+	ret := _m.Called(ctx, shopType)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SearchMicroCategories")
+	}
+
+	var r0 models.MicroCategories
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (models.MicroCategories, error)); ok {
+		return rf(ctx, shopType)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) models.MicroCategories); ok {
+		r0 = rf(ctx, shopType)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(models.MicroCategories)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, shopType)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // SearchProductsByShopID provides a mock function with given fields: ctx, shopID, forCustomer
 func (_m *ProductsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.UUID, forCustomer bool) (dtos.CategoriesResponse, error) {
 	ret := _m.Called(ctx, shopID, forCustomer)

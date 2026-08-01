@@ -19,6 +19,15 @@ definitions:
     - password
     - phone_number
     type: object
+  Encargalo_app-api_go_internal_bcv_domain_models.ExchangeRate:
+    properties:
+      date:
+        type: string
+      fetched_at:
+        type: string
+      rate:
+        type: number
+    type: object
   Encargalo_app-api_go_internal_orders_domain_dtos.Address:
     properties:
       address:
@@ -1900,6 +1909,30 @@ paths:
       summary: Iniciar sesión como cliente
       tags:
       - Auth
+  /bcv/rate:
+    get:
+      description: Retorna la última tasa de cambio USD/Bs publicada por el BCV, cacheada
+        por el servidor.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_bcv_domain_models.ExchangeRate'
+        "401":
+          description: token inválido
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - ApiKeyAuth: []
+      summary: Obtener tasa del dólar en bolívares
+      tags:
+      - Bcv
   /business/products:
     get:
       description: Retorna todos los productos agrupados por categoría del negocio

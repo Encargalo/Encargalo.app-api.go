@@ -1010,6 +1010,21 @@ func (p *productsRepo) SearchMacroCategories(ctx context.Context, shopType strin
 	return macroCategories, nil
 }
 
+func (p *productsRepo) SearchMicroCategories(ctx context.Context, shopType string) (models.MicroCategories, error) {
+	var microCategories models.MicroCategories
+
+	if err := p.db.NewSelect().
+		Model(&microCategories).
+		Where("macro_category_id IN (SELECT id FROM products.macro_categories WHERE shop_type = ?)", shopType).
+		Order("name ASC").
+		Scan(ctx); err != nil {
+		slog.Error("error al obtener las micro categorías", "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	return microCategories, nil
+}
+
 func (p *productsRepo) RegisterItemDiscount(ctx context.Context, discount *models.ItemDiscount) error {
 	_, err := p.db.NewInsert().Model(discount).Exec(ctx)
 	if err != nil {
