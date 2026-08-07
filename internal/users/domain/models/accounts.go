@@ -13,22 +13,28 @@ import (
 // pero se declara localmente para no acoplar el dominio de users al de auth.
 const defaultRole = "Customer"
 
+// AccountDeletionGracePeriod es la ventana entre que un usuario solicita
+// eliminar su cuenta y el worker de finalización la marca deleted_at. Si
+// vuelve a iniciar sesión antes de que se cumpla, la solicitud se cancela.
+const AccountDeletionGracePeriod = 30 * 24 * time.Hour
+
 type Account struct {
 	bun.BaseModel `bun:"table:users.accounts"`
 
-	ID               uuid.UUID          `bun:"id,pk,type:uuid,default:uuid_generate_v4()"`
-	Name             string             `bun:"name,notnull"`
-	SurName          *string            `bun:"sur_name"`
-	Phone            *string            `bun:"phone"`
-	Email            *string            `bun:"email"`
-	Password         string             `bun:"password,notnull"`
-	BirthdayDate     *time.Time         `bun:"birthday_date,nullzero"`
-	ActivationStatus string             `bun:"activation_status,default:'in progress'"`
-	Enabled          bool               `bun:"enabled,default:true"`
-	CreatedAt        time.Time          `bun:"created_at,default:now()"`
-	UpdatedAt        time.Time          `bun:"updated_at,default:now()"`
-	DeletedAt        *time.Time         `bun:"deleted_at,soft_delete,nullzero"`
-	PagoMovil        *CustomerPagoMovil `bun:"pago_movil,type:jsonb" json:"pago_movil,omitempty"`
+	ID                  uuid.UUID          `bun:"id,pk,type:uuid,default:uuid_generate_v4()"`
+	Name                string             `bun:"name,notnull"`
+	SurName             *string            `bun:"sur_name"`
+	Phone               *string            `bun:"phone"`
+	Email               *string            `bun:"email"`
+	Password            string             `bun:"password,notnull"`
+	BirthdayDate        *time.Time         `bun:"birthday_date,nullzero"`
+	ActivationStatus    string             `bun:"activation_status,default:'in progress'"`
+	Enabled             bool               `bun:"enabled,default:true"`
+	CreatedAt           time.Time          `bun:"created_at,default:now()"`
+	UpdatedAt           time.Time          `bun:"updated_at,default:now()"`
+	DeletedAt           *time.Time         `bun:"deleted_at,soft_delete,nullzero"`
+	DeletionRequestedAt *time.Time         `bun:"deletion_requested_at,nullzero"`
+	PagoMovil           *CustomerPagoMovil `bun:"pago_movil,type:jsonb" json:"pago_movil,omitempty"`
 
 	// Populated via JOIN — zero values for customers
 	ShopID uuid.UUID     `bun:"-"`
@@ -111,6 +117,11 @@ func (c *Account) ToDomainDTO() dto.CustomerResponse {
 		shopID := c.ShopID
 		response.ShopID = &shopID
 		response.Shop = c.Shop
+	}
+
+	if c.DeletionRequestedAt != nil {
+		scheduled := c.DeletionRequestedAt.Add(AccountDeletionGracePeriod)
+		response.ScheduledDeletionAt = &scheduled
 	}
 
 	return response

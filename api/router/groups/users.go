@@ -48,6 +48,7 @@ func (o *usersGroup) Resource(g *echo.Echo) {
 	group.GET("", o.handlerUsers.SearchCustomer, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer, models.OrderManager, models.Owner))
 	group.PUT("", o.handlerUsers.UpdateCustomer, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer, models.OrderManager, models.Owner))
 	group.PUT("/change-password", o.handlerUsers.UpdatePassword, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer, models.OrderManager, models.Owner))
+	group.DELETE("", o.handlerUsers.DeleteAccount, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer))
 	group.GET("/balance", o.handlerFinance.GetBalance, o.middleAuth.Auth, o.middleAuth.Require(models.Customer))
 	group.GET("/pago-movil", o.handlerFinance.GetPagoMovil, o.middleAuth.Auth, o.middleAuth.Require(models.Customer))
 	group.PUT("/pago-movil", o.handlerFinance.UpsertPagoMovil, o.middleAuth.Auth, o.middleAuth.Require(models.Customer))

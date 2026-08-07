@@ -266,6 +266,19 @@
       }
     },
     {
+      "name": "Delete Account",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/users",
+          "host": ["{{base_url}}"],
+          "path": ["users"]
+        },
+        "description": "Solicita la eliminación de la cuenta del usuario autenticado. La cuenta queda pendiente de eliminación por 30 días y se cierra la sesión en todos los dispositivos; ningún dato se borra en este momento. Si el usuario vuelve a iniciar sesión dentro de ese plazo, la solicitud se cancela automáticamente. Si no vuelve, un worker marca la cuenta como eliminada (deleted_at) sin perder ninguna columna. Requiere cookie `encargalo-session`. Rol: Customer."
+      }
+    },
+    {
       "name": "Address",
       "item": [
         {

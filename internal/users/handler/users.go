@@ -22,6 +22,7 @@ type UsersHandler interface {
 	SearchCustomer(e echo.Context) error
 	UpdateCustomer(e echo.Context) error
 	UpdatePassword(e echo.Context) error
+	DeleteAccount(e echo.Context) error
 }
 
 type customersHandler struct {
@@ -83,7 +84,7 @@ func (c *customersHandler) RegisterCustomer(e echo.Context) error {
 
 // SearchCustomer godoc
 // @Summary      Obtener perfil del usuario autenticado
-// @Description  Retorna los datos del usuario autenticado sin importar su rol. Para usuarios con rol OrderManager u Owner, la respuesta incluye adicionalmente los campos `shop_id` y `shop`.
+// @Description  Retorna los datos del usuario autenticado sin importar su rol. Para usuarios con rol OrderManager u Owner, la respuesta incluye adicionalmente los campos `shop_id` y `shop`. Si el usuario solicitó eliminar su cuenta, incluye `scheduled_deletion_at` con la fecha en la que se finalizará la eliminación de no volver a iniciar sesión antes.
 // @Tags         Users
 // @Produce      json
 // @Security     SessionCookie
@@ -191,4 +192,37 @@ func (c *customersHandler) UpdatePassword(e echo.Context) error {
 	}
 
 	return e.JSON(http.StatusOK, "password updated success")
+}
+
+// DeleteAccount godoc
+// @Summary      Solicitar la eliminación de la cuenta del usuario autenticado
+// @Description  Marca la cuenta como "pendiente de eliminación" por 30 días y cierra la sesión en todos los dispositivos. Ningún dato se borra en este momento. Si el usuario vuelve a iniciar sesión dentro de ese plazo, la solicitud se cancela automáticamente. Si no vuelve, la cuenta se marca deleted_at de forma permanente sin perder ninguna columna.
+// @Tags         Users
+// @Produce      json
+// @Security     SessionCookie
+// @Success      200  {string}  string  "account scheduled for deletion"
+// @Failure      401  {string}  string  "No autorizado"
+// @Failure      500  {string}  string  "Error interno del servidor"
+// @Router       /users [delete]
+func (c *customersHandler) DeleteAccount(e echo.Context) error {
+
+	ctx := e.Request().Context()
+
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
+	if !ok {
+		slog.Error("No se encontró el usuario en el contexto")
+		return errcustom.ErrUnexpectedError
+	}
+
+	if err := c.customerApp.RequestAccountDeletion(ctx, session.UserID); err != nil {
+		return errcustom.ToHTTPError(err)
+	}
+
+	if err := c.auth.DeleteAllSessionsForUser(ctx, session.UserID); err != nil {
+		applog.Error(ctx, "no se pudieron invalidar las sesiones tras solicitar la eliminación de la cuenta", err, "user_id", session.UserID.String())
+	}
+
+	e.SetCookie(c.cookie.DeleteCookieSession())
+
+	return e.JSON(http.StatusOK, "account scheduled for deletion")
 }

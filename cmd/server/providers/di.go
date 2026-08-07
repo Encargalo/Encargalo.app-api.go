@@ -170,6 +170,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(handCustomer.NewCustomerFinanceHandler)
 	_ = Container.Provide(handCustomer.NewStaffRefundHandler)
 	_ = Container.Provide(appCustomer.NewRefundAlertWorker)
+	_ = Container.Provide(appCustomer.NewAccountDeletionWorker)
 	_ = Container.Provide(appAuth.NewAuthApp)
 	_ = Container.Provide(appShops.NewShopsApp)
 	_ = Container.Provide(appShops.NewStaffShopApp)

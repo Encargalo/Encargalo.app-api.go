@@ -112,3 +112,68 @@ func TestUpdatePassword_Success(t *testing.T) {
 
 	assert.NoError(t, err)
 }
+
+func TestRequestAccountDeletion_Success(t *testing.T) {
+	repo := mockports.NewUsersRepo(t)
+	svc := app.NewUserApp(repo, bycript.NewHashPassword())
+
+	customerID := uuid.New()
+
+	repo.On("RequestAccountDeletion", mock.Anything, customerID).Return(nil)
+
+	err := svc.RequestAccountDeletion(context.Background(), customerID)
+
+	assert.NoError(t, err)
+}
+
+func TestRequestAccountDeletion_RepoError(t *testing.T) {
+	repo := mockports.NewUsersRepo(t)
+	svc := app.NewUserApp(repo, bycript.NewHashPassword())
+
+	customerID := uuid.New()
+
+	repo.On("RequestAccountDeletion", mock.Anything, customerID).Return(errcustom.ErrUnexpectedError)
+
+	err := svc.RequestAccountDeletion(context.Background(), customerID)
+
+	assert.ErrorIs(t, err, errcustom.ErrUnexpectedError)
+}
+
+func TestCancelPendingDeletionIfAny_Success(t *testing.T) {
+	repo := mockports.NewUsersRepo(t)
+	svc := app.NewUserApp(repo, bycript.NewHashPassword())
+
+	customerID := uuid.New()
+
+	repo.On("CancelAccountDeletion", mock.Anything, customerID).Return(nil)
+
+	err := svc.CancelPendingDeletionIfAny(context.Background(), customerID)
+
+	assert.NoError(t, err)
+}
+
+func TestFinalizePendingDeletions_NoEligibleAccounts(t *testing.T) {
+	repo := mockports.NewUsersRepo(t)
+	svc := app.NewUserApp(repo, bycript.NewHashPassword())
+
+	repo.On("FinalizePendingDeletions", mock.Anything, mock.AnythingOfType("time.Time")).
+		Return(int64(0), nil)
+
+	n, err := svc.FinalizePendingDeletions(context.Background())
+
+	assert.NoError(t, err)
+	assert.Equal(t, int64(0), n)
+}
+
+func TestFinalizePendingDeletions_RepoError(t *testing.T) {
+	repo := mockports.NewUsersRepo(t)
+	svc := app.NewUserApp(repo, bycript.NewHashPassword())
+
+	repo.On("FinalizePendingDeletions", mock.Anything, mock.AnythingOfType("time.Time")).
+		Return(int64(0), errcustom.ErrUnexpectedError)
+
+	n, err := svc.FinalizePendingDeletions(context.Background())
+
+	assert.ErrorIs(t, err, errcustom.ErrUnexpectedError)
+	assert.Equal(t, int64(0), n)
+}

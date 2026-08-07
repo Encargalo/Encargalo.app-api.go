@@ -70,6 +70,7 @@ func run() error {
 		refundHub *appCustomer.StaffRefundHubImpl,
 		finance usersPorts.CustomerFinanceApp,
 		refundAlertWorker *appCustomer.RefundAlertWorker,
+		accountDeletionWorker *appCustomer.AccountDeletionWorker,
 		orderMgr ordersPorts.AppManagerOrder,
 		streamTrimWorker *redis.StreamTrimWorker,
 	) error {
@@ -81,6 +82,7 @@ func run() error {
 		pendingWorker.Start(context.Background())
 		batchCloseWorker.Start(context.Background())
 		refundAlertWorker.Start(context.Background())
+		accountDeletionWorker.Start(context.Background())
 		streamTrimWorker.Start(context.Background())
 		router.Init()
 

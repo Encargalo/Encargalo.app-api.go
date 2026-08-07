@@ -99,6 +99,10 @@ type CustomerResponse struct {
 	Role         string     `json:"role" example:"customer"`
 	ShopID       *uuid.UUID `json:"shop_id,omitempty" example:"456e7890-e89b-12d3-a456-426614174001"`
 	Shop         *ShopInfo  `json:"shop,omitempty"`
+	// ScheduledDeletionAt viene presente solo si el usuario solicitó eliminar
+	// su cuenta: es la fecha en la que, de no volver a iniciar sesión antes,
+	// el worker de finalización la marcará deleted_at.
+	ScheduledDeletionAt *time.Time `json:"scheduled_deletion_at,omitempty" example:"2026-09-06T00:00:00Z"`
 }
 
 type ShopInfo struct {

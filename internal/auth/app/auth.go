@@ -53,6 +53,8 @@ func (a *appAuth) SignInCustomer(ctx context.Context, phone, password string) (u
 		return uuid.Nil, errcustom.ErrIncorrectAccessData
 	}
 
+	a.cancelPendingDeletion(ctx, custo.ID)
+
 	ip, userAgent := requestinfo.FromContext(ctx)
 
 	var session models.ActiveSession
@@ -63,6 +65,16 @@ func (a *appAuth) SignInCustomer(ctx context.Context, phone, password string) (u
 	}
 
 	return session.ID, nil
+}
+
+// cancelPendingDeletion revierte, en modo best-effort, una solicitud de
+// eliminación de cuenta pendiente: si el usuario vuelve a iniciar sesión
+// dentro del período de gracia, la solicitud se cancela sola. Un fallo
+// transitorio acá no debe bloquear el login — se reintentará en el próximo.
+func (a *appAuth) cancelPendingDeletion(ctx context.Context, userID uuid.UUID) {
+	if err := a.svc.CancelPendingDeletionIfAny(ctx, userID); err != nil {
+		applog.Warn(ctx, "no se pudo cancelar la eliminación pendiente de la cuenta", err, "user_id", userID.String())
+	}
 }
 
 func (a *appAuth) SignInEmployee(ctx context.Context, phone, password string) (uuid.UUID, error) {
@@ -78,6 +90,8 @@ func (a *appAuth) SignInEmployee(ctx context.Context, phone, password string) (u
 	if !a.bycript.CheckPasswordHash([]byte(empl.Password), password) {
 		return uuid.Nil, errcustom.ErrIncorrectAccessData
 	}
+
+	a.cancelPendingDeletion(ctx, empl.ID)
 
 	ip, userAgent := requestinfo.FromContext(ctx)
 
@@ -114,6 +128,8 @@ func (a *appAuth) SignInRider(ctx context.Context, phone, password string) (uuid
 		}
 	}
 
+	a.cancelPendingDeletion(ctx, rider.ID)
+
 	ip, userAgent := requestinfo.FromContext(ctx)
 
 	var session models.ActiveSession
@@ -138,6 +154,8 @@ func (a *appAuth) SignInStaff(ctx context.Context, phone, password string) (uuid
 	if !a.bycript.CheckPasswordHash([]byte(staff.Password), password) {
 		return uuid.Nil, errcustom.ErrIncorrectAccessData
 	}
+
+	a.cancelPendingDeletion(ctx, staff.ID)
 
 	ip, userAgent := requestinfo.FromContext(ctx)
 
@@ -174,6 +192,8 @@ func (a *appAuth) SignInGoogle(ctx context.Context, idToken string) (uuid.UUID, 
 		}
 	}
 
+	a.cancelPendingDeletion(ctx, custo.ID)
+
 	ip, userAgent := requestinfo.FromContext(ctx)
 
 	var session models.ActiveSession
@@ -207,4 +227,8 @@ func (a *appAuth) DeleteSession(ctx context.Context, session_id uuid.UUID) error
 	}
 
 	return nil
+}
+
+func (a *appAuth) DeleteAllSessionsForUser(ctx context.Context, userID uuid.UUID) error {
+	return a.repo.DeleteAllSessionsForUser(ctx, userID)
 }
