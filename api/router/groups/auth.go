@@ -48,9 +48,13 @@ func (a *authGroup) Resource(g *echo.Echo) {
 	group.POST("/sign-in/google", a.handAuth.SignInGoogle, rateLimit("google"), a.requestInfo.GetRequestInfo)
 	group.DELETE("/logout", a.handAuth.Logout, a.middleAuth.Auth, a.middleAuth.Require(models.Customer, models.OrderManager, models.Owner, models.Rider, models.Staff))
 
-	// Endpoint interno para el ForwardAuth del reverse proxy (Traefik). No
-	// lleva middleAuth.Auth/Require: sería circular, ya que Auth pasa a
-	// depender del header que este mismo endpoint produce. Se registra fuera
-	// del prefijo /auth porque no es una ruta de negocio.
-	g.POST("/internal/verify-session", a.handAuth.VerifySession, a.gatewaySecret.Validate)
+	// Endpoint interno para el ForwardAuth del reverse proxy (Traefik). Debe
+	// ser GET: por defecto ForwardAuth siempre llama al servidor de auth con
+	// GET, sin importar el método original de la request (a menos que se
+	// configure preserveRequestMethod, que no usamos) — un método distinto
+	// aquí devuelve 405 y Traefik lo reenvía tal cual al cliente, rompiendo
+	// todo el tráfico. No lleva middleAuth.Auth/Require: sería circular, ya
+	// que Auth pasa a depender del header que este mismo endpoint produce.
+	// Se registra fuera del prefijo /auth porque no es una ruta de negocio.
+	g.GET("/internal/verify-session", a.handAuth.VerifySession, a.gatewaySecret.Validate)
 }

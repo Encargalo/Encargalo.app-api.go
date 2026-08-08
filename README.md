@@ -100,8 +100,10 @@ curl -i -X POST http://localhost:3000/auth/sign-in/users \
   -c cookies.txt
 
 # 2. Llamar a mano el endpoint que llamaría Traefik, con esa cookie + el
-#    secreto compartido (mismo valor que INTERNAL_GATEWAY_SECRET en tu .env)
-curl -i -X POST http://localhost:3000/internal/verify-session \
+#    secreto compartido (mismo valor que INTERNAL_GATEWAY_SECRET en tu .env).
+#    Es GET, no POST: ForwardAuth siempre llama con GET sin importar el
+#    método original de la request.
+curl -i -X GET http://localhost:3000/internal/verify-session \
   -b cookies.txt \
   -H "X-Internal-Gateway-Secret: <valor de INTERNAL_GATEWAY_SECRET>"
 

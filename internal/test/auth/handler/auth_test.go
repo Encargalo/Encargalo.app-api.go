@@ -354,7 +354,7 @@ func TestVerifySession_Success(t *testing.T) {
 		ExpiresAt: time.Now().Add(time.Hour),
 	}
 
-	tc := buildhttptest.SetupControllerCase("/internal/verify-session", http.MethodPost, nil)
+	tc := buildhttptest.SetupControllerCase("/internal/verify-session", http.MethodGet, nil)
 	tc.Req.AddCookie(&http.Cookie{Name: "encargalo-session", Value: "valid-jwt"})
 	tc.Ctx.SetRequest(tc.Req)
 
@@ -378,7 +378,7 @@ func TestVerifySession_MissingCookie_Unauthorized(t *testing.T) {
 	jwtMock := mocksjwt.NewSessions(t)
 	cookieMock := mockscookie.NewCookieHandler(t)
 
-	tc := buildhttptest.SetupControllerCase("/internal/verify-session", http.MethodPost, nil)
+	tc := buildhttptest.SetupControllerCase("/internal/verify-session", http.MethodGet, nil)
 
 	jwtMock.On("ValidateToken", "").Return(jwt.MapClaims{}, errcustom.ErrUnautorized)
 
@@ -394,7 +394,7 @@ func TestVerifySession_InvalidToken_Unauthorized(t *testing.T) {
 	jwtMock := mocksjwt.NewSessions(t)
 	cookieMock := mockscookie.NewCookieHandler(t)
 
-	tc := buildhttptest.SetupControllerCase("/internal/verify-session", http.MethodPost, nil)
+	tc := buildhttptest.SetupControllerCase("/internal/verify-session", http.MethodGet, nil)
 	tc.Req.AddCookie(&http.Cookie{Name: "encargalo-session", Value: "invalid-jwt"})
 	tc.Ctx.SetRequest(tc.Req)
 
@@ -413,7 +413,7 @@ func TestVerifySession_SessionNotFound_Unauthorized(t *testing.T) {
 	cookieMock := mockscookie.NewCookieHandler(t)
 
 	sessionID := uuid.New()
-	tc := buildhttptest.SetupControllerCase("/internal/verify-session", http.MethodPost, nil)
+	tc := buildhttptest.SetupControllerCase("/internal/verify-session", http.MethodGet, nil)
 	tc.Req.AddCookie(&http.Cookie{Name: "encargalo-session", Value: "valid-jwt"})
 	tc.Ctx.SetRequest(tc.Req)
 
@@ -438,7 +438,7 @@ func TestVerifySession_SessionExpired_Unauthorized(t *testing.T) {
 		ExpiresAt: time.Now().Add(-time.Hour),
 	}
 
-	tc := buildhttptest.SetupControllerCase("/internal/verify-session", http.MethodPost, nil)
+	tc := buildhttptest.SetupControllerCase("/internal/verify-session", http.MethodGet, nil)
 	tc.Req.AddCookie(&http.Cookie{Name: "encargalo-session", Value: "valid-jwt"})
 	tc.Ctx.SetRequest(tc.Req)
 

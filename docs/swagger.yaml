@@ -2896,14 +2896,18 @@ paths:
       tags:
       - Shops Finance
   /internal/verify-session:
-    post:
+    get:
       description: |-
         Endpoint interno llamado por el ForwardAuth de Traefik en cada
-        request. Valida el JWT de la cookie encargalo-session contra
-        la sesión activa y, si es válida, devuelve el header
-        X-Encargalo-Session con el ActiveSession serializado en JSON,
-        que Traefik reenvía al backend real. No debe llamarse desde
-        clientes de negocio (frontend/apps) — solo desde el gateway.
+        request. Debe ser GET: por defecto ForwardAuth siempre llama
+        al servidor de auth con GET, sin importar el método original
+        de la request entrante (a menos que se configure
+        preserveRequestMethod, que no usamos). Valida el JWT de la
+        cookie encargalo-session contra la sesión activa y, si es
+        válida, devuelve el header X-Encargalo-Session con el
+        ActiveSession serializado en JSON, que Traefik reenvía al
+        backend real. No debe llamarse desde clientes de negocio
+        (frontend/apps) — solo desde el gateway.
       responses:
         "200":
           description: sesión válida, JSON en el header X-Encargalo-Session

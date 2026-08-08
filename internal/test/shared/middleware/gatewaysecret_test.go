@@ -19,7 +19,7 @@ func newGatewaySecretAuth() sharedmw.GatewaySecretAuth {
 
 func TestGatewaySecretAuth_ValidSecret(t *testing.T) {
 	g := newGatewaySecretAuth()
-	tc := buildhttptest.SetupControllerCase("/internal/verify-session", http.MethodPost, nil)
+	tc := buildhttptest.SetupControllerCase("/internal/verify-session", http.MethodGet, nil)
 	tc.Req.Header.Set(sharedmw.GatewaySecretHeader, validGatewaySecret)
 	tc.Ctx.SetRequest(tc.Req)
 
@@ -31,7 +31,7 @@ func TestGatewaySecretAuth_ValidSecret(t *testing.T) {
 
 func TestGatewaySecretAuth_MissingHeader(t *testing.T) {
 	g := newGatewaySecretAuth()
-	tc := buildhttptest.SetupControllerCase("/internal/verify-session", http.MethodPost, nil)
+	tc := buildhttptest.SetupControllerCase("/internal/verify-session", http.MethodGet, nil)
 
 	err := g.Validate(nextOK)(tc.Ctx)
 
@@ -42,7 +42,7 @@ func TestGatewaySecretAuth_MissingHeader(t *testing.T) {
 
 func TestGatewaySecretAuth_WrongSecret(t *testing.T) {
 	g := newGatewaySecretAuth()
-	tc := buildhttptest.SetupControllerCase("/internal/verify-session", http.MethodPost, nil)
+	tc := buildhttptest.SetupControllerCase("/internal/verify-session", http.MethodGet, nil)
 	tc.Req.Header.Set(sharedmw.GatewaySecretHeader, "wrong-secret")
 	tc.Ctx.SetRequest(tc.Req)
 

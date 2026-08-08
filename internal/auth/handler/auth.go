@@ -254,15 +254,19 @@ func (a *auth) SignInGoogle(e echo.Context) error {
 // VerifySession godoc
 // @Summary      Verificar sesión (uso interno del reverse proxy)
 // @Description  Endpoint interno llamado por el ForwardAuth de Traefik en cada
-// @Description  request. Valida el JWT de la cookie encargalo-session contra
-// @Description  la sesión activa y, si es válida, devuelve el header
-// @Description  X-Encargalo-Session con el ActiveSession serializado en JSON,
-// @Description  que Traefik reenvía al backend real. No debe llamarse desde
-// @Description  clientes de negocio (frontend/apps) — solo desde el gateway.
+// @Description  request. Debe ser GET: por defecto ForwardAuth siempre llama
+// @Description  al servidor de auth con GET, sin importar el método original
+// @Description  de la request entrante (a menos que se configure
+// @Description  preserveRequestMethod, que no usamos). Valida el JWT de la
+// @Description  cookie encargalo-session contra la sesión activa y, si es
+// @Description  válida, devuelve el header X-Encargalo-Session con el
+// @Description  ActiveSession serializado en JSON, que Traefik reenvía al
+// @Description  backend real. No debe llamarse desde clientes de negocio
+// @Description  (frontend/apps) — solo desde el gateway.
 // @Tags         Internal
 // @Success      200  "sesión válida, JSON en el header X-Encargalo-Session"
 // @Failure      401  {string}  string  "sesión inválida, ausente o expirada"
-// @Router       /internal/verify-session [post]
+// @Router       /internal/verify-session [get]
 func (a *auth) VerifySession(e echo.Context) error {
 	req := e.Request()
 

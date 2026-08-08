@@ -1846,8 +1846,8 @@
             }
         },
         "/internal/verify-session": {
-            "post": {
-                "description": "Endpoint interno llamado por el ForwardAuth de Traefik en cada\nrequest. Valida el JWT de la cookie encargalo-session contra\nla sesión activa y, si es válida, devuelve el header\nX-Encargalo-Session con el ActiveSession serializado en JSON,\nque Traefik reenvía al backend real. No debe llamarse desde\nclientes de negocio (frontend/apps) — solo desde el gateway.",
+            "get": {
+                "description": "Endpoint interno llamado por el ForwardAuth de Traefik en cada\nrequest. Debe ser GET: por defecto ForwardAuth siempre llama\nal servidor de auth con GET, sin importar el método original\nde la request entrante (a menos que se configure\npreserveRequestMethod, que no usamos). Valida el JWT de la\ncookie encargalo-session contra la sesión activa y, si es\nválida, devuelve el header X-Encargalo-Session con el\nActiveSession serializado en JSON, que Traefik reenvía al\nbackend real. No debe llamarse desde clientes de negocio\n(frontend/apps) — solo desde el gateway.",
                 "tags": [
                     "Internal"
                 ],
