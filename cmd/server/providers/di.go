@@ -74,6 +74,13 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(func() *echo.Echo {
 		e := echo.New()
 		e.HTTPErrorHandler = errcustom.HTTPErrorHandler
+		// El backend solo es alcanzable vía el reverse proxy (Traefik) por
+		// private networking — X-Forwarded-For en esa cadena (Cloudflare +
+		// Railway) solo trae IPs de infraestructura, nunca la del cliente
+		// real. X-Real-Ip sí la trae siempre, garantizado por Railway. Sin
+		// esto, c.RealIP() (usado por el rate limiter de sign-in/confirm
+		// codes y por el registro de IP en cada sesión) queda inútil.
+		e.IPExtractor = echo.ExtractIPFromRealIPHeader()
 		return e
 	})
 
