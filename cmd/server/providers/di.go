@@ -107,6 +107,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(requestinfo.NewRequestMiddleware)
 	_ = Container.Provide(sharedmw.NewRateLimiter)
 	_ = Container.Provide(sharedmw.NewApiKeyAuth)
+	_ = Container.Provide(sharedmw.NewGatewaySecretAuth)
 	_ = Container.Provide(authMiddle.NewAuthMidlleware)
 	_ = Container.Provide(handAuth.NewAuthHandler)
 	_ = Container.Provide(handCustomer.NewUsersHandler)

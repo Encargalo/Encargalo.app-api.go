@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+	"time"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
 	authhandler "Encargalo.app-api.go/internal/auth/handler"
@@ -14,6 +15,8 @@ import (
 	mocksjwt "Encargalo.app-api.go/internal/mocks/shared/jwt"
 	"Encargalo.app-api.go/internal/shared/buildhttptest"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	sharedmw "Encargalo.app-api.go/internal/shared/middleware"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -334,4 +337,117 @@ func TestLogout_DeleteSessionError(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusInternalServerError, httpCode(err))
+}
+
+// --- VerifySession ---
+
+func TestVerifySession_Success(t *testing.T) {
+	svc := mocksports.NewAuthApp(t)
+	jwtMock := mocksjwt.NewSessions(t)
+	cookieMock := mockscookie.NewCookieHandler(t)
+
+	sessionID := uuid.New()
+	session := &models.ActiveSession{
+		ID:        sessionID,
+		UserID:    uuid.New(),
+		Roles:     []models.Role{models.Customer},
+		ExpiresAt: time.Now().Add(time.Hour),
+	}
+
+	tc := buildhttptest.SetupControllerCase("/internal/verify-session", http.MethodPost, nil)
+	tc.Req.AddCookie(&http.Cookie{Name: "encargalo-session", Value: "valid-jwt"})
+	tc.Ctx.SetRequest(tc.Req)
+
+	jwtMock.On("ValidateToken", "valid-jwt").Return(jwt.MapClaims{"session_id": sessionID.String()}, nil)
+	svc.On("SearchSessions", tc.Req.Context(), sessionID).Return(session, nil)
+
+	h := authhandler.NewAuthHandler(svc, jwtMock, cookieMock)
+	err := h.VerifySession(tc.Ctx)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, tc.Res.Code)
+
+	var got models.ActiveSession
+	require.NoError(t, json.Unmarshal([]byte(tc.Res.Header().Get(sharedmw.SessionHeader)), &got))
+	assert.Equal(t, sessionID, got.ID)
+	assert.Equal(t, session.Roles, got.Roles)
+}
+
+func TestVerifySession_MissingCookie_Unauthorized(t *testing.T) {
+	svc := mocksports.NewAuthApp(t)
+	jwtMock := mocksjwt.NewSessions(t)
+	cookieMock := mockscookie.NewCookieHandler(t)
+
+	tc := buildhttptest.SetupControllerCase("/internal/verify-session", http.MethodPost, nil)
+
+	jwtMock.On("ValidateToken", "").Return(jwt.MapClaims{}, errcustom.ErrUnautorized)
+
+	h := authhandler.NewAuthHandler(svc, jwtMock, cookieMock)
+	err := h.VerifySession(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusUnauthorized, httpCode(err))
+}
+
+func TestVerifySession_InvalidToken_Unauthorized(t *testing.T) {
+	svc := mocksports.NewAuthApp(t)
+	jwtMock := mocksjwt.NewSessions(t)
+	cookieMock := mockscookie.NewCookieHandler(t)
+
+	tc := buildhttptest.SetupControllerCase("/internal/verify-session", http.MethodPost, nil)
+	tc.Req.AddCookie(&http.Cookie{Name: "encargalo-session", Value: "invalid-jwt"})
+	tc.Ctx.SetRequest(tc.Req)
+
+	jwtMock.On("ValidateToken", "invalid-jwt").Return(jwt.MapClaims{}, errcustom.ErrUnautorized)
+
+	h := authhandler.NewAuthHandler(svc, jwtMock, cookieMock)
+	err := h.VerifySession(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusUnauthorized, httpCode(err))
+}
+
+func TestVerifySession_SessionNotFound_Unauthorized(t *testing.T) {
+	svc := mocksports.NewAuthApp(t)
+	jwtMock := mocksjwt.NewSessions(t)
+	cookieMock := mockscookie.NewCookieHandler(t)
+
+	sessionID := uuid.New()
+	tc := buildhttptest.SetupControllerCase("/internal/verify-session", http.MethodPost, nil)
+	tc.Req.AddCookie(&http.Cookie{Name: "encargalo-session", Value: "valid-jwt"})
+	tc.Ctx.SetRequest(tc.Req)
+
+	jwtMock.On("ValidateToken", "valid-jwt").Return(jwt.MapClaims{"session_id": sessionID.String()}, nil)
+	svc.On("SearchSessions", tc.Req.Context(), sessionID).Return(nil, errcustom.ErrNotFound)
+
+	h := authhandler.NewAuthHandler(svc, jwtMock, cookieMock)
+	err := h.VerifySession(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusUnauthorized, httpCode(err))
+}
+
+func TestVerifySession_SessionExpired_Unauthorized(t *testing.T) {
+	svc := mocksports.NewAuthApp(t)
+	jwtMock := mocksjwt.NewSessions(t)
+	cookieMock := mockscookie.NewCookieHandler(t)
+
+	sessionID := uuid.New()
+	session := &models.ActiveSession{
+		ID:        sessionID,
+		ExpiresAt: time.Now().Add(-time.Hour),
+	}
+
+	tc := buildhttptest.SetupControllerCase("/internal/verify-session", http.MethodPost, nil)
+	tc.Req.AddCookie(&http.Cookie{Name: "encargalo-session", Value: "valid-jwt"})
+	tc.Ctx.SetRequest(tc.Req)
+
+	jwtMock.On("ValidateToken", "valid-jwt").Return(jwt.MapClaims{"session_id": sessionID.String()}, nil)
+	svc.On("SearchSessions", tc.Req.Context(), sessionID).Return(session, nil)
+
+	h := authhandler.NewAuthHandler(svc, jwtMock, cookieMock)
+	err := h.VerifySession(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusUnauthorized, httpCode(err))
 }

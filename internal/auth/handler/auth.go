@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
+	"time"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/auth/domain/ports"
@@ -9,6 +11,8 @@ import (
 	"Encargalo.app-api.go/internal/pkg/cookie"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shared/jwt"
+	sharedmw "Encargalo.app-api.go/internal/shared/middleware"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
@@ -19,6 +23,7 @@ type Auth interface {
 	SignInStaff(e echo.Context) error
 	SignInGoogle(e echo.Context) error
 	Logout(e echo.Context) error
+	VerifySession(e echo.Context) error
 }
 
 type auth struct {
@@ -244,6 +249,59 @@ func (a *auth) SignInGoogle(e echo.Context) error {
 	e.SetCookie(a.cookie.CreateCookieSession(jwtSession))
 
 	return e.JSON(http.StatusCreated, "session created")
+}
+
+// VerifySession godoc
+// @Summary      Verificar sesión (uso interno del reverse proxy)
+// @Description  Endpoint interno llamado por el ForwardAuth de Traefik en cada
+// @Description  request. Valida el JWT de la cookie encargalo-session contra
+// @Description  la sesión activa y, si es válida, devuelve el header
+// @Description  X-Encargalo-Session con el ActiveSession serializado en JSON,
+// @Description  que Traefik reenvía al backend real. No debe llamarse desde
+// @Description  clientes de negocio (frontend/apps) — solo desde el gateway.
+// @Tags         Internal
+// @Success      200  "sesión válida, JSON en el header X-Encargalo-Session"
+// @Failure      401  {string}  string  "sesión inválida, ausente o expirada"
+// @Router       /internal/verify-session [post]
+func (a *auth) VerifySession(e echo.Context) error {
+	req := e.Request()
+
+	var tokenString string
+	if c, err := e.Cookie("encargalo-session"); err == nil {
+		tokenString = c.Value
+	}
+
+	claims, err := a.jwt.ValidateToken(tokenString)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "token inválido")
+	}
+
+	rawID, ok := claims["session_id"].(string)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "session_id inválido")
+	}
+
+	sessionID, err := uuid.Parse(rawID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "session_id inválido")
+	}
+
+	session, err := a.svc.SearchSessions(req.Context(), sessionID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "sesión no encontrada")
+	}
+
+	if time.Now().After(session.ExpiresAt) {
+		return echo.NewHTTPError(http.StatusUnauthorized, "sesión expirada")
+	}
+
+	raw, err := json.Marshal(session)
+	if err != nil {
+		return errcustom.ToHTTPError(errcustom.ErrUnexpectedError)
+	}
+
+	e.Response().Header().Set(sharedmw.SessionHeader, string(raw))
+	return e.NoContent(http.StatusOK)
 }
 
 type LogoutResponse struct {

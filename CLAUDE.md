@@ -74,6 +74,7 @@ Routes are registered in [api/router/router.go](api/router/router.go) by delegat
 - Retrieve the session in handlers with: `ctx.Value(models.SessionKey).(models.ActiveSession)` — use the typed key, not the raw string.
 - Role-based access uses `Auth.Require(models.RoleXxx)` as a middleware chained after `Auth`.
 - Roles are defined in [internal/auth/domain/models/role.go](internal/auth/domain/models/role.go): `Customer`, `CustomerMinuscula`, `OrderManager`, `Owner`.
+- `POST /internal/verify-session` is an internal endpoint prepared for the reverse proxy's future ForwardAuth (Traefik): it validates the session cookie and returns the `ActiveSession` as JSON in the `X-Encargalo-Session` header. It's protected by a shared secret (`X-Internal-Gateway-Secret`, validated by `sharedmw.GatewaySecretAuth`), never by `AuthMiddleware.Auth`/`Require` (that would be circular). `Auth` still decodes the JWT cookie directly today — this endpoint is additive until the Traefik cutover lands. See the "dev local sin Traefik" flow in [README.md](README.md).
 
 ## Handler Patterns
 
@@ -114,4 +115,4 @@ A credit commission (10% of `totalPrice - deliveryFee`) is sent via HTTP to the 
 
 ## Environment
 
-Configuration is loaded from env vars at startup via `config.Environments()`. Required groups: `server`, `postgres`, `redis`, `redis_stream`, `jwt`, `environment`, `google`, `cloudinary`. See [internal/shared/config/config.go](internal/shared/config/config.go) for all fields.
+Configuration is loaded from env vars at startup via `config.Environments()`. Required groups: `server`, `postgres`, `redis`, `redis_stream`, `jwt`, `environment`, `google`, `cloudinary`, `internal_gateway`. See [internal/shared/config/config.go](internal/shared/config/config.go) for all fields.

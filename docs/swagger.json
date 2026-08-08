@@ -1845,6 +1845,26 @@
                 }
             }
         },
+        "/internal/verify-session": {
+            "post": {
+                "description": "Endpoint interno llamado por el ForwardAuth de Traefik en cada\nrequest. Valida el JWT de la cookie encargalo-session contra\nla sesión activa y, si es válida, devuelve el header\nX-Encargalo-Session con el ActiveSession serializado en JSON,\nque Traefik reenvía al backend real. No debe llamarse desde\nclientes de negocio (frontend/apps) — solo desde el gateway.",
+                "tags": [
+                    "Internal"
+                ],
+                "summary": "Verificar sesión (uso interno del reverse proxy)",
+                "responses": {
+                    "200": {
+                        "description": "sesión válida, JSON en el header X-Encargalo-Session"
+                    },
+                    "401": {
+                        "description": "sesión inválida, ausente o expirada",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/orders": {
             "post": {
                 "security": [

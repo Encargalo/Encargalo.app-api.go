@@ -20,16 +20,17 @@ func Get() *Config {
 }
 
 type Config struct {
-	Server        Server        `env:"server"`
-	Postgres      Postgres      `env:"postgres"`
-	Redis         Redis         `env:"redis"`
-	RedisStream   RedisStream   `env:"redis_stream"`
-	JWT           JWT           `env:"jwt"`
-	Environment   Environment   `env:"environment"`
-	Google        Google        `env:"google"`
-	Cloudinary    Cloudinary    `env:"cloudinary"`
-	Observability Observability `env:"observability"`
-	ExternalAPI   ExternalAPI   `env:"external_api"`
+	Server          Server          `env:"server"`
+	Postgres        Postgres        `env:"postgres"`
+	Redis           Redis           `env:"redis"`
+	RedisStream     RedisStream     `env:"redis_stream"`
+	JWT             JWT             `env:"jwt"`
+	Environment     Environment     `env:"environment"`
+	Google          Google          `env:"google"`
+	Cloudinary      Cloudinary      `env:"cloudinary"`
+	Observability   Observability   `env:"observability"`
+	ExternalAPI     ExternalAPI     `env:"external_api"`
+	InternalGateway InternalGateway `env:"internal_gateway"`
 }
 
 type Server struct {
@@ -90,6 +91,15 @@ func (o Observability) Enabled() bool {
 // no ligadas a la sesión de usuario (ej. /bcv/rate).
 type ExternalAPI struct {
 	Key string `validate:"required" env:"key"`
+}
+
+// InternalGateway contiene el secreto compartido que el reverse proxy
+// (Traefik) inyecta en cada request que reenvía al backend. Lo validan
+// AuthMiddleware.Auth y el endpoint /internal/verify-session mediante
+// comparación de tiempo constante, como defensa en profundidad además del
+// aislamiento de red privada.
+type InternalGateway struct {
+	Secret string `validate:"required" env:"secret"`
 }
 
 func Environments() {
