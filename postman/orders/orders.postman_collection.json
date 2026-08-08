@@ -187,7 +187,7 @@
             }
           ]
         },
-        "description": "El local introduce el código de 4 dígitos que le muestra el rider. Si el código es válido, el pedido pasa de 'In Preparation' o 'Ready' a 'On The Way' y se genera el código de entrega para el usuario. Requiere cookie `encargalo-session`. Roles: Order Manager, Owner."
+        "description": "El local introduce el código de 4 dígitos que le muestra el rider. Si el código es válido, el pedido pasa de 'In Preparation' o 'Ready' a 'On The Way' y se genera el código de entrega para el usuario. Requiere cookie `encargalo-session`. Roles: Order Manager, Owner. El pedido debe pertenecer al shop del empleado autenticado (401 si no). Rate limit: 10 intentos/min por IP."
       }
     },
     {
@@ -227,7 +227,7 @@
             }
           ]
         },
-        "description": "El rider introduce el código de 4 dígitos que le muestra el usuario. Si el código es válido, el pedido pasa de 'On The Way' a 'Completed'. Requiere cookie `encargalo-session`. Rol: Rider."
+        "description": "El rider introduce el código de 4 dígitos que le muestra el usuario. Si el código es válido, el pedido pasa de 'On The Way' a 'Completed'. Requiere cookie `encargalo-session`. Rol: Rider. El pedido debe estar asignado al rider autenticado (401 si no). Rate limit: 10 intentos/min por IP."
       }
     },
     {

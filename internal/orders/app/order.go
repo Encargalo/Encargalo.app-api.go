@@ -651,13 +651,17 @@ func (o *orderApp) SearchActiveOrdersByCriteria(ctx context.Context, criteria uu
 	return o.repo.SearchActiveOrdersByCriteria(ctx, criteria, isShop)
 }
 
-func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string, requesterID uuid.UUID, isShop bool) (models.Order, error) {
+func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string, requesterID uuid.UUID, isShop bool, callerShopID uuid.UUID) (models.Order, error) {
 	order, err := o.SearchOrdersByID(ctx, orderID)
 	if err != nil {
 		return models.Order{}, err
 	}
 
 	if !isShop && order.CustomerID != requesterID {
+		return models.Order{}, errcustom.ErrUnautorized
+	}
+
+	if isShop && order.ShopID != callerShopID {
 		return models.Order{}, errcustom.ErrUnautorized
 	}
 
@@ -875,10 +879,14 @@ func (o *orderApp) generateAndSavePickupCode(ctx context.Context, orderID uuid.U
 	}
 }
 
-func (o *orderApp) ConfirmPickup(ctx context.Context, orderID uuid.UUID, code string) (models.Order, error) {
+func (o *orderApp) ConfirmPickup(ctx context.Context, orderID uuid.UUID, code string, callerShopID uuid.UUID) (models.Order, error) {
 	order, err := o.SearchOrdersByID(ctx, orderID)
 	if err != nil {
 		return models.Order{}, err
+	}
+
+	if order.ShopID != callerShopID {
+		return models.Order{}, errcustom.ErrUnautorized
 	}
 
 	if order.Status != string(models.StatusInPreparation) && order.Status != string(models.StatusReady) {
@@ -922,10 +930,14 @@ func (o *orderApp) ConfirmPickup(ctx context.Context, orderID uuid.UUID, code st
 	return *order, nil
 }
 
-func (o *orderApp) ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code string) (models.Order, error) {
+func (o *orderApp) ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code string, callerRiderID uuid.UUID) (models.Order, error) {
 	order, err := o.SearchOrdersByID(ctx, orderID)
 	if err != nil {
 		return models.Order{}, err
+	}
+
+	if order.RiderID == nil || *order.RiderID != callerRiderID {
+		return models.Order{}, errcustom.ErrUnautorized
 	}
 
 	if order.Status != string(models.StatusOnTheWay) {

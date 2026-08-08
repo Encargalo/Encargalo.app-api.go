@@ -48,9 +48,9 @@ func (_m *OrdersApp) AutoRejectStalePending(ctx context.Context) ([]models.Order
 	return r0, r1
 }
 
-// ConfirmDelivery provides a mock function with given fields: ctx, orderID, code
-func (_m *OrdersApp) ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code string) (models.Order, error) {
-	ret := _m.Called(ctx, orderID, code)
+// ConfirmDelivery provides a mock function with given fields: ctx, orderID, code, callerRiderID
+func (_m *OrdersApp) ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code string, callerRiderID uuid.UUID) (models.Order, error) {
+	ret := _m.Called(ctx, orderID, code, callerRiderID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ConfirmDelivery")
@@ -58,17 +58,17 @@ func (_m *OrdersApp) ConfirmDelivery(ctx context.Context, orderID uuid.UUID, cod
 
 	var r0 models.Order
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) (models.Order, error)); ok {
-		return rf(ctx, orderID, code)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, uuid.UUID) (models.Order, error)); ok {
+		return rf(ctx, orderID, code, callerRiderID)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) models.Order); ok {
-		r0 = rf(ctx, orderID, code)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, uuid.UUID) models.Order); ok {
+		r0 = rf(ctx, orderID, code, callerRiderID)
 	} else {
 		r0 = ret.Get(0).(models.Order)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, string) error); ok {
-		r1 = rf(ctx, orderID, code)
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, string, uuid.UUID) error); ok {
+		r1 = rf(ctx, orderID, code, callerRiderID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -76,9 +76,9 @@ func (_m *OrdersApp) ConfirmDelivery(ctx context.Context, orderID uuid.UUID, cod
 	return r0, r1
 }
 
-// ConfirmPickup provides a mock function with given fields: ctx, orderID, code
-func (_m *OrdersApp) ConfirmPickup(ctx context.Context, orderID uuid.UUID, code string) (models.Order, error) {
-	ret := _m.Called(ctx, orderID, code)
+// ConfirmPickup provides a mock function with given fields: ctx, orderID, code, callerShopID
+func (_m *OrdersApp) ConfirmPickup(ctx context.Context, orderID uuid.UUID, code string, callerShopID uuid.UUID) (models.Order, error) {
+	ret := _m.Called(ctx, orderID, code, callerShopID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ConfirmPickup")
@@ -86,17 +86,17 @@ func (_m *OrdersApp) ConfirmPickup(ctx context.Context, orderID uuid.UUID, code 
 
 	var r0 models.Order
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) (models.Order, error)); ok {
-		return rf(ctx, orderID, code)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, uuid.UUID) (models.Order, error)); ok {
+		return rf(ctx, orderID, code, callerShopID)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) models.Order); ok {
-		r0 = rf(ctx, orderID, code)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, uuid.UUID) models.Order); ok {
+		r0 = rf(ctx, orderID, code, callerShopID)
 	} else {
 		r0 = ret.Get(0).(models.Order)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, string) error); ok {
-		r1 = rf(ctx, orderID, code)
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, string, uuid.UUID) error); ok {
+		r1 = rf(ctx, orderID, code, callerShopID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -272,9 +272,9 @@ func (_m *OrdersApp) SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*
 	return r0, r1
 }
 
-// UpdateOrderStatus provides a mock function with given fields: ctx, orderID, status, requesterID, isShop
-func (_m *OrdersApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string, requesterID uuid.UUID, isShop bool) (models.Order, error) {
-	ret := _m.Called(ctx, orderID, status, requesterID, isShop)
+// UpdateOrderStatus provides a mock function with given fields: ctx, orderID, status, requesterID, isShop, callerShopID
+func (_m *OrdersApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string, requesterID uuid.UUID, isShop bool, callerShopID uuid.UUID) (models.Order, error) {
+	ret := _m.Called(ctx, orderID, status, requesterID, isShop, callerShopID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateOrderStatus")
@@ -282,17 +282,17 @@ func (_m *OrdersApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, s
 
 	var r0 models.Order
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, uuid.UUID, bool) (models.Order, error)); ok {
-		return rf(ctx, orderID, status, requesterID, isShop)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, uuid.UUID, bool, uuid.UUID) (models.Order, error)); ok {
+		return rf(ctx, orderID, status, requesterID, isShop, callerShopID)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, uuid.UUID, bool) models.Order); ok {
-		r0 = rf(ctx, orderID, status, requesterID, isShop)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, uuid.UUID, bool, uuid.UUID) models.Order); ok {
+		r0 = rf(ctx, orderID, status, requesterID, isShop, callerShopID)
 	} else {
 		r0 = ret.Get(0).(models.Order)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, string, uuid.UUID, bool) error); ok {
-		r1 = rf(ctx, orderID, status, requesterID, isShop)
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, string, uuid.UUID, bool, uuid.UUID) error); ok {
+		r1 = rf(ctx, orderID, status, requesterID, isShop, callerShopID)
 	} else {
 		r1 = ret.Error(1)
 	}

@@ -31,19 +31,20 @@ func (o *orders) CreateOrder(ctx context.Context, order *models.Order) (*models.
 
 		lastNum, err := getLastOrderNumber(ctx, tx, order.BatchID)
 		if err != nil {
-			return err
+			slog.Error("CreateOrder: failed to get last order number", "batchID", order.BatchID, "error", err)
+			return errcustom.ErrUnexpectedError
 		}
 
 		order.Number = lastNum + 1
 
 		if _, err := tx.NewInsert().Model(order).Exec(ctx); err != nil {
 			slog.Error("CreateOrder: failed to insert order", "orderID", order.ID, "error", err)
-			return err
+			return errcustom.ErrUnexpectedError
 		}
 
 		if _, err := tx.NewInsert().Model(&order.ItemsOrders).Exec(ctx); err != nil {
 			slog.Error("CreateOrder: failed to insert items_orders", "orderID", order.ID, "error", err)
-			return err
+			return errcustom.ErrUnexpectedError
 		}
 
 		for _, v := range order.ItemsOrders {
@@ -53,7 +54,7 @@ func (o *orders) CreateOrder(ctx context.Context, order *models.Order) (*models.
 
 			if _, err := tx.NewInsert().Model(&v.Additions).Exec(ctx); err != nil {
 				slog.Error("CreateOrder: failed to insert items_orders_additions", "orderID", order.ID, "error", err)
-				return err
+				return errcustom.ErrUnexpectedError
 			}
 		}
 
@@ -248,7 +249,7 @@ func (o *orders) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, statu
 	if _, err := q.Exec(ctx); err != nil {
 		slog.Error("UpdateOrderStatus: failed to update order status",
 			"orderID", orderID, "error", err)
-		return err
+		return errcustom.ErrUnexpectedError
 	}
 
 	return nil
@@ -259,7 +260,11 @@ func (o *orders) SavePickupCode(ctx context.Context, orderID uuid.UUID, code str
 		Set("pickup_code = ?", code).
 		Where("id = ?", orderID).
 		Exec(ctx)
-	return err
+	if err != nil {
+		slog.Error("SavePickupCode: failed to save pickup code", "orderID", orderID, "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+	return nil
 }
 
 func (o *orders) SaveDeliveryCode(ctx context.Context, orderID uuid.UUID, code string) error {
@@ -267,7 +272,11 @@ func (o *orders) SaveDeliveryCode(ctx context.Context, orderID uuid.UUID, code s
 		Set("delivery_code = ?", code).
 		Where("id = ?", orderID).
 		Exec(ctx)
-	return err
+	if err != nil {
+		slog.Error("SaveDeliveryCode: failed to save delivery code", "orderID", orderID, "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+	return nil
 }
 
 func (o *orders) MarkPickupCodeUsed(ctx context.Context, orderID uuid.UUID) error {
@@ -275,7 +284,11 @@ func (o *orders) MarkPickupCodeUsed(ctx context.Context, orderID uuid.UUID) erro
 		Set("pickup_code_used_at = NOW()").
 		Where("id = ?", orderID).
 		Exec(ctx)
-	return err
+	if err != nil {
+		slog.Error("MarkPickupCodeUsed: failed to mark pickup code used", "orderID", orderID, "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+	return nil
 }
 
 func (o *orders) MarkDeliveryCodeUsed(ctx context.Context, orderID uuid.UUID) error {
@@ -283,7 +296,11 @@ func (o *orders) MarkDeliveryCodeUsed(ctx context.Context, orderID uuid.UUID) er
 		Set("delivery_code_used_at = NOW()").
 		Where("id = ?", orderID).
 		Exec(ctx)
-	return err
+	if err != nil {
+		slog.Error("MarkDeliveryCodeUsed: failed to mark delivery code used", "orderID", orderID, "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+	return nil
 }
 
 func (o *orders) AssignRider(ctx context.Context, orderID uuid.UUID, riderID uuid.UUID) error {
@@ -293,11 +310,13 @@ func (o *orders) AssignRider(ctx context.Context, orderID uuid.UUID, riderID uui
 		Where("id = ? AND rider_id IS NULL", orderID).
 		Exec(ctx)
 	if err != nil {
-		return err
+		slog.Error("AssignRider: failed to assign rider", "orderID", orderID, "riderID", riderID, "error", err)
+		return errcustom.ErrUnexpectedError
 	}
 	rows, err := res.RowsAffected()
 	if err != nil {
-		return err
+		slog.Error("AssignRider: failed to read rows affected", "orderID", orderID, "riderID", riderID, "error", err)
+		return errcustom.ErrUnexpectedError
 	}
 	if rows == 0 {
 		return errcustom.ErrOrderAlreadyAssigned

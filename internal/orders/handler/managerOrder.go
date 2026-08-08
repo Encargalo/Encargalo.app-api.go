@@ -70,6 +70,9 @@ func New(
 //	}
 //
 // ```
+// Un OrderManager/Owner solo puede actualizar órdenes de su propio shop_id
+// (validado server-side); intentarlo sobre una orden de otra tienda responde
+// `{"type":"error"}` sin aplicar el cambio.
 //
 // ### Mensajes salientes
 // - Eventos de órdenes actualizadas (broadcast).
@@ -170,6 +173,7 @@ func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 				payload.NewStatus,
 				session.UserID,
 				isShop,
+				connectionID,
 			)
 			if err != nil {
 				slog.Error("Error actualizando orden", "error", err)

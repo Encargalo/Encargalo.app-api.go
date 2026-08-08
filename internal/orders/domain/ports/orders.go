@@ -15,9 +15,12 @@ type OrdersApp interface {
 	CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*models.Order, error)
 	SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*models.Order, error)
 	SearchActiveOrdersByCriteria(ctx context.Context, criteria uuid.UUID, isShop bool) ([]models.Order, error)
-	UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string, requesterID uuid.UUID, isShop bool) (models.Order, error)
-	ConfirmPickup(ctx context.Context, orderID uuid.UUID, code string) (models.Order, error)
-	ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code string) (models.Order, error)
+	// callerShopID solo se valida cuando isShop es true (contra order.ShopID); se ignora para customers.
+	UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string, requesterID uuid.UUID, isShop bool, callerShopID uuid.UUID) (models.Order, error)
+	// callerShopID debe coincidir con order.ShopID (el local que confirma la recogida).
+	ConfirmPickup(ctx context.Context, orderID uuid.UUID, code string, callerShopID uuid.UUID) (models.Order, error)
+	// callerRiderID debe coincidir con order.RiderID (el rider asignado que confirma la entrega).
+	ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code string, callerRiderID uuid.UUID) (models.Order, error)
 	GetOrderHistory(ctx context.Context, customerID uuid.UUID) (dtos.OrderHistoryResponse, error)
 	// AutoRejectStalePending rechaza órdenes Pending sin aceptación del local
 	// tras PendingAcceptTimeout. Devuelve las órdenes efectivamente rechazadas

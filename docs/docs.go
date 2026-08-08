@@ -2198,6 +2198,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "El pedido no esta asignado al rider autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Pedido no encontrado",
                         "schema": {
@@ -2212,6 +2218,12 @@ const docTemplate = `{
                     },
                     "422": {
                         "description": "Estado del pedido incorrecto",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Demasiados intentos",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
@@ -2271,6 +2283,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "El pedido no pertenece al local autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Pedido no encontrado",
                         "schema": {
@@ -2285,6 +2303,12 @@ const docTemplate = `{
                     },
                     "422": {
                         "description": "Estado del pedido incorrecto",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Demasiados intentos",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }

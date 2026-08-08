@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
+	employeePorts "Encargalo.app-api.go/internal/employee/domain/ports"
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	modelsOrder "Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
@@ -22,12 +23,13 @@ type OrderHandler interface {
 }
 
 type orderHandler struct {
-	svc  ports.OrdersApp
-	svc2 ports.AppManagerOrder
+	svc      ports.OrdersApp
+	svc2     ports.AppManagerOrder
+	employee employeePorts.EmployeeApp
 }
 
-func NewOrderHandler(svc ports.OrdersApp, svc2 ports.AppManagerOrder) OrderHandler {
-	return &orderHandler{svc, svc2}
+func NewOrderHandler(svc ports.OrdersApp, svc2 ports.AppManagerOrder, employee employeePorts.EmployeeApp) OrderHandler {
+	return &orderHandler{svc, svc2, employee}
 }
 
 // CreateQuote godoc
@@ -141,12 +143,20 @@ func (o *orderHandler) CreateOrder(c echo.Context) error {
 // @Param        body  body      dtos.ConfirmCodeRequest  true  "Codigo de recogida"
 // @Success      200   {object}  map[string]string        "Pedido en camino"
 // @Failure      400   {object}  dtos.ErrorResponse       "Codigo invalido"
+// @Failure      401   {object}  dtos.ErrorResponse       "El pedido no pertenece al local autenticado"
 // @Failure      409   {object}  dtos.ErrorResponse       "Codigo ya utilizado"
 // @Failure      422   {object}  dtos.ErrorResponse       "Estado del pedido incorrecto"
 // @Failure      404   {object}  dtos.ErrorResponse       "Pedido no encontrado"
+// @Failure      429   {object}  dtos.ErrorResponse       "Demasiados intentos"
 // @Router       /orders/{id}/confirm-pickup [post]
 func (o *orderHandler) ConfirmPickup(c echo.Context) error {
 	ctx := c.Request().Context()
+
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
+	if !ok {
+		slog.Error("No se encontro el usuario en el contexto")
+		return errcustom.ErrUnexpectedError
+	}
 
 	orderID, err := parseOrderID(c)
 	if err != nil {
@@ -162,7 +172,13 @@ func (o *orderHandler) ConfirmPickup(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	order, err := o.svc.ConfirmPickup(ctx, orderID, req.Code)
+	employee, err := o.employee.SearchEmployeeByID(ctx, session.UserID)
+	if err != nil {
+		slog.Error("Error buscando empleado", "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+
+	order, err := o.svc.ConfirmPickup(ctx, orderID, req.Code, employee.ShopID)
 	if err != nil {
 		return err
 	}
@@ -185,12 +201,20 @@ func (o *orderHandler) ConfirmPickup(c echo.Context) error {
 // @Param        body  body      dtos.ConfirmCodeRequest  true  "Codigo de entrega"
 // @Success      200   {object}  map[string]string        "Pedido entregado"
 // @Failure      400   {object}  dtos.ErrorResponse       "Codigo invalido"
+// @Failure      401   {object}  dtos.ErrorResponse       "El pedido no esta asignado al rider autenticado"
 // @Failure      409   {object}  dtos.ErrorResponse       "Codigo ya utilizado"
 // @Failure      422   {object}  dtos.ErrorResponse       "Estado del pedido incorrecto"
 // @Failure      404   {object}  dtos.ErrorResponse       "Pedido no encontrado"
+// @Failure      429   {object}  dtos.ErrorResponse       "Demasiados intentos"
 // @Router       /orders/{id}/confirm-delivery [post]
 func (o *orderHandler) ConfirmDelivery(c echo.Context) error {
 	ctx := c.Request().Context()
+
+	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
+	if !ok {
+		slog.Error("No se encontro el usuario en el contexto")
+		return errcustom.ErrUnexpectedError
+	}
 
 	orderID, err := parseOrderID(c)
 	if err != nil {
@@ -206,7 +230,7 @@ func (o *orderHandler) ConfirmDelivery(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	order, err := o.svc.ConfirmDelivery(ctx, orderID, req.Code)
+	order, err := o.svc.ConfirmDelivery(ctx, orderID, req.Code, session.UserID)
 	if err != nil {
 		return err
 	}
