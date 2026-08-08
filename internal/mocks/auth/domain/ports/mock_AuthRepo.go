@@ -16,6 +16,24 @@ type AuthRepo struct {
 	mock.Mock
 }
 
+// DeleteAllSessionsForUser provides a mock function with given fields: ctx, userID
+func (_m *AuthRepo) DeleteAllSessionsForUser(ctx context.Context, userID uuid.UUID) error {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteAllSessionsForUser")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // DeleteSession provides a mock function with given fields: ctx, session_id
 func (_m *AuthRepo) DeleteSession(ctx context.Context, session_id uuid.UUID) error {
 	ret := _m.Called(ctx, session_id)

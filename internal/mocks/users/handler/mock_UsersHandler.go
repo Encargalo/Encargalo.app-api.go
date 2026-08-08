@@ -13,6 +13,24 @@ type UsersHandler struct {
 	mock.Mock
 }
 
+// DeleteAccount provides a mock function with given fields: e
+func (_m *UsersHandler) DeleteAccount(e echo.Context) error {
+	ret := _m.Called(e)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteAccount")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(echo.Context) error); ok {
+		r0 = rf(e)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // RegisterCustomer provides a mock function with given fields: e
 func (_m *UsersHandler) RegisterCustomer(e echo.Context) error {
 	ret := _m.Called(e)

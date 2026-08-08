@@ -18,6 +18,52 @@ type UsersApp struct {
 	mock.Mock
 }
 
+// CancelPendingDeletionIfAny provides a mock function with given fields: ctx, userID
+func (_m *UsersApp) CancelPendingDeletionIfAny(ctx context.Context, userID uuid.UUID) error {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CancelPendingDeletionIfAny")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// FinalizePendingDeletions provides a mock function with given fields: ctx
+func (_m *UsersApp) FinalizePendingDeletions(ctx context.Context) (int64, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FinalizePendingDeletions")
+	}
+
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (int64, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) int64); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetUserRoles provides a mock function with given fields: ctx, userID
 func (_m *UsersApp) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error) {
 	ret := _m.Called(ctx, userID)
@@ -94,6 +140,24 @@ func (_m *UsersApp) RegisterCustomerFromGoogle(ctx context.Context, customer dto
 	}
 
 	return r0, r1
+}
+
+// RequestAccountDeletion provides a mock function with given fields: ctx, userID
+func (_m *UsersApp) RequestAccountDeletion(ctx context.Context, userID uuid.UUID) error {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RequestAccountDeletion")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // SearchAccountByPhone provides a mock function with given fields: ctx, phone, roles

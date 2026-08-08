@@ -399,3 +399,67 @@ func TestUpdatePassword_UnexpectedError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusInternalServerError, httpCode(err))
 }
+
+// --- DeleteAccount ---
+
+func TestDeleteAccount_Success(t *testing.T) {
+	h, svc, auth, _, cookieMock := newUsersHandler(t)
+
+	userID := uuid.New()
+	tc := buildhttptest.SetupControllerCase("/users", http.MethodDelete, nil)
+	ctx, tc := sessionCtx(t, tc, userID)
+
+	svc.On("RequestAccountDeletion", ctx, userID).Return(nil)
+	auth.On("DeleteAllSessionsForUser", ctx, userID).Return(nil)
+	cookieMock.On("DeleteCookieSession").Return(&http.Cookie{Name: "encargalo-session", Value: ""})
+
+	err := h.DeleteAccount(tc.Ctx)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, tc.Res.Code)
+}
+
+func TestDeleteAccount_NoSession(t *testing.T) {
+	h, _, _, _, _ := newUsersHandler(t)
+
+	tc := buildhttptest.SetupControllerCase("/users", http.MethodDelete, nil)
+
+	err := h.DeleteAccount(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, errcustom.ErrUnexpectedError, err)
+}
+
+func TestDeleteAccount_RequestFails(t *testing.T) {
+	h, svc, _, _, _ := newUsersHandler(t)
+
+	userID := uuid.New()
+	tc := buildhttptest.SetupControllerCase("/users", http.MethodDelete, nil)
+	ctx, tc := sessionCtx(t, tc, userID)
+
+	svc.On("RequestAccountDeletion", ctx, userID).Return(errcustom.ErrUnexpectedError)
+
+	err := h.DeleteAccount(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusInternalServerError, httpCode(err))
+}
+
+// DeleteAllSessionsForUser falla en modo best-effort: no debe romper la
+// respuesta de éxito, la solicitud de eliminación ya quedó registrada.
+func TestDeleteAccount_SessionInvalidationFailsButRequestSucceeds(t *testing.T) {
+	h, svc, auth, _, cookieMock := newUsersHandler(t)
+
+	userID := uuid.New()
+	tc := buildhttptest.SetupControllerCase("/users", http.MethodDelete, nil)
+	ctx, tc := sessionCtx(t, tc, userID)
+
+	svc.On("RequestAccountDeletion", ctx, userID).Return(nil)
+	auth.On("DeleteAllSessionsForUser", ctx, userID).Return(errcustom.ErrUnexpectedError)
+	cookieMock.On("DeleteCookieSession").Return(&http.Cookie{Name: "encargalo-session", Value: ""})
+
+	err := h.DeleteAccount(tc.Ctx)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, tc.Res.Code)
+}
