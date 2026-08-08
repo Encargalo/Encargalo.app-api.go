@@ -50,11 +50,7 @@ func (o *orderHandler) CreateQuote(c echo.Context) error {
 	ctx := c.Request().Context()
 
 	var req dtos.CreateQuote
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		slog.Error("No se encontro el usuario en el contexto")
-		return errcustom.ErrUnexpectedError
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 	req.CustomerID = session.UserID
 
 	if err := c.Bind(&req); err != nil {
@@ -94,11 +90,7 @@ func (o *orderHandler) CreateOrder(c echo.Context) error {
 
 	var order dtos.CreateOrder
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		slog.Error("No se encontro el usuario en el contexto")
-		return errcustom.ErrUnexpectedError
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	order.CustomerID = session.UserID
 
@@ -152,11 +144,7 @@ func (o *orderHandler) CreateOrder(c echo.Context) error {
 func (o *orderHandler) ConfirmPickup(c echo.Context) error {
 	ctx := c.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		slog.Error("No se encontro el usuario en el contexto")
-		return errcustom.ErrUnexpectedError
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	orderID, err := parseOrderID(c)
 	if err != nil {
@@ -210,11 +198,7 @@ func (o *orderHandler) ConfirmPickup(c echo.Context) error {
 func (o *orderHandler) ConfirmDelivery(c echo.Context) error {
 	ctx := c.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		slog.Error("No se encontro el usuario en el contexto")
-		return errcustom.ErrUnexpectedError
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	orderID, err := parseOrderID(c)
 	if err != nil {
@@ -255,11 +239,7 @@ func (o *orderHandler) ConfirmDelivery(c echo.Context) error {
 func (o *orderHandler) GetOrderHistory(c echo.Context) error {
 	ctx := c.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		slog.Error("No se encontro el usuario en el contexto")
-		return errcustom.ErrUnexpectedError
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	history, err := o.svc.GetOrderHistory(ctx, session.UserID)
 	if err != nil {

@@ -314,20 +314,6 @@ func TestLogout_Success(t *testing.T) {
 	assert.Equal(t, "session deleted success", body.Message)
 }
 
-func TestLogout_NoSession(t *testing.T) {
-	svc := mocksports.NewAuthApp(t)
-	jwtMock := mocksjwt.NewSessions(t)
-	cookieMock := mockscookie.NewCookieHandler(t)
-
-	tc := buildhttptest.SetupControllerCase("/auth/logout", http.MethodDelete, nil)
-
-	h := authhandler.NewAuthHandler(svc, jwtMock, cookieMock)
-	err := h.Logout(tc.Ctx)
-
-	assert.Error(t, err)
-	assert.Equal(t, errcustom.ErrUnexpectedError, err)
-}
-
 func TestLogout_DeleteSessionError(t *testing.T) {
 	svc := mocksports.NewAuthApp(t)
 	jwtMock := mocksjwt.NewSessions(t)

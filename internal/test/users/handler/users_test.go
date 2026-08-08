@@ -174,17 +174,6 @@ func TestSearchCustomer_Success(t *testing.T) {
 	assert.Equal(t, http.StatusOK, tc.Res.Code)
 }
 
-func TestSearchCustomer_NoSession(t *testing.T) {
-	h, _, _, _, _ := newUsersHandler(t)
-
-	tc := buildhttptest.SetupControllerCase("/users", http.MethodGet, nil)
-
-	err := h.SearchCustomer(tc.Ctx)
-
-	assert.Error(t, err)
-	assert.Equal(t, errcustom.ErrUnexpectedError, err)
-}
-
 func TestSearchCustomer_NotFound(t *testing.T) {
 	h, svc, _, _, _ := newUsersHandler(t)
 
@@ -259,20 +248,6 @@ func TestUpdateCustomer_ValidationFail(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusBadRequest, httpCode(err))
-}
-
-func TestUpdateCustomer_NoSession(t *testing.T) {
-	h, _, _, _, _ := newUsersHandler(t)
-
-	body := buildBody(t, map[string]string{
-		"name": "Carlos", "sur_name": "Ramírez", "phone": "+573001112233",
-	})
-	tc := buildhttptest.SetupControllerCase("/users", http.MethodPut, body)
-
-	err := h.UpdateCustomer(tc.Ctx)
-
-	assert.Error(t, err)
-	assert.Equal(t, errcustom.ErrUnexpectedError, err)
 }
 
 func TestUpdateCustomer_PartialUpdate(t *testing.T) {
@@ -356,18 +331,6 @@ func TestUpdatePassword_ValidationFail(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, httpCode(err))
 }
 
-func TestUpdatePassword_NoSession(t *testing.T) {
-	h, _, _, _, _ := newUsersHandler(t)
-
-	body := buildBody(t, map[string]string{"password": "nuevaClave123"})
-	tc := buildhttptest.SetupControllerCase("/users/change-password", http.MethodPut, body)
-
-	err := h.UpdatePassword(tc.Ctx)
-
-	assert.Error(t, err)
-	assert.Equal(t, errcustom.ErrUnexpectedError, err)
-}
-
 func TestUpdatePassword_NotFound(t *testing.T) {
 	h, svc, _, _, _ := newUsersHandler(t)
 
@@ -417,17 +380,6 @@ func TestDeleteAccount_Success(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, tc.Res.Code)
-}
-
-func TestDeleteAccount_NoSession(t *testing.T) {
-	h, _, _, _, _ := newUsersHandler(t)
-
-	tc := buildhttptest.SetupControllerCase("/users", http.MethodDelete, nil)
-
-	err := h.DeleteAccount(tc.Ctx)
-
-	assert.Error(t, err)
-	assert.Equal(t, errcustom.ErrUnexpectedError, err)
 }
 
 func TestDeleteAccount_RequestFails(t *testing.T) {

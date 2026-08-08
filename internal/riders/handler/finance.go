@@ -38,10 +38,7 @@ func NewFinanceHandler(svc ridersPorts.FinanceApp) FinanceHandler {
 // @Router       /riders/balance [get]
 func (h *financeHandler) GetBalance(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok {
-		return errcustom.ErrUnautorized
-	}
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
 
 	resp, err := h.svc.GetBalance(ctx, session.UserID)
 	if err != nil {
@@ -66,10 +63,7 @@ func (h *financeHandler) GetBalance(c echo.Context) error {
 // @Router       /riders/withdrawal [post]
 func (h *financeHandler) RequestWithdrawal(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok {
-		return errcustom.ErrUnautorized
-	}
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
 
 	resp, err := h.svc.RequestWithdrawal(ctx, session.UserID)
 	if err != nil {
@@ -94,10 +88,7 @@ func (h *financeHandler) RequestWithdrawal(c echo.Context) error {
 // @Router       /riders/transactions [get]
 func (h *financeHandler) ListTransactions(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok {
-		return errcustom.ErrUnautorized
-	}
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
 
 	page, _ := strconv.Atoi(c.QueryParam("page"))
 	if page < 1 {

@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"log/slog"
 	"net/http"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
@@ -266,11 +265,7 @@ func (s *auth) Logout(e echo.Context) error {
 
 	ctx := e.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		slog.Error("No se encontró el usuario en el contexto")
-		return errcustom.ErrUnexpectedError
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	if err := s.svc.DeleteSession(ctx, session.ID); err != nil {
 		return errcustom.ToHTTPError(err)

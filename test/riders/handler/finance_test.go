@@ -54,16 +54,6 @@ func TestGetBalance_Success(t *testing.T) {
 	assert.Equal(t, http.StatusOK, tc.Res.Code)
 }
 
-func TestGetBalance_NoSession(t *testing.T) {
-	h, _ := newFinanceHandler(t)
-
-	tc := buildhttptest.SetupControllerCase("/riders/balance", http.MethodGet, nil)
-
-	err := h.GetBalance(tc.Ctx)
-
-	assert.Error(t, err)
-}
-
 func TestGetBalance_ServiceError(t *testing.T) {
 	h, svc := newFinanceHandler(t)
 	riderID := uuid.New()
@@ -118,16 +108,6 @@ func TestRequestWithdrawal_InsufficientBalance(t *testing.T) {
 	}
 }
 
-func TestRequestWithdrawal_NoSession(t *testing.T) {
-	h, _ := newFinanceHandler(t)
-
-	tc := buildhttptest.SetupControllerCase("/riders/withdrawal", http.MethodPost, nil)
-
-	err := h.RequestWithdrawal(tc.Ctx)
-
-	assert.Error(t, err)
-}
-
 // --- ListTransactions ---
 
 func TestListTransactions_Success(t *testing.T) {
@@ -172,14 +152,4 @@ func TestListTransactions_CustomPagination(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, tc.Res.Code)
-}
-
-func TestListTransactions_NoSession(t *testing.T) {
-	h, _ := newFinanceHandler(t)
-
-	tc := buildhttptest.SetupControllerCase("/riders/transactions", http.MethodGet, nil)
-
-	err := h.ListTransactions(tc.Ctx)
-
-	assert.Error(t, err)
 }

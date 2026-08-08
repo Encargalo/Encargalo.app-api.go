@@ -43,10 +43,7 @@ func NewShopsHandler(app ports.ShopsApp) Shops {
 func (s *shops) SetOpenClose(c echo.Context) error {
 	ctx := c.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	var req struct {
 		Open bool `json:"open"`
@@ -77,10 +74,7 @@ func (s *shops) SetOpenClose(c echo.Context) error {
 func (s *shops) GetMyShop(c echo.Context) error {
 	ctx := c.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	if session.ShopID == nil {
 		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")

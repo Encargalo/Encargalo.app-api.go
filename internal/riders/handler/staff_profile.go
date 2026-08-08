@@ -166,10 +166,7 @@ func (h *staffRiderHandler) DeletePhoto(c echo.Context) error {
 // @Router       /riders/staff/profiles/{userId}/activate [post]
 func (h *staffRiderHandler) Activate(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok {
-		return errcustom.ErrUnautorized
-	}
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
 	userID, err := uuid.Parse(c.Param("userId"))
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "userId inválido")

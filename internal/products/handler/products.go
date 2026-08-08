@@ -125,10 +125,7 @@ func (p *productsHandler) SearchAdditionsByItemID(e echo.Context) error {
 func (p *productsHandler) SearchAdditionsCatalogByShopID(e echo.Context) error {
 	ctx := e.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	if session.ShopID == nil {
 		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
@@ -263,10 +260,7 @@ func (p *productsHandler) SearchBestSellersByShopID(e echo.Context) error {
 func (p *productsHandler) GetMyProducts(e echo.Context) error {
 	ctx := e.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	if session.ShopID == nil {
 		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
@@ -297,10 +291,7 @@ func (p *productsHandler) GetMyProducts(e echo.Context) error {
 func (p *productsHandler) RegisterCategory(e echo.Context) error {
 	ctx := e.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	if session.ShopID == nil {
 		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
@@ -341,10 +332,7 @@ func (p *productsHandler) RegisterCategory(e echo.Context) error {
 func (p *productsHandler) UpdateCategory(e echo.Context) error {
 	ctx := e.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	if session.ShopID == nil {
 		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
@@ -388,10 +376,7 @@ func (p *productsHandler) UpdateCategory(e echo.Context) error {
 func (p *productsHandler) RegisterItem(e echo.Context) error {
 	ctx := e.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	if session.ShopID == nil {
 		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
@@ -464,10 +449,7 @@ func (p *productsHandler) GetTrendingProducts(e echo.Context) error {
 func (p *productsHandler) UpdateItem(e echo.Context) error {
 	ctx := e.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	if session.ShopID == nil {
 		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
@@ -512,10 +494,7 @@ func (p *productsHandler) UpdateItem(e echo.Context) error {
 func (p *productsHandler) RegisterFlavor(e echo.Context) error {
 	ctx := e.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	if session.ShopID == nil {
 		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
@@ -556,10 +535,7 @@ func (p *productsHandler) RegisterFlavor(e echo.Context) error {
 func (p *productsHandler) UpdateFlavor(e echo.Context) error {
 	ctx := e.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	if session.ShopID == nil {
 		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
@@ -602,10 +578,7 @@ func (p *productsHandler) UpdateFlavor(e echo.Context) error {
 func (p *productsHandler) DeleteFlavor(e echo.Context) error {
 	ctx := e.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	if session.ShopID == nil {
 		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
@@ -666,10 +639,7 @@ func (p *productsHandler) SearchMacroCategories(e echo.Context) error {
 func (p *productsHandler) RegisterItemDiscount(e echo.Context) error {
 	ctx := e.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	if session.ShopID == nil {
 		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
@@ -710,10 +680,7 @@ func (p *productsHandler) RegisterItemDiscount(e echo.Context) error {
 func (p *productsHandler) UpdateItemDiscount(e echo.Context) error {
 	ctx := e.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	if session.ShopID == nil {
 		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
@@ -756,10 +723,7 @@ func (p *productsHandler) UpdateItemDiscount(e echo.Context) error {
 func (p *productsHandler) DeleteItemDiscount(e echo.Context) error {
 	ctx := e.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	if session.ShopID == nil {
 		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
@@ -793,10 +757,7 @@ func (p *productsHandler) DeleteItemDiscount(e echo.Context) error {
 func (p *productsHandler) SearchCategoriesByShopID(e echo.Context) error {
 	ctx := e.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	if session.ShopID == nil {
 		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
@@ -825,10 +786,7 @@ func (p *productsHandler) SearchCategoriesByShopID(e echo.Context) error {
 func (p *productsHandler) SearchCategorySummariesByShopID(e echo.Context) error {
 	ctx := e.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	if session.ShopID == nil {
 		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")

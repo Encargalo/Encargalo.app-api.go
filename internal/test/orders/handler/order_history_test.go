@@ -89,16 +89,6 @@ func TestGetOrderHistory_EmptyList(t *testing.T) {
 	assert.Empty(t, got)
 }
 
-func TestGetOrderHistory_NoSession(t *testing.T) {
-	h, _, _ := newOrderHandler(t)
-
-	tc := buildhttptest.SetupControllerCase("/orders/history", http.MethodGet, nil)
-
-	err := h.GetOrderHistory(tc.Ctx)
-
-	assert.ErrorIs(t, err, errcustom.ErrUnexpectedError)
-}
-
 func TestGetOrderHistory_RepoError(t *testing.T) {
 	h, svc, _ := newOrderHandler(t)
 

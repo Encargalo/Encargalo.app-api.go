@@ -44,18 +44,6 @@ func TestGetBalance_Success(t *testing.T) {
 	assert.Equal(t, http.StatusOK, tc.Res.Code)
 }
 
-func TestGetBalance_NoSession(t *testing.T) {
-	svc := mocksusers.NewCustomerFinanceApp(t)
-	h := usershandler.NewCustomerFinanceHandler(svc)
-
-	tc := buildhttptest.SetupControllerCase("/users/balance", http.MethodGet, nil)
-
-	err := h.GetBalance(tc.Ctx)
-
-	assert.Error(t, err)
-	assert.ErrorIs(t, err, errcustom.ErrUnautorized)
-}
-
 func TestGetBalance_ServiceError(t *testing.T) {
 	svc := mocksusers.NewCustomerFinanceApp(t)
 	h := usershandler.NewCustomerFinanceHandler(svc)

@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"log/slog"
 	"net/http"
 
 	"Encargalo.app-api.go/internal/pkg/cookie"
@@ -97,11 +96,7 @@ func (c *customersHandler) SearchCustomer(e echo.Context) error {
 
 	ctx := e.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		slog.Error("No se encontró el usuario en el contexto")
-		return errcustom.ErrUnexpectedError
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	profile, err := c.customerApp.SearchCustomerProfileByID(ctx, session.UserID)
 	if err != nil {
@@ -140,11 +135,7 @@ func (c *customersHandler) UpdateCustomer(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		slog.Error("No se encontró el usuario en el contexto")
-		return errcustom.ErrUnexpectedError
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	if err := c.customerApp.UpdateCustomer(ctx, session.UserID, customer); err != nil {
 		return errcustom.ToHTTPError(err)
@@ -181,11 +172,7 @@ func (c *customersHandler) UpdatePassword(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		slog.Error("No se encontró el usuario en el contexto")
-		return errcustom.ErrUnexpectedError
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	if err := c.customerApp.UpdatePassword(ctx, session.UserID, pass); err != nil {
 		return errcustom.ToHTTPError(err)
@@ -208,11 +195,7 @@ func (c *customersHandler) DeleteAccount(e echo.Context) error {
 
 	ctx := e.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		slog.Error("No se encontró el usuario en el contexto")
-		return errcustom.ErrUnexpectedError
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	if err := c.customerApp.RequestAccountDeletion(ctx, session.UserID); err != nil {
 		return errcustom.ToHTTPError(err)

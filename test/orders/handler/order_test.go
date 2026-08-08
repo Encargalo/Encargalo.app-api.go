@@ -148,28 +148,6 @@ func TestCreateOrder_Success_PagoMovil(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, tc.Res.Code)
 }
 
-// --- CreateOrder: sin sesión ---
-
-func TestCreateOrder_NoSession(t *testing.T) {
-	h, _, _ := newHandler(t)
-
-	body := buildBody(t, map[string]any{
-		"id":             uuid.New().String(),
-		"shop_id":        uuid.New().String(),
-		"method_payment": "EfectivoBs",
-		"delivery_fee":   5000,
-		"address":        map[string]any{"address": "x", "latitude": 1.0, "longitude": 1.0},
-		"items":          []any{},
-	})
-
-	tc := buildhttptest.SetupControllerCase("/orders", http.MethodPost, body)
-	// sin withSession
-
-	err := h.CreateOrder(tc.Ctx)
-
-	assert.Error(t, err)
-}
-
 // --- CreateOrder: método de pago inválido ---
 
 func TestCreateOrder_InvalidPaymentMethod(t *testing.T) {

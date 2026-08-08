@@ -47,10 +47,7 @@ func NewCustomerFinanceHandler(svc ports.CustomerFinanceApp) CustomerFinanceHand
 // @Router       /users/balance [get]
 func (h *customerFinanceHandler) GetBalance(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok {
-		return errcustom.ErrUnautorized
-	}
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
 
 	resp, err := h.svc.GetBalance(ctx, session.UserID)
 	if err != nil {
@@ -72,10 +69,7 @@ func (h *customerFinanceHandler) GetBalance(c echo.Context) error {
 // @Router       /users/pago-movil [get]
 func (h *customerFinanceHandler) GetPagoMovil(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok {
-		return errcustom.ErrUnautorized
-	}
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
 	resp, err := h.svc.GetPagoMovil(ctx, session.UserID)
 	if err != nil {
 		return errcustom.ToHTTPError(err)
@@ -97,10 +91,7 @@ func (h *customerFinanceHandler) GetPagoMovil(c echo.Context) error {
 // @Router       /users/pago-movil [put]
 func (h *customerFinanceHandler) UpsertPagoMovil(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok {
-		return errcustom.ErrUnautorized
-	}
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
 	var req dto.UpsertPagoMovilRequest
 	if err := c.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "payload inválido")
@@ -127,10 +118,7 @@ func (h *customerFinanceHandler) UpsertPagoMovil(c echo.Context) error {
 // @Router       /users/balance/refund-requests [post]
 func (h *customerFinanceHandler) CreateRefundRequest(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok {
-		return errcustom.ErrUnautorized
-	}
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
 	var req dto.CreateRefundRequest
 	if err := c.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "payload inválido")
@@ -157,10 +145,7 @@ func (h *customerFinanceHandler) CreateRefundRequest(c echo.Context) error {
 // @Router       /users/balance/refund-requests [get]
 func (h *customerFinanceHandler) ListRefundRequests(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok {
-		return errcustom.ErrUnautorized
-	}
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
 	resp, err := h.svc.ListRefundRequests(ctx, session.UserID)
 	if err != nil {
 		return errcustom.ToHTTPError(err)
@@ -181,10 +166,7 @@ func (h *customerFinanceHandler) ListRefundRequests(c echo.Context) error {
 // @Router       /users/balance/refund-requests/{id} [get]
 func (h *customerFinanceHandler) GetRefundRequest(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok {
-		return errcustom.ErrUnautorized
-	}
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "id inválido")
@@ -244,11 +226,7 @@ type staffRefundWSMessage struct {
 func (h *staffRefundHandler) HandleWebSocket(c echo.Context) error {
 	ctx := c.Request().Context()
 
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok {
-		slog.Error("No se encontró la sesión en el contexto")
-		return errcustom.ErrUnexpectedError
-	}
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
 
 	conn, err := h.upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
@@ -339,10 +317,6 @@ func (h *staffRefundHandler) HandleWebSocket(c echo.Context) error {
 // @Router       /users/staff/refund-requests/{id}/complete [post]
 func (h *staffRefundHandler) CompleteRefund(c echo.Context) error {
 	ctx := c.Request().Context()
-	if _, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession); !ok {
-		return errcustom.ErrUnautorized
-	}
-
 	requestID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "id inválido")

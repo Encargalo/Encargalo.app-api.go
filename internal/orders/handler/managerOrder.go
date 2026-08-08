@@ -88,11 +88,7 @@ func New(
 func (h *managerOrder) HandleWebSocket(c echo.Context) error {
 	ctx := c.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		slog.Error("No se encontró la sesión en el contexto")
-		return errcustom.ErrUnexpectedError
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	var connectionID uuid.UUID
 	isShop := session.HasRole(models.OrderManager) || session.HasRole(models.Owner)
