@@ -1,5 +1,5 @@
 $kind: http-request
-description: Crea orden usando quote_id (total congelado del servidor). shop/address/items salen del quote. balance_amount_usd opcional. Si queda resto PM, payment_proof_image obligatorio (también habilita gracia si expires_at ya pasó). Cookie + rol Customer.
+description: Crea orden usando quote_id (total congelado del servidor). shop/address/items salen del quote. balance_amount_bs opcional (en bolívares; se convierte a USD con la tasa BCV del quote). Si queda resto PM, payment_proof_image obligatorio (también habilita gracia si expires_at ya pasó). Cookie + rol Customer.
 url: "{{base_url}}/orders"
 method: POST
 headers:
@@ -11,7 +11,7 @@ body:
       "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
       "quote_id": "3fa85f64-5717-4562-b3fc-2c963f66afb0",
       "method_payment": "PagoMovil",
-      "balance_amount_usd": 4.0,
+      "balance_amount_bs": 148.5,
       "payment_proof_image": "data:image/jpeg;base64,/9j/4AAQSkZJRgAB..."
     }
 order: 4000

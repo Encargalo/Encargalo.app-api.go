@@ -81,11 +81,13 @@ definitions:
     properties:
       address:
         $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.Address'
-      balance_amount_usd:
+      balance_amount_bs:
         description: |-
-          BalanceAmountUSD es opcional. 0 = no usar balance. Si > 0 debe ser >= 1
-          y <= min(balance, total). Si cubre el total no se requiere comprobante.
-        example: 4
+          BalanceAmountBs es opcional, en bolívares (balance del customer es Bs).
+          0 = no usar balance. Si > 0 se valida (con la tasa BCV del quote) que
+          equivalga a >= $1 y <= min(balance disponible, total de la orden). Si
+          cubre el total no se requiere comprobante.
+        example: 148.5
         type: number
       expected_total_price:
         description: |-
@@ -772,6 +774,11 @@ definitions:
         items:
           $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO'
         type: array
+      withdrawal_min_bs:
+        description: |-
+          WithdrawalMinBs es el mínimo de retiro vigente, ya convertido a Bs con
+          la tasa BCV actual (equivalente dinámico a WithdrawalMinUSD).
+        type: number
       zone:
         $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_models.Zone'
     type: object
@@ -870,6 +877,8 @@ definitions:
   Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO:
     properties:
       amount:
+        type: number
+      bcv_rate:
         type: number
       created_at:
         type: string
@@ -1433,12 +1442,12 @@ definitions:
     type: object
   Encargalo_app-api_go_internal_users_domain_dto.CompleteRefundRequest:
     properties:
-      amount_usd:
+      amount_bs:
         type: number
       proof_image:
         type: string
     required:
-    - amount_usd
+    - amount_bs
     - proof_image
     type: object
   Encargalo_app-api_go_internal_users_domain_dto.CreateRefundRequest:
@@ -1477,6 +1486,13 @@ definitions:
       role:
         example: customer
         type: string
+      scheduled_deletion_at:
+        description: |-
+          ScheduledDeletionAt viene presente solo si el usuario solicitó eliminar
+          su cuenta: es la fecha en la que, de no volver a iniciar sesión antes,
+          el worker de finalización la marcará deleted_at.
+        example: "2026-09-06T00:00:00Z"
+        type: string
       shop:
         $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.ShopInfo'
       shop_id:
@@ -1504,7 +1520,7 @@ definitions:
         type: string
       refund_request_id:
         type: string
-      refundable_pm_usd:
+      refundable_pm_bs:
         type: number
     type: object
   Encargalo_app-api_go_internal_users_domain_dto.PagoMovilResponse:
@@ -1522,7 +1538,7 @@ definitions:
     properties:
       accepted_at:
         type: string
-      amount_usd:
+      amount_bs:
         type: number
       completed_at:
         type: string
@@ -2885,9 +2901,10 @@ paths:
       - application/json
       description: 'Preferido: enviar `quote_id` de POST /orders/quote (total congelado;
         shop/items/address salen del quote). Legacy: sin quote_id, enviar carrito
-        + `expected_total_price` (409 si el precio cambió). Opcionalmente `balance_amount_usd`.
-        Si queda resto Pago Móvil, requiere `payment_proof_image` y nace en Payment
-        Review.'
+        + `expected_total_price` (409 si el precio cambió). Opcionalmente `balance_amount_bs`
+        (balance del customer, en bolívares; se convierte a USD con la tasa BCV del
+        quote). Si queda resto Pago Móvil, requiere `payment_proof_image` y nace en
+        Payment Review.'
       parameters:
       - description: Datos de la orden
         in: body
@@ -2924,6 +2941,10 @@ paths:
             $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
         "500":
           description: Error interno del servidor
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+        "503":
+          description: Tasa BCV no disponible para convertir balance_amount_bs
           schema:
             $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
       security:
@@ -3441,8 +3462,9 @@ paths:
       - Products
   /riders/balance:
     get:
-      description: Retorna el balance actual del rider, su zona de control y los últimos
-        10 movimientos.
+      description: Retorna el balance actual del rider en bolívares (Bs), su zona
+        de control, el mínimo de retiro vigente (withdrawal_min_bs, dinámico según
+        tasa BCV) y los últimos 10 movimientos.
       produces:
       - application/json
       responses:
@@ -3703,8 +3725,9 @@ paths:
       - Riders Finance
   /riders/withdrawal:
     post:
-      description: El rider solicita retirar su balance acumulado. Requiere balance
-        >= +$15.
+      description: El rider solicita retirar su balance acumulado en Bs. Requiere
+        balance >= al equivalente dinámico de $15 según la tasa BCV vigente (ver withdrawal_min_bs
+        en GET /riders/balance).
       produces:
       - application/json
       responses:
@@ -3722,6 +3745,10 @@ paths:
             type: string
         "500":
           description: Error interno
+          schema:
+            type: string
+        "503":
+          description: Tasa BCV no disponible
           schema:
             type: string
       security:
@@ -4713,10 +4740,38 @@ paths:
       tags:
       - Shops
   /users:
+    delete:
+      description: Marca la cuenta como "pendiente de eliminación" por 30 días y cierra
+        la sesión en todos los dispositivos. Ningún dato se borra en este momento.
+        Si el usuario vuelve a iniciar sesión dentro de ese plazo, la solicitud se
+        cancela automáticamente. Si no vuelve, la cuenta se marca deleted_at de forma
+        permanente sin perder ninguna columna.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: account scheduled for deletion
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Solicitar la eliminación de la cuenta del usuario autenticado
+      tags:
+      - Users
     get:
       description: Retorna los datos del usuario autenticado sin importar su rol.
         Para usuarios con rol OrderManager u Owner, la respuesta incluye adicionalmente
-        los campos `shop_id` y `shop`.
+        los campos `shop_id` y `shop`. Si el usuario solicitó eliminar su cuenta,
+        incluye `scheduled_deletion_at` con la fecha en la que se finalizará la eliminación
+        de no volver a iniciar sesión antes.
       produces:
       - application/json
       responses:
@@ -4921,9 +4976,9 @@ paths:
       - Users Address
   /users/balance:
     get:
-      description: Retorna el balance en USD del cliente y los últimos 10 movimientos.
-        Créditos elegibles incluyen can_request_refund (ventana/monto/saldo; no exige
-        Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold
+      description: Retorna el balance en bolívares (Bs) del cliente y los últimos
+        10 movimientos. Créditos elegibles incluyen can_request_refund (ventana/monto/saldo;
+        no exige Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold
         / processing / payout) y créditos balance_refund_restore incluyen refund_request_id
         para abrir el detalle.
       produces:
@@ -5148,7 +5203,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: 'Registra el pago de una solicitud accepted: valida amount_usd,
+      description: 'Registra el pago de una solicitud accepted: valida amount_bs,
         sube proof_image (base64) a Cloudinary y marca completed.'
       parameters:
       - description: ID de la solicitud

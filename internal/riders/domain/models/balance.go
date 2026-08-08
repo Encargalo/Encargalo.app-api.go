@@ -17,12 +17,21 @@ const (
 	ZoneNormal              Zone = "normal"
 	ZoneWithdrawalAvailable Zone = "withdrawal_available"
 
-	WithdrawalMinBalance float64 = 15.0
-	WithdrawalCooldown           = 24 * time.Hour
-	RateDay              float64 = 0.40
-	RateNight            float64 = 0.60
-	RiderShare           float64 = 0.80
-	NightHour            int     = 22
+	// WithdrawalMinUSD es el piso de negocio, expresado en USD porque es la
+	// unidad estable de referencia. El mínimo real en Bs se recalcula en cada
+	// consulta con la tasa BCV vigente (ver riders/app/finance.go), para que
+	// el poder adquisitivo del piso no se erosione con la tasa.
+	WithdrawalMinUSD   float64 = 15.0
+	WithdrawalCooldown         = 24 * time.Hour
+	RateDay            float64 = 0.40
+	RateNight          float64 = 0.60
+	RiderShare         float64 = 0.80
+	NightHour          int     = 22
+
+	// CurrencyVES es la moneda nativa del balance de riders: cada movimiento
+	// se registra ya convertido a bolívares con la tasa BCV vigente al
+	// momento del movimiento (ver Transaction.BcvRate).
+	CurrencyVES = "VES"
 )
 
 type Balance struct {
@@ -31,19 +40,25 @@ type Balance struct {
 	EntityID   uuid.UUID `bun:"entity_id,pk,type:uuid"`
 	EntityType string    `bun:"entity_type,pk"`
 	Amount     float64   `bun:"amount"`
+	Currency   string    `bun:"currency"`
 	UpdatedAt  time.Time `bun:"updated_at"`
 }
 
 type Transaction struct {
 	bun.BaseModel `bun:"table:finance.transactions"`
 
-	ID            uuid.UUID  `bun:"id,pk,type:uuid"`
-	EntityID      uuid.UUID  `bun:"entity_id"`
-	EntityType    string     `bun:"entity_type"`
-	OrderID       *uuid.UUID `bun:"order_id,nullzero"`
-	Amount        float64    `bun:"amount"`
-	MovementType  string     `bun:"movement_type"`
-	PaymentMethod *string    `bun:"payment_method"`
-	DistanceKm    *float64   `bun:"distance_km"`
-	CreatedAt     time.Time  `bun:"created_at,nullzero"`
+	ID         uuid.UUID  `bun:"id,pk,type:uuid"`
+	EntityID   uuid.UUID  `bun:"entity_id"`
+	EntityType string     `bun:"entity_type"`
+	OrderID    *uuid.UUID `bun:"order_id,nullzero"`
+	Amount     float64    `bun:"amount"`
+	Currency   string     `bun:"currency"`
+	// BcvRate es la tasa usada para convertir el monto original en USD
+	// (delivery fee) al Bs acreditado en Amount. Nil en movimientos que ya
+	// nacen en Bs y no requieren conversión (ej. withdrawal).
+	BcvRate       *float64  `bun:"bcv_rate,nullzero"`
+	MovementType  string    `bun:"movement_type"`
+	PaymentMethod *string   `bun:"payment_method"`
+	DistanceKm    *float64  `bun:"distance_km"`
+	CreatedAt     time.Time `bun:"created_at,nullzero"`
 }

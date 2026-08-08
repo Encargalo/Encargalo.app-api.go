@@ -80,7 +80,9 @@ type OrderRiderBroadcaster interface {
 // RideEarningRecorder is implemented by the finance module to record rider earnings on delivery.
 // Defined here to avoid a cross-domain import from orders → riders.
 type RideEarningRecorder interface {
-	RecordRideEarning(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee, totalPrice float64, method string) error
+	// deliveryFee está en USD; bcvRate es la tasa a aplicar para convertir y
+	// acreditar en Bs (moneda nativa del balance de riders).
+	RecordRideEarning(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee, totalPrice, bcvRate float64, method string) error
 }
 
 // ShopCommissionRecorder is implemented by shops/finance to record the shop's commission on delivery completion.

@@ -12,7 +12,7 @@ description: |-
 
   Si reference_last4 ya existe en approved/overpaid/rejected_underpaid, el backend auto-rechaza como rejected_invalid y responde action_ok con action:"reject_invalid", duplicate_reject:true.
 
-  Salientes: payment_review_update (incluye expected_amount_bs, credited_usd), action_ok, error.
+  Salientes: payment_review_update (incluye expected_amount_bs, credited_bs), action_ok, error.
 url: "{{base_url}}/orders/staff/reviews"
 method: GET
 headers:

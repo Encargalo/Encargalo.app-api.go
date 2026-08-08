@@ -470,29 +470,41 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		return &models.Order{}, err
 	}
 
-	balanceUsed := money.RoundUSD(order.BalanceAmountUSD)
-	pagoMovilUSD := money.RoundUSD(orderModel.TotalPrice - balanceUsed)
+	// rate es la tasa BCV congelada del quote (o recién resuelta si no hubo
+	// quote): es la única tasa válida para convertir el balance en Bs que el
+	// customer pide usar al USD del total de la orden — la misma con la que
+	// se calcularon TotalBs/DeliveryFeeBs que el customer vio antes de pagar.
+	if rate <= 0 {
+		return &models.Order{}, errcustom.ErrBcvRateUnavailable
+	}
+
+	balanceUsedBs := money.RoundBs(order.BalanceAmountBs)
+	balanceUsedUSD := 0.0
+	if balanceUsedBs > 0 {
+		balanceUsedUSD = money.RoundUSD(balanceUsedBs / rate)
+	}
+	pagoMovilUSD := money.RoundUSD(orderModel.TotalPrice - balanceUsedUSD)
 	if pagoMovilUSD < 0 {
 		pagoMovilUSD = 0
 	}
 
-	if balanceUsed > 0 {
-		if balanceUsed+priceTolerance < 1 {
-			return &models.Order{}, fmt.Errorf("%w: balance_amount_usd mínimo es 1", errcustom.ErrInvalidBalanceAmount)
+	if balanceUsedBs > 0 {
+		if balanceUsedUSD+priceTolerance < 1 {
+			return &models.Order{}, fmt.Errorf("%w: balance_amount_bs equivale a menos de 1 USD", errcustom.ErrInvalidBalanceAmount)
 		}
-		if balanceUsed > orderModel.TotalPrice+priceTolerance {
-			return &models.Order{}, fmt.Errorf("%w: balance_amount_usd no puede superar el total de la orden", errcustom.ErrInvalidBalanceAmount)
+		if balanceUsedUSD > orderModel.TotalPrice+priceTolerance {
+			return &models.Order{}, fmt.Errorf("%w: balance_amount_bs no puede superar el total de la orden", errcustom.ErrInvalidBalanceAmount)
 		}
-		available, err := o.customerBalance.GetBalanceUSD(ctx, order.CustomerID)
+		available, err := o.customerBalance.GetBalanceBs(ctx, order.CustomerID)
 		if err != nil {
 			return &models.Order{}, err
 		}
-		if balanceUsed > available+priceTolerance {
+		if balanceUsedBs > available+priceTolerance {
 			return &models.Order{}, errcustom.ErrInsufficientBalance
 		}
 		// Cap floating noise: treat near-total as full cover.
-		if math.Abs(orderModel.TotalPrice-balanceUsed) <= priceTolerance {
-			balanceUsed = orderModel.TotalPrice
+		if math.Abs(orderModel.TotalPrice-balanceUsedUSD) <= priceTolerance {
+			balanceUsedBs = money.RoundBs(orderModel.TotalPrice * rate)
 			pagoMovilUSD = 0
 		}
 	}
@@ -516,7 +528,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 	DetailsModel.BuildDetails(orderModel, shop, customer, order.Address.Instructions, rate)
 
 	DetailsModel.PaymentDetails = &models.PaymentDetails{
-		BalanceAmountUSD:   balanceUsed,
+		BalanceAmountBs:    balanceUsedBs,
 		PagoMovilAmountUSD: pagoMovilUSD,
 	}
 
@@ -540,15 +552,15 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		orderModel.PendingAt = &now
 	}
 
-	if balanceUsed > 0 {
-		if err := o.customerBalance.DebitForOrder(ctx, order.CustomerID, orderModel.ID, balanceUsed); err != nil {
+	if balanceUsedBs > 0 {
+		if err := o.customerBalance.DebitForOrder(ctx, order.CustomerID, orderModel.ID, balanceUsedBs); err != nil {
 			return &models.Order{}, err
 		}
 	}
 
 	detailsData, err := json.Marshal(DetailsModel)
 	if err != nil {
-		o.refundBalanceDebit(ctx, order.CustomerID, orderModel.ID, balanceUsed)
+		o.refundBalanceDebit(ctx, order.CustomerID, orderModel.ID, balanceUsedBs)
 		return &models.Order{}, err
 	}
 
@@ -556,7 +568,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 
 	orderDB, err := o.repo.CreateOrder(ctx, orderModel)
 	if err != nil {
-		o.refundBalanceDebit(ctx, order.CustomerID, orderModel.ID, balanceUsed)
+		o.refundBalanceDebit(ctx, order.CustomerID, orderModel.ID, balanceUsedBs)
 		return &models.Order{}, err
 	}
 
@@ -575,7 +587,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		}
 		if err := o.reviewsRepo.Create(ctx, review); err != nil {
 			slog.Error("CreateOrder: payment review failed", "orderID", orderDB.ID, "error", err)
-			o.refundBalanceDebit(ctx, order.CustomerID, orderDB.ID, balanceUsed)
+			o.refundBalanceDebit(ctx, order.CustomerID, orderDB.ID, balanceUsedBs)
 			return &models.Order{}, err
 		}
 		event := models.DataEventPaymentProofPending{}
@@ -593,7 +605,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 				ProofURL:           review.ProofURL,
 				ExpectedAmountBs:   review.ExpectedAmountBs,
 				Status:             review.Status,
-				BalanceAmountUSD:   balanceUsed,
+				BalanceAmountBs:    balanceUsedBs,
 				PagoMovilAmountUSD: pagoMovilUSD,
 				TotalUSD:           orderDB.TotalPrice,
 				OrderStatus:        orderDB.Status,
@@ -704,19 +716,29 @@ func (o *orderApp) refundCustomerOnShopRejectWithReason(ctx context.Context, ord
 		return
 	}
 
-	balanceUsed, pmFromDetails, hasPD := paymentSplitFromDetails(order)
-	// Fuente de verdad del ledger si details no trae el split (o lo trae mal).
-	if debited, err := o.customerBalance.GetBalancePaymentDebitForOrder(ctx, order.CustomerID, order.ID); err == nil && debited > balanceUsed {
-		balanceUsed = debited
+	// No hay tasa congelada persistida para esta orden a esta altura del ciclo
+	// de vida (el quote/review ya expiraron); se usa la tasa BCV vigente.
+	rate := o.bcvRate(ctx)
+	if rate <= 0 {
+		slog.Error("refundCustomerOnShopReject: bcv rate unavailable", "orderID", order.ID)
+		return
 	}
-	refundablePM := cashRefundablePMUSD(order.TotalPrice, balanceUsed, pmFromDetails, hasPD)
-	txID, createdAt, err := o.customerBalance.CreditOrderRejected(ctx, order.CustomerID, order.ID, order.TotalPrice, refundablePM)
+
+	balanceUsedBs, pmFromDetails, hasPD := paymentSplitFromDetails(order)
+	// Fuente de verdad del ledger si details no trae el split (o lo trae mal).
+	if debited, err := o.customerBalance.GetBalancePaymentDebitForOrder(ctx, order.CustomerID, order.ID); err == nil && debited > balanceUsedBs {
+		balanceUsedBs = debited
+	}
+	balanceUsedUSD := money.RoundUSD(balanceUsedBs / rate)
+	refundablePMUSD := cashRefundablePMUSD(order.TotalPrice, balanceUsedUSD, pmFromDetails, hasPD)
+	txID, createdAt, err := o.customerBalance.CreditOrderRejected(ctx, order.CustomerID, order.ID, order.TotalPrice, refundablePMUSD, rate)
 	if err != nil {
 		slog.Error("refundCustomerOnShopReject credit failed", "orderID", order.ID, "error", err)
 		return
 	}
 
-	credited := order.TotalPrice
+	creditedBs := money.RoundBs(order.TotalPrice * rate)
+	refundablePMBs := money.RoundBs(refundablePMUSD * rate)
 	var details models.Details
 	if len(order.Details) > 0 {
 		_ = json.Unmarshal(order.Details, &details)
@@ -725,11 +747,11 @@ func (o *orderApp) refundCustomerOnShopRejectWithReason(ctx context.Context, ord
 		details.PaymentDetails = &models.PaymentDetails{}
 	}
 	// Persistir split corregido para lecturas posteriores.
-	details.PaymentDetails.BalanceAmountUSD = balanceUsed
-	details.PaymentDetails.PagoMovilAmountUSD = refundablePM
+	details.PaymentDetails.BalanceAmountBs = balanceUsedBs
+	details.PaymentDetails.PagoMovilAmountUSD = refundablePMUSD
 	details.PaymentDetails.Status = models.ReviewRefundedShopReject
 	details.PaymentDetails.RejectionReason = &reason
-	applyBalanceCreditToPaymentDetails(details.PaymentDetails, txID, credited, refundablePM, createdAt)
+	applyBalanceCreditToPaymentDetails(details.PaymentDetails, txID, creditedBs, refundablePMBs, rate, createdAt)
 
 	data, err := json.Marshal(details)
 	if err != nil {
@@ -933,7 +955,10 @@ func (o *orderApp) ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code 
 		o.tryCloseShopBatch(ctx, order.ShopID)
 		return *order, nil
 	}
-	if err := o.finance.RecordRideEarning(ctx, *order.RiderID, order.ID, order.DeliveryFee, order.TotalPrice, order.MethodPayment); err != nil {
+	// Sin tasa persistida por orden a esta altura del ciclo de vida (ver
+	// refundCustomerOnShopRejectWithReason): se usa la tasa BCV vigente al
+	// completar la entrega, más justa para el rider que la del quote inicial.
+	if err := o.finance.RecordRideEarning(ctx, *order.RiderID, order.ID, order.DeliveryFee, order.TotalPrice, o.bcvRate(ctx), order.MethodPayment); err != nil {
 		slog.Error("error recording ride earning", "orderID", orderID, "error", err)
 	}
 

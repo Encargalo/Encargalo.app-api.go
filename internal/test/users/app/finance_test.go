@@ -22,7 +22,8 @@ func TestCreateRefundRequest_OnlyPMPortion(t *testing.T) {
 	customerID := uuid.New()
 	txID := uuid.New()
 	orderID := uuid.New()
-	refundable := 5.0
+	refundableBs := 200.0
+	rate := 40.0
 
 	repo.On("GetPagoMovil", mock.Anything, customerID).Return(&models.CustomerPagoMovil{
 		CustomerID: customerID,
@@ -31,25 +32,26 @@ func TestCreateRefundRequest_OnlyPMPortion(t *testing.T) {
 		NationalID: "V1",
 	}, nil)
 	repo.On("GetTransaction", mock.Anything, txID).Return(&models.Transaction{
-		ID:              txID,
-		EntityID:        customerID,
-		EntityType:      models.EntityTypeCustomer,
-		OrderID:         &orderID,
-		Amount:          10,
-		MovementType:    string(models.MovementTypeOrderRejectedRefund),
-		RefundablePMUSD: &refundable,
-		CreatedAt:       time.Now(),
+		ID:             txID,
+		EntityID:       customerID,
+		EntityType:     models.EntityTypeCustomer,
+		OrderID:        &orderID,
+		Amount:         400,
+		MovementType:   string(models.MovementTypeOrderRejectedRefund),
+		RefundablePMBs: &refundableBs,
+		BcvRate:        &rate,
+		CreatedAt:      time.Now(),
 	}, nil)
 	repo.On("HasActiveRefundForTransaction", mock.Anything, txID).Return(false, nil)
 	repo.On("CreateRefundRequestWithDebit", mock.Anything, mock.MatchedBy(func(req *models.BalanceRefundRequest) bool {
-		return req.AmountUSD == 5.0 && req.Status == models.RefundPending
+		return req.AmountBs == 200.0 && req.Status == models.RefundPending
 	})).Return(nil)
 	hub.On("Broadcast", mock.Anything).Return(nil)
 
 	resp, err := svc.CreateRefundRequest(context.Background(), customerID, txID)
 
 	assert.NoError(t, err)
-	assert.Equal(t, 5.0, resp.AmountUSD)
+	assert.Equal(t, 200.0, resp.AmountBs)
 	assert.Equal(t, string(models.RefundPending), resp.Status)
 }
 
@@ -69,13 +71,13 @@ func TestCreateRefundRequest_HundredPercentBalanceNotEligible(t *testing.T) {
 		NationalID: "V1",
 	}, nil)
 	repo.On("GetTransaction", mock.Anything, txID).Return(&models.Transaction{
-		ID:              txID,
-		EntityID:        customerID,
-		EntityType:      models.EntityTypeCustomer,
-		Amount:          10,
-		MovementType:    string(models.MovementTypeOrderRejectedRefund),
-		RefundablePMUSD: &zero,
-		CreatedAt:       time.Now(),
+		ID:             txID,
+		EntityID:       customerID,
+		EntityType:     models.EntityTypeCustomer,
+		Amount:         10,
+		MovementType:   string(models.MovementTypeOrderRejectedRefund),
+		RefundablePMBs: &zero,
+		CreatedAt:      time.Now(),
 	}, nil)
 
 	_, err := svc.CreateRefundRequest(context.Background(), customerID, txID)

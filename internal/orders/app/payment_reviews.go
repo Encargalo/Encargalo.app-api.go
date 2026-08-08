@@ -118,15 +118,16 @@ func (a *paymentReviewsApp) ApproveOverpay(ctx context.Context, reviewID, staffI
 	}
 
 	diff := observedBs - review.ExpectedAmountBs
-	pmBaseUSD := pagoMovilAmountUSD(order)
-	credited := bsToUSD(diff, review.BcvRate, pmBaseUSD, review.ExpectedAmountBs)
+	pmBaseUSD := pagoMovilAmountUSD(order, review.BcvRate)
+	creditedUSD := bsToUSD(diff, review.BcvRate, pmBaseUSD, review.ExpectedAmountBs)
+	creditedBs := money.RoundBs(creditedUSD * review.BcvRate)
 
 	update := &models.PaymentReview{
 		Status:           models.ReviewOverpaid,
 		StaffID:          &staffID,
 		ObservedAmountBs: &observedBs,
 		DifferenceBs:     &diff,
-		CreditedUSD:      &credited,
+		CreditedBs:       &creditedBs,
 		ReferenceLast4:   &last4,
 	}
 	ok, err := a.repo.ResolvePending(ctx, review.ID, update)
@@ -137,7 +138,7 @@ func (a *paymentReviewsApp) ApproveOverpay(ctx context.Context, reviewID, staffI
 		return models.StaffReviewResult{}, errcustom.ErrInvalidStatus
 	}
 
-	txID, createdAt, err := a.finance.CreditPaymentOverage(ctx, order.CustomerID, order.ID, credited)
+	txID, createdAt, err := a.finance.CreditPaymentOverage(ctx, order.CustomerID, order.ID, creditedUSD, review.BcvRate)
 	if err != nil {
 		slog.Error("ApproveOverpay credit failed", "orderID", order.ID, "error", err)
 		return models.StaffReviewResult{}, err
@@ -146,9 +147,9 @@ func (a *paymentReviewsApp) ApproveOverpay(ctx context.Context, reviewID, staffI
 	review.Status = models.ReviewOverpaid
 	review.ObservedAmountBs = &observedBs
 	review.DifferenceBs = &diff
-	review.CreditedUSD = &credited
+	review.CreditedBs = &creditedBs
 	review.ReferenceLast4 = &last4
-	a.syncPaymentDetails(ctx, order, review, txID, credited, createdAt)
+	a.syncPaymentDetails(ctx, order, review, txID, creditedBs, createdAt)
 
 	orderOut, err := a.releaseToShop(ctx, order)
 	if err != nil {
@@ -181,17 +182,18 @@ func (a *paymentReviewsApp) RejectUnderpaid(ctx context.Context, reviewID, staff
 	}
 
 	diff := review.ExpectedAmountBs - observedBs
-	pmBaseUSD := pagoMovilAmountUSD(order)
-	pmCredited := bsToUSD(observedBs, review.BcvRate, pmBaseUSD, review.ExpectedAmountBs)
-	balanceUsed := balanceAmountUSD(order)
-	totalCredited := pmCredited + balanceUsed
+	pmBaseUSD := pagoMovilAmountUSD(order, review.BcvRate)
+	pmCreditedUSD := bsToUSD(observedBs, review.BcvRate, pmBaseUSD, review.ExpectedAmountBs)
+	pmCreditedBs := money.RoundBs(pmCreditedUSD * review.BcvRate)
+	balanceUsedBs := balanceAmountBs(order)
+	totalCreditedBs := pmCreditedBs + balanceUsedBs
 
 	update := &models.PaymentReview{
 		Status:           models.ReviewRejectedUnderpaid,
 		StaffID:          &staffID,
 		ObservedAmountBs: &observedBs,
 		DifferenceBs:     &diff,
-		CreditedUSD:      &totalCredited,
+		CreditedBs:       &totalCreditedBs,
 		ReferenceLast4:   &last4,
 	}
 	ok, err := a.repo.ResolvePending(ctx, review.ID, update)
@@ -202,12 +204,12 @@ func (a *paymentReviewsApp) RejectUnderpaid(ctx context.Context, reviewID, staff
 		return models.StaffReviewResult{}, errcustom.ErrInvalidStatus
 	}
 
-	txID, createdAt, err := a.finance.CreditPaymentPartial(ctx, order.CustomerID, order.ID, pmCredited)
+	txID, createdAt, err := a.finance.CreditPaymentPartial(ctx, order.CustomerID, order.ID, pmCreditedUSD, review.BcvRate)
 	if err != nil {
 		slog.Error("RejectUnderpaid credit failed", "orderID", order.ID, "error", err)
 		return models.StaffReviewResult{}, err
 	}
-	if err := a.refundBalanceUsed(ctx, order, balanceUsed); err != nil {
+	if err := a.refundBalanceUsed(ctx, order, balanceUsedBs); err != nil {
 		return models.StaffReviewResult{}, err
 	}
 
@@ -219,11 +221,11 @@ func (a *paymentReviewsApp) RejectUnderpaid(ctx context.Context, reviewID, staff
 	review.Status = models.ReviewRejectedUnderpaid
 	review.ObservedAmountBs = &observedBs
 	review.DifferenceBs = &diff
-	review.CreditedUSD = &totalCredited
+	review.CreditedBs = &totalCreditedBs
 	review.StaffID = &staffID
 	review.ReferenceLast4 = &last4
 	// Solo el crédito PM es cash-refundable (no el refund del balance usado).
-	a.syncPaymentDetails(ctx, order, review, txID, pmCredited, createdAt)
+	a.syncPaymentDetails(ctx, order, review, txID, pmCreditedBs, createdAt)
 
 	if a.mgr != nil {
 		_ = a.mgr.BroadcastOrderToCustomer(*order)
@@ -254,8 +256,8 @@ func (a *paymentReviewsApp) RejectInvalid(ctx context.Context, reviewID, staffID
 		return models.Order{}, errcustom.ErrInvalidStatus
 	}
 
-	balanceUsed := balanceAmountUSD(order)
-	if err := a.refundBalanceUsed(ctx, order, balanceUsed); err != nil {
+	balanceUsedBs := balanceAmountBs(order)
+	if err := a.refundBalanceUsed(ctx, order, balanceUsedBs); err != nil {
 		return models.Order{}, err
 	}
 
@@ -266,8 +268,8 @@ func (a *paymentReviewsApp) RejectInvalid(ctx context.Context, reviewID, staffID
 
 	review.Status = models.ReviewRejectedInvalid
 	review.RejectionReason = &reason
-	if balanceUsed > 0 {
-		review.CreditedUSD = &balanceUsed
+	if balanceUsedBs > 0 {
+		review.CreditedBs = &balanceUsedBs
 	}
 	a.syncPaymentDetails(ctx, order, review, uuid.Nil, 0, time.Time{})
 
@@ -304,7 +306,7 @@ func (a *paymentReviewsApp) syncPaymentDetails(
 	order *models.Order,
 	review *models.PaymentReview,
 	creditTxID uuid.UUID,
-	refundablePM float64,
+	refundablePMBs float64,
 	creditCreatedAt time.Time,
 ) {
 	var details models.Details
@@ -320,13 +322,13 @@ func (a *paymentReviewsApp) syncPaymentDetails(
 	details.PaymentDetails.ObservedAmountBs = review.ObservedAmountBs
 	details.PaymentDetails.DifferenceBs = review.DifferenceBs
 	details.PaymentDetails.RejectionReason = review.RejectionReason
-	details.PaymentDetails.CreditedUSD = review.CreditedUSD
+	details.PaymentDetails.CreditedBs = review.CreditedBs
 
-	credited := 0.0
-	if review.CreditedUSD != nil {
-		credited = *review.CreditedUSD
+	creditedBs := 0.0
+	if review.CreditedBs != nil {
+		creditedBs = *review.CreditedBs
 	}
-	applyBalanceCreditToPaymentDetails(details.PaymentDetails, creditTxID, credited, refundablePM, creditCreatedAt)
+	applyBalanceCreditToPaymentDetails(details.PaymentDetails, creditTxID, creditedBs, refundablePMBs, review.BcvRate, creditCreatedAt)
 
 	data, err := json.Marshal(details)
 	if err != nil {
@@ -352,9 +354,9 @@ func (a *paymentReviewsApp) BuildBroadcast(ctx context.Context, review *models.P
 		DifferenceBs:       review.DifferenceBs,
 		Status:             review.Status,
 		RejectionReason:    review.RejectionReason,
-		CreditedUSD:        review.CreditedUSD,
-		BalanceAmountUSD:   balanceAmountUSD(order),
-		PagoMovilAmountUSD: pagoMovilAmountUSD(order),
+		CreditedBs:         review.CreditedBs,
+		BalanceAmountBs:    balanceAmountBs(order),
+		PagoMovilAmountUSD: pagoMovilAmountUSD(order, review.BcvRate),
 		TotalUSD:           order.TotalPrice,
 		OrderStatus:        order.Status,
 		CreatedAt:          review.CreatedAt,
@@ -374,7 +376,7 @@ func (a *paymentReviewsApp) BuildBroadcast(ctx context.Context, review *models.P
 	return b
 }
 
-func balanceAmountUSD(order *models.Order) float64 {
+func balanceAmountBs(order *models.Order) float64 {
 	var details models.Details
 	if len(order.Details) == 0 {
 		return 0
@@ -382,17 +384,28 @@ func balanceAmountUSD(order *models.Order) float64 {
 	if err := json.Unmarshal(order.Details, &details); err != nil || details.PaymentDetails == nil {
 		return 0
 	}
-	return details.PaymentDetails.BalanceAmountUSD
+	return details.PaymentDetails.BalanceAmountBs
 }
 
-// pagoMovilAmountUSD es la porción pagada por Pago Móvil (cash-refundable).
+// pagoMovilAmountUSD es la porción pagada por Pago Móvil (cash-refundable),
+// en USD. bcvRate convierte el balance usado (persistido en Bs) de vuelta a
+// USD para poder restarlo del total de la orden (también USD).
 // Nunca debe incluir lo pagado con balance.
-func pagoMovilAmountUSD(order *models.Order) float64 {
-	balanceUsed, pmFromDetails, hasPD := paymentSplitFromDetails(order)
-	return cashRefundablePMUSD(order.TotalPrice, balanceUsed, pmFromDetails, hasPD)
+func pagoMovilAmountUSD(order *models.Order, bcvRate float64) float64 {
+	balanceUsedBs, pmFromDetails, hasPD := paymentSplitFromDetails(order)
+	balanceUsedUSD := 0.0
+	if bcvRate > 0 {
+		balanceUsedUSD = balanceUsedBs / bcvRate
+	}
+	return cashRefundablePMUSD(order.TotalPrice, balanceUsedUSD, pmFromDetails, hasPD)
 }
 
-func paymentSplitFromDetails(order *models.Order) (balanceUsed, pmFromDetails float64, hasPaymentDetails bool) {
+// paymentSplitFromDetails devuelve el balance usado en Bs (moneda nativa
+// persistida) y la porción Pago Móvil en USD, tal cual quedaron en
+// order.Details al crear la orden. El caller decide con qué tasa convertir
+// balanceUsedBs a USD según el contexto (review.BcvRate si hay una revisión
+// activa, o la tasa BCV vigente si el pedido ya no tiene una).
+func paymentSplitFromDetails(order *models.Order) (balanceUsedBs, pmFromDetails float64, hasPaymentDetails bool) {
 	if order == nil || len(order.Details) == 0 {
 		return 0, 0, false
 	}
@@ -400,7 +413,7 @@ func paymentSplitFromDetails(order *models.Order) (balanceUsed, pmFromDetails fl
 	if err := json.Unmarshal(order.Details, &details); err != nil || details.PaymentDetails == nil {
 		return 0, 0, false
 	}
-	return details.PaymentDetails.BalanceAmountUSD, details.PaymentDetails.PagoMovilAmountUSD, true
+	return details.PaymentDetails.BalanceAmountBs, details.PaymentDetails.PagoMovilAmountUSD, true
 }
 
 // cashRefundablePMUSD calcula el monto elegible para devolución en efectivo.

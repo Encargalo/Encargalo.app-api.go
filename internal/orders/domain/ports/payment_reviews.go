@@ -19,17 +19,20 @@ type PaymentReviewsRepo interface {
 	ExistsResolvedReferenceLast4(ctx context.Context, last4 string) (bool, error)
 }
 
-// CustomerBalanceCreditor is implemented by users finance to credit/debit customer USD balance.
+// CustomerBalanceCreditor is implemented by users finance to credit/debit the
+// customer's Bs balance. Credit* reciben el monto original en USD + la tasa
+// BCV a aplicar (resuelta por orders, ver review.BcvRate / quote.BcvRate);
+// Debit/Refund operan directo en Bs (ya es lo que el customer pidió usar).
 type CustomerBalanceCreditor interface {
-	GetBalanceUSD(ctx context.Context, customerID uuid.UUID) (float64, error)
-	// GetBalancePaymentDebitForOrder returns the USD debited from balance for this order
+	GetBalanceBs(ctx context.Context, customerID uuid.UUID) (float64, error)
+	// GetBalancePaymentDebitForOrder returns the Bs debited from balance for this order
 	// (absolute value of balance_payment movements). 0 if none.
 	GetBalancePaymentDebitForOrder(ctx context.Context, customerID, orderID uuid.UUID) (float64, error)
-	CreditPaymentOverage(ctx context.Context, customerID, orderID uuid.UUID, amountUSD float64) (txID uuid.UUID, createdAt time.Time, err error)
-	CreditPaymentPartial(ctx context.Context, customerID, orderID uuid.UUID, amountUSD float64) (txID uuid.UUID, createdAt time.Time, err error)
-	CreditOrderRejected(ctx context.Context, customerID, orderID uuid.UUID, amountUSD, refundablePMUSD float64) (txID uuid.UUID, createdAt time.Time, err error)
-	DebitForOrder(ctx context.Context, customerID, orderID uuid.UUID, amountUSD float64) error
-	RefundBalancePayment(ctx context.Context, customerID, orderID uuid.UUID, amountUSD float64) error
+	CreditPaymentOverage(ctx context.Context, customerID, orderID uuid.UUID, amountUSD, bcvRate float64) (txID uuid.UUID, createdAt time.Time, err error)
+	CreditPaymentPartial(ctx context.Context, customerID, orderID uuid.UUID, amountUSD, bcvRate float64) (txID uuid.UUID, createdAt time.Time, err error)
+	CreditOrderRejected(ctx context.Context, customerID, orderID uuid.UUID, amountUSD, refundablePMUSD, bcvRate float64) (txID uuid.UUID, createdAt time.Time, err error)
+	DebitForOrder(ctx context.Context, customerID, orderID uuid.UUID, amountBs float64) error
+	RefundBalancePayment(ctx context.Context, customerID, orderID uuid.UUID, amountBs float64) error
 }
 
 // StaffReviewHub manages staff WebSocket connections for payment reviews.

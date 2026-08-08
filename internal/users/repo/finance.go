@@ -76,11 +76,14 @@ func (r *customerFinanceRepo) RecordMovement(ctx context.Context, entityID uuid.
 
 		newAmount = b.Amount + delta
 
+		// La moneda del movimiento la decide el caller (app): este repo es
+		// genérico por entity_type y no debe asumir una moneda fija.
 		_, err = tx.NewInsert().
 			Model(&models.Balance{
 				EntityID:   entityID,
 				EntityType: entityType,
 				Amount:     newAmount,
+				Currency:   movement.Currency,
 			}).
 			On("CONFLICT (entity_id, entity_type) DO UPDATE").
 			Set("amount = EXCLUDED.amount, updated_at = now()").
@@ -244,7 +247,7 @@ func (r *customerFinanceRepo) CreateRefundRequestWithDebit(ctx context.Context, 
 			slog.Error("CreateRefundRequestWithDebit balance select failed", "customerID", req.CustomerID, "error", err)
 			return errcustom.ErrUnexpectedError
 		}
-		if b.Amount < req.AmountUSD {
+		if b.Amount < req.AmountBs {
 			return errcustom.ErrInsufficientBalance
 		}
 
@@ -253,12 +256,13 @@ func (r *customerFinanceRepo) CreateRefundRequestWithDebit(ctx context.Context, 
 			return errcustom.ErrUnexpectedError
 		}
 
-		newAmount := b.Amount - req.AmountUSD
+		newAmount := b.Amount - req.AmountBs
 		_, err = tx.NewInsert().
 			Model(&models.Balance{
 				EntityID:   req.CustomerID,
 				EntityType: models.EntityTypeCustomer,
 				Amount:     newAmount,
+				Currency:   models.CurrencyVES,
 			}).
 			On("CONFLICT (entity_id, entity_type) DO UPDATE").
 			Set("amount = EXCLUDED.amount, updated_at = now()").
@@ -274,7 +278,8 @@ func (r *customerFinanceRepo) CreateRefundRequestWithDebit(ctx context.Context, 
 			EntityID:        req.CustomerID,
 			EntityType:      models.EntityTypeCustomer,
 			OrderID:         req.OrderID,
-			Amount:          -req.AmountUSD,
+			Amount:          -req.AmountBs,
+			Currency:        models.CurrencyVES,
 			MovementType:    string(models.MovementTypeBalanceRefundHold),
 			RefundRequestID: &rid,
 			CreatedAt:       req.CreatedAt,
@@ -437,12 +442,13 @@ func (r *customerFinanceRepo) RejectPendingWithRestore(ctx context.Context, id, 
 			return errcustom.ErrUnexpectedError
 		}
 
-		newAmount := b.Amount + req.AmountUSD
+		newAmount := b.Amount + req.AmountBs
 		_, err = tx.NewInsert().
 			Model(&models.Balance{
 				EntityID:   req.CustomerID,
 				EntityType: models.EntityTypeCustomer,
 				Amount:     newAmount,
+				Currency:   models.CurrencyVES,
 			}).
 			On("CONFLICT (entity_id, entity_type) DO UPDATE").
 			Set("amount = EXCLUDED.amount, updated_at = now()").
@@ -458,7 +464,8 @@ func (r *customerFinanceRepo) RejectPendingWithRestore(ctx context.Context, id, 
 			EntityID:        req.CustomerID,
 			EntityType:      models.EntityTypeCustomer,
 			OrderID:         req.OrderID,
-			Amount:          req.AmountUSD,
+			Amount:          req.AmountBs,
+			Currency:        models.CurrencyVES,
 			MovementType:    string(models.MovementTypeBalanceRefundRestore),
 			RefundRequestID: &rid,
 			CreatedAt:       now,

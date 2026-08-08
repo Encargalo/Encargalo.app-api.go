@@ -11,6 +11,7 @@ import (
 var statusMap = map[error]int{
 	ErrNotFound:                 http.StatusNotFound,
 	ErrUnexpectedError:          http.StatusInternalServerError,
+	ErrBcvRateUnavailable:       http.StatusServiceUnavailable,
 	ErrIncorrectAccessData:      http.StatusUnprocessableEntity,
 	ErrPhoneAlreadyExist:        http.StatusConflict,
 	ErrUnautorized:              http.StatusUnauthorized,

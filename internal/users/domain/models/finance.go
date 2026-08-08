@@ -22,27 +22,40 @@ const (
 	EntityTypeCustomer                  string       = "customer"
 )
 
+// CurrencyVES es la moneda nativa del balance de customers: todo movimiento
+// se registra ya convertido a bolívares con la tasa BCV vigente al momento
+// del movimiento (ver Transaction.BcvRate). El catálogo de productos y el
+// total de la orden se siguen calculando en USD; la conversión ocurre una
+// sola vez, al debitar/acreditar el balance.
+const CurrencyVES = "VES"
+
 type Balance struct {
 	bun.BaseModel `bun:"table:finance.balances"`
 
 	EntityID   uuid.UUID `bun:"entity_id,pk,type:uuid"`
 	EntityType string    `bun:"entity_type,pk"`
 	Amount     float64   `bun:"amount"`
+	Currency   string    `bun:"currency"`
 	UpdatedAt  time.Time `bun:"updated_at"`
 }
 
 type Transaction struct {
 	bun.BaseModel `bun:"table:finance.transactions"`
 
-	ID              uuid.UUID  `bun:"id,pk,type:uuid"`
-	EntityID        uuid.UUID  `bun:"entity_id"`
-	EntityType      string     `bun:"entity_type"`
-	OrderID         *uuid.UUID `bun:"order_id,nullzero"`
-	Amount          float64    `bun:"amount"`
+	ID         uuid.UUID  `bun:"id,pk,type:uuid"`
+	EntityID   uuid.UUID  `bun:"entity_id"`
+	EntityType string     `bun:"entity_type"`
+	OrderID    *uuid.UUID `bun:"order_id,nullzero"`
+	Amount     float64    `bun:"amount"`
+	Currency   string     `bun:"currency"`
+	// BcvRate es la tasa usada para convertir el monto original en USD (precio
+	// del pedido) al Bs registrado en Amount. Nil en movimientos que ya nacen
+	// en Bs y no requieren conversión (ej. RefundBalanceRestore).
+	BcvRate         *float64   `bun:"bcv_rate,nullzero"`
 	MovementType    string     `bun:"movement_type"`
 	PaymentMethod   *string    `bun:"payment_method"`
 	DistanceKm      *float64   `bun:"distance_km"`
-	RefundablePMUSD *float64   `bun:"refundable_pm_usd,nullzero"`
+	RefundablePMBs  *float64   `bun:"refundable_pm_bs,nullzero"`
 	RefundRequestID *uuid.UUID `bun:"refund_request_id,nullzero"`
 	CreatedAt       time.Time  `bun:"created_at,nullzero"`
 }

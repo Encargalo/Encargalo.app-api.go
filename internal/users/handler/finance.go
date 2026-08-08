@@ -37,7 +37,7 @@ func NewCustomerFinanceHandler(svc ports.CustomerFinanceApp) CustomerFinanceHand
 
 // GetBalance godoc
 // @Summary      Balance del cliente
-// @Description  Retorna el balance en USD del cliente y los últimos 10 movimientos. Créditos elegibles incluyen can_request_refund (ventana/monto/saldo; no exige Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold / processing / payout) y créditos balance_refund_restore incluyen refund_request_id para abrir el detalle.
+// @Description  Retorna el balance en bolívares (Bs) del cliente y los últimos 10 movimientos. Créditos elegibles incluyen can_request_refund (ventana/monto/saldo; no exige Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold / processing / payout) y créditos balance_refund_restore incluyen refund_request_id para abrir el detalle.
 // @Tags         Users Finance
 // @Produce      json
 // @Security     SessionCookie
@@ -220,7 +220,7 @@ type staffRefundWSMessage struct {
 	Type       string    `json:"type"`
 	RequestID  uuid.UUID `json:"request_id"`
 	ProofImage string    `json:"proof_image,omitempty"`
-	AmountUSD  float64   `json:"amount_usd,omitempty"`
+	AmountBs   float64   `json:"amount_bs,omitempty"`
 	Reason     string    `json:"reason,omitempty"`
 }
 
@@ -234,7 +234,7 @@ type staffRefundWSMessage struct {
 // ### Mensajes entrantes
 // - accept: `{"type":"accept","request_id":"..."}` — pending→accepted (el balance ya se debitó al crear)
 // - reject: `{"type":"reject","request_id":"...","reason":"..."}` — pending→rejected y restaura el monto al balance
-// - complete: `{"type":"complete","request_id":"...","amount_usd":52,"proof_image":"data:image/...;base64,..."}` — solo desde accepted; amount_usd debe coincidir; la imagen se sube a Cloudinary
+// - complete: `{"type":"complete","request_id":"...","amount_bs":52,"proof_image":"data:image/...;base64,..."}` — solo desde accepted; amount_bs debe coincidir; la imagen se sube a Cloudinary
 //
 // @Tags         Users Finance
 // @Security     SessionCookie
@@ -296,7 +296,7 @@ func (h *staffRefundHandler) HandleWebSocket(c echo.Context) error {
 			result, err = h.finance.RejectRefund(ctx, payload.RequestID, session.UserID, payload.Reason)
 		case "complete":
 			action = "complete"
-			result, err = h.finance.CompleteRefund(ctx, payload.RequestID, payload.ProofImage, payload.AmountUSD)
+			result, err = h.finance.CompleteRefund(ctx, payload.RequestID, payload.ProofImage, payload.AmountBs)
 		default:
 			client.Send([]byte(`{"type":"error","message":"tipo de mensaje desconocido"}`))
 			continue
@@ -324,7 +324,7 @@ func (h *staffRefundHandler) HandleWebSocket(c echo.Context) error {
 // CompleteRefund godoc
 //
 // @Summary      Completar devolución (staff)
-// @Description  Registra el pago de una solicitud accepted: valida amount_usd, sube proof_image (base64) a Cloudinary y marca completed.
+// @Description  Registra el pago de una solicitud accepted: valida amount_bs, sube proof_image (base64) a Cloudinary y marca completed.
 // @Tags         Users Finance
 // @Accept       json
 // @Produce      json
@@ -355,11 +355,11 @@ func (h *staffRefundHandler) CompleteRefund(c echo.Context) error {
 	if strings.TrimSpace(body.ProofImage) == "" {
 		return errcustom.ToHTTPError(errcustom.ErrRefundProofRequired)
 	}
-	if body.AmountUSD <= 0 {
-		return echo.NewHTTPError(http.StatusBadRequest, "amount_usd inválido")
+	if body.AmountBs <= 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "amount_bs inválido")
 	}
 
-	resp, err := h.finance.CompleteRefund(ctx, requestID, body.ProofImage, body.AmountUSD)
+	resp, err := h.finance.CompleteRefund(ctx, requestID, body.ProofImage, body.AmountBs)
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}

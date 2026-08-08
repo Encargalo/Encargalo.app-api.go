@@ -1863,7 +1863,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Preferido: enviar ` + "`" + `quote_id` + "`" + ` de POST /orders/quote (total congelado; shop/items/address salen del quote). Legacy: sin quote_id, enviar carrito + ` + "`" + `expected_total_price` + "`" + ` (409 si el precio cambió). Opcionalmente ` + "`" + `balance_amount_usd` + "`" + `. Si queda resto Pago Móvil, requiere ` + "`" + `payment_proof_image` + "`" + ` y nace en Payment Review.",
+                "description": "Preferido: enviar ` + "`" + `quote_id` + "`" + ` de POST /orders/quote (total congelado; shop/items/address salen del quote). Legacy: sin quote_id, enviar carrito + ` + "`" + `expected_total_price` + "`" + ` (409 si el precio cambió). Opcionalmente ` + "`" + `balance_amount_bs` + "`" + ` (balance del customer, en bolívares; se convierte a USD con la tasa BCV del quote). Si queda resto Pago Móvil, requiere ` + "`" + `payment_proof_image` + "`" + ` y nace en Payment Review.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1924,6 +1924,12 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Error interno del servidor",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Tasa BCV no disponible para convertir balance_amount_bs",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
@@ -2705,7 +2711,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna el balance actual del rider, su zona de control y los últimos 10 movimientos.",
+                "description": "Retorna el balance actual del rider en bolívares (Bs), su zona de control, el mínimo de retiro vigente (withdrawal_min_bs, dinámico según tasa BCV) y los últimos 10 movimientos.",
                 "produces": [
                     "application/json"
                 ],
@@ -3117,7 +3123,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "El rider solicita retirar su balance acumulado. Requiere balance \u003e= +$15.",
+                "description": "El rider solicita retirar su balance acumulado en Bs. Requiere balance \u003e= al equivalente dinámico de $15 según la tasa BCV vigente (ver withdrawal_min_bs en GET /riders/balance).",
                 "produces": [
                     "application/json"
                 ],
@@ -3146,6 +3152,12 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "503": {
+                        "description": "Tasa BCV no disponible",
                         "schema": {
                             "type": "string"
                         }
@@ -4666,7 +4678,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna los datos del usuario autenticado sin importar su rol. Para usuarios con rol OrderManager u Owner, la respuesta incluye adicionalmente los campos ` + "`" + `shop_id` + "`" + ` y ` + "`" + `shop` + "`" + `.",
+                "description": "Retorna los datos del usuario autenticado sin importar su rol. Para usuarios con rol OrderManager u Owner, la respuesta incluye adicionalmente los campos ` + "`" + `shop_id` + "`" + ` y ` + "`" + `shop` + "`" + `. Si el usuario solicitó eliminar su cuenta, incluye ` + "`" + `scheduled_deletion_at` + "`" + ` con la fecha en la que se finalizará la eliminación de no volver a iniciar sesión antes.",
                 "produces": [
                     "application/json"
                 ],
@@ -4806,6 +4818,41 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "El teléfono ya está registrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Marca la cuenta como \"pendiente de eliminación\" por 30 días y cierra la sesión en todos los dispositivos. Ningún dato se borra en este momento. Si el usuario vuelve a iniciar sesión dentro de ese plazo, la solicitud se cancela automáticamente. Si no vuelve, la cuenta se marca deleted_at de forma permanente sin perder ninguna columna.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Solicitar la eliminación de la cuenta del usuario autenticado",
+                "responses": {
+                    "200": {
+                        "description": "account scheduled for deletion",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
                         "schema": {
                             "type": "string"
                         }
@@ -4977,7 +5024,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna el balance en USD del cliente y los últimos 10 movimientos. Créditos elegibles incluyen can_request_refund (ventana/monto/saldo; no exige Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold / processing / payout) y créditos balance_refund_restore incluyen refund_request_id para abrir el detalle.",
+                "description": "Retorna el balance en bolívares (Bs) del cliente y los últimos 10 movimientos. Créditos elegibles incluyen can_request_refund (ventana/monto/saldo; no exige Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold / processing / payout) y créditos balance_refund_restore incluyen refund_request_id para abrir el detalle.",
                 "produces": [
                     "application/json"
                 ],
@@ -5325,7 +5372,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Registra el pago de una solicitud accepted: valida amount_usd, sube proof_image (base64) a Cloudinary y marca completed.",
+                "description": "Registra el pago de una solicitud accepted: valida amount_bs, sube proof_image (base64) a Cloudinary y marca completed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5515,10 +5562,10 @@ const docTemplate = `{
                 "address": {
                     "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.Address"
                 },
-                "balance_amount_usd": {
-                    "description": "BalanceAmountUSD es opcional. 0 = no usar balance. Si \u003e 0 debe ser \u003e= 1\ny \u003c= min(balance, total). Si cubre el total no se requiere comprobante.",
+                "balance_amount_bs": {
+                    "description": "BalanceAmountBs es opcional, en bolívares (balance del customer es Bs).\n0 = no usar balance. Si \u003e 0 se valida (con la tasa BCV del quote) que\nequivalga a \u003e= $1 y \u003c= min(balance disponible, total de la orden). Si\ncubre el total no se requiere comprobante.",
                     "type": "number",
-                    "example": 4
+                    "example": 148.5
                 },
                 "expected_total_price": {
                     "description": "ExpectedTotalPrice (legacy sin quote): total que el front mostró.\nCon quote_id se ignora. Sin quote_id sigue siendo obligatorio.",
@@ -6488,6 +6535,10 @@ const docTemplate = `{
                         "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO"
                     }
                 },
+                "withdrawal_min_bs": {
+                    "description": "WithdrawalMinBs es el mínimo de retiro vigente, ya convertido a Bs con\nla tasa BCV actual (equivalente dinámico a WithdrawalMinUSD).",
+                    "type": "number"
+                },
                 "zone": {
                     "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_models.Zone"
                 }
@@ -6637,6 +6688,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "amount": {
+                    "type": "number"
+                },
+                "bcv_rate": {
                     "type": "number"
                 },
                 "created_at": {
@@ -7478,11 +7532,11 @@ const docTemplate = `{
         "Encargalo_app-api_go_internal_users_domain_dto.CompleteRefundRequest": {
             "type": "object",
             "required": [
-                "amount_usd",
+                "amount_bs",
                 "proof_image"
             ],
             "properties": {
-                "amount_usd": {
+                "amount_bs": {
                     "type": "number"
                 },
                 "proof_image": {
@@ -7542,6 +7596,11 @@ const docTemplate = `{
                     "type": "string",
                     "example": "customer"
                 },
+                "scheduled_deletion_at": {
+                    "description": "ScheduledDeletionAt viene presente solo si el usuario solicitó eliminar\nsu cuenta: es la fecha en la que, de no volver a iniciar sesión antes,\nel worker de finalización la marcará deleted_at.",
+                    "type": "string",
+                    "example": "2026-09-06T00:00:00Z"
+                },
                 "shop": {
                     "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.ShopInfo"
                 },
@@ -7582,7 +7641,7 @@ const docTemplate = `{
                 "refund_request_id": {
                     "type": "string"
                 },
-                "refundable_pm_usd": {
+                "refundable_pm_bs": {
                     "type": "number"
                 }
             }
@@ -7610,7 +7669,7 @@ const docTemplate = `{
                 "accepted_at": {
                     "type": "string"
                 },
-                "amount_usd": {
+                "amount_bs": {
                     "type": "number"
                 },
                 "completed_at": {

@@ -72,17 +72,17 @@ func (_m *FinanceApp) ListTransactions(ctx context.Context, riderID uuid.UUID, p
 	return r0, r1
 }
 
-// RecordRideEarning provides a mock function with given fields: ctx, riderID, orderID, deliveryFee, totalPrice, method
-func (_m *FinanceApp) RecordRideEarning(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee float64, totalPrice float64, method string) error {
-	ret := _m.Called(ctx, riderID, orderID, deliveryFee, totalPrice, method)
+// RecordRideEarning provides a mock function with given fields: ctx, riderID, orderID, deliveryFee, totalPrice, bcvRate, method
+func (_m *FinanceApp) RecordRideEarning(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee float64, totalPrice float64, bcvRate float64, method string) error {
+	ret := _m.Called(ctx, riderID, orderID, deliveryFee, totalPrice, bcvRate, method)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RecordRideEarning")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64, string) error); ok {
-		r0 = rf(ctx, riderID, orderID, deliveryFee, totalPrice, method)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64, float64, string) error); ok {
+		r0 = rf(ctx, riderID, orderID, deliveryFee, totalPrice, bcvRate, method)
 	} else {
 		r0 = ret.Error(0)
 	}

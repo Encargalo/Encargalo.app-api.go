@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	bcvPorts "Encargalo.app-api.go/internal/bcv/domain/ports"
+	"Encargalo.app-api.go/internal/pkg/money"
 	"Encargalo.app-api.go/internal/riders/domain/dtos"
 	"Encargalo.app-api.go/internal/riders/domain/models"
 	"Encargalo.app-api.go/internal/riders/domain/ports"
@@ -15,25 +17,36 @@ const entityTypeRider = "rider"
 
 type financeApp struct {
 	repo ports.FinanceRepo
+	bcv  bcvPorts.BcvApp
 }
 
-func NewFinanceApp(repo ports.FinanceRepo) ports.FinanceApp {
-	return &financeApp{repo}
+func NewFinanceApp(repo ports.FinanceRepo, bcv bcvPorts.BcvApp) ports.FinanceApp {
+	return &financeApp{repo, bcv}
 }
 
-// RecordRideEarning credits the rider's balance with 80% of the delivery fee.
-func (f *financeApp) RecordRideEarning(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee, _ float64, method string) error {
-	delta := deliveryFee * models.RiderShare
+// RecordRideEarning credits the rider's balance with 80% of the delivery fee
+// (USD, calculado por orders), convertido a Bs con bcvRate — la tasa que el
+// caller resolvió para este movimiento (ver orders/app.CompleteDelivery, que
+// usa la tasa BCV vigente al completar la entrega, no la del quote original
+// que ya expiró para entonces). Falla en vez de acreditar Bs=0 si no hay tasa.
+func (f *financeApp) RecordRideEarning(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee, _ float64, bcvRate float64, method string) error {
+	if bcvRate <= 0 {
+		return errcustom.ErrBcvRateUnavailable
+	}
+	deltaBs := money.RoundBs(deliveryFee * models.RiderShare * bcvRate)
+	rate := bcvRate
 
 	tx := models.Transaction{
 		ID:            uuid.New(),
 		OrderID:       &orderID,
 		MovementType:  string(models.MovementTypeRideBank),
 		PaymentMethod: &method,
+		Currency:      models.CurrencyVES,
+		BcvRate:       &rate,
 		CreatedAt:     time.Now(),
 	}
 
-	_, err := f.repo.RecordMovement(ctx, riderID, entityTypeRider, delta, 0, tx)
+	_, err := f.repo.RecordMovement(ctx, riderID, entityTypeRider, deltaBs, 0, tx)
 	return err
 }
 
@@ -48,11 +61,24 @@ func (f *financeApp) GetBalance(ctx context.Context, riderID uuid.UUID) (dtos.Ba
 		return dtos.BalanceResponse{}, err
 	}
 
+	minBs := f.withdrawalMinBs(ctx)
 	return dtos.BalanceResponse{
-		Balance:      balance,
-		Zone:         getZone(balance),
-		Transactions: toTransactionDTOs(txs),
+		Balance:         balance,
+		Zone:            getZone(balance, minBs),
+		WithdrawalMinBs: minBs,
+		Transactions:    toTransactionDTOs(txs),
 	}, nil
+}
+
+// withdrawalMinBs convierte el piso de negocio (WithdrawalMinUSD) a Bs con la
+// tasa BCV vigente. Si la tasa no está disponible devuelve 0 (informativo;
+// RequestWithdrawal sí falla explícitamente en ese caso, ver abajo).
+func (f *financeApp) withdrawalMinBs(ctx context.Context) float64 {
+	rate, err := f.bcv.GetRate(ctx)
+	if err != nil || rate == nil || rate.Rate <= 0 {
+		return 0
+	}
+	return money.RoundBs(models.WithdrawalMinUSD * rate.Rate)
 }
 
 func (f *financeApp) RequestWithdrawal(ctx context.Context, riderID uuid.UUID) (dtos.WithdrawalResponse, error) {
@@ -64,6 +90,11 @@ func (f *financeApp) RequestWithdrawal(ctx context.Context, riderID uuid.UUID) (
 		return dtos.WithdrawalResponse{}, errcustom.ErrWithdrawalCooldown
 	}
 
+	minBs := f.withdrawalMinBs(ctx)
+	if minBs <= 0 {
+		return dtos.WithdrawalResponse{}, errcustom.ErrBcvRateUnavailable
+	}
+
 	balance, err := f.repo.GetBalance(ctx, riderID, entityTypeRider)
 	if err != nil {
 		return dtos.WithdrawalResponse{}, err
@@ -72,10 +103,11 @@ func (f *financeApp) RequestWithdrawal(ctx context.Context, riderID uuid.UUID) (
 	tx := models.Transaction{
 		ID:           uuid.New(),
 		MovementType: string(models.MovementTypeWithdraw),
+		Currency:     models.CurrencyVES,
 		CreatedAt:    time.Now(),
 	}
 
-	if _, err = f.repo.RecordMovement(ctx, riderID, entityTypeRider, -balance, models.WithdrawalMinBalance, tx); err != nil {
+	if _, err = f.repo.RecordMovement(ctx, riderID, entityTypeRider, -balance, minBs, tx); err != nil {
 		return dtos.WithdrawalResponse{}, err
 	}
 
@@ -99,8 +131,8 @@ func (f *financeApp) ListTransactions(ctx context.Context, riderID uuid.UUID, pa
 	}, nil
 }
 
-func getZone(balance float64) models.Zone {
-	if balance >= models.WithdrawalMinBalance {
+func getZone(balance, withdrawalMinBs float64) models.Zone {
+	if withdrawalMinBs > 0 && balance >= withdrawalMinBs {
 		return models.ZoneWithdrawalAvailable
 	}
 	return models.ZoneNormal
@@ -117,6 +149,7 @@ func toTransactionDTOs(txs []models.Transaction) []dtos.TransactionDTO {
 		dto := dtos.TransactionDTO{
 			ID:            t.ID.String(),
 			Amount:        t.Amount,
+			BcvRate:       t.BcvRate,
 			MovementType:  t.MovementType,
 			PaymentMethod: t.PaymentMethod,
 			DistanceKm:    t.DistanceKm,
