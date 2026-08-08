@@ -69,12 +69,13 @@ Routes are registered in [api/router/router.go](api/router/router.go) by delegat
 
 ## Auth & Middleware
 
-- Auth uses a cookie named `encargalo-session` containing a JWT.
-- `AuthMiddleware.Auth` validates the token and loads the session into context.
+- Session validation happens at the edge, in a reverse proxy (Traefik) sitting in front of this service — see the `railway-traefik` repo. Traefik's `ForwardAuth` calls `GET /internal/verify-session` on every request; if the session cookie (`encargalo-session`, still set by sign-in) is valid, Traefik injects the result as a `X-Encargalo-Session` header (JSON of `models.ActiveSession`) on the request it forwards here.
+- `AuthMiddleware.Auth` does **not** decode JWT or query the DB — it only reads `X-Encargalo-Session`, unmarshals it, and loads the session into context. It's wrapped in `sharedmw.GatewaySecretAuth.Validate`, which rejects any request missing the shared secret header (`X-Internal-Gateway-Secret`) — defense in depth on top of Railway private networking, since this service has no public domain of its own.
 - Retrieve the session in handlers with: `ctx.Value(models.SessionKey).(models.ActiveSession)` — use the typed key, not the raw string.
-- Role-based access uses `Auth.Require(models.RoleXxx)` as a middleware chained after `Auth`.
+- Role-based access uses `Auth.Require(models.RoleXxx)` as a middleware chained after `Auth` — unchanged by the above, it only reads `session.Roles` from context.
 - Roles are defined in [internal/auth/domain/models/role.go](internal/auth/domain/models/role.go): `Customer`, `CustomerMinuscula`, `OrderManager`, `Owner`.
-- `GET /internal/verify-session` is an internal endpoint prepared for the reverse proxy's future ForwardAuth (Traefik): it validates the session cookie and returns the `ActiveSession` as JSON in the `X-Encargalo-Session` header. It must stay GET — ForwardAuth always calls the auth server with GET regardless of the original request's method (unless `preserveRequestMethod` is set, which we don't use). It's protected by a shared secret (`X-Internal-Gateway-Secret`, validated by `sharedmw.GatewaySecretAuth`), never by `AuthMiddleware.Auth`/`Require` (that would be circular). `Auth` still decodes the JWT cookie directly today — this endpoint is additive until the Traefik cutover lands. See the "dev local sin Traefik" flow in [README.md](README.md).
+- `GET /internal/verify-session` is the internal endpoint Traefik's `ForwardAuth` calls (must stay `GET` — ForwardAuth always calls with GET regardless of the original request's method, unless `preserveRequestMethod` is set, which we don't use). It does the actual JWT decode + DB lookup that `Auth` used to do, and is the only handler still touching the cookie directly. Protected only by the shared secret, never by `Auth`/`Require` (that would be circular).
+- Local dev without Traefik: see the "Sesión en desarrollo local (sin Traefik)" flow in [README.md](README.md) — you must call `/internal/verify-session` yourself and pass its result as a header on subsequent requests; the cookie alone no longer authenticates anything but that one call.
 
 ## Handler Patterns
 

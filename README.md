@@ -88,9 +88,9 @@ Antes de lanzar, VS Code regenera automáticamente los docs de Swagger. El servi
 
 ## Sesión en desarrollo local (sin Traefik)
 
-> **Estado actual:** `AuthMiddleware.Auth` todavía decodifica el JWT de la cookie directo (como siempre) — nada de lo de abajo es necesario hoy para desarrollar local. Esto documenta el flujo que pasa a ser obligatorio cuando se complete el corte a Traefik (`Auth` dejará de leer la cookie y solo confiará en `X-Encargalo-Session`); el endpoint `/internal/verify-session` ya está disponible desde ahora para ir probando ese flujo en paralelo.
+> **Estado actual:** `AuthMiddleware.Auth` ya **no** decodifica el JWT de la cookie — solo confía en el header `X-Encargalo-Session` que en producción inyecta Traefik. En local, donde **no corre Traefik**, hay que simular ese paso a mano con el flujo de abajo; sin él, cualquier ruta protegida responde `401` aunque la cookie de sesión sea válida.
 
-Cuando el corte esté activo, el reverse proxy (Traefik) validará la sesión por cada request vía su middleware `ForwardAuth` y le pasará al backend el resultado en el header `X-Encargalo-Session`. En local **no corre Traefik**, así que hay que simular ese paso a mano:
+En producción, el reverse proxy (Traefik) valida la sesión por cada request vía su middleware `ForwardAuth` y le pasa al backend el resultado en el header `X-Encargalo-Session` (ver repo `railway-traefik`). En local:
 
 ```bash
 # 1. Login normal (igual que siempre) — obtiene la cookie encargalo-session
