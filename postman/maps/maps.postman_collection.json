@@ -1,0 +1,70 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-0080-4000-8000-000000000000",
+    "name": "Encargalo - Maps",
+    "description": "Proxy backend para Google Geocoding/Places, para que la app móvil no le pegue directo a Google con la API key en el bundle. Requiere sesión de Customer (`Auth` + `Require(Customer)`) y respeta un rate limit de 30 req/min por IP. En desarrollo local sin Traefik, ver la sección \"Sesión en desarrollo local (sin Traefik)\" del README para obtener los headers `X-Encargalo-Session` y `X-Internal-Gateway-Secret`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Reverse Geocode",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/maps/geocode/reverse?lat=4.60971&lng=-74.08175",
+          "host": ["{{base_url}}"],
+          "path": ["maps", "geocode", "reverse"],
+          "query": [
+            { "key": "lat", "value": "4.60971" },
+            { "key": "lng", "value": "-74.08175" }
+          ]
+        },
+        "description": "Resuelve una dirección legible a partir de una coordenada (Google Geocoding API). Cacheado por el servidor por coordenadas redondeadas a ~5 decimales, TTL 15 min."
+      }
+    },
+    {
+      "name": "Autocomplete Places",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/maps/places/autocomplete?query=Calle 100&lat=4.60971&lng=-74.08175&session_token=8f14e45f-ceea-467e-9575-83a6ea5f1d3d",
+          "host": ["{{base_url}}"],
+          "path": ["maps", "places", "autocomplete"],
+          "query": [
+            { "key": "query", "value": "Calle 100" },
+            { "key": "lat", "value": "4.60971", "description": "Opcional, sesga resultados cercanos" },
+            { "key": "lng", "value": "-74.08175", "description": "Opcional, sesga resultados cercanos" },
+            { "key": "session_token", "value": "8f14e45f-ceea-467e-9575-83a6ea5f1d3d", "description": "UUID generado por el cliente, el mismo que se reusa en Place Details" }
+          ]
+        },
+        "description": "Retorna sugerencias de lugares para un texto de búsqueda (Google Places Autocomplete API). No se cachea."
+      }
+    },
+    {
+      "name": "Place Details",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/maps/places/details?place_id=ChIJd8BlQ2BZwokRAFUEcm_qrcA&session_token=8f14e45f-ceea-467e-9575-83a6ea5f1d3d",
+          "host": ["{{base_url}}"],
+          "path": ["maps", "places", "details"],
+          "query": [
+            { "key": "place_id", "value": "ChIJd8BlQ2BZwokRAFUEcm_qrcA" },
+            { "key": "session_token", "value": "8f14e45f-ceea-467e-9575-83a6ea5f1d3d", "description": "Debe ser el mismo session_token usado en Autocomplete Places" }
+          ]
+        },
+        "description": "Resuelve dirección y coordenadas de un place_id devuelto por Autocomplete Places (Google Places Details API). Cacheado por el servidor por place_id, TTL 24h."
+      }
+    }
+  ]
+}

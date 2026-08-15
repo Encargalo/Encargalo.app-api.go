@@ -28,6 +28,31 @@ definitions:
       rate:
         type: number
     type: object
+  Encargalo_app-api_go_internal_maps_domain_models.PlaceDetails:
+    properties:
+      address:
+        type: string
+      lat:
+        type: number
+      lng:
+        type: number
+    type: object
+  Encargalo_app-api_go_internal_maps_domain_models.PlacePrediction:
+    properties:
+      main_text:
+        type: string
+      place_id:
+        type: string
+      secondary_text:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_maps_domain_models.ReverseGeocodeResult:
+    properties:
+      formatted_address:
+        type: string
+      short_address:
+        type: string
+    type: object
   Encargalo_app-api_go_internal_orders_domain_dtos.Address:
     properties:
       address:
@@ -2918,6 +2943,152 @@ paths:
       summary: Verificar sesión (uso interno del reverse proxy)
       tags:
       - Internal
+  /maps/geocode/reverse:
+    get:
+      description: Resuelve una dirección legible a partir de una coordenada, usando
+        la Google Geocoding API. Cacheado por el servidor por coordenadas redondeadas.
+      parameters:
+      - description: Latitud
+        in: query
+        name: lat
+        required: true
+        type: number
+      - description: Longitud
+        in: query
+        name: lng
+        required: true
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_maps_domain_models.ReverseGeocodeResult'
+        "400":
+          description: lat/lng requeridos o fuera de rango
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: Sin resultados para esa coordenada
+          schema:
+            type: string
+        "429":
+          description: Demasiadas solicitudes
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Geocoding inverso
+      tags:
+      - Maps
+  /maps/places/autocomplete:
+    get:
+      description: Retorna sugerencias de lugares para un texto de búsqueda, usando
+        la Google Places Autocomplete API. session_token debe ser el mismo UUID usado
+        luego en /maps/places/details para agrupar la sesión de facturación en Google.
+        query debe tener al menos 3 caracteres.
+      parameters:
+      - description: Texto de búsqueda (mínimo 3 caracteres)
+        in: query
+        name: query
+        required: true
+        type: string
+      - description: Latitud para sesgar resultados cercanos
+        in: query
+        name: lat
+        type: number
+      - description: Longitud para sesgar resultados cercanos
+        in: query
+        name: lng
+        type: number
+      - description: UUID de sesión de búsqueda
+        in: query
+        name: session_token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_maps_domain_models.PlacePrediction'
+            type: array
+        "400":
+          description: query muy corto, session_token requerido o coordenadas de sesgo
+            fuera de rango
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "429":
+          description: Demasiadas solicitudes
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Autocompletar lugares
+      tags:
+      - Maps
+  /maps/places/details:
+    get:
+      description: Resuelve dirección y coordenadas de un place_id devuelto por /maps/places/autocomplete,
+        usando la Google Places Details API. Cacheado por el servidor por place_id.
+      parameters:
+      - description: ID de lugar de Google
+        in: query
+        name: place_id
+        required: true
+        type: string
+      - description: UUID de sesión de búsqueda (el mismo usado en autocomplete)
+        in: query
+        name: session_token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_maps_domain_models.PlaceDetails'
+        "400":
+          description: place_id/session_token requeridos
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "429":
+          description: Demasiadas solicitudes
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Detalle de un lugar
+      tags:
+      - Maps
   /orders:
     post:
       consumes:

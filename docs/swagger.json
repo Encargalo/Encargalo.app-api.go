@@ -1865,6 +1865,222 @@
                 }
             }
         },
+        "/maps/geocode/reverse": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Resuelve una dirección legible a partir de una coordenada, usando la Google Geocoding API. Cacheado por el servidor por coordenadas redondeadas.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Maps"
+                ],
+                "summary": "Geocoding inverso",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "Latitud",
+                        "name": "lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Longitud",
+                        "name": "lng",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_maps_domain_models.ReverseGeocodeResult"
+                        }
+                    },
+                    "400": {
+                        "description": "lat/lng requeridos o fuera de rango",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Sin resultados para esa coordenada",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "429": {
+                        "description": "Demasiadas solicitudes",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/maps/places/autocomplete": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna sugerencias de lugares para un texto de búsqueda, usando la Google Places Autocomplete API. session_token debe ser el mismo UUID usado luego en /maps/places/details para agrupar la sesión de facturación en Google. query debe tener al menos 3 caracteres.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Maps"
+                ],
+                "summary": "Autocompletar lugares",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Texto de búsqueda (mínimo 3 caracteres)",
+                        "name": "query",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Latitud para sesgar resultados cercanos",
+                        "name": "lat",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Longitud para sesgar resultados cercanos",
+                        "name": "lng",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "UUID de sesión de búsqueda",
+                        "name": "session_token",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_maps_domain_models.PlacePrediction"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "query muy corto, session_token requerido o coordenadas de sesgo fuera de rango",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "429": {
+                        "description": "Demasiadas solicitudes",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/maps/places/details": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Resuelve dirección y coordenadas de un place_id devuelto por /maps/places/autocomplete, usando la Google Places Details API. Cacheado por el servidor por place_id.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Maps"
+                ],
+                "summary": "Detalle de un lugar",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID de lugar de Google",
+                        "name": "place_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "UUID de sesión de búsqueda (el mismo usado en autocomplete)",
+                        "name": "session_token",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_maps_domain_models.PlaceDetails"
+                        }
+                    },
+                    "400": {
+                        "description": "place_id/session_token requeridos",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "429": {
+                        "description": "Demasiadas solicitudes",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/orders": {
             "post": {
                 "security": [
@@ -5510,6 +5726,45 @@
                 },
                 "rate": {
                     "type": "number"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_maps_domain_models.PlaceDetails": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "lat": {
+                    "type": "number"
+                },
+                "lng": {
+                    "type": "number"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_maps_domain_models.PlacePrediction": {
+            "type": "object",
+            "properties": {
+                "main_text": {
+                    "type": "string"
+                },
+                "place_id": {
+                    "type": "string"
+                },
+                "secondary_text": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_maps_domain_models.ReverseGeocodeResult": {
+            "type": "object",
+            "properties": {
+                "formatted_address": {
+                    "type": "string"
+                },
+                "short_address": {
+                    "type": "string"
                 }
             }
         },

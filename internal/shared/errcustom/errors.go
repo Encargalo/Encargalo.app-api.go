@@ -52,6 +52,8 @@ var (
 	ErrShopOpen                 = errors.New("no se pueden editar los datos del negocio mientras el local está abierto")
 	ErrInvalidShopType          = errors.New("shop_type inválido")
 	ErrBcvRateUnavailable       = errors.New("tasa BCV no disponible; intenta de nuevo en unos minutos")
+	ErrInvalidCoordinates       = errors.New("coordenadas inválidas")
+	ErrInvalidSearchQuery       = errors.New("término de búsqueda inválido")
 )
 
 var (
