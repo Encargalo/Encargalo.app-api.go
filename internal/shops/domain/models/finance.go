@@ -16,6 +16,47 @@ const (
 	ZeroCommissionShare = 1.0
 )
 
+// ShopSaleShare devuelve el porcentaje del subtotal que recibe el negocio.
+func ShopSaleShare(isZeroCommission bool) float64 {
+	if isZeroCommission {
+		return ZeroCommissionShare
+	}
+	return ShopShare
+}
+
+// SaleSubtotal reconstruye el subtotal sobre el que se liquida al negocio.
+// Con promo de lanzamiento, promoSubsidyAmount suma de vuelta lo que el
+// cliente no pagó para que el crédito sea sobre el precio de catálogo.
+func SaleSubtotal(totalPrice, deliveryFee, promoSubsidyAmount float64, isLaunchPromo bool) float64 {
+	base := totalPrice - deliveryFee
+	if isLaunchPromo {
+		base += promoSubsidyAmount
+	}
+	return base
+}
+
+// ShopSaleBreakdown desglosa base, comisión y neto de una venta al negocio.
+type ShopSaleBreakdown struct {
+	Base       float64
+	Share      float64
+	Commission float64
+	Net        float64
+}
+
+// ComputeShopSaleBreakdown es la única fuente de verdad para liquidación WS
+// (orders/managerOrder) y RecordSaleCommission (shops/finance).
+func ComputeShopSaleBreakdown(totalPrice, deliveryFee, promoSubsidyAmount float64, isLaunchPromo, isZeroCommission bool) ShopSaleBreakdown {
+	base := SaleSubtotal(totalPrice, deliveryFee, promoSubsidyAmount, isLaunchPromo)
+	share := ShopSaleShare(isZeroCommission)
+	net := base * share
+	return ShopSaleBreakdown{
+		Base:       base,
+		Share:      share,
+		Commission: base - net,
+		Net:        net,
+	}
+}
+
 type ShopMovementType string
 
 const (

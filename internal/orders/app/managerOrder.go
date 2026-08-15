@@ -11,6 +11,7 @@ import (
 	"Encargalo.app-api.go/internal/orders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/deliveryfee"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	shopmodels "Encargalo.app-api.go/internal/shops/domain/models"
 	"github.com/google/uuid"
 )
 
@@ -21,8 +22,6 @@ type appManagerOrder struct {
 	svc                 ports.OrdersApp
 	bcv                 bcvPorts.BcvApp
 }
-
-const shopCommissionRate = 0.10
 
 func NewManagerOrderApp(svc ports.OrdersApp, bcv bcvPorts.BcvApp) ports.AppManagerOrder {
 	return &appManagerOrder{
@@ -54,7 +53,7 @@ func (s *appManagerOrder) Register(
 
 	for _, order := range orders {
 		deliveryfee.ApplyBsToOrder(ctx, s.bcv, &order)
-		data, _ := json.Marshal(buildBroadcast("order_update", order, isShop))
+		data, _ := json.Marshal(BuildOrderBroadcast("order_update", order, isShop))
 		conn.Send(data)
 	}
 
@@ -111,12 +110,12 @@ func (s *appManagerOrder) BroadcastShopStatus(shopID uuid.UUID, open bool) error
 }
 
 func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
-	shopData, err := json.Marshal(buildBroadcast("order_update", order, true))
+	shopData, err := json.Marshal(BuildOrderBroadcast("order_update", order, true))
 	if err != nil {
 		return err
 	}
 
-	customerData, err := json.Marshal(buildBroadcast("order_update", order, false))
+	customerData, err := json.Marshal(BuildOrderBroadcast("order_update", order, false))
 	if err != nil {
 		return err
 	}
@@ -137,7 +136,7 @@ func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
 }
 
 func (s *appManagerOrder) BroadcastOrderToCustomer(order models.Order) error {
-	customerData, err := json.Marshal(buildBroadcast("order_update", order, false))
+	customerData, err := json.Marshal(BuildOrderBroadcast("order_update", order, false))
 	if err != nil {
 		return err
 	}
@@ -164,30 +163,25 @@ func (s *appManagerOrder) NotifyCustomer(customerID uuid.UUID, msg []byte) error
 	return nil
 }
 
-func buildBroadcast(msgType string, order models.Order, isShop bool) models.OrderBroadcast {
+// BuildOrderBroadcast arma el payload WS de actualización de pedido. Para el
+// negocio incluye sale_amount, commission y net_amount con la misma cuenta que
+// RecordSaleCommission (shops/app/finance.go).
+func BuildOrderBroadcast(msgType string, order models.Order, isShop bool) models.OrderBroadcast {
 	b := models.OrderBroadcast{Type: msgType}
 	if isShop {
-		// Debe reflejar exactamente la misma cuenta que shopFinanceApp.
-		// RecordSaleCommission (internal/shops/app/finance.go) usa al liquidar,
-		// para que lo que ve el negocio en tiempo real coincida con lo que
-		// realmente se le acredita: durante la promo día 1 la plataforma
-		// repone el 50% subsidiado (PromoSubsidyAmount) y durante la ventana
-		// de comisión 0% (IsZeroCommission) el negocio se queda con el 100%
-		// en vez del 90% habitual.
-		base := order.TotalPrice - order.DeliveryFee
-		if order.IsLaunchPromo {
-			base += order.PromoSubsidyAmount
-		}
-		rate := shopCommissionRate
-		if order.IsZeroCommission {
-			rate = 0
-		}
-		commission := base * rate
-		net := base - commission
+		// Misma cuenta que RecordSaleCommission (shops/app/finance.go) vía
+		// shopmodels.ComputeShopSaleBreakdown.
+		breakdown := shopmodels.ComputeShopSaleBreakdown(
+			order.TotalPrice,
+			order.DeliveryFee,
+			order.PromoSubsidyAmount,
+			order.IsLaunchPromo,
+			order.IsZeroCommission,
+		)
 		b.Order = stripCodes(order, models.ClientRoleShop)
-		b.SaleAmount = &base
-		b.Commission = &commission
-		b.NetAmount = &net
+		b.SaleAmount = &breakdown.Base
+		b.Commission = &breakdown.Commission
+		b.NetAmount = &breakdown.Net
 	} else {
 		b.Order = stripCodes(order, models.ClientRoleCustomer)
 	}
