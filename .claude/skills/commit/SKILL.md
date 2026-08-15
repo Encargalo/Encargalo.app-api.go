@@ -25,7 +25,7 @@ Ejecuta en paralelo:
 | `test`, `chore`, `ci`, etc. | sin bump | ❌ No aparece |
 | `feat!` o footer `BREAKING CHANGE:` | bump **major** 1.0.0 → 2.0.0 | ✅ |
 
-> Solo `feat` y `fix` (o breaking changes) disparan una nueva release automática al mergearse a `develop`.
+> Solo `feat` y `fix` (o breaking changes) disparan una nueva release automática al mergearse a `dev`.
 
 ## 3. Formato del mensaje
 
