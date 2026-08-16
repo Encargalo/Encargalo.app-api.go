@@ -66,6 +66,8 @@ type OrderQuotesRepo interface {
 	Delete(ctx context.Context, quoteID uuid.UUID) error
 	// TryConsume marks the quote as used once. Returns false if already consumed.
 	TryConsume(ctx context.Context, quoteID uuid.UUID, ttl time.Duration) (bool, error)
+	// ReleaseConsume clears the consumed flag so checkout can retry after a failed create.
+	ReleaseConsume(ctx context.Context, quoteID uuid.UUID) error
 	IsConsumed(ctx context.Context, quoteID uuid.UUID) (bool, error)
 	// Active quote pointer per customer (at most one reusable checkout quote).
 	GetActiveID(ctx context.Context, customerID uuid.UUID) (uuid.UUID, error)

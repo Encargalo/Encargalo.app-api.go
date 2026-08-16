@@ -90,6 +90,14 @@ func (r *orderQuotesRepo) TryConsume(ctx context.Context, quoteID uuid.UUID, ttl
 	return ok, nil
 }
 
+func (r *orderQuotesRepo) ReleaseConsume(ctx context.Context, quoteID uuid.UUID) error {
+	if err := r.redis.Del(ctx, quoteUsedKey(quoteID)).Err(); err != nil {
+		slog.Error("orderQuotes ReleaseConsume failed", "quoteID", quoteID, "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+	return nil
+}
+
 func (r *orderQuotesRepo) IsConsumed(ctx context.Context, quoteID uuid.UUID) (bool, error) {
 	n, err := r.redis.Exists(ctx, quoteUsedKey(quoteID)).Result()
 	if err != nil {
