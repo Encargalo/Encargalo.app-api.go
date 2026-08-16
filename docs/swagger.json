@@ -1287,6 +1287,65 @@
                 }
             }
         },
+        "/business/products/items/{item_id}/discount": {
+            "delete": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Elimina (soft delete) el descuento activo del producto indicado del negocio autenticado.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Eliminar el descuento activo de un producto",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID del producto",
+                        "name": "item_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "item discount deleted successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "item_id inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Producto o descuento no encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/business/products/macro-categories": {
             "get": {
                 "security": [
@@ -3030,6 +3089,287 @@
                 }
             }
         },
+        "/riders/staff/finance/payables": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Lista riders con balance \u003e 0 en balance_bs y balance_usd (tasa BCV vigente).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff Finance"
+                ],
+                "summary": "Riders con saldo por pagar (staff)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_riders_handler.riderPayablesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/staff/finance/{riderId}/adjustments": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Suma o resta saldo en Bs (direction credit/debit). Requiere notes.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff Finance"
+                ],
+                "summary": "Ajuste manual de balance de rider (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID del rider",
+                        "name": "riderId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Dirección, monto en Bs y motivo",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_finance_domain_dtos.AdjustmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_finance_domain_dtos.ActionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/staff/finance/{riderId}/balance": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna balance_bs, balance_usd y los últimos 10 movimientos del rider.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff Finance"
+                ],
+                "summary": "Balance de un rider (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID del rider",
+                        "name": "riderId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.BalanceResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/staff/finance/{riderId}/payouts": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Registra un pago manual en Bs (proof_image en base64/data-URL). Debita el balance del rider.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff Finance"
+                ],
+                "summary": "Registrar pago a rider (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID del rider",
+                        "name": "riderId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Monto en Bs + comprobante",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_finance_domain_dtos.PayoutRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_finance_domain_dtos.ActionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/staff/finance/{riderId}/transactions": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Historial paginado de movimientos del rider (amount_bs y amount_usd).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff Finance"
+                ],
+                "summary": "Movimientos de un rider (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID del rider",
+                        "name": "riderId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Página (default 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Límite por página, máx 50 (default 20)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TransactionsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/riders/staff/profiles": {
             "get": {
                 "security": [
@@ -3795,6 +4135,287 @@
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shops/staff/finance/payables": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Lista negocios con balance \u003e 0 en balance_bs y balance_usd (tasa BCV vigente).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff Finance"
+                ],
+                "summary": "Negocios con saldo por pagar (staff)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_shops_handler.shopPayablesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shops/staff/finance/{shopId}/adjustments": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Suma o resta saldo: amount_bs se convierte a USD si el balance es nativo USD. Requiere notes.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff Finance"
+                ],
+                "summary": "Ajuste manual de balance de negocio (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID del negocio",
+                        "name": "shopId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Dirección, monto en Bs y motivo",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_finance_domain_dtos.AdjustmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_finance_domain_dtos.ActionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shops/staff/finance/{shopId}/balance": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna balance_bs, balance_usd y los últimos 10 movimientos del local.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff Finance"
+                ],
+                "summary": "Balance de un negocio (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID del negocio",
+                        "name": "shopId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopBalanceResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shops/staff/finance/{shopId}/payouts": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Registra un pago manual en Bs (proof_image en base64/data-URL). Convierte a USD con BCV y debita el balance del local.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff Finance"
+                ],
+                "summary": "Registrar pago a negocio (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID del negocio",
+                        "name": "shopId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Monto en Bs + comprobante",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_finance_domain_dtos.PayoutRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_finance_domain_dtos.ActionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shops/staff/finance/{shopId}/transactions": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Historial paginado de movimientos del local (amount_bs y amount_usd).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff Finance"
+                ],
+                "summary": "Movimientos de un negocio (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID del negocio",
+                        "name": "shopId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Página (default 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Límite por página, máx 50 (default 20)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "string"
                         }
@@ -5587,6 +6208,116 @@
                 }
             }
         },
+        "/users/staff": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Lista todas las cuentas no eliminadas con paginación por cursor (created_at DESC, id DESC). El cursor solo es válido con los mismos valores de q, status y limit.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Staff"
+                ],
+                "summary": "Listar clientes gestionables por staff",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Cursor opaco de la página anterior",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Tamaño de página (default 20, max 100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Búsqueda por nombre, apellido, email o teléfono (mín. 2 caracteres)",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "all",
+                        "description": "all|active|blocked",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.StaffUserListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/staff/candidates": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Busca cualquier cuenta no eliminada por teléfono exacto.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Staff"
+                ],
+                "summary": "Buscar cliente por teléfono",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Teléfono E.164",
+                        "name": "phone",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.StaffUserCandidateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/users/staff/refund-requests": {
             "get": {
                 "security": [
@@ -5683,6 +6414,188 @@
                     }
                 }
             }
+        },
+        "/users/staff/{userId}": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna el detalle de cualquier cuenta no eliminada.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Staff"
+                ],
+                "summary": "Detalle de cliente",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID del usuario",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.StaffUserDetailResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Actualización parcial de name, sur_name y email. El teléfono no es editable por staff.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Staff"
+                ],
+                "summary": "Actualizar cliente",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID del usuario",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Campos a actualizar",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.StaffUpdateUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.StaffUserDetailResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "Email duplicado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/staff/{userId}/block": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Deshabilita la cuenta (enabled=false) e invalida todas sus sesiones activas.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Staff"
+                ],
+                "summary": "Bloquear cliente",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID del usuario",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.StaffUserDetailResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/staff/{userId}/unblock": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Rehabilita la cuenta (enabled=true).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Staff"
+                ],
+                "summary": "Desbloquear cliente",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID del usuario",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.StaffUserDetailResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -5726,6 +6639,82 @@
                 },
                 "rate": {
                     "type": "number"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_finance_domain_dtos.ActionResponse": {
+            "type": "object",
+            "properties": {
+                "amount_bs": {
+                    "type": "number"
+                },
+                "amount_usd": {
+                    "type": "number"
+                },
+                "balance_bs": {
+                    "type": "number"
+                },
+                "balance_usd": {
+                    "type": "number"
+                },
+                "bcv_rate": {
+                    "type": "number"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "proof_url": {
+                    "type": "string"
+                },
+                "staff_id": {
+                    "type": "string"
+                },
+                "transaction_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_finance_domain_dtos.AdjustmentRequest": {
+            "type": "object",
+            "required": [
+                "amount_bs",
+                "direction",
+                "notes"
+            ],
+            "properties": {
+                "amount_bs": {
+                    "type": "number"
+                },
+                "direction": {
+                    "type": "string",
+                    "enum": [
+                        "credit",
+                        "debit"
+                    ]
+                },
+                "notes": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_finance_domain_dtos.PayoutRequest": {
+            "type": "object",
+            "required": [
+                "amount_bs",
+                "proof_image"
+            ],
+            "properties": {
+                "amount_bs": {
+                    "type": "number"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "proof_image": {
+                    "type": "string"
                 }
             }
         },
@@ -6245,6 +7234,32 @@
                 }
             }
         },
+        "Encargalo_app-api_go_internal_products_domain_dtos.ItemDiscountResponse": {
+            "type": "object",
+            "properties": {
+                "discount_type": {
+                    "type": "string"
+                },
+                "ends_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "item_id": {
+                    "type": "string"
+                },
+                "starts_at": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "number"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse": {
             "type": "object",
             "properties": {
@@ -6331,6 +7346,9 @@
                 "score": {
                     "type": "number",
                     "example": 4.7
+                },
+                "shop_discount": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemDiscountResponse"
                 },
                 "shop_id": {
                     "type": "string",
@@ -7002,10 +8020,19 @@
                 "movement_type": {
                     "type": "string"
                 },
+                "notes": {
+                    "type": "string"
+                },
                 "order_id": {
                     "type": "string"
                 },
                 "payment_method": {
+                    "type": "string"
+                },
+                "proof_url": {
+                    "type": "string"
+                },
+                "staff_id": {
                     "type": "string"
                 }
             }
@@ -7566,6 +8593,9 @@
                 "amount_usd": {
                     "type": "number"
                 },
+                "bcv_rate": {
+                    "type": "number"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -7575,10 +8605,19 @@
                 "movement_type": {
                     "type": "string"
                 },
+                "notes": {
+                    "type": "string"
+                },
                 "order_id": {
                     "type": "string"
                 },
                 "payment_method": {
+                    "type": "string"
+                },
+                "proof_url": {
+                    "type": "string"
+                },
+                "staff_id": {
                     "type": "string"
                 }
             }
@@ -8083,6 +9122,141 @@
                 }
             }
         },
+        "Encargalo_app-api_go_internal_users_domain_dto.StaffUpdateUserRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string",
+                    "minLength": 3
+                },
+                "sur_name": {
+                    "type": "string",
+                    "minLength": 3
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_users_domain_dto.StaffUserCandidateResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "sur_name": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_users_domain_dto.StaffUserDetailResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "scheduled_deletion_at": {
+                    "type": "string"
+                },
+                "sur_name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_users_domain_dto.StaffUserListItem": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "scheduled_deletion_at": {
+                    "type": "string"
+                },
+                "sur_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_users_domain_dto.StaffUserListResponse": {
+            "type": "object",
+            "properties": {
+                "has_more": {
+                    "type": "boolean"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.StaffUserListItem"
+                    }
+                },
+                "next_cursor": {
+                    "type": "string"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_users_domain_dto.UpdateCustomer": {
             "type": "object",
             "properties": {
@@ -8143,6 +9317,86 @@
             "properties": {
                 "message": {
                     "type": "string"
+                }
+            }
+        },
+        "internal_riders_handler.riderPayableItem": {
+            "type": "object",
+            "properties": {
+                "balance_bs": {
+                    "type": "number"
+                },
+                "balance_usd": {
+                    "type": "number"
+                },
+                "bcv_rate": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "rider_id": {
+                    "type": "string"
+                },
+                "sur_name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_riders_handler.riderPayablesResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_riders_handler.riderPayableItem"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_shops_handler.shopPayableItem": {
+            "type": "object",
+            "properties": {
+                "balance_bs": {
+                    "type": "number"
+                },
+                "balance_usd": {
+                    "type": "number"
+                },
+                "bcv_rate": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "shop_id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_shops_handler.shopPayablesResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_shops_handler.shopPayableItem"
+                    }
+                },
+                "total": {
+                    "type": "integer"
                 }
             }
         }

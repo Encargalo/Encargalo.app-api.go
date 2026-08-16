@@ -28,6 +28,57 @@ definitions:
       rate:
         type: number
     type: object
+  Encargalo_app-api_go_internal_finance_domain_dtos.ActionResponse:
+    properties:
+      amount_bs:
+        type: number
+      amount_usd:
+        type: number
+      balance_bs:
+        type: number
+      balance_usd:
+        type: number
+      bcv_rate:
+        type: number
+      created_at:
+        type: string
+      notes:
+        type: string
+      proof_url:
+        type: string
+      staff_id:
+        type: string
+      transaction_id:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_finance_domain_dtos.AdjustmentRequest:
+    properties:
+      amount_bs:
+        type: number
+      direction:
+        enum:
+        - credit
+        - debit
+        type: string
+      notes:
+        type: string
+    required:
+    - amount_bs
+    - direction
+    - notes
+    type: object
+  Encargalo_app-api_go_internal_finance_domain_dtos.PayoutRequest:
+    properties:
+      amount_bs:
+        type: number
+      notes:
+        type: string
+      proof_image:
+        type: string
+    required:
+    - amount_bs
+    - proof_image
+    type: object
   Encargalo_app-api_go_internal_maps_domain_models.PlaceDetails:
     properties:
       address:
@@ -384,6 +435,23 @@ definitions:
         example: 1
         type: integer
     type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.ItemDiscountResponse:
+    properties:
+      discount_type:
+        type: string
+      ends_at:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      item_id:
+        type: string
+      starts_at:
+        type: string
+      value:
+        type: number
+    type: object
   Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse:
     properties:
       addition_selection:
@@ -453,6 +521,8 @@ definitions:
       score:
         example: 4.7
         type: number
+      shop_discount:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemDiscountResponse'
       shop_id:
         example: d33aaf08-2c43-41c4-b2e7-882b019edb1e
         type: string
@@ -919,9 +989,15 @@ definitions:
         type: string
       movement_type:
         type: string
+      notes:
+        type: string
       order_id:
         type: string
       payment_method:
+        type: string
+      proof_url:
+        type: string
+      staff_id:
         type: string
     type: object
   Encargalo_app-api_go_internal_riders_domain_dtos.TransactionsResponse:
@@ -1295,15 +1371,23 @@ definitions:
         type: number
       amount_usd:
         type: number
+      bcv_rate:
+        type: number
       created_at:
         type: string
       id:
         type: string
       movement_type:
         type: string
+      notes:
+        type: string
       order_id:
         type: string
       payment_method:
+        type: string
+      proof_url:
+        type: string
+      staff_id:
         type: string
     type: object
   Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionsResponse:
@@ -1651,6 +1735,95 @@ definitions:
         example: true
         type: boolean
     type: object
+  Encargalo_app-api_go_internal_users_domain_dto.StaffUpdateUserRequest:
+    properties:
+      email:
+        type: string
+      name:
+        minLength: 3
+        type: string
+      sur_name:
+        minLength: 3
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_users_domain_dto.StaffUserCandidateResponse:
+    properties:
+      email:
+        type: string
+      enabled:
+        type: boolean
+      name:
+        type: string
+      phone:
+        type: string
+      roles:
+        items:
+          type: string
+        type: array
+      sur_name:
+        type: string
+      user_id:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_users_domain_dto.StaffUserDetailResponse:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      enabled:
+        type: boolean
+      id:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+      roles:
+        items:
+          type: string
+        type: array
+      scheduled_deletion_at:
+        type: string
+      sur_name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_users_domain_dto.StaffUserListItem:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      enabled:
+        type: boolean
+      id:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+      roles:
+        items:
+          type: string
+        type: array
+      scheduled_deletion_at:
+        type: string
+      sur_name:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_users_domain_dto.StaffUserListResponse:
+    properties:
+      has_more:
+        type: boolean
+      items:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.StaffUserListItem'
+        type: array
+      next_cursor:
+        type: string
+    type: object
   Encargalo_app-api_go_internal_users_domain_dto.UpdateCustomer:
     properties:
       email:
@@ -1694,6 +1867,58 @@ definitions:
     properties:
       message:
         type: string
+    type: object
+  internal_riders_handler.riderPayableItem:
+    properties:
+      balance_bs:
+        type: number
+      balance_usd:
+        type: number
+      bcv_rate:
+        type: number
+      name:
+        type: string
+      phone:
+        type: string
+      rider_id:
+        type: string
+      sur_name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  internal_riders_handler.riderPayablesResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_riders_handler.riderPayableItem'
+        type: array
+      total:
+        type: integer
+    type: object
+  internal_shops_handler.shopPayableItem:
+    properties:
+      balance_bs:
+        type: number
+      balance_usd:
+        type: number
+      bcv_rate:
+        type: number
+      name:
+        type: string
+      shop_id:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  internal_shops_handler.shopPayablesResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_shops_handler.shopPayableItem'
+        type: array
+      total:
+        type: integer
     type: object
 info:
   contact: {}
@@ -2614,6 +2839,45 @@ paths:
       security:
       - SessionCookie: []
       summary: Registrar un nuevo producto
+      tags:
+      - Business
+  /business/products/items/{item_id}/discount:
+    delete:
+      description: Elimina (soft delete) el descuento activo del producto indicado
+        del negocio autenticado.
+      parameters:
+      - description: ID del producto
+        format: uuid
+        in: path
+        name: item_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: item discount deleted successfully
+          schema:
+            type: string
+        "400":
+          description: item_id inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: Producto o descuento no encontrado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Eliminar el descuento activo de un producto
       tags:
       - Business
   /business/products/macro-categories:
@@ -3738,6 +4002,188 @@ paths:
       summary: Buscar candidato a rider por teléfono
       tags:
       - Riders Staff
+  /riders/staff/finance/{riderId}/adjustments:
+    post:
+      consumes:
+      - application/json
+      description: Suma o resta saldo en Bs (direction credit/debit). Requiere notes.
+      parameters:
+      - description: ID del rider
+        in: path
+        name: riderId
+        required: true
+        type: string
+      - description: Dirección, monto en Bs y motivo
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_finance_domain_dtos.AdjustmentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_finance_domain_dtos.ActionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "422":
+          description: Unprocessable Entity
+          schema:
+            type: string
+        "503":
+          description: Service Unavailable
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Ajuste manual de balance de rider (staff)
+      tags:
+      - Riders Staff Finance
+  /riders/staff/finance/{riderId}/balance:
+    get:
+      description: Retorna balance_bs, balance_usd y los últimos 10 movimientos del
+        rider.
+      parameters:
+      - description: ID del rider
+        in: path
+        name: riderId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.BalanceResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Balance de un rider (staff)
+      tags:
+      - Riders Staff Finance
+  /riders/staff/finance/{riderId}/payouts:
+    post:
+      consumes:
+      - application/json
+      description: Registra un pago manual en Bs (proof_image en base64/data-URL).
+        Debita el balance del rider.
+      parameters:
+      - description: ID del rider
+        in: path
+        name: riderId
+        required: true
+        type: string
+      - description: Monto en Bs + comprobante
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_finance_domain_dtos.PayoutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_finance_domain_dtos.ActionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "422":
+          description: Unprocessable Entity
+          schema:
+            type: string
+        "503":
+          description: Service Unavailable
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Registrar pago a rider (staff)
+      tags:
+      - Riders Staff Finance
+  /riders/staff/finance/{riderId}/transactions:
+    get:
+      description: Historial paginado de movimientos del rider (amount_bs y amount_usd).
+      parameters:
+      - description: ID del rider
+        in: path
+        name: riderId
+        required: true
+        type: string
+      - description: Página (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Límite por página, máx 50 (default 20)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TransactionsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Movimientos de un rider (staff)
+      tags:
+      - Riders Staff Finance
+  /riders/staff/finance/payables:
+    get:
+      description: Lista riders con balance > 0 en balance_bs y balance_usd (tasa
+        BCV vigente).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_riders_handler.riderPayablesResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Riders con saldo por pagar (staff)
+      tags:
+      - Riders Staff Finance
   /riders/staff/profiles:
     get:
       description: Lista perfiles por status (default draft). Incluye completion para
@@ -4926,6 +5372,189 @@ paths:
       summary: Buscar candidato a owner por teléfono
       tags:
       - Shops Staff
+  /shops/staff/finance/{shopId}/adjustments:
+    post:
+      consumes:
+      - application/json
+      description: 'Suma o resta saldo: amount_bs se convierte a USD si el balance
+        es nativo USD. Requiere notes.'
+      parameters:
+      - description: ID del negocio
+        in: path
+        name: shopId
+        required: true
+        type: string
+      - description: Dirección, monto en Bs y motivo
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_finance_domain_dtos.AdjustmentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_finance_domain_dtos.ActionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "422":
+          description: Unprocessable Entity
+          schema:
+            type: string
+        "503":
+          description: Service Unavailable
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Ajuste manual de balance de negocio (staff)
+      tags:
+      - Shops Staff Finance
+  /shops/staff/finance/{shopId}/balance:
+    get:
+      description: Retorna balance_bs, balance_usd y los últimos 10 movimientos del
+        local.
+      parameters:
+      - description: ID del negocio
+        in: path
+        name: shopId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopBalanceResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Balance de un negocio (staff)
+      tags:
+      - Shops Staff Finance
+  /shops/staff/finance/{shopId}/payouts:
+    post:
+      consumes:
+      - application/json
+      description: Registra un pago manual en Bs (proof_image en base64/data-URL).
+        Convierte a USD con BCV y debita el balance del local.
+      parameters:
+      - description: ID del negocio
+        in: path
+        name: shopId
+        required: true
+        type: string
+      - description: Monto en Bs + comprobante
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_finance_domain_dtos.PayoutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_finance_domain_dtos.ActionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "422":
+          description: Unprocessable Entity
+          schema:
+            type: string
+        "503":
+          description: Service Unavailable
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Registrar pago a negocio (staff)
+      tags:
+      - Shops Staff Finance
+  /shops/staff/finance/{shopId}/transactions:
+    get:
+      description: Historial paginado de movimientos del local (amount_bs y amount_usd).
+      parameters:
+      - description: ID del negocio
+        in: path
+        name: shopId
+        required: true
+        type: string
+      - description: Página (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Límite por página, máx 50 (default 20)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Movimientos de un negocio (staff)
+      tags:
+      - Shops Staff Finance
+  /shops/staff/finance/payables:
+    get:
+      description: Lista negocios con balance > 0 en balance_bs y balance_usd (tasa
+        BCV vigente).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_shops_handler.shopPayablesResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Negocios con saldo por pagar (staff)
+      tags:
+      - Shops Staff Finance
   /turbo/entry:
     get:
       description: 'Dadas las coordenadas del cliente, asigna el nodo Turbo abierto
@@ -5410,6 +6039,195 @@ paths:
       summary: Crear o actualizar Pago Móvil
       tags:
       - Users Finance
+  /users/staff:
+    get:
+      description: Lista todas las cuentas no eliminadas con paginación por cursor
+        (created_at DESC, id DESC). El cursor solo es válido con los mismos valores
+        de q, status y limit.
+      parameters:
+      - description: Cursor opaco de la página anterior
+        in: query
+        name: cursor
+        type: string
+      - description: Tamaño de página (default 20, max 100)
+        in: query
+        name: limit
+        type: integer
+      - description: Búsqueda por nombre, apellido, email o teléfono (mín. 2 caracteres)
+        in: query
+        name: q
+        type: string
+      - default: all
+        description: all|active|blocked
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.StaffUserListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Listar clientes gestionables por staff
+      tags:
+      - Users Staff
+  /users/staff/{userId}:
+    get:
+      description: Retorna el detalle de cualquier cuenta no eliminada.
+      parameters:
+      - description: ID del usuario
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.StaffUserDetailResponse'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Detalle de cliente
+      tags:
+      - Users Staff
+    patch:
+      consumes:
+      - application/json
+      description: Actualización parcial de name, sur_name y email. El teléfono no
+        es editable por staff.
+      parameters:
+      - description: ID del usuario
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Campos a actualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.StaffUpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.StaffUserDetailResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "409":
+          description: Email duplicado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Actualizar cliente
+      tags:
+      - Users Staff
+  /users/staff/{userId}/block:
+    post:
+      description: Deshabilita la cuenta (enabled=false) e invalida todas sus sesiones
+        activas.
+      parameters:
+      - description: ID del usuario
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.StaffUserDetailResponse'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Bloquear cliente
+      tags:
+      - Users Staff
+  /users/staff/{userId}/unblock:
+    post:
+      description: Rehabilita la cuenta (enabled=true).
+      parameters:
+      - description: ID del usuario
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.StaffUserDetailResponse'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Desbloquear cliente
+      tags:
+      - Users Staff
+  /users/staff/candidates:
+    get:
+      description: Busca cualquier cuenta no eliminada por teléfono exacto.
+      parameters:
+      - description: Teléfono E.164
+        in: query
+        name: phone
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.StaffUserCandidateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Buscar cliente por teléfono
+      tags:
+      - Users Staff
   /users/staff/refund-requests:
     get:
       responses:

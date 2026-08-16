@@ -16,6 +16,7 @@ type AuthApp interface {
 	SearchSessions(ctx context.Context, session_id uuid.UUID) (*models.ActiveSession, error)
 	DeleteSession(ctx context.Context, session_id uuid.UUID) error
 	DeleteAllSessionsForUser(ctx context.Context, userID uuid.UUID) error
+	EnsureAccountEnabled(ctx context.Context, userID uuid.UUID) error
 }
 
 type AuthRepo interface {

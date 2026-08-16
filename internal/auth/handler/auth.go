@@ -299,6 +299,10 @@ func (a *auth) VerifySession(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusUnauthorized, "sesión expirada")
 	}
 
+	if err := a.svc.EnsureAccountEnabled(req.Context(), session.UserID); err != nil {
+		return errcustom.ToHTTPError(err)
+	}
+
 	raw, err := json.Marshal(session)
 	if err != nil {
 		return errcustom.ToHTTPError(errcustom.ErrUnexpectedError)

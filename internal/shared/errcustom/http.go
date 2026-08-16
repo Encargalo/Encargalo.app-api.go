@@ -60,6 +60,10 @@ var statusMap = map[error]int{
 	ErrInvalidShopType:          http.StatusBadRequest,
 	ErrInvalidCoordinates:       http.StatusBadRequest,
 	ErrInvalidSearchQuery:       http.StatusBadRequest,
+	ErrAccountDisabled:          http.StatusForbidden,
+	ErrEmailAlreadyExist:        http.StatusConflict,
+	ErrInvalidCursor:            http.StatusBadRequest,
+	ErrInvalidFilter:            http.StatusBadRequest,
 }
 
 func ToHTTPError(err error) error {

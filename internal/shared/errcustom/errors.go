@@ -57,6 +57,10 @@ var (
 	ErrBcvRateUnavailable       = errors.New("tasa BCV no disponible; intenta de nuevo en unos minutos")
 	ErrInvalidCoordinates       = errors.New("coordenadas inválidas")
 	ErrInvalidSearchQuery       = errors.New("término de búsqueda inválido")
+	ErrAccountDisabled          = errors.New("cuenta deshabilitada")
+	ErrEmailAlreadyExist        = errors.New("el email ya existe")
+	ErrInvalidCursor            = errors.New("cursor inválido")
+	ErrInvalidFilter            = errors.New("filtro inválido")
 )
 
 var (

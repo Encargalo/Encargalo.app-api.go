@@ -29,3 +29,6 @@ go.work
 .scannerwork
 
 .mcp.json
+
+# Caché local de go test/build cuando TMPDIR apunta al proyecto
+.tmp/

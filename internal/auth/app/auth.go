@@ -53,6 +53,10 @@ func (a *appAuth) SignInCustomer(ctx context.Context, phone, password string) (u
 		return uuid.Nil, errcustom.ErrIncorrectAccessData
 	}
 
+	if err := a.ensureAccountEnabled(ctx, custo.ID); err != nil {
+		return uuid.Nil, err
+	}
+
 	a.cancelPendingDeletion(ctx, custo.ID)
 
 	ip, userAgent := requestinfo.FromContext(ctx)
@@ -91,6 +95,10 @@ func (a *appAuth) SignInEmployee(ctx context.Context, phone, password string) (u
 		return uuid.Nil, errcustom.ErrIncorrectAccessData
 	}
 
+	if err := a.ensureAccountEnabled(ctx, empl.ID); err != nil {
+		return uuid.Nil, err
+	}
+
 	a.cancelPendingDeletion(ctx, empl.ID)
 
 	ip, userAgent := requestinfo.FromContext(ctx)
@@ -116,6 +124,10 @@ func (a *appAuth) SignInRider(ctx context.Context, phone, password string) (uuid
 
 	if !a.bycript.CheckPasswordHash([]byte(rider.Password), password) {
 		return uuid.Nil, errcustom.ErrIncorrectAccessData
+	}
+
+	if err := a.ensureAccountEnabled(ctx, rider.ID); err != nil {
+		return uuid.Nil, err
 	}
 
 	if a.riderProfiles != nil {
@@ -155,6 +167,10 @@ func (a *appAuth) SignInStaff(ctx context.Context, phone, password string) (uuid
 		return uuid.Nil, errcustom.ErrIncorrectAccessData
 	}
 
+	if err := a.ensureAccountEnabled(ctx, staff.ID); err != nil {
+		return uuid.Nil, err
+	}
+
 	a.cancelPendingDeletion(ctx, staff.ID)
 
 	ip, userAgent := requestinfo.FromContext(ctx)
@@ -190,6 +206,10 @@ func (a *appAuth) SignInGoogle(ctx context.Context, idToken string) (uuid.UUID, 
 		if err != nil {
 			return uuid.Nil, err
 		}
+	}
+
+	if err := a.ensureAccountEnabled(ctx, custo.ID); err != nil {
+		return uuid.Nil, err
 	}
 
 	a.cancelPendingDeletion(ctx, custo.ID)
@@ -231,4 +251,22 @@ func (a *appAuth) DeleteSession(ctx context.Context, session_id uuid.UUID) error
 
 func (a *appAuth) DeleteAllSessionsForUser(ctx context.Context, userID uuid.UUID) error {
 	return a.repo.DeleteAllSessionsForUser(ctx, userID)
+}
+
+func (a *appAuth) EnsureAccountEnabled(ctx context.Context, userID uuid.UUID) error {
+	return a.ensureAccountEnabled(ctx, userID)
+}
+
+func (a *appAuth) ensureAccountEnabled(ctx context.Context, userID uuid.UUID) error {
+	acc, err := a.svc.SearchCustomerBy(ctx, dto.SearchCustomerBy{ID: userID})
+	if err != nil {
+		if errors.Is(err, errcustom.ErrNotFound) {
+			return errcustom.ErrIncorrectAccessData
+		}
+		return errcustom.ErrUnexpectedError
+	}
+	if !acc.Enabled {
+		return errcustom.ErrAccountDisabled
+	}
+	return nil
 }
