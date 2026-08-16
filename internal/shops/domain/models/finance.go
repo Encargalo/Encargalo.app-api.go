@@ -69,6 +69,13 @@ const (
 	MovementTypeAdjustmentDebit    ShopMovementType = "adjustment_debit"
 )
 
+// SaleMovementTypes son los movimientos que cuentan como ingreso por ventas en estadísticas.
+var SaleMovementTypes = []string{
+	string(MovementTypeSaleDeliveryBank),
+	string(MovementTypeSaleDeliveryCash),
+	string(MovementTypeLaunchPromoSubsidy),
+}
+
 type ShopBalance struct {
 	bun.BaseModel `bun:"table:finance.balances"`
 

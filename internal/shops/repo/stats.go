@@ -48,6 +48,7 @@ func (r *shopStatsRepo) GetPeriodMetrics(ctx context.Context, shopID uuid.UUID, 
 		TableExpr("finance.transactions").
 		ColumnExpr("COALESCE(SUM(amount), 0)").
 		Where("entity_id = ? AND entity_type = ?", shopID, shopModels.EntityTypeShop).
+		Where("movement_type IN (?)", bun.In(shopModels.SaleMovementTypes)).
 		Where("created_at >= ? AND created_at < ?", from, to).
 		Scan(ctx, &earned)
 	if err != nil {
