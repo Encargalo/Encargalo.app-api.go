@@ -290,7 +290,7 @@
             "balance"
           ]
         },
-        "description": "Retorna el balance actual del rider, su zona de control (risk/normal/withdrawal_available) y los últimos 10 movimientos."
+        "description": "Retorna el balance actual del rider en su moneda nativa (Bs) junto al equivalente en USD (`balance_usd`, tasa BCV vigente en `bcv_rate`), su zona de control (normal/withdrawal_available), el mínimo de retiro (`withdrawal_min_bs`) y los últimos 10 movimientos (cada uno con `amount_bs` y `amount_usd`)."
       },
       "response": []
     },

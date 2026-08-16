@@ -1430,7 +1430,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna el balance actual del local (90% acumulado de ventas completadas) y los últimos 10 movimientos.",
+                "description": "Retorna el balance actual del local en su moneda nativa (USD) junto al equivalente en Bs según la tasa BCV vigente, y los últimos 10 movimientos (cada uno con amount_bs y amount_usd).",
                 "produces": [
                     "application/json"
                 ],
@@ -1812,7 +1812,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna el historial paginado de movimientos de balance del local (ventas completadas).",
+                "description": "Retorna el historial paginado de movimientos de balance del local (cada movimiento incluye amount_bs y amount_usd).",
                 "produces": [
                     "application/json"
                 ],
@@ -2971,7 +2971,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna el balance actual del rider en bolívares (Bs), su zona de control, el mínimo de retiro vigente (withdrawal_min_bs, dinámico según tasa BCV) y los últimos 10 movimientos.",
+                "description": "Retorna el balance actual del rider en su moneda nativa (Bs) junto al equivalente en USD según la tasa BCV vigente, su zona de control, el mínimo de retiro vigente (withdrawal_min_bs, dinámico según tasa BCV) y los últimos 10 movimientos (cada uno con amount_bs y amount_usd).",
                 "produces": [
                     "application/json"
                 ],
@@ -3332,7 +3332,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna el historial paginado de movimientos de balance del rider.",
+                "description": "Retorna el historial paginado de movimientos de balance del rider (cada movimiento incluye amount_bs y amount_usd).",
                 "produces": [
                     "application/json"
                 ],
@@ -5284,7 +5284,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna el balance en bolívares (Bs) del cliente y los últimos 10 movimientos. Créditos elegibles incluyen can_request_refund (ventana/monto/saldo; no exige Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold / processing / payout) y créditos balance_refund_restore incluyen refund_request_id para abrir el detalle.",
+                "description": "Retorna el balance del cliente en su moneda nativa (Bs) junto al equivalente en USD según la tasa BCV vigente, y los últimos 10 movimientos (cada uno con amount_bs y amount_usd). Créditos elegibles incluyen can_request_refund (ventana/monto/saldo; no exige Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold / processing / payout) y créditos balance_refund_restore incluyen refund_request_id para abrir el detalle.",
                 "produces": [
                     "application/json"
                 ],
@@ -6828,6 +6828,18 @@ const docTemplate = `{
                 "balance": {
                     "type": "number"
                 },
+                "balance_bs": {
+                    "type": "number"
+                },
+                "balance_usd": {
+                    "type": "number"
+                },
+                "bcv_rate": {
+                    "type": "number"
+                },
+                "currency": {
+                    "type": "string"
+                },
                 "transactions": {
                     "type": "array",
                     "items": {
@@ -6989,10 +7001,19 @@ const docTemplate = `{
                 "amount": {
                     "type": "number"
                 },
+                "amount_bs": {
+                    "type": "number"
+                },
+                "amount_usd": {
+                    "type": "number"
+                },
                 "bcv_rate": {
                     "type": "number"
                 },
                 "created_at": {
+                    "type": "string"
+                },
+                "currency": {
                     "type": "string"
                 },
                 "distance_km": {
@@ -7471,6 +7492,18 @@ const docTemplate = `{
                 "balance": {
                     "type": "number"
                 },
+                "balance_bs": {
+                    "type": "number"
+                },
+                "balance_usd": {
+                    "type": "number"
+                },
+                "bcv_rate": {
+                    "type": "number"
+                },
+                "currency": {
+                    "type": "string"
+                },
                 "transactions": {
                     "type": "array",
                     "items": {
@@ -7559,7 +7592,16 @@ const docTemplate = `{
                 "amount": {
                     "type": "number"
                 },
+                "amount_bs": {
+                    "type": "number"
+                },
+                "amount_usd": {
+                    "type": "number"
+                },
                 "created_at": {
+                    "type": "string"
+                },
+                "currency": {
                     "type": "string"
                 },
                 "id": {
@@ -7860,6 +7902,18 @@ const docTemplate = `{
                 "balance": {
                     "type": "number"
                 },
+                "balance_bs": {
+                    "type": "number"
+                },
+                "balance_usd": {
+                    "type": "number"
+                },
+                "bcv_rate": {
+                    "type": "number"
+                },
+                "currency": {
+                    "type": "string"
+                },
                 "transactions": {
                     "type": "array",
                     "items": {
@@ -7919,10 +7973,19 @@ const docTemplate = `{
                 "amount": {
                     "type": "number"
                 },
+                "amount_bs": {
+                    "type": "number"
+                },
+                "amount_usd": {
+                    "type": "number"
+                },
                 "can_request_refund": {
                     "type": "boolean"
                 },
                 "created_at": {
+                    "type": "string"
+                },
+                "currency": {
                     "type": "string"
                 },
                 "id": {

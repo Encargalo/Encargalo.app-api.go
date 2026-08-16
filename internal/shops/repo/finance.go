@@ -22,7 +22,7 @@ func NewShopFinanceRepo(db *bun.DB) ports.ShopFinanceRepo {
 	return &shopFinanceRepo{db}
 }
 
-func (r *shopFinanceRepo) GetBalance(ctx context.Context, entityID uuid.UUID, entityType string) (float64, error) {
+func (r *shopFinanceRepo) GetBalance(ctx context.Context, entityID uuid.UUID, entityType string) (models.ShopBalance, error) {
 	var b models.ShopBalance
 	err := r.db.NewSelect().
 		Model(&b).
@@ -30,12 +30,15 @@ func (r *shopFinanceRepo) GetBalance(ctx context.Context, entityID uuid.UUID, en
 		Scan(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return 0, nil
+			return models.ShopBalance{Currency: models.CurrencyUSD}, nil
 		}
 		slog.Error("shop GetBalance: failed", "entityID", entityID, "error", err)
-		return 0, errcustom.ErrUnexpectedError
+		return models.ShopBalance{}, errcustom.ErrUnexpectedError
 	}
-	return b.Amount, nil
+	if b.Currency == "" {
+		b.Currency = models.CurrencyUSD
+	}
+	return b, nil
 }
 
 func (r *shopFinanceRepo) RecordMovement(ctx context.Context, entityID uuid.UUID, entityType string, delta float64, minBalance float64, movement models.ShopTransaction) (float64, error) {
@@ -64,6 +67,7 @@ func (r *shopFinanceRepo) RecordMovement(ctx context.Context, entityID uuid.UUID
 				EntityID:   entityID,
 				EntityType: entityType,
 				Amount:     newAmount,
+				Currency:   models.CurrencyUSD,
 			}).
 			On("CONFLICT (entity_id, entity_type) DO UPDATE").
 			Set("amount = EXCLUDED.amount, updated_at = now()").
@@ -76,6 +80,9 @@ func (r *shopFinanceRepo) RecordMovement(ctx context.Context, entityID uuid.UUID
 		movement.EntityID = entityID
 		movement.EntityType = entityType
 		movement.Amount = delta
+		if movement.Currency == "" {
+			movement.Currency = models.CurrencyUSD
+		}
 		if movement.CreatedAt.IsZero() {
 			movement.CreatedAt = time.Now()
 		}

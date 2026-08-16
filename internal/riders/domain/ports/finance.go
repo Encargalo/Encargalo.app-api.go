@@ -10,7 +10,7 @@ import (
 )
 
 type FinanceRepo interface {
-	GetBalance(ctx context.Context, entityID uuid.UUID, entityType string) (float64, error)
+	GetBalance(ctx context.Context, entityID uuid.UUID, entityType string) (models.Balance, error)
 	RecordMovement(ctx context.Context, entityID uuid.UUID, entityType string, delta float64, minBalance float64, tx models.Transaction) (float64, error)
 	ListTransactions(ctx context.Context, entityID uuid.UUID, entityType string, page, limit int) ([]models.Transaction, int, error)
 	GetLastWithdrawal(ctx context.Context, entityID uuid.UUID, entityType string) (*time.Time, error)

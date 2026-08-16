@@ -2,12 +2,19 @@ package dto
 
 type CustomerBalanceResponse struct {
 	Balance      float64                   `json:"balance"`
+	Currency     string                    `json:"currency"`
+	BalanceBs    float64                   `json:"balance_bs"`
+	BalanceUSD   float64                   `json:"balance_usd"`
+	BcvRate      float64                   `json:"bcv_rate,omitempty"`
 	Transactions []CustomerTransactionItem `json:"transactions"`
 }
 
 type CustomerTransactionItem struct {
 	ID                  string   `json:"id"`
 	Amount              float64  `json:"amount"`
+	Currency            string   `json:"currency"`
+	AmountBs            float64  `json:"amount_bs"`
+	AmountUSD           float64  `json:"amount_usd"`
 	MovementType        string   `json:"movement_type"`
 	OrderID             *string  `json:"order_id,omitempty"`
 	CreatedAt           string   `json:"created_at"`

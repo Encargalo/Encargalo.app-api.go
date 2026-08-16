@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"time"
 
+	bcvPorts "Encargalo.app-api.go/internal/bcv/domain/ports"
+	"Encargalo.app-api.go/internal/pkg/money"
 	"Encargalo.app-api.go/internal/shops/domain/dtos"
 	"Encargalo.app-api.go/internal/shops/domain/models"
 	"Encargalo.app-api.go/internal/shops/domain/ports"
@@ -13,10 +15,11 @@ import (
 
 type shopFinanceApp struct {
 	repo ports.ShopFinanceRepo
+	bcv  bcvPorts.BcvApp
 }
 
-func NewShopFinanceApp(repo ports.ShopFinanceRepo) ports.ShopFinanceApp {
-	return &shopFinanceApp{repo}
+func NewShopFinanceApp(repo ports.ShopFinanceRepo, bcv bcvPorts.BcvApp) ports.ShopFinanceApp {
+	return &shopFinanceApp{repo, bcv}
 }
 
 // RecordSaleCommission liquida la venta al negocio. Durante los primeros 8
@@ -58,19 +61,28 @@ func (f *shopFinanceApp) RecordSaleCommission(ctx context.Context, shopID uuid.U
 }
 
 func (f *shopFinanceApp) GetBalance(ctx context.Context, shopID uuid.UUID) (dtos.ShopBalanceResponse, error) {
-	balance, err := f.repo.GetBalance(ctx, shopID, models.EntityTypeShop)
+	balanceRec, err := f.repo.GetBalance(ctx, shopID, models.EntityTypeShop)
 	if err != nil {
 		return dtos.ShopBalanceResponse{}, err
 	}
+	balance := balanceRec.Amount
+	currency := balanceRec.Currency
 
 	txs, _, err := f.repo.ListTransactions(ctx, shopID, models.EntityTypeShop, 1, 10)
 	if err != nil {
 		return dtos.ShopBalanceResponse{}, err
 	}
 
+	spotRate := f.spotBcvRate(ctx)
+	balanceBs, balanceUSD := money.BalanceDual(balance, currency, spotRate)
+
 	return dtos.ShopBalanceResponse{
 		Balance:      balance,
-		Transactions: toShopTransactionDTOs(txs),
+		Currency:     currency,
+		BalanceBs:    balanceBs,
+		BalanceUSD:   balanceUSD,
+		BcvRate:      spotRate,
+		Transactions: toShopTransactionDTOs(txs, spotRate),
 	}, nil
 }
 
@@ -85,19 +97,38 @@ func (f *shopFinanceApp) ListTransactions(ctx context.Context, shopID uuid.UUID,
 	}
 
 	return dtos.ShopTransactionsResponse{
-		Transactions: toShopTransactionDTOs(txs),
+		Transactions: toShopTransactionDTOs(txs, f.spotBcvRate(ctx)),
 		Total:        total,
 		Page:         page,
 		Limit:        limit,
 	}, nil
 }
 
-func toShopTransactionDTOs(txs []models.ShopTransaction) []dtos.ShopTransactionDTO {
+func (f *shopFinanceApp) spotBcvRate(ctx context.Context) float64 {
+	if f.bcv == nil {
+		return 0
+	}
+	rate, err := f.bcv.GetRate(ctx)
+	if err != nil || rate == nil || rate.Rate <= 0 {
+		if err != nil {
+			slog.Warn("shop balance dual currency: bcv rate unavailable", "error", err)
+		}
+		return 0
+	}
+	return rate.Rate
+}
+
+func toShopTransactionDTOs(txs []models.ShopTransaction, spotRate float64) []dtos.ShopTransactionDTO {
 	result := make([]dtos.ShopTransactionDTO, 0, len(txs))
 	for _, t := range txs {
+		txCurrency := money.NormalizeCurrency(t.Currency, models.CurrencyUSD)
+		amountBs, amountUSD := money.TransactionDual(t.Amount, txCurrency, nil, spotRate)
 		dto := dtos.ShopTransactionDTO{
 			ID:            t.ID.String(),
 			Amount:        t.Amount,
+			Currency:      txCurrency,
+			AmountBs:      amountBs,
+			AmountUSD:     amountUSD,
 			MovementType:  t.MovementType,
 			PaymentMethod: t.PaymentMethod,
 			CreatedAt:     t.CreatedAt.Format(time.RFC3339),

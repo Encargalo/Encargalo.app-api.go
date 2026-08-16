@@ -19,22 +19,22 @@ type FinanceRepo struct {
 }
 
 // GetBalance provides a mock function with given fields: ctx, entityID, entityType
-func (_m *FinanceRepo) GetBalance(ctx context.Context, entityID uuid.UUID, entityType string) (float64, error) {
+func (_m *FinanceRepo) GetBalance(ctx context.Context, entityID uuid.UUID, entityType string) (models.Balance, error) {
 	ret := _m.Called(ctx, entityID, entityType)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetBalance")
 	}
 
-	var r0 float64
+	var r0 models.Balance
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) (float64, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) (models.Balance, error)); ok {
 		return rf(ctx, entityID, entityType)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) float64); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) models.Balance); ok {
 		r0 = rf(ctx, entityID, entityType)
 	} else {
-		r0 = ret.Get(0).(float64)
+		r0 = ret.Get(0).(models.Balance)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, string) error); ok {

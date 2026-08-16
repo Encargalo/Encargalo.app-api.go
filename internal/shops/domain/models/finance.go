@@ -10,6 +10,7 @@ import (
 const (
 	EntityTypeShop            = "shop"
 	EntityTypePlatformSubsidy = "platform_subsidy"
+	CurrencyUSD               = "USD"
 	ShopShare                 = 0.90
 	// ZeroCommissionShare es el share que recibe el negocio durante sus
 	// primeros 8 días de vida (comisión 0% en vez del 10% habitual).
@@ -71,6 +72,7 @@ type ShopBalance struct {
 	EntityID   uuid.UUID `bun:"entity_id,pk,type:uuid"`
 	EntityType string    `bun:"entity_type,pk"`
 	Amount     float64   `bun:"amount"`
+	Currency   string    `bun:"currency"`
 	UpdatedAt  time.Time `bun:"updated_at"`
 }
 
@@ -82,6 +84,7 @@ type ShopTransaction struct {
 	EntityType    string     `bun:"entity_type"`
 	OrderID       *uuid.UUID `bun:"order_id,nullzero"`
 	Amount        float64    `bun:"amount"`
+	Currency      string     `bun:"currency"`
 	MovementType  string     `bun:"movement_type"`
 	PaymentMethod *string    `bun:"payment_method"`
 	CreatedAt     time.Time  `bun:"created_at,nullzero"`
