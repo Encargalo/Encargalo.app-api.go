@@ -40,6 +40,7 @@ type ProductsApp interface {
 	RegisterItemDiscount(ctx context.Context, discount dtos.RegisterItemDiscount) error
 	UpdateItemDiscount(ctx context.Context, discount dtos.UpdateItemDiscount, discountID, shopID uuid.UUID) error
 	DeleteItemDiscount(ctx context.Context, discountID, shopID uuid.UUID) error
+	DeleteItemDiscountByItemID(ctx context.Context, itemID, shopID uuid.UUID) error
 	SearchCategorySummariesByShopID(ctx context.Context, shopID uuid.UUID, filter string) (dtos.CategorySummariesResponse, error)
 	SearchCategoriesByShopID(ctx context.Context, shopID uuid.UUID) (dtos.CategoriesResponse, error)
 }
@@ -70,6 +71,7 @@ type ProductsRepo interface {
 	SearchMicroCategories(ctx context.Context, shopType string) (models.MicroCategories, error)
 	RegisterItemDiscount(ctx context.Context, discount *models.ItemDiscount) error
 	SearchItemDiscountByID(ctx context.Context, discountID uuid.UUID) (*models.ItemDiscount, error)
+	SearchActiveItemDiscountByItemID(ctx context.Context, itemID uuid.UUID) (*models.ItemDiscount, error)
 	UpdateItemDiscount(ctx context.Context, discount *models.UpdateItemDiscount, shopID, itemID uuid.UUID) error
 	DeleteItemDiscount(ctx context.Context, discount *models.ItemDiscount) error
 	SearchCategoriesByIDs(ctx context.Context, shopID uuid.UUID, categoryIDs []uuid.UUID) (models.Categories, error)

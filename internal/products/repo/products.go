@@ -1052,6 +1052,25 @@ func (p *productsRepo) SearchItemDiscountByID(ctx context.Context, discountID uu
 	return &discount, nil
 }
 
+func (p *productsRepo) SearchActiveItemDiscountByItemID(ctx context.Context, itemID uuid.UUID) (*models.ItemDiscount, error) {
+	var discount models.ItemDiscount
+
+	if err := p.db.NewSelect().
+		Model(&discount).
+		Where("item_id = ?", itemID).
+		Where("is_active = ?", true).
+		Where("deleted_at IS NULL").
+		Scan(ctx); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errcustom.ErrNotFound
+		}
+		slog.Error("error al obtener el descuento activo del producto", "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	return &discount, nil
+}
+
 func (p *productsRepo) UpdateItemDiscount(ctx context.Context, discount *models.UpdateItemDiscount, shopID, itemID uuid.UUID) error {
 	_, err := p.db.NewUpdate().Model(discount).WherePK().Exec(ctx)
 	if err != nil {

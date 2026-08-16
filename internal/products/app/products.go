@@ -832,6 +832,32 @@ func (p *productsApp) DeleteItemDiscount(ctx context.Context, discountID, shopID
 	return p.repo.DeleteItemDiscount(ctx, discountModel)
 }
 
+func (p *productsApp) DeleteItemDiscountByItemID(ctx context.Context, itemID, shopID uuid.UUID) error {
+	itemModel, err := p.repo.SearchItemByID(ctx, itemID)
+	if err != nil {
+		return err
+	}
+
+	if itemModel == nil {
+		return errcustom.ErrNotFound
+	}
+
+	if itemModel.ShopID != shopID {
+		return errcustom.ErrUnautorized
+	}
+
+	discountModel, err := p.repo.SearchActiveItemDiscountByItemID(ctx, itemID)
+	if err != nil {
+		return err
+	}
+
+	if discountModel == nil {
+		return errcustom.ErrNotFound
+	}
+
+	return p.repo.DeleteItemDiscount(ctx, discountModel)
+}
+
 func (p *productsApp) SearchCategoriesByShopID(ctx context.Context, shopID uuid.UUID) (dtos.CategoriesResponse, error) {
 	categories, err := p.repo.SearchCategoriesByShopID(ctx, shopID)
 	if err != nil {
