@@ -2,13 +2,11 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
-	"time"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
-	"Encargalo.app-api.go/internal/auth/domain/ports"
-	"Encargalo.app-api.go/internal/shared/jwt"
-	"github.com/google/uuid"
+	sharedmw "Encargalo.app-api.go/internal/shared/middleware"
 	"github.com/labstack/echo/v4"
 )
 
@@ -18,54 +16,37 @@ type AuthMiddleware interface {
 }
 
 type auth struct {
-	jwt jwt.Sessions
-	svc ports.AuthApp
+	gatewaySecret sharedmw.GatewaySecretAuth
 }
 
-func NewAuthMidlleware(jwt jwt.Sessions, svc ports.AuthApp) AuthMiddleware {
-	return &auth{jwt: jwt, svc: svc}
+func NewAuthMidlleware(gatewaySecret sharedmw.GatewaySecretAuth) AuthMiddleware {
+	return &auth{gatewaySecret: gatewaySecret}
 }
 
+// Auth confía en la sesión que ya validó el reverse proxy (Traefik) vía su
+// ForwardAuth contra /internal/verify-session — no decodifica JWT ni
+// consulta la DB, solo lee el header X-Encargalo-Session. gatewaySecret.Validate
+// rechaza cualquier request que no traiga el secreto compartido, como
+// defensa en profundidad además del aislamiento de red privada.
 func (a *auth) Auth(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
+	return a.gatewaySecret.Validate(func(c echo.Context) error {
 		req := c.Request()
-		ctx := req.Context()
 
-		var tokenString string
-
-		if cookie, err := c.Cookie("encargalo-session"); err == nil {
-			tokenString = cookie.Value
-		}
-
-		claims, err := a.jwt.ValidateToken(tokenString)
-		if err != nil {
-			return echo.NewHTTPError(http.StatusUnauthorized, "token inválido")
-		}
-
-		rawID, ok := claims["session_id"].(string)
-		if !ok {
-			return echo.NewHTTPError(http.StatusUnauthorized, "session_id inválido")
-		}
-
-		sessionID, err := uuid.Parse(rawID)
-		if err != nil {
-			return echo.NewHTTPError(http.StatusUnauthorized, "session_id inválido")
-		}
-
-		session, err := a.svc.SearchSessions(ctx, sessionID)
-		if err != nil {
+		raw := req.Header.Get(sharedmw.SessionHeader)
+		if raw == "" {
 			return echo.NewHTTPError(http.StatusUnauthorized, "sesión no encontrada")
 		}
 
-		if time.Now().After(session.ExpiresAt) {
-			return echo.NewHTTPError(http.StatusUnauthorized, "sesión expirada")
+		var session models.ActiveSession
+		if err := json.Unmarshal([]byte(raw), &session); err != nil {
+			return echo.NewHTTPError(http.StatusUnauthorized, "sesión inválida")
 		}
 
-		ctx = context.WithValue(ctx, models.SessionKey, *session)
+		ctx := context.WithValue(req.Context(), models.SessionKey, session)
 		c.SetRequest(req.WithContext(ctx))
 
 		return next(c)
-	}
+	})
 }
 
 func (a *auth) Require(allowed ...models.Role) echo.MiddlewareFunc {

@@ -43,8 +43,8 @@ func NewShopStatsHandler(svc shopsPorts.ShopStatsApp) ShopStatsHandler {
 // @Router       /business/shops/stats/summary [get]
 func (h *shopStatsHandler) GetSummary(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok || session.ShopID == nil {
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
+	if session.ShopID == nil {
 		return errcustom.ErrUnautorized
 	}
 
@@ -75,8 +75,8 @@ func (h *shopStatsHandler) GetSummary(c echo.Context) error {
 // @Router       /business/shops/stats/top-products [get]
 func (h *shopStatsHandler) GetTopProducts(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok || session.ShopID == nil {
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
+	if session.ShopID == nil {
 		return errcustom.ErrUnautorized
 	}
 
@@ -112,8 +112,8 @@ func (h *shopStatsHandler) GetTopProducts(c echo.Context) error {
 // @Router       /business/shops/stats/sales-over-time [get]
 func (h *shopStatsHandler) GetSalesOverTime(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok || session.ShopID == nil {
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
+	if session.ShopID == nil {
 		return errcustom.ErrUnautorized
 	}
 
@@ -151,8 +151,8 @@ func (h *shopStatsHandler) GetSalesOverTime(c echo.Context) error {
 // @Router       /business/shops/stats/customers [get]
 func (h *shopStatsHandler) GetCustomerStats(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok || session.ShopID == nil {
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
+	if session.ShopID == nil {
 		return errcustom.ErrUnautorized
 	}
 
@@ -182,8 +182,8 @@ func (h *shopStatsHandler) GetCustomerStats(c echo.Context) error {
 // @Router       /business/shops/stats/transactions/export [get]
 func (h *shopStatsHandler) ExportTransactions(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok || session.ShopID == nil {
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
+	if session.ShopID == nil {
 		return errcustom.ErrUnautorized
 	}
 

@@ -21,8 +21,8 @@ type PaymentReviewBroadcast struct {
 	DifferenceBs       *float64            `json:"difference_bs,omitempty"`
 	Status             PaymentReviewStatus `json:"status"`
 	RejectionReason    *string             `json:"rejection_reason,omitempty"`
-	CreditedUSD        *float64            `json:"credited_usd,omitempty"`
-	BalanceAmountUSD   float64             `json:"balance_amount_usd,omitempty"`
+	CreditedBs         *float64            `json:"credited_bs,omitempty"`
+	BalanceAmountBs    float64             `json:"balance_amount_bs,omitempty"`
 	PagoMovilAmountUSD float64             `json:"pago_movil_amount_usd,omitempty"`
 	TotalUSD           float64             `json:"total_usd"`
 	OrderStatus        string              `json:"order_status"`

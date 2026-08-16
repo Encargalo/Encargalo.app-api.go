@@ -11,6 +11,7 @@ import (
 var statusMap = map[error]int{
 	ErrNotFound:                 http.StatusNotFound,
 	ErrUnexpectedError:          http.StatusInternalServerError,
+	ErrBcvRateUnavailable:       http.StatusServiceUnavailable,
 	ErrIncorrectAccessData:      http.StatusUnprocessableEntity,
 	ErrPhoneAlreadyExist:        http.StatusConflict,
 	ErrUnautorized:              http.StatusUnauthorized,
@@ -54,6 +55,8 @@ var statusMap = map[error]int{
 	ErrShopNotActive:            http.StatusUnprocessableEntity,
 	ErrShopOpen:                 http.StatusConflict,
 	ErrInvalidShopType:          http.StatusBadRequest,
+	ErrInvalidCoordinates:       http.StatusBadRequest,
+	ErrInvalidSearchQuery:       http.StatusBadRequest,
 }
 
 func ToHTTPError(err error) error {

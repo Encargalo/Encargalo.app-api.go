@@ -28,6 +28,31 @@ definitions:
       rate:
         type: number
     type: object
+  Encargalo_app-api_go_internal_maps_domain_models.PlaceDetails:
+    properties:
+      address:
+        type: string
+      lat:
+        type: number
+      lng:
+        type: number
+    type: object
+  Encargalo_app-api_go_internal_maps_domain_models.PlacePrediction:
+    properties:
+      main_text:
+        type: string
+      place_id:
+        type: string
+      secondary_text:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_maps_domain_models.ReverseGeocodeResult:
+    properties:
+      formatted_address:
+        type: string
+      short_address:
+        type: string
+    type: object
   Encargalo_app-api_go_internal_orders_domain_dtos.Address:
     properties:
       address:
@@ -81,11 +106,13 @@ definitions:
     properties:
       address:
         $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.Address'
-      balance_amount_usd:
+      balance_amount_bs:
         description: |-
-          BalanceAmountUSD es opcional. 0 = no usar balance. Si > 0 debe ser >= 1
-          y <= min(balance, total). Si cubre el total no se requiere comprobante.
-        example: 4
+          BalanceAmountBs es opcional, en bolívares (balance del customer es Bs).
+          0 = no usar balance. Si > 0 se valida (con la tasa BCV del quote) que
+          equivalga a >= $1 y <= min(balance disponible, total de la orden). Si
+          cubre el total no se requiere comprobante.
+        example: 148.5
         type: number
       expected_total_price:
         description: |-
@@ -772,6 +799,11 @@ definitions:
         items:
           $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO'
         type: array
+      withdrawal_min_bs:
+        description: |-
+          WithdrawalMinBs es el mínimo de retiro vigente, ya convertido a Bs con
+          la tasa BCV actual (equivalente dinámico a WithdrawalMinUSD).
+        type: number
       zone:
         $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_models.Zone'
     type: object
@@ -870,6 +902,8 @@ definitions:
   Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO:
     properties:
       amount:
+        type: number
+      bcv_rate:
         type: number
       created_at:
         type: string
@@ -1433,12 +1467,12 @@ definitions:
     type: object
   Encargalo_app-api_go_internal_users_domain_dto.CompleteRefundRequest:
     properties:
-      amount_usd:
+      amount_bs:
         type: number
       proof_image:
         type: string
     required:
-    - amount_usd
+    - amount_bs
     - proof_image
     type: object
   Encargalo_app-api_go_internal_users_domain_dto.CreateRefundRequest:
@@ -1477,6 +1511,13 @@ definitions:
       role:
         example: customer
         type: string
+      scheduled_deletion_at:
+        description: |-
+          ScheduledDeletionAt viene presente solo si el usuario solicitó eliminar
+          su cuenta: es la fecha en la que, de no volver a iniciar sesión antes,
+          el worker de finalización la marcará deleted_at.
+        example: "2026-09-06T00:00:00Z"
+        type: string
       shop:
         $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.ShopInfo'
       shop_id:
@@ -1504,7 +1545,7 @@ definitions:
         type: string
       refund_request_id:
         type: string
-      refundable_pm_usd:
+      refundable_pm_bs:
         type: number
     type: object
   Encargalo_app-api_go_internal_users_domain_dto.PagoMovilResponse:
@@ -1522,7 +1563,7 @@ definitions:
     properties:
       accepted_at:
         type: string
-      amount_usd:
+      amount_bs:
         type: number
       completed_at:
         type: string
@@ -2879,15 +2920,185 @@ paths:
       summary: Historial de movimientos del local
       tags:
       - Shops Finance
+  /internal/verify-session:
+    get:
+      description: |-
+        Endpoint interno llamado por el ForwardAuth de Traefik en cada
+        request. Debe ser GET: por defecto ForwardAuth siempre llama
+        al servidor de auth con GET, sin importar el método original
+        de la request entrante (a menos que se configure
+        preserveRequestMethod, que no usamos). Valida el JWT de la
+        cookie encargalo-session contra la sesión activa y, si es
+        válida, devuelve el header X-Encargalo-Session con el
+        ActiveSession serializado en JSON, que Traefik reenvía al
+        backend real. No debe llamarse desde clientes de negocio
+        (frontend/apps) — solo desde el gateway.
+      responses:
+        "200":
+          description: sesión válida, JSON en el header X-Encargalo-Session
+        "401":
+          description: sesión inválida, ausente o expirada
+          schema:
+            type: string
+      summary: Verificar sesión (uso interno del reverse proxy)
+      tags:
+      - Internal
+  /maps/geocode/reverse:
+    get:
+      description: Resuelve una dirección legible a partir de una coordenada, usando
+        la Google Geocoding API. Cacheado por el servidor por coordenadas redondeadas.
+      parameters:
+      - description: Latitud
+        in: query
+        name: lat
+        required: true
+        type: number
+      - description: Longitud
+        in: query
+        name: lng
+        required: true
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_maps_domain_models.ReverseGeocodeResult'
+        "400":
+          description: lat/lng requeridos o fuera de rango
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: Sin resultados para esa coordenada
+          schema:
+            type: string
+        "429":
+          description: Demasiadas solicitudes
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Geocoding inverso
+      tags:
+      - Maps
+  /maps/places/autocomplete:
+    get:
+      description: Retorna sugerencias de lugares para un texto de búsqueda, usando
+        la Google Places Autocomplete API. session_token debe ser el mismo UUID usado
+        luego en /maps/places/details para agrupar la sesión de facturación en Google.
+        query debe tener al menos 3 caracteres.
+      parameters:
+      - description: Texto de búsqueda (mínimo 3 caracteres)
+        in: query
+        name: query
+        required: true
+        type: string
+      - description: Latitud para sesgar resultados cercanos
+        in: query
+        name: lat
+        type: number
+      - description: Longitud para sesgar resultados cercanos
+        in: query
+        name: lng
+        type: number
+      - description: UUID de sesión de búsqueda
+        in: query
+        name: session_token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_maps_domain_models.PlacePrediction'
+            type: array
+        "400":
+          description: query muy corto, session_token requerido o coordenadas de sesgo
+            fuera de rango
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "429":
+          description: Demasiadas solicitudes
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Autocompletar lugares
+      tags:
+      - Maps
+  /maps/places/details:
+    get:
+      description: Resuelve dirección y coordenadas de un place_id devuelto por /maps/places/autocomplete,
+        usando la Google Places Details API. Cacheado por el servidor por place_id.
+      parameters:
+      - description: ID de lugar de Google
+        in: query
+        name: place_id
+        required: true
+        type: string
+      - description: UUID de sesión de búsqueda (el mismo usado en autocomplete)
+        in: query
+        name: session_token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_maps_domain_models.PlaceDetails'
+        "400":
+          description: place_id/session_token requeridos
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "429":
+          description: Demasiadas solicitudes
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Detalle de un lugar
+      tags:
+      - Maps
   /orders:
     post:
       consumes:
       - application/json
       description: 'Preferido: enviar `quote_id` de POST /orders/quote (total congelado;
         shop/items/address salen del quote). Legacy: sin quote_id, enviar carrito
-        + `expected_total_price` (409 si el precio cambió). Opcionalmente `balance_amount_usd`.
-        Si queda resto Pago Móvil, requiere `payment_proof_image` y nace en Payment
-        Review.'
+        + `expected_total_price` (409 si el precio cambió). Opcionalmente `balance_amount_bs`
+        (balance del customer, en bolívares; se convierte a USD con la tasa BCV del
+        quote). Si queda resto Pago Móvil, requiere `payment_proof_image` y nace en
+        Payment Review.'
       parameters:
       - description: Datos de la orden
         in: body
@@ -2926,6 +3137,10 @@ paths:
           description: Error interno del servidor
           schema:
             $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+        "503":
+          description: Tasa BCV no disponible para convertir balance_amount_bs
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
       security:
       - SessionCookie: []
       summary: Crear una nueva orden
@@ -2962,6 +3177,10 @@ paths:
           description: Codigo invalido
           schema:
             $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+        "401":
+          description: El pedido no esta asignado al rider autenticado
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
         "404":
           description: Pedido no encontrado
           schema:
@@ -2972,6 +3191,10 @@ paths:
             $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
         "422":
           description: Estado del pedido incorrecto
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+        "429":
+          description: Demasiados intentos
           schema:
             $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
       security:
@@ -3011,6 +3234,10 @@ paths:
           description: Codigo invalido
           schema:
             $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+        "401":
+          description: El pedido no pertenece al local autenticado
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
         "404":
           description: Pedido no encontrado
           schema:
@@ -3021,6 +3248,10 @@ paths:
             $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
         "422":
           description: Estado del pedido incorrecto
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
+        "429":
+          description: Demasiados intentos
           schema:
             $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse'
       security:
@@ -3441,8 +3672,9 @@ paths:
       - Products
   /riders/balance:
     get:
-      description: Retorna el balance actual del rider, su zona de control y los últimos
-        10 movimientos.
+      description: Retorna el balance actual del rider en bolívares (Bs), su zona
+        de control, el mínimo de retiro vigente (withdrawal_min_bs, dinámico según
+        tasa BCV) y los últimos 10 movimientos.
       produces:
       - application/json
       responses:
@@ -3703,8 +3935,9 @@ paths:
       - Riders Finance
   /riders/withdrawal:
     post:
-      description: El rider solicita retirar su balance acumulado. Requiere balance
-        >= +$15.
+      description: El rider solicita retirar su balance acumulado en Bs. Requiere
+        balance >= al equivalente dinámico de $15 según la tasa BCV vigente (ver withdrawal_min_bs
+        en GET /riders/balance).
       produces:
       - application/json
       responses:
@@ -3722,6 +3955,10 @@ paths:
             type: string
         "500":
           description: Error interno
+          schema:
+            type: string
+        "503":
+          description: Tasa BCV no disponible
           schema:
             type: string
       security:
@@ -4713,10 +4950,38 @@ paths:
       tags:
       - Shops
   /users:
+    delete:
+      description: Marca la cuenta como "pendiente de eliminación" por 30 días y cierra
+        la sesión en todos los dispositivos. Ningún dato se borra en este momento.
+        Si el usuario vuelve a iniciar sesión dentro de ese plazo, la solicitud se
+        cancela automáticamente. Si no vuelve, la cuenta se marca deleted_at de forma
+        permanente sin perder ninguna columna.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: account scheduled for deletion
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Solicitar la eliminación de la cuenta del usuario autenticado
+      tags:
+      - Users
     get:
       description: Retorna los datos del usuario autenticado sin importar su rol.
         Para usuarios con rol OrderManager u Owner, la respuesta incluye adicionalmente
-        los campos `shop_id` y `shop`.
+        los campos `shop_id` y `shop`. Si el usuario solicitó eliminar su cuenta,
+        incluye `scheduled_deletion_at` con la fecha en la que se finalizará la eliminación
+        de no volver a iniciar sesión antes.
       produces:
       - application/json
       responses:
@@ -4921,9 +5186,9 @@ paths:
       - Users Address
   /users/balance:
     get:
-      description: Retorna el balance en USD del cliente y los últimos 10 movimientos.
-        Créditos elegibles incluyen can_request_refund (ventana/monto/saldo; no exige
-        Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold
+      description: Retorna el balance en bolívares (Bs) del cliente y los últimos
+        10 movimientos. Créditos elegibles incluyen can_request_refund (ventana/monto/saldo;
+        no exige Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold
         / processing / payout) y créditos balance_refund_restore incluyen refund_request_id
         para abrir el detalle.
       produces:
@@ -5148,7 +5413,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: 'Registra el pago de una solicitud accepted: valida amount_usd,
+      description: 'Registra el pago de una solicitud accepted: valida amount_bs,
         sube proof_image (base64) a Cloudinary y marca completed.'
       parameters:
       - description: ID de la solicitud

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"net/url"
 	"strings"
 
@@ -18,11 +17,11 @@ func DistanceMeters(originLat, originLon, destLat, destLon float64) (float64, er
 	params.Set("origins", fmt.Sprintf("%f,%f", originLat, originLon))
 	params.Set("destinations", fmt.Sprintf("%f,%f", destLat, destLon))
 	params.Set("mode", "driving")
-	params.Set("key", config.Get().Google.Matrix)
+	params.Set("key", config.Get().Google.ServerKey)
 
 	fullURL := "https://maps.googleapis.com/maps/api/distancematrix/json?" + params.Encode()
 
-	resp, err := http.Get(fullURL) //nolint:noctx
+	resp, err := httpClient.Get(fullURL) //nolint:noctx
 	if err != nil {
 		return 0, fmt.Errorf("google maps request failed: %w", err)
 	}
@@ -95,11 +94,11 @@ func DistanceMatrix(originLat, originLon float64, destinations [][2]float64) ([]
 	params.Set("origins", fmt.Sprintf("%f,%f", originLat, originLon))
 	params.Set("destinations", strings.Join(destinationsRaw, "|"))
 	params.Set("mode", "driving")
-	params.Set("key", config.Get().Google.Matrix)
+	params.Set("key", config.Get().Google.ServerKey)
 
 	fullURL := "https://maps.googleapis.com/maps/api/distancematrix/json?" + params.Encode()
 
-	resp, err := http.Get(fullURL) //nolint:noctx
+	resp, err := httpClient.Get(fullURL) //nolint:noctx
 	if err != nil {
 		return nil, fmt.Errorf("error calling google api: %w", err)
 	}

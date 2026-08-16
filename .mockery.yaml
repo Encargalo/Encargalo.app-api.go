@@ -62,3 +62,7 @@ packages:
   Encargalo.app-api.go/internal/analytics/domain/ports:
     config:
       dir: "internal/mocks/analytics/domain/ports"
+
+  Encargalo.app-api.go/internal/maps/domain/ports:
+    config:
+      dir: "internal/mocks/maps/domain/ports"

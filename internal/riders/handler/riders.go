@@ -64,11 +64,7 @@ func New(svc ridersPorts.RidersApp) RiderHandler {
 func (h *riderHandler) HandleWebSocket(c echo.Context) error {
 	ctx := c.Request().Context()
 
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok {
-		slog.Error("No se encontró la sesión en el contexto")
-		return errcustom.ErrUnexpectedError
-	}
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
 
 	riderID := session.UserID
 

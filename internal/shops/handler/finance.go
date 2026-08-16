@@ -37,8 +37,8 @@ func NewShopFinanceHandler(svc shopsPorts.ShopFinanceApp) ShopFinanceHandler {
 // @Router       /business/shops/balance [get]
 func (h *shopFinanceHandler) GetBalance(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok || session.ShopID == nil {
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
+	if session.ShopID == nil {
 		return errcustom.ErrUnautorized
 	}
 
@@ -65,8 +65,8 @@ func (h *shopFinanceHandler) GetBalance(c echo.Context) error {
 // @Router       /business/shops/transactions [get]
 func (h *shopFinanceHandler) ListTransactions(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok || session.ShopID == nil {
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
+	if session.ShopID == nil {
 		return errcustom.ErrUnautorized
 	}
 

@@ -56,6 +56,10 @@ import (
 	handBcv "Encargalo.app-api.go/internal/bcv/handler"
 	repoBcv "Encargalo.app-api.go/internal/bcv/repo"
 
+	appMaps "Encargalo.app-api.go/internal/maps/app"
+	handMaps "Encargalo.app-api.go/internal/maps/handler"
+	repoMaps "Encargalo.app-api.go/internal/maps/repo"
+
 	appPayment "Encargalo.app-api.go/internal/payment_methods/app"
 	handPayment "Encargalo.app-api.go/internal/payment_methods/handler"
 	repoPayment "Encargalo.app-api.go/internal/payment_methods/repo"
@@ -74,6 +78,13 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(func() *echo.Echo {
 		e := echo.New()
 		e.HTTPErrorHandler = errcustom.HTTPErrorHandler
+		// El backend solo es alcanzable vía el reverse proxy (Traefik) por
+		// private networking — X-Forwarded-For en esa cadena (Cloudflare +
+		// Railway) solo trae IPs de infraestructura, nunca la del cliente
+		// real. X-Real-Ip sí la trae siempre, garantizado por Railway. Sin
+		// esto, c.RealIP() (usado por el rate limiter de sign-in/confirm
+		// codes y por el registro de IP en cada sesión) queda inútil.
+		e.IPExtractor = echo.ExtractIPFromRealIPHeader()
 		return e
 	})
 
@@ -100,6 +111,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(groups.NewOrdersGroup)
 	_ = Container.Provide(groups.NewPaymentMethodsGroup)
 	_ = Container.Provide(groups.NewBcvGroup)
+	_ = Container.Provide(groups.NewMapsGroup)
 	_ = Container.Provide(handPayment.NewPaymentMethodsHandler)
 	_ = Container.Provide(appPayment.NewPaymentMethodsApp)
 	_ = Container.Provide(repoPayment.NewPaymentMethodsRepo)
@@ -107,6 +119,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(requestinfo.NewRequestMiddleware)
 	_ = Container.Provide(sharedmw.NewRateLimiter)
 	_ = Container.Provide(sharedmw.NewApiKeyAuth)
+	_ = Container.Provide(sharedmw.NewGatewaySecretAuth)
 	_ = Container.Provide(authMiddle.NewAuthMidlleware)
 	_ = Container.Provide(handAuth.NewAuthHandler)
 	_ = Container.Provide(handCustomer.NewUsersHandler)
@@ -170,6 +183,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(handCustomer.NewCustomerFinanceHandler)
 	_ = Container.Provide(handCustomer.NewStaffRefundHandler)
 	_ = Container.Provide(appCustomer.NewRefundAlertWorker)
+	_ = Container.Provide(appCustomer.NewAccountDeletionWorker)
 	_ = Container.Provide(appAuth.NewAuthApp)
 	_ = Container.Provide(appShops.NewShopsApp)
 	_ = Container.Provide(appShops.NewStaffShopApp)
@@ -212,6 +226,10 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(repoBcv.NewCalendarScraper)
 	_ = Container.Provide(repoBcv.NewHolidayRepo)
 	_ = Container.Provide(handBcv.NewBcvHandler)
+
+	_ = Container.Provide(appMaps.New)
+	_ = Container.Provide(repoMaps.NewMapsRepo)
+	_ = Container.Provide(handMaps.NewMapsHandler)
 
 	_ = Container.Provide(googleauth.NewVerifier)
 	_ = Container.Provide(bycript.NewHashPassword)

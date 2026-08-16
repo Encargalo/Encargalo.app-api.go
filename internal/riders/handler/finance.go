@@ -28,7 +28,7 @@ func NewFinanceHandler(svc ridersPorts.FinanceApp) FinanceHandler {
 // GetBalance godoc
 //
 // @Summary      Balance del rider
-// @Description  Retorna el balance actual del rider, su zona de control y los últimos 10 movimientos.
+// @Description  Retorna el balance actual del rider en bolívares (Bs), su zona de control, el mínimo de retiro vigente (withdrawal_min_bs, dinámico según tasa BCV) y los últimos 10 movimientos.
 // @Tags         Riders Finance
 // @Produce      json
 // @Security     SessionCookie
@@ -38,10 +38,7 @@ func NewFinanceHandler(svc ridersPorts.FinanceApp) FinanceHandler {
 // @Router       /riders/balance [get]
 func (h *financeHandler) GetBalance(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok {
-		return errcustom.ErrUnautorized
-	}
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
 
 	resp, err := h.svc.GetBalance(ctx, session.UserID)
 	if err != nil {
@@ -54,21 +51,19 @@ func (h *financeHandler) GetBalance(c echo.Context) error {
 // RequestWithdrawal godoc
 //
 // @Summary      Solicitar retiro de balance
-// @Description  El rider solicita retirar su balance acumulado. Requiere balance >= +$15.
+// @Description  El rider solicita retirar su balance acumulado en Bs. Requiere balance >= al equivalente dinámico de $15 según la tasa BCV vigente (ver withdrawal_min_bs en GET /riders/balance).
 // @Tags         Riders Finance
 // @Produce      json
 // @Security     SessionCookie
 // @Success      200  {object}  dtos.WithdrawalResponse
 // @Failure      401  {string}  string  "No autorizado"
 // @Failure      422  {string}  string  "Balance insuficiente para retiro"
+// @Failure      503  {string}  string  "Tasa BCV no disponible"
 // @Failure      500  {string}  string  "Error interno"
 // @Router       /riders/withdrawal [post]
 func (h *financeHandler) RequestWithdrawal(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok {
-		return errcustom.ErrUnautorized
-	}
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
 
 	resp, err := h.svc.RequestWithdrawal(ctx, session.UserID)
 	if err != nil {
@@ -93,10 +88,7 @@ func (h *financeHandler) RequestWithdrawal(c echo.Context) error {
 // @Router       /riders/transactions [get]
 func (h *financeHandler) ListTransactions(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok {
-		return errcustom.ErrUnautorized
-	}
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
 
 	page, _ := strconv.Atoi(c.QueryParam("page"))
 	if page < 1 {

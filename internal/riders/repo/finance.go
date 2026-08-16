@@ -62,11 +62,14 @@ func (r *financeRepo) RecordMovement(ctx context.Context, entityID uuid.UUID, en
 
 		newAmount = b.Amount + delta
 
+		// La moneda del movimiento la decide el caller (app): este repo es
+		// genérico por entity_type y no debe asumir una moneda fija.
 		_, err = tx.NewInsert().
 			Model(&models.Balance{
 				EntityID:   entityID,
 				EntityType: entityType,
 				Amount:     newAmount,
+				Currency:   movement.Currency,
 			}).
 			On("CONFLICT (entity_id, entity_type) DO UPDATE").
 			Set("amount = EXCLUDED.amount, updated_at = now()").

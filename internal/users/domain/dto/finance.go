@@ -11,7 +11,7 @@ type CustomerTransactionItem struct {
 	MovementType        string   `json:"movement_type"`
 	OrderID             *string  `json:"order_id,omitempty"`
 	CreatedAt           string   `json:"created_at"`
-	RefundablePMUSD     *float64 `json:"refundable_pm_usd,omitempty"`
+	RefundablePMBs      *float64 `json:"refundable_pm_bs,omitempty"`
 	CanRequestRefund    bool     `json:"can_request_refund,omitempty"`
 	RefundEligibleUntil *string  `json:"refund_eligible_until,omitempty"`
 	RefundRequestID     *string  `json:"refund_request_id,omitempty"`
@@ -35,7 +35,7 @@ type CreateRefundRequest struct {
 }
 
 type CompleteRefundRequest struct {
-	AmountUSD  float64 `json:"amount_usd" validate:"required,gt=0"`
+	AmountBs   float64 `json:"amount_bs" validate:"required,gt=0"`
 	ProofImage string  `json:"proof_image" validate:"required"`
 }
 
@@ -43,7 +43,7 @@ type RefundRequestResponse struct {
 	ID              string  `json:"id"`
 	TransactionID   string  `json:"transaction_id"`
 	OrderID         *string `json:"order_id,omitempty"`
-	AmountUSD       float64 `json:"amount_usd"`
+	AmountBs        float64 `json:"amount_bs"`
 	Status          string  `json:"status"`
 	PMPhone         string  `json:"pm_phone"`
 	PMBankCode      string  `json:"pm_bank_code"`
@@ -58,13 +58,14 @@ type RefundRequestResponse struct {
 }
 
 type RefundRequestBroadcast struct {
-	Type            string  `json:"type"`
-	ID              string  `json:"id"`
-	CustomerID      string  `json:"customer_id"`
-	TransactionID   string  `json:"transaction_id"`
-	OrderID         *string `json:"order_id,omitempty"`
-	AmountUSD       float64 `json:"amount_usd"`
-	AmountBs        float64 `json:"amount_bs,omitempty"`
+	Type          string  `json:"type"`
+	ID            string  `json:"id"`
+	CustomerID    string  `json:"customer_id"`
+	TransactionID string  `json:"transaction_id"`
+	OrderID       *string `json:"order_id,omitempty"`
+	AmountBs      float64 `json:"amount_bs"`
+	// AmountUSD/BcvRate: equivalente informativo, ver RefundRequestResponse.
+	AmountUSD       float64 `json:"amount_usd,omitempty"`
 	BcvRate         float64 `json:"bcv_rate,omitempty"`
 	Status          string  `json:"status"`
 	PMPhone         string  `json:"pm_phone"`

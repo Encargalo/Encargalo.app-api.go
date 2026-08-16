@@ -12,7 +12,7 @@ body:
       "shop_id": "3fa85f64-5717-4562-b3fc-2c963f66afa7",
       "method_payment": "PagoMovil",
       "expected_total_price": 18.5,
-      "balance_amount_usd": 4.0,
+      "balance_amount_bs": 148.5,
       "payment_proof_image": "data:image/jpeg;base64,/9j/4AAQSkZJRgAB...",
       "address": {
         "address": "Av. Principal, Caracas",

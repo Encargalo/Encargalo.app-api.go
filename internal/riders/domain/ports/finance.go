@@ -17,7 +17,9 @@ type FinanceRepo interface {
 }
 
 type FinanceApp interface {
-	RecordRideEarning(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee, totalPrice float64, method string) error
+	// RecordRideEarning recibe deliveryFee en USD y bcvRate para convertir y
+	// acreditar en Bs (moneda nativa del balance de riders).
+	RecordRideEarning(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee, totalPrice, bcvRate float64, method string) error
 	GetBalance(ctx context.Context, riderID uuid.UUID) (dtos.BalanceResponse, error)
 	RequestWithdrawal(ctx context.Context, riderID uuid.UUID) (dtos.WithdrawalResponse, error)
 	ListTransactions(ctx context.Context, riderID uuid.UUID, page, limit int) (dtos.TransactionsResponse, error)

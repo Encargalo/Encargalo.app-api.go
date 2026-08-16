@@ -55,11 +55,7 @@ func (c *customersAddrssHandler) RegisterAddress(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		slog.Error("No se encontró el usuario en el contexto")
-		return errcustom.ErrUnexpectedError
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	if err := c.svc.RegisterAddress(ctx, session.UserID, address); err != nil {
 		slog.Error("Error registrando dirección:", "err", err)
@@ -84,11 +80,7 @@ func (c *customersAddrssHandler) SearchAllAdrress(e echo.Context) error {
 
 	ctx := e.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		slog.Error("No se encontró el usuario en el contexto")
-		return errcustom.ErrUnexpectedError
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	addresses, err := c.svc.SearchAllAddress(ctx, session.UserID)
 	if err != nil {
@@ -124,11 +116,7 @@ func (c *customersAddrssHandler) DeleteAddress(e echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "address_id inválido")
 	}
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		slog.Error("No se encontró el usuario en el contexto")
-		return errcustom.ErrUnexpectedError
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	if err := c.svc.DeleteAddress(ctx, session.UserID, address_id); err != nil {
 		return errcustom.ToHTTPError(err)

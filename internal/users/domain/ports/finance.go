@@ -21,7 +21,7 @@ type StreamPublisher interface {
 
 type CustomerFinanceRepo interface {
 	GetBalance(ctx context.Context, entityID uuid.UUID, entityType string) (float64, error)
-	// SumBalancePaymentDebit returns the absolute USD debited via balance_payment for an order.
+	// SumBalancePaymentDebit returns the absolute Bs debited via balance_payment for an order.
 	SumBalancePaymentDebit(ctx context.Context, customerID, orderID uuid.UUID) (float64, error)
 	RecordMovement(ctx context.Context, entityID uuid.UUID, entityType string, delta float64, minBalance float64, movement models.Transaction) (float64, error)
 	ListTransactions(ctx context.Context, entityID uuid.UUID, entityType string, page, limit int) ([]models.Transaction, int, error)
@@ -66,16 +66,23 @@ type CustomerNotifier interface {
 
 type CustomerFinanceApp interface {
 	GetBalance(ctx context.Context, customerID uuid.UUID) (dto.CustomerBalanceResponse, error)
-	GetBalanceUSD(ctx context.Context, customerID uuid.UUID) (float64, error)
-	// GetBalancePaymentDebitForOrder returns USD taken from balance for this order (0 if none).
+	GetBalanceBs(ctx context.Context, customerID uuid.UUID) (float64, error)
+	// GetBalancePaymentDebitForOrder returns Bs taken from balance for this order (0 if none).
 	GetBalancePaymentDebitForOrder(ctx context.Context, customerID, orderID uuid.UUID) (float64, error)
-	// Credit* devuelven el id del movimiento y su created_at (para WS / details.payment).
-	CreditPaymentOverage(ctx context.Context, customerID, orderID uuid.UUID, amountUSD float64) (txID uuid.UUID, createdAt time.Time, err error)
-	CreditPaymentPartial(ctx context.Context, customerID, orderID uuid.UUID, amountUSD float64) (txID uuid.UUID, createdAt time.Time, err error)
-	// CreditOrderRejected acredita amountUSD al balance; refundablePMUSD es la porción cash-refundable.
-	CreditOrderRejected(ctx context.Context, customerID, orderID uuid.UUID, amountUSD, refundablePMUSD float64) (txID uuid.UUID, createdAt time.Time, err error)
-	DebitForOrder(ctx context.Context, customerID, orderID uuid.UUID, amountUSD float64) error
-	RefundBalancePayment(ctx context.Context, customerID, orderID uuid.UUID, amountUSD float64) error
+	// Credit* reciben el monto original en USD (fuente: total/exceso de la orden,
+	// que sigue calculándose en USD) y la tasa BCV a aplicar para convertirlo y
+	// acreditarlo en Bs. El caller (orders/app) resuelve qué tasa corresponde
+	// (la congelada en el quote/payment review). Devuelven el id del movimiento
+	// y su created_at (para WS / details.payment).
+	CreditPaymentOverage(ctx context.Context, customerID, orderID uuid.UUID, amountUSD, bcvRate float64) (txID uuid.UUID, createdAt time.Time, err error)
+	CreditPaymentPartial(ctx context.Context, customerID, orderID uuid.UUID, amountUSD, bcvRate float64) (txID uuid.UUID, createdAt time.Time, err error)
+	// CreditOrderRejected acredita amountUSD (convertido a Bs con bcvRate) al balance;
+	// refundablePMUSD es la porción cash-refundable (también convertida).
+	CreditOrderRejected(ctx context.Context, customerID, orderID uuid.UUID, amountUSD, refundablePMUSD, bcvRate float64) (txID uuid.UUID, createdAt time.Time, err error)
+	// DebitForOrder/RefundBalancePayment operan directo en Bs: es lo que el
+	// customer pidió usar de su balance al crear la orden, ya en su moneda nativa.
+	DebitForOrder(ctx context.Context, customerID, orderID uuid.UUID, amountBs float64) error
+	RefundBalancePayment(ctx context.Context, customerID, orderID uuid.UUID, amountBs float64) error
 
 	GetPagoMovil(ctx context.Context, customerID uuid.UUID) (dto.PagoMovilResponse, error)
 	UpsertPagoMovil(ctx context.Context, customerID uuid.UUID, req dto.UpsertPagoMovilRequest) (dto.PagoMovilResponse, error)
@@ -87,7 +94,7 @@ type CustomerFinanceApp interface {
 	ListActiveForStaff(ctx context.Context) ([]dto.RefundRequestBroadcast, error)
 	AcceptRefund(ctx context.Context, requestID, staffID uuid.UUID) (dto.RefundRequestResponse, error)
 	RejectRefund(ctx context.Context, requestID, staffID uuid.UUID, reason string) (dto.RefundRequestResponse, error)
-	CompleteRefund(ctx context.Context, requestID uuid.UUID, proofImage string, amountUSD float64) (dto.RefundRequestResponse, error)
+	CompleteRefund(ctx context.Context, requestID uuid.UUID, proofImage string, amountBs float64) (dto.RefundRequestResponse, error)
 
 	// SetCustomerNotifier cablea el push al WS del cliente (evita ciclo DI con orders).
 	SetCustomerNotifier(n CustomerNotifier)

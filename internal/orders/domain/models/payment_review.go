@@ -33,7 +33,7 @@ type PaymentReview struct {
 	Status           PaymentReviewStatus `bun:"status,notnull" json:"status"`
 	RejectionReason  *string             `bun:"rejection_reason" json:"rejection_reason,omitempty"`
 	StaffID          *uuid.UUID          `bun:"staff_id,type:uuid" json:"staff_id,omitempty"`
-	CreditedUSD      *float64            `bun:"credited_usd" json:"credited_usd,omitempty"`
+	CreditedBs       *float64            `bun:"credited_bs" json:"credited_bs,omitempty"`
 	// ReferenceLast4: últimos 4 dígitos del comprobante capturados por staff.
 	// Solo se persiste en approve / overpay / underpaid (unicidad parcial en BD).
 	ReferenceLast4 *string    `bun:"reference_last4" json:"reference_last4,omitempty"`

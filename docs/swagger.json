@@ -1845,6 +1845,242 @@
                 }
             }
         },
+        "/internal/verify-session": {
+            "get": {
+                "description": "Endpoint interno llamado por el ForwardAuth de Traefik en cada\nrequest. Debe ser GET: por defecto ForwardAuth siempre llama\nal servidor de auth con GET, sin importar el método original\nde la request entrante (a menos que se configure\npreserveRequestMethod, que no usamos). Valida el JWT de la\ncookie encargalo-session contra la sesión activa y, si es\nválida, devuelve el header X-Encargalo-Session con el\nActiveSession serializado en JSON, que Traefik reenvía al\nbackend real. No debe llamarse desde clientes de negocio\n(frontend/apps) — solo desde el gateway.",
+                "tags": [
+                    "Internal"
+                ],
+                "summary": "Verificar sesión (uso interno del reverse proxy)",
+                "responses": {
+                    "200": {
+                        "description": "sesión válida, JSON en el header X-Encargalo-Session"
+                    },
+                    "401": {
+                        "description": "sesión inválida, ausente o expirada",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/maps/geocode/reverse": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Resuelve una dirección legible a partir de una coordenada, usando la Google Geocoding API. Cacheado por el servidor por coordenadas redondeadas.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Maps"
+                ],
+                "summary": "Geocoding inverso",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "Latitud",
+                        "name": "lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Longitud",
+                        "name": "lng",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_maps_domain_models.ReverseGeocodeResult"
+                        }
+                    },
+                    "400": {
+                        "description": "lat/lng requeridos o fuera de rango",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Sin resultados para esa coordenada",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "429": {
+                        "description": "Demasiadas solicitudes",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/maps/places/autocomplete": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna sugerencias de lugares para un texto de búsqueda, usando la Google Places Autocomplete API. session_token debe ser el mismo UUID usado luego en /maps/places/details para agrupar la sesión de facturación en Google. query debe tener al menos 3 caracteres.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Maps"
+                ],
+                "summary": "Autocompletar lugares",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Texto de búsqueda (mínimo 3 caracteres)",
+                        "name": "query",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Latitud para sesgar resultados cercanos",
+                        "name": "lat",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Longitud para sesgar resultados cercanos",
+                        "name": "lng",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "UUID de sesión de búsqueda",
+                        "name": "session_token",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_maps_domain_models.PlacePrediction"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "query muy corto, session_token requerido o coordenadas de sesgo fuera de rango",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "429": {
+                        "description": "Demasiadas solicitudes",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/maps/places/details": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Resuelve dirección y coordenadas de un place_id devuelto por /maps/places/autocomplete, usando la Google Places Details API. Cacheado por el servidor por place_id.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Maps"
+                ],
+                "summary": "Detalle de un lugar",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID de lugar de Google",
+                        "name": "place_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "UUID de sesión de búsqueda (el mismo usado en autocomplete)",
+                        "name": "session_token",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_maps_domain_models.PlaceDetails"
+                        }
+                    },
+                    "400": {
+                        "description": "place_id/session_token requeridos",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "429": {
+                        "description": "Demasiadas solicitudes",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/orders": {
             "post": {
                 "security": [
@@ -1852,7 +2088,7 @@
                         "SessionCookie": []
                     }
                 ],
-                "description": "Preferido: enviar `quote_id` de POST /orders/quote (total congelado; shop/items/address salen del quote). Legacy: sin quote_id, enviar carrito + `expected_total_price` (409 si el precio cambió). Opcionalmente `balance_amount_usd`. Si queda resto Pago Móvil, requiere `payment_proof_image` y nace en Payment Review.",
+                "description": "Preferido: enviar `quote_id` de POST /orders/quote (total congelado; shop/items/address salen del quote). Legacy: sin quote_id, enviar carrito + `expected_total_price` (409 si el precio cambió). Opcionalmente `balance_amount_bs` (balance del customer, en bolívares; se convierte a USD con la tasa BCV del quote). Si queda resto Pago Móvil, requiere `payment_proof_image` y nace en Payment Review.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1913,6 +2149,12 @@
                     },
                     "500": {
                         "description": "Error interno del servidor",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Tasa BCV no disponible para convertir balance_amount_bs",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
@@ -2181,6 +2423,12 @@
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "El pedido no esta asignado al rider autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Pedido no encontrado",
                         "schema": {
@@ -2195,6 +2443,12 @@
                     },
                     "422": {
                         "description": "Estado del pedido incorrecto",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Demasiados intentos",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
@@ -2254,6 +2508,12 @@
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "El pedido no pertenece al local autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Pedido no encontrado",
                         "schema": {
@@ -2268,6 +2528,12 @@
                     },
                     "422": {
                         "description": "Estado del pedido incorrecto",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Demasiados intentos",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
@@ -2694,7 +2960,7 @@
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna el balance actual del rider, su zona de control y los últimos 10 movimientos.",
+                "description": "Retorna el balance actual del rider en bolívares (Bs), su zona de control, el mínimo de retiro vigente (withdrawal_min_bs, dinámico según tasa BCV) y los últimos 10 movimientos.",
                 "produces": [
                     "application/json"
                 ],
@@ -3106,7 +3372,7 @@
                         "SessionCookie": []
                     }
                 ],
-                "description": "El rider solicita retirar su balance acumulado. Requiere balance \u003e= +$15.",
+                "description": "El rider solicita retirar su balance acumulado en Bs. Requiere balance \u003e= al equivalente dinámico de $15 según la tasa BCV vigente (ver withdrawal_min_bs en GET /riders/balance).",
                 "produces": [
                     "application/json"
                 ],
@@ -3135,6 +3401,12 @@
                     },
                     "500": {
                         "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "503": {
+                        "description": "Tasa BCV no disponible",
                         "schema": {
                             "type": "string"
                         }
@@ -4655,7 +4927,7 @@
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna los datos del usuario autenticado sin importar su rol. Para usuarios con rol OrderManager u Owner, la respuesta incluye adicionalmente los campos `shop_id` y `shop`.",
+                "description": "Retorna los datos del usuario autenticado sin importar su rol. Para usuarios con rol OrderManager u Owner, la respuesta incluye adicionalmente los campos `shop_id` y `shop`. Si el usuario solicitó eliminar su cuenta, incluye `scheduled_deletion_at` con la fecha en la que se finalizará la eliminación de no volver a iniciar sesión antes.",
                 "produces": [
                     "application/json"
                 ],
@@ -4795,6 +5067,41 @@
                     },
                     "409": {
                         "description": "El teléfono ya está registrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Marca la cuenta como \"pendiente de eliminación\" por 30 días y cierra la sesión en todos los dispositivos. Ningún dato se borra en este momento. Si el usuario vuelve a iniciar sesión dentro de ese plazo, la solicitud se cancela automáticamente. Si no vuelve, la cuenta se marca deleted_at de forma permanente sin perder ninguna columna.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Solicitar la eliminación de la cuenta del usuario autenticado",
+                "responses": {
+                    "200": {
+                        "description": "account scheduled for deletion",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
                         "schema": {
                             "type": "string"
                         }
@@ -4966,7 +5273,7 @@
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna el balance en USD del cliente y los últimos 10 movimientos. Créditos elegibles incluyen can_request_refund (ventana/monto/saldo; no exige Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold / processing / payout) y créditos balance_refund_restore incluyen refund_request_id para abrir el detalle.",
+                "description": "Retorna el balance en bolívares (Bs) del cliente y los últimos 10 movimientos. Créditos elegibles incluyen can_request_refund (ventana/monto/saldo; no exige Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold / processing / payout) y créditos balance_refund_restore incluyen refund_request_id para abrir el detalle.",
                 "produces": [
                     "application/json"
                 ],
@@ -5314,7 +5621,7 @@
                         "SessionCookie": []
                     }
                 ],
-                "description": "Registra el pago de una solicitud accepted: valida amount_usd, sube proof_image (base64) a Cloudinary y marca completed.",
+                "description": "Registra el pago de una solicitud accepted: valida amount_bs, sube proof_image (base64) a Cloudinary y marca completed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5422,6 +5729,45 @@
                 }
             }
         },
+        "Encargalo_app-api_go_internal_maps_domain_models.PlaceDetails": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "lat": {
+                    "type": "number"
+                },
+                "lng": {
+                    "type": "number"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_maps_domain_models.PlacePrediction": {
+            "type": "object",
+            "properties": {
+                "main_text": {
+                    "type": "string"
+                },
+                "place_id": {
+                    "type": "string"
+                },
+                "secondary_text": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_maps_domain_models.ReverseGeocodeResult": {
+            "type": "object",
+            "properties": {
+                "formatted_address": {
+                    "type": "string"
+                },
+                "short_address": {
+                    "type": "string"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_orders_domain_dtos.Address": {
             "type": "object",
             "required": [
@@ -5504,10 +5850,10 @@
                 "address": {
                     "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.Address"
                 },
-                "balance_amount_usd": {
-                    "description": "BalanceAmountUSD es opcional. 0 = no usar balance. Si \u003e 0 debe ser \u003e= 1\ny \u003c= min(balance, total). Si cubre el total no se requiere comprobante.",
+                "balance_amount_bs": {
+                    "description": "BalanceAmountBs es opcional, en bolívares (balance del customer es Bs).\n0 = no usar balance. Si \u003e 0 se valida (con la tasa BCV del quote) que\nequivalga a \u003e= $1 y \u003c= min(balance disponible, total de la orden). Si\ncubre el total no se requiere comprobante.",
                     "type": "number",
-                    "example": 4
+                    "example": 148.5
                 },
                 "expected_total_price": {
                     "description": "ExpectedTotalPrice (legacy sin quote): total que el front mostró.\nCon quote_id se ignora. Sin quote_id sigue siendo obligatorio.",
@@ -6477,6 +6823,10 @@
                         "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO"
                     }
                 },
+                "withdrawal_min_bs": {
+                    "description": "WithdrawalMinBs es el mínimo de retiro vigente, ya convertido a Bs con\nla tasa BCV actual (equivalente dinámico a WithdrawalMinUSD).",
+                    "type": "number"
+                },
                 "zone": {
                     "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_models.Zone"
                 }
@@ -6626,6 +6976,9 @@
             "type": "object",
             "properties": {
                 "amount": {
+                    "type": "number"
+                },
+                "bcv_rate": {
                     "type": "number"
                 },
                 "created_at": {
@@ -7467,11 +7820,11 @@
         "Encargalo_app-api_go_internal_users_domain_dto.CompleteRefundRequest": {
             "type": "object",
             "required": [
-                "amount_usd",
+                "amount_bs",
                 "proof_image"
             ],
             "properties": {
-                "amount_usd": {
+                "amount_bs": {
                     "type": "number"
                 },
                 "proof_image": {
@@ -7531,6 +7884,11 @@
                     "type": "string",
                     "example": "customer"
                 },
+                "scheduled_deletion_at": {
+                    "description": "ScheduledDeletionAt viene presente solo si el usuario solicitó eliminar\nsu cuenta: es la fecha en la que, de no volver a iniciar sesión antes,\nel worker de finalización la marcará deleted_at.",
+                    "type": "string",
+                    "example": "2026-09-06T00:00:00Z"
+                },
                 "shop": {
                     "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.ShopInfo"
                 },
@@ -7571,7 +7929,7 @@
                 "refund_request_id": {
                     "type": "string"
                 },
-                "refundable_pm_usd": {
+                "refundable_pm_bs": {
                     "type": "number"
                 }
             }
@@ -7599,7 +7957,7 @@
                 "accepted_at": {
                     "type": "string"
                 },
-                "amount_usd": {
+                "amount_bs": {
                     "type": "number"
                 },
                 "completed_at": {

@@ -8,7 +8,6 @@ import (
 	modelsOrder "Encargalo.app-api.go/internal/orders/domain/models"
 	portsOrder "Encargalo.app-api.go/internal/orders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/config"
-	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shared/ws"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -67,11 +66,7 @@ type staffWSMessage struct {
 func (h *staffReviews) HandleWebSocket(c echo.Context) error {
 	ctx := c.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		slog.Error("No se encontró la sesión en el contexto")
-		return errcustom.ErrUnexpectedError
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	conn, err := h.upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {

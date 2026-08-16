@@ -37,7 +37,7 @@ func NewCustomerFinanceHandler(svc ports.CustomerFinanceApp) CustomerFinanceHand
 
 // GetBalance godoc
 // @Summary      Balance del cliente
-// @Description  Retorna el balance en USD del cliente y los últimos 10 movimientos. Créditos elegibles incluyen can_request_refund (ventana/monto/saldo; no exige Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold / processing / payout) y créditos balance_refund_restore incluyen refund_request_id para abrir el detalle.
+// @Description  Retorna el balance en bolívares (Bs) del cliente y los últimos 10 movimientos. Créditos elegibles incluyen can_request_refund (ventana/monto/saldo; no exige Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold / processing / payout) y créditos balance_refund_restore incluyen refund_request_id para abrir el detalle.
 // @Tags         Users Finance
 // @Produce      json
 // @Security     SessionCookie
@@ -47,10 +47,7 @@ func NewCustomerFinanceHandler(svc ports.CustomerFinanceApp) CustomerFinanceHand
 // @Router       /users/balance [get]
 func (h *customerFinanceHandler) GetBalance(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok {
-		return errcustom.ErrUnautorized
-	}
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
 
 	resp, err := h.svc.GetBalance(ctx, session.UserID)
 	if err != nil {
@@ -72,10 +69,7 @@ func (h *customerFinanceHandler) GetBalance(c echo.Context) error {
 // @Router       /users/pago-movil [get]
 func (h *customerFinanceHandler) GetPagoMovil(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok {
-		return errcustom.ErrUnautorized
-	}
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
 	resp, err := h.svc.GetPagoMovil(ctx, session.UserID)
 	if err != nil {
 		return errcustom.ToHTTPError(err)
@@ -97,10 +91,7 @@ func (h *customerFinanceHandler) GetPagoMovil(c echo.Context) error {
 // @Router       /users/pago-movil [put]
 func (h *customerFinanceHandler) UpsertPagoMovil(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok {
-		return errcustom.ErrUnautorized
-	}
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
 	var req dto.UpsertPagoMovilRequest
 	if err := c.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "payload inválido")
@@ -127,10 +118,7 @@ func (h *customerFinanceHandler) UpsertPagoMovil(c echo.Context) error {
 // @Router       /users/balance/refund-requests [post]
 func (h *customerFinanceHandler) CreateRefundRequest(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok {
-		return errcustom.ErrUnautorized
-	}
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
 	var req dto.CreateRefundRequest
 	if err := c.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "payload inválido")
@@ -157,10 +145,7 @@ func (h *customerFinanceHandler) CreateRefundRequest(c echo.Context) error {
 // @Router       /users/balance/refund-requests [get]
 func (h *customerFinanceHandler) ListRefundRequests(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok {
-		return errcustom.ErrUnautorized
-	}
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
 	resp, err := h.svc.ListRefundRequests(ctx, session.UserID)
 	if err != nil {
 		return errcustom.ToHTTPError(err)
@@ -181,10 +166,7 @@ func (h *customerFinanceHandler) ListRefundRequests(c echo.Context) error {
 // @Router       /users/balance/refund-requests/{id} [get]
 func (h *customerFinanceHandler) GetRefundRequest(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok {
-		return errcustom.ErrUnautorized
-	}
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "id inválido")
@@ -220,7 +202,7 @@ type staffRefundWSMessage struct {
 	Type       string    `json:"type"`
 	RequestID  uuid.UUID `json:"request_id"`
 	ProofImage string    `json:"proof_image,omitempty"`
-	AmountUSD  float64   `json:"amount_usd,omitempty"`
+	AmountBs   float64   `json:"amount_bs,omitempty"`
 	Reason     string    `json:"reason,omitempty"`
 }
 
@@ -234,7 +216,7 @@ type staffRefundWSMessage struct {
 // ### Mensajes entrantes
 // - accept: `{"type":"accept","request_id":"..."}` — pending→accepted (el balance ya se debitó al crear)
 // - reject: `{"type":"reject","request_id":"...","reason":"..."}` — pending→rejected y restaura el monto al balance
-// - complete: `{"type":"complete","request_id":"...","amount_usd":52,"proof_image":"data:image/...;base64,..."}` — solo desde accepted; amount_usd debe coincidir; la imagen se sube a Cloudinary
+// - complete: `{"type":"complete","request_id":"...","amount_bs":52,"proof_image":"data:image/...;base64,..."}` — solo desde accepted; amount_bs debe coincidir; la imagen se sube a Cloudinary
 //
 // @Tags         Users Finance
 // @Security     SessionCookie
@@ -244,11 +226,7 @@ type staffRefundWSMessage struct {
 func (h *staffRefundHandler) HandleWebSocket(c echo.Context) error {
 	ctx := c.Request().Context()
 
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok {
-		slog.Error("No se encontró la sesión en el contexto")
-		return errcustom.ErrUnexpectedError
-	}
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
 
 	conn, err := h.upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
@@ -296,7 +274,7 @@ func (h *staffRefundHandler) HandleWebSocket(c echo.Context) error {
 			result, err = h.finance.RejectRefund(ctx, payload.RequestID, session.UserID, payload.Reason)
 		case "complete":
 			action = "complete"
-			result, err = h.finance.CompleteRefund(ctx, payload.RequestID, payload.ProofImage, payload.AmountUSD)
+			result, err = h.finance.CompleteRefund(ctx, payload.RequestID, payload.ProofImage, payload.AmountBs)
 		default:
 			client.Send([]byte(`{"type":"error","message":"tipo de mensaje desconocido"}`))
 			continue
@@ -324,7 +302,7 @@ func (h *staffRefundHandler) HandleWebSocket(c echo.Context) error {
 // CompleteRefund godoc
 //
 // @Summary      Completar devolución (staff)
-// @Description  Registra el pago de una solicitud accepted: valida amount_usd, sube proof_image (base64) a Cloudinary y marca completed.
+// @Description  Registra el pago de una solicitud accepted: valida amount_bs, sube proof_image (base64) a Cloudinary y marca completed.
 // @Tags         Users Finance
 // @Accept       json
 // @Produce      json
@@ -339,10 +317,6 @@ func (h *staffRefundHandler) HandleWebSocket(c echo.Context) error {
 // @Router       /users/staff/refund-requests/{id}/complete [post]
 func (h *staffRefundHandler) CompleteRefund(c echo.Context) error {
 	ctx := c.Request().Context()
-	if _, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession); !ok {
-		return errcustom.ErrUnautorized
-	}
-
 	requestID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "id inválido")
@@ -355,11 +329,11 @@ func (h *staffRefundHandler) CompleteRefund(c echo.Context) error {
 	if strings.TrimSpace(body.ProofImage) == "" {
 		return errcustom.ToHTTPError(errcustom.ErrRefundProofRequired)
 	}
-	if body.AmountUSD <= 0 {
-		return echo.NewHTTPError(http.StatusBadRequest, "amount_usd inválido")
+	if body.AmountBs <= 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "amount_bs inválido")
 	}
 
-	resp, err := h.finance.CompleteRefund(ctx, requestID, body.ProofImage, body.AmountUSD)
+	resp, err := h.finance.CompleteRefund(ctx, requestID, body.ProofImage, body.AmountBs)
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}

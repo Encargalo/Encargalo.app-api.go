@@ -86,6 +86,37 @@ El repo incluye la configuración de VS Code en `.vscode/`. Para correr el servi
 
 Antes de lanzar, VS Code regenera automáticamente los docs de Swagger. El servidor queda disponible en `http://localhost:3000`.
 
+## Sesión en desarrollo local (sin Traefik)
+
+> **Estado actual:** `AuthMiddleware.Auth` ya **no** decodifica el JWT de la cookie — solo confía en el header `X-Encargalo-Session` que en producción inyecta Traefik. En local, donde **no corre Traefik**, hay que simular ese paso a mano con el flujo de abajo; sin él, cualquier ruta protegida responde `401` aunque la cookie de sesión sea válida.
+
+En producción, el reverse proxy (Traefik) valida la sesión por cada request vía su middleware `ForwardAuth` y le pasa al backend el resultado en el header `X-Encargalo-Session` (ver repo `railway-traefik`). En local:
+
+```bash
+# 1. Login normal (igual que siempre) — obtiene la cookie encargalo-session
+curl -i -X POST http://localhost:3000/auth/sign-in/users \
+  -H "Content-Type: application/json" \
+  -d '{"phone_number":"+58...","password":"..."}' \
+  -c cookies.txt
+
+# 2. Llamar a mano el endpoint que llamaría Traefik, con esa cookie + el
+#    secreto compartido (mismo valor que INTERNAL_GATEWAY_SECRET en tu .env).
+#    Es GET, no POST: ForwardAuth siempre llama con GET sin importar el
+#    método original de la request.
+curl -i -X GET http://localhost:3000/internal/verify-session \
+  -b cookies.txt \
+  -H "X-Internal-Gateway-Secret: <valor de INTERNAL_GATEWAY_SECRET>"
+
+# La respuesta trae el header X-Encargalo-Session con el JSON de la sesión.
+
+# 3. Pegar ese JSON como header en las siguientes requests a rutas protegidas
+curl http://localhost:3000/business/products \
+  -H "X-Encargalo-Session: <json copiado del paso 2>" \
+  -H "X-Internal-Gateway-Secret: <valor de INTERNAL_GATEWAY_SECRET>"
+```
+
+Sin ambos headers (`X-Encargalo-Session` y `X-Internal-Gateway-Secret`), cualquier ruta protegida por `Auth`/`Require` responde `401`, aunque la cookie de sesión sea válida — la cookie solo sirve ya para el paso 2. En Postman conviene automatizar los pasos 1-2 con un pre-request script que guarde el resultado en variables de colección.
+
 ## Documentación Swagger
 
 Con el servidor corriendo, abre en el navegador:

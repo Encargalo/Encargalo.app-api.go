@@ -8,6 +8,7 @@ import (
 	"time"
 
 	authmodels "Encargalo.app-api.go/internal/auth/domain/models"
+	mocksemployee "Encargalo.app-api.go/internal/mocks/employee/domain/ports"
 	mocksorders "Encargalo.app-api.go/internal/mocks/orders/domain/ports"
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	ordershandler "Encargalo.app-api.go/internal/orders/handler"
@@ -22,7 +23,8 @@ func newOrderHandler(t *testing.T) (ordershandler.OrderHandler, *mocksorders.Ord
 	t.Helper()
 	svc := mocksorders.NewOrdersApp(t)
 	mgr := mocksorders.NewAppManagerOrder(t)
-	return ordershandler.NewOrderHandler(svc, mgr), svc, mgr
+	employee := mocksemployee.NewEmployeeApp(t)
+	return ordershandler.NewOrderHandler(svc, mgr, employee), svc, mgr
 }
 
 func withSession(tc buildhttptest.ControllerCase, userID uuid.UUID) buildhttptest.ControllerCase {
@@ -85,16 +87,6 @@ func TestGetOrderHistory_EmptyList(t *testing.T) {
 	var got dtos.OrderHistoryResponse
 	assert.NoError(t, json.NewDecoder(tc.Res.Body).Decode(&got))
 	assert.Empty(t, got)
-}
-
-func TestGetOrderHistory_NoSession(t *testing.T) {
-	h, _, _ := newOrderHandler(t)
-
-	tc := buildhttptest.SetupControllerCase("/orders/history", http.MethodGet, nil)
-
-	err := h.GetOrderHistory(tc.Ctx)
-
-	assert.ErrorIs(t, err, errcustom.ErrUnexpectedError)
 }
 
 func TestGetOrderHistory_RepoError(t *testing.T) {

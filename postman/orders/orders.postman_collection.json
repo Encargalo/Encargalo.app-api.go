@@ -100,7 +100,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"quote_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afb0\",\n  \"method_payment\": \"PagoMovil\",\n  \"balance_amount_usd\": 4.0,\n  \"payment_proof_image\": \"data:image/jpeg;base64,/9j/4AAQSkZJRgAB...\"\n}",
+          "raw": "{\n  \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"quote_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afb0\",\n  \"method_payment\": \"PagoMovil\",\n  \"balance_amount_bs\": 148.5,\n  \"payment_proof_image\": \"data:image/jpeg;base64,/9j/4AAQSkZJRgAB...\"\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -116,7 +116,7 @@
             "orders"
           ]
         },
-        "description": "Crea orden usando quote_id (total congelado del servidor). shop/address/items salen del quote. balance_amount_usd opcional. Si queda resto PM, payment_proof_image obligatorio (también habilita gracia si expires_at ya pasó). Falla 422 si el local está cerrado. Cookie + rol Customer."
+        "description": "Crea orden usando quote_id (total congelado del servidor). shop/address/items salen del quote. balance_amount_bs opcional (balance del customer, en bolívares; se convierte a USD con la tasa BCV del quote). Si queda resto PM, payment_proof_image obligatorio (también habilita gracia si expires_at ya pasó). Falla 422 si el local está cerrado. Cookie + rol Customer."
       }
     },
     {
@@ -131,7 +131,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"shop_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa7\",\n  \"method_payment\": \"PagoMovil\",\n  \"expected_total_price\": 18.5,\n  \"balance_amount_usd\": 4.0,\n  \"payment_proof_image\": \"data:image/jpeg;base64,/9j/4AAQSkZJRgAB...\",\n  \"address\": {\n    \"address\": \"Av. Principal, Caracas\",\n    \"latitude\": 10.488801,\n    \"longitude\": -66.879190,\n    \"instructions\": \"Piso 3, apto 301\"\n  },\n  \"items\": [\n    {\n      \"item_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa8\",\n      \"amount\": 2,\n      \"observation\": \"\",\n      \"flavors\": {},\n      \"additions\": []\n    }\n  ]\n}",
+          "raw": "{\n  \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"shop_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa7\",\n  \"method_payment\": \"PagoMovil\",\n  \"expected_total_price\": 18.5,\n  \"balance_amount_bs\": 148.5,\n  \"payment_proof_image\": \"data:image/jpeg;base64,/9j/4AAQSkZJRgAB...\",\n  \"address\": {\n    \"address\": \"Av. Principal, Caracas\",\n    \"latitude\": 10.488801,\n    \"longitude\": -66.879190,\n    \"instructions\": \"Piso 3, apto 301\"\n  },\n  \"items\": [\n    {\n      \"item_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa8\",\n      \"amount\": 2,\n      \"observation\": \"\",\n      \"flavors\": {},\n      \"additions\": []\n    }\n  ]\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -187,7 +187,7 @@
             }
           ]
         },
-        "description": "El local introduce el código de 4 dígitos que le muestra el rider. Si el código es válido, el pedido pasa de 'In Preparation' o 'Ready' a 'On The Way' y se genera el código de entrega para el usuario. Requiere cookie `encargalo-session`. Roles: Order Manager, Owner."
+        "description": "El local introduce el código de 4 dígitos que le muestra el rider. Si el código es válido, el pedido pasa de 'In Preparation' o 'Ready' a 'On The Way' y se genera el código de entrega para el usuario. Requiere cookie `encargalo-session`. Roles: Order Manager, Owner. El pedido debe pertenecer al shop del empleado autenticado (401 si no). Rate limit: 10 intentos/min por IP."
       }
     },
     {
@@ -227,7 +227,7 @@
             }
           ]
         },
-        "description": "El rider introduce el código de 4 dígitos que le muestra el usuario. Si el código es válido, el pedido pasa de 'On The Way' a 'Completed'. Requiere cookie `encargalo-session`. Rol: Rider."
+        "description": "El rider introduce el código de 4 dígitos que le muestra el usuario. Si el código es válido, el pedido pasa de 'On The Way' a 'Completed'. Requiere cookie `encargalo-session`. Rol: Rider. El pedido debe estar asignado al rider autenticado (401 si no). Rate limit: 10 intentos/min por IP."
       }
     },
     {
@@ -276,7 +276,7 @@
           "host": ["{{base_url}}"],
           "path": ["orders", "staff", "reviews"]
         },
-        "description": "WebSocket CRM para validar comprobantes. Rol: Staff. Al conectar envía snapshot de reviews pendientes + {\"type\":\"connected\"}.\n\nURL: ws://localhost:3000/orders/staff/reviews\n\nMensajes entrantes:\n- {\"type\":\"approve\",\"review_id\":\"...\",\"reference_last4\":\"1234\"}\n- {\"type\":\"approve_overpay\",\"review_id\":\"...\",\"observed_amount_bs\":123.45,\"reference_last4\":\"1234\"}\n- {\"type\":\"reject_underpaid\",\"review_id\":\"...\",\"observed_amount_bs\":100,\"reference_last4\":\"1234\"} — pago incompleto: rechaza la orden de inmediato y acredita observed_amount_bs (convertido a USD) al balance del cliente. No hay espera ni comprobante adicional.\n- {\"type\":\"reject_invalid\",\"review_id\":\"...\",\"reason\":\"comprobante ilegible\"} — no requiere reference_last4 (ej. foto que no es un pago).\n\nSi reference_last4 ya existe en approved/overpaid/rejected_underpaid, el backend auto-rechaza como rejected_invalid y responde action_ok con action:\"reject_invalid\", duplicate_reject:true.\n\nSalientes: payment_review_update (incluye expected_amount_bs, credited_usd), action_ok, error."
+        "description": "WebSocket CRM para validar comprobantes. Rol: Staff. Al conectar envía snapshot de reviews pendientes + {\"type\":\"connected\"}.\n\nURL: ws://localhost:3000/orders/staff/reviews\n\nMensajes entrantes:\n- {\"type\":\"approve\",\"review_id\":\"...\",\"reference_last4\":\"1234\"}\n- {\"type\":\"approve_overpay\",\"review_id\":\"...\",\"observed_amount_bs\":123.45,\"reference_last4\":\"1234\"}\n- {\"type\":\"reject_underpaid\",\"review_id\":\"...\",\"observed_amount_bs\":100,\"reference_last4\":\"1234\"} — pago incompleto: rechaza la orden de inmediato y acredita observed_amount_bs (convertido a Bs con la tasa BCV de la revisión) al balance del cliente. No hay espera ni comprobante adicional.\n- {\"type\":\"reject_invalid\",\"review_id\":\"...\",\"reason\":\"comprobante ilegible\"} — no requiere reference_last4 (ej. foto que no es un pago).\n\nSi reference_last4 ya existe en approved/overpaid/rejected_underpaid, el backend auto-rechaza como rejected_invalid y responde action_ok con action:\"reject_invalid\", duplicate_reject:true.\n\nSalientes: payment_review_update (incluye expected_amount_bs, credited_bs), action_ok, error."
       }
     },
     {

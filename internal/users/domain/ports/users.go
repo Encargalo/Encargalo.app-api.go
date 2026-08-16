@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"Encargalo.app-api.go/internal/users/domain/dto"
 	"Encargalo.app-api.go/internal/users/domain/models"
@@ -17,6 +18,9 @@ type UsersApp interface {
 	SearchAccountByPhone(ctx context.Context, phone string, roles []string) (*models.Account, error)
 	UpdateCustomer(ctx context.Context, customer_id uuid.UUID, customer dto.UpdateCustomer) error
 	UpdatePassword(ctx context.Context, customer_id uuid.UUID, pass dto.UpdatePassword) error
+	RequestAccountDeletion(ctx context.Context, userID uuid.UUID) error
+	CancelPendingDeletionIfAny(ctx context.Context, userID uuid.UUID) error
+	FinalizePendingDeletions(ctx context.Context) (int64, error)
 }
 
 type UsersRepo interface {
@@ -29,4 +33,7 @@ type UsersRepo interface {
 	SearchCustomerByPhoneAndNotIDEquals(ctx context.Context, customer_id uuid.UUID, phone string) (*models.Account, error)
 	UpdateCustomer(ctx context.Context, customer_id uuid.UUID, customer *models.Account) error
 	UpdatePassword(ctx context.Context, customer_id uuid.UUID, customer *models.Account) error
+	RequestAccountDeletion(ctx context.Context, userID uuid.UUID) error
+	CancelAccountDeletion(ctx context.Context, userID uuid.UUID) error
+	FinalizePendingDeletions(ctx context.Context, cutoff time.Time) (int64, error)
 }

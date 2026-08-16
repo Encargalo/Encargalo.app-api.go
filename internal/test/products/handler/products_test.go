@@ -74,24 +74,6 @@ func TestRegisterItem_Success(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, tc.Res.Code)
 }
 
-func TestRegisterItem_NoSession(t *testing.T) {
-	h, _ := newHandler(t)
-
-	body := buildBody(t, map[string]any{
-		"category_id": uuid.New().String(),
-		"name":        "Pizza",
-		"price":       15000,
-		"image":       "data:image/jpeg;base64,/9j/abc",
-		"description": "Descripción",
-	})
-	tc := buildhttptest.SetupControllerCase("/business/products/items", http.MethodPost, body)
-
-	err := h.RegisterItem(tc.Ctx)
-
-	assert.Error(t, err)
-	assert.Equal(t, http.StatusUnauthorized, httpCode(err))
-}
-
 func TestRegisterItem_NoShopID(t *testing.T) {
 	h, _ := newHandler(t)
 
@@ -190,25 +172,6 @@ func TestUpdateItem_Success(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, tc.Res.Code)
-}
-
-func TestUpdateItem_NoSession(t *testing.T) {
-	h, _ := newHandler(t)
-
-	itemID := uuid.New()
-	body := buildBody(t, map[string]any{
-		"name":        "Pizza",
-		"price":       35000,
-		"description": "Desc",
-	})
-	tc := buildhttptest.SetupControllerCase("/business/products/"+itemID.String(), http.MethodPut, body)
-	tc.Ctx.SetParamNames("item_id")
-	tc.Ctx.SetParamValues(itemID.String())
-
-	err := h.UpdateItem(tc.Ctx)
-
-	assert.Error(t, err)
-	assert.Equal(t, http.StatusUnauthorized, httpCode(err))
 }
 
 func TestUpdateItem_InvalidItemID(t *testing.T) {
@@ -635,21 +598,6 @@ func TestRegisterCategory_Success(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, tc.Res.Code)
 }
 
-func TestRegisterCategory_NoSession(t *testing.T) {
-	h, _ := newHandler(t)
-
-	body := buildBody(t, map[string]any{
-		"name":              "Desayuno",
-		"macro_category_id": uuid.New().String(),
-	})
-	tc := buildhttptest.SetupControllerCase("/business/products/categories", http.MethodPost, body)
-
-	err := h.RegisterCategory(tc.Ctx)
-
-	assert.Error(t, err)
-	assert.Equal(t, http.StatusUnauthorized, httpCode(err))
-}
-
 func TestRegisterCategory_NoShopID(t *testing.T) {
 	h, _ := newHandler(t)
 
@@ -762,24 +710,6 @@ func TestUpdateCategory_Success(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, tc.Res.Code)
-}
-
-func TestUpdateCategory_NoSession(t *testing.T) {
-	h, _ := newHandler(t)
-
-	categoryID := uuid.New()
-	body := buildBody(t, map[string]any{
-		"name":              "Cena",
-		"macro_category_id": uuid.New().String(),
-	})
-	tc := buildhttptest.SetupControllerCase("/business/products/categories/"+categoryID.String(), http.MethodPut, body)
-	tc.Ctx.SetParamNames("category_id")
-	tc.Ctx.SetParamValues(categoryID.String())
-
-	err := h.UpdateCategory(tc.Ctx)
-
-	assert.Error(t, err)
-	assert.Equal(t, http.StatusUnauthorized, httpCode(err))
 }
 
 func TestUpdateCategory_InvalidCategoryID(t *testing.T) {
@@ -921,21 +851,6 @@ func TestRegisterFlavor_Success(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, tc.Res.Code)
 }
 
-func TestRegisterFlavor_NoSession(t *testing.T) {
-	h, _ := newHandler(t)
-
-	body := buildBody(t, map[string]any{
-		"category_id": uuid.New().String(),
-		"name":        "Picante",
-	})
-	tc := buildhttptest.SetupControllerCase("/business/products/flavors", http.MethodPost, body)
-
-	err := h.RegisterFlavor(tc.Ctx)
-
-	assert.Error(t, err)
-	assert.Equal(t, http.StatusUnauthorized, httpCode(err))
-}
-
 func TestRegisterFlavor_NoShopID(t *testing.T) {
 	h, _ := newHandler(t)
 
@@ -1024,21 +939,6 @@ func TestUpdateFlavor_Success(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, tc.Res.Code)
-}
-
-func TestUpdateFlavor_NoSession(t *testing.T) {
-	h, _ := newHandler(t)
-
-	flavorID := uuid.New()
-	body := buildBody(t, map[string]any{"name": "Muy picante"})
-	tc := buildhttptest.SetupControllerCase("/business/products/flavors/"+flavorID.String(), http.MethodPut, body)
-	tc.Ctx.SetParamNames("flavor_id")
-	tc.Ctx.SetParamValues(flavorID.String())
-
-	err := h.UpdateFlavor(tc.Ctx)
-
-	assert.Error(t, err)
-	assert.Equal(t, http.StatusUnauthorized, httpCode(err))
 }
 
 func TestUpdateFlavor_InvalidFlavorID(t *testing.T) {
@@ -1143,20 +1043,6 @@ func TestDeleteFlavor_Success(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, tc.Res.Code)
-}
-
-func TestDeleteFlavor_NoSession(t *testing.T) {
-	h, _ := newHandler(t)
-
-	flavorID := uuid.New()
-	tc := buildhttptest.SetupControllerCase("/business/products/flavors/"+flavorID.String(), http.MethodDelete, nil)
-	tc.Ctx.SetParamNames("flavor_id")
-	tc.Ctx.SetParamValues(flavorID.String())
-
-	err := h.DeleteFlavor(tc.Ctx)
-
-	assert.Error(t, err)
-	assert.Equal(t, http.StatusUnauthorized, httpCode(err))
 }
 
 func TestDeleteFlavor_InvalidFlavorID(t *testing.T) {
@@ -1282,22 +1168,6 @@ func TestRegisterItemDiscount_Success(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, tc.Res.Code)
 }
 
-func TestRegisterItemDiscount_NoSession(t *testing.T) {
-	h, _ := newHandler(t)
-
-	body := buildBody(t, map[string]any{
-		"item_id":       uuid.New().String(),
-		"discount_type": "percentage",
-		"value":         20,
-	})
-	tc := buildhttptest.SetupControllerCase("/business/products/discounts", http.MethodPost, body)
-
-	err := h.RegisterItemDiscount(tc.Ctx)
-
-	assert.Error(t, err)
-	assert.Equal(t, http.StatusUnauthorized, httpCode(err))
-}
-
 func TestRegisterItemDiscount_NoShopID(t *testing.T) {
 	h, _ := newHandler(t)
 
@@ -1415,21 +1285,6 @@ func TestUpdateItemDiscount_Success(t *testing.T) {
 	assert.Equal(t, http.StatusOK, tc.Res.Code)
 }
 
-func TestUpdateItemDiscount_NoSession(t *testing.T) {
-	h, _ := newHandler(t)
-
-	discountID := uuid.New()
-	body := buildBody(t, map[string]any{"discount_type": "fixed", "value": 5000})
-	tc := buildhttptest.SetupControllerCase("/business/products/discounts/"+discountID.String(), http.MethodPut, body)
-	tc.Ctx.SetParamNames("discount_id")
-	tc.Ctx.SetParamValues(discountID.String())
-
-	err := h.UpdateItemDiscount(tc.Ctx)
-
-	assert.Error(t, err)
-	assert.Equal(t, http.StatusUnauthorized, httpCode(err))
-}
-
 func TestUpdateItemDiscount_InvalidDiscountID(t *testing.T) {
 	h, _ := newHandler(t)
 
@@ -1534,20 +1389,6 @@ func TestDeleteItemDiscount_Success(t *testing.T) {
 	assert.Equal(t, http.StatusOK, tc.Res.Code)
 }
 
-func TestDeleteItemDiscount_NoSession(t *testing.T) {
-	h, _ := newHandler(t)
-
-	discountID := uuid.New()
-	tc := buildhttptest.SetupControllerCase("/business/products/discounts/"+discountID.String(), http.MethodDelete, nil)
-	tc.Ctx.SetParamNames("discount_id")
-	tc.Ctx.SetParamValues(discountID.String())
-
-	err := h.DeleteItemDiscount(tc.Ctx)
-
-	assert.Error(t, err)
-	assert.Equal(t, http.StatusUnauthorized, httpCode(err))
-}
-
 func TestDeleteItemDiscount_InvalidDiscountID(t *testing.T) {
 	h, _ := newHandler(t)
 
@@ -1625,17 +1466,6 @@ func TestSearchCategorySummariesByShopID_Success(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, tc.Res.Code)
-}
-
-func TestSearchCategorySummariesByShopID_NoSession(t *testing.T) {
-	h, _ := newHandler(t)
-
-	tc := buildhttptest.SetupControllerCase("/business/products/categories/summary", http.MethodGet, nil)
-
-	err := h.SearchCategorySummariesByShopID(tc.Ctx)
-
-	assert.Error(t, err)
-	assert.Equal(t, http.StatusUnauthorized, httpCode(err))
 }
 
 func TestSearchCategorySummariesByShopID_NoShopID(t *testing.T) {

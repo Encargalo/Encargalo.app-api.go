@@ -1,8 +1,9 @@
 package handler
 
 import (
-	"log/slog"
+	"encoding/json"
 	"net/http"
+	"time"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/auth/domain/ports"
@@ -10,6 +11,8 @@ import (
 	"Encargalo.app-api.go/internal/pkg/cookie"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shared/jwt"
+	sharedmw "Encargalo.app-api.go/internal/shared/middleware"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
@@ -20,6 +23,7 @@ type Auth interface {
 	SignInStaff(e echo.Context) error
 	SignInGoogle(e echo.Context) error
 	Logout(e echo.Context) error
+	VerifySession(e echo.Context) error
 }
 
 type auth struct {
@@ -247,6 +251,63 @@ func (a *auth) SignInGoogle(e echo.Context) error {
 	return e.JSON(http.StatusCreated, "session created")
 }
 
+// VerifySession godoc
+// @Summary      Verificar sesión (uso interno del reverse proxy)
+// @Description  Endpoint interno llamado por el ForwardAuth de Traefik en cada
+// @Description  request. Debe ser GET: por defecto ForwardAuth siempre llama
+// @Description  al servidor de auth con GET, sin importar el método original
+// @Description  de la request entrante (a menos que se configure
+// @Description  preserveRequestMethod, que no usamos). Valida el JWT de la
+// @Description  cookie encargalo-session contra la sesión activa y, si es
+// @Description  válida, devuelve el header X-Encargalo-Session con el
+// @Description  ActiveSession serializado en JSON, que Traefik reenvía al
+// @Description  backend real. No debe llamarse desde clientes de negocio
+// @Description  (frontend/apps) — solo desde el gateway.
+// @Tags         Internal
+// @Success      200  "sesión válida, JSON en el header X-Encargalo-Session"
+// @Failure      401  {string}  string  "sesión inválida, ausente o expirada"
+// @Router       /internal/verify-session [get]
+func (a *auth) VerifySession(e echo.Context) error {
+	req := e.Request()
+
+	var tokenString string
+	if c, err := e.Cookie("encargalo-session"); err == nil {
+		tokenString = c.Value
+	}
+
+	claims, err := a.jwt.ValidateToken(tokenString)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "token inválido")
+	}
+
+	rawID, ok := claims["session_id"].(string)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "session_id inválido")
+	}
+
+	sessionID, err := uuid.Parse(rawID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "session_id inválido")
+	}
+
+	session, err := a.svc.SearchSessions(req.Context(), sessionID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "sesión no encontrada")
+	}
+
+	if time.Now().After(session.ExpiresAt) {
+		return echo.NewHTTPError(http.StatusUnauthorized, "sesión expirada")
+	}
+
+	raw, err := json.Marshal(session)
+	if err != nil {
+		return errcustom.ToHTTPError(errcustom.ErrUnexpectedError)
+	}
+
+	e.Response().Header().Set(sharedmw.SessionHeader, string(raw))
+	return e.NoContent(http.StatusOK)
+}
+
 type LogoutResponse struct {
 	Message string `json:"message"`
 }
@@ -266,11 +327,7 @@ func (s *auth) Logout(e echo.Context) error {
 
 	ctx := e.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		slog.Error("No se encontró el usuario en el contexto")
-		return errcustom.ErrUnexpectedError
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	if err := s.svc.DeleteSession(ctx, session.ID); err != nil {
 		return errcustom.ToHTTPError(err)

@@ -15,9 +15,12 @@ type OrdersApp interface {
 	CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*models.Order, error)
 	SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*models.Order, error)
 	SearchActiveOrdersByCriteria(ctx context.Context, criteria uuid.UUID, isShop bool) ([]models.Order, error)
-	UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string, requesterID uuid.UUID, isShop bool) (models.Order, error)
-	ConfirmPickup(ctx context.Context, orderID uuid.UUID, code string) (models.Order, error)
-	ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code string) (models.Order, error)
+	// callerShopID solo se valida cuando isShop es true (contra order.ShopID); se ignora para customers.
+	UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status string, requesterID uuid.UUID, isShop bool, callerShopID uuid.UUID) (models.Order, error)
+	// callerShopID debe coincidir con order.ShopID (el local que confirma la recogida).
+	ConfirmPickup(ctx context.Context, orderID uuid.UUID, code string, callerShopID uuid.UUID) (models.Order, error)
+	// callerRiderID debe coincidir con order.RiderID (el rider asignado que confirma la entrega).
+	ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code string, callerRiderID uuid.UUID) (models.Order, error)
 	GetOrderHistory(ctx context.Context, customerID uuid.UUID) (dtos.OrderHistoryResponse, error)
 	// AutoRejectStalePending rechaza órdenes Pending sin aceptación del local
 	// tras PendingAcceptTimeout. Devuelve las órdenes efectivamente rechazadas
@@ -80,7 +83,9 @@ type OrderRiderBroadcaster interface {
 // RideEarningRecorder is implemented by the finance module to record rider earnings on delivery.
 // Defined here to avoid a cross-domain import from orders → riders.
 type RideEarningRecorder interface {
-	RecordRideEarning(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee, totalPrice float64, method string) error
+	// deliveryFee está en USD; bcvRate es la tasa a aplicar para convertir y
+	// acreditar en Bs (moneda nativa del balance de riders).
+	RecordRideEarning(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee, totalPrice, bcvRate float64, method string) error
 }
 
 // ShopCommissionRecorder is implemented by shops/finance to record the shop's commission on delivery completion.

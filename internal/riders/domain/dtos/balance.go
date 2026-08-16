@@ -3,15 +3,19 @@ package dtos
 import "Encargalo.app-api.go/internal/riders/domain/models"
 
 type BalanceResponse struct {
-	Balance      float64          `json:"balance"`
-	Zone         models.Zone      `json:"zone"`
-	Transactions []TransactionDTO `json:"transactions"`
+	Balance float64     `json:"balance"`
+	Zone    models.Zone `json:"zone"`
+	// WithdrawalMinBs es el mínimo de retiro vigente, ya convertido a Bs con
+	// la tasa BCV actual (equivalente dinámico a WithdrawalMinUSD).
+	WithdrawalMinBs float64          `json:"withdrawal_min_bs"`
+	Transactions    []TransactionDTO `json:"transactions"`
 }
 
 type TransactionDTO struct {
 	ID            string   `json:"id"`
 	OrderID       *string  `json:"order_id,omitempty"`
 	Amount        float64  `json:"amount"`
+	BcvRate       *float64 `json:"bcv_rate,omitempty"`
 	MovementType  string   `json:"movement_type"`
 	PaymentMethod *string  `json:"payment_method,omitempty"`
 	DistanceKm    *float64 `json:"distance_km,omitempty"`

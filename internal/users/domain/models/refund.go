@@ -16,7 +16,11 @@ const (
 	RefundRejected  RefundRequestStatus = "rejected"
 
 	RefundRequestWindow = 15 * time.Minute
-	RefundMinAmountUSD  = 1.0
+	// RefundMinAmountUSD es el piso de negocio, expresado en USD porque es la
+	// unidad estable de referencia. Se convierte a Bs con la tasa BCV vigente
+	// en el momento de validar (ver customerFinanceApp), igual que el mínimo
+	// de retiro de riders.
+	RefundMinAmountUSD = 1.0
 )
 
 type BalanceRefundRequest struct {
@@ -26,7 +30,7 @@ type BalanceRefundRequest struct {
 	CustomerID      uuid.UUID           `bun:"customer_id,type:uuid"`
 	TransactionID   uuid.UUID           `bun:"transaction_id,type:uuid"`
 	OrderID         *uuid.UUID          `bun:"order_id,nullzero,type:uuid"`
-	AmountUSD       float64             `bun:"amount_usd"`
+	AmountBs        float64             `bun:"amount_bs"`
 	Status          RefundRequestStatus `bun:"status"`
 	PMPhone         string              `bun:"pm_phone"`
 	PMBankCode      string              `bun:"pm_bank_code"`

@@ -90,22 +90,6 @@ func TestRegisterAddress_ValidationFail(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, httpCode(err))
 }
 
-func TestRegisterAddress_NoSession(t *testing.T) {
-	h, _ := newAddressHandler(t)
-
-	body := buildBody(t, map[string]any{
-		"type": "Home", "label": "Casa", "address": "Calle 123",
-		"lat": 4.60971, "long": -74.08175,
-		"extra": map[string]string{"details": "Casa de dos pisos"},
-	})
-	tc := buildhttptest.SetupControllerCase("/users/address", http.MethodPost, body)
-
-	err := h.RegisterAddress(tc.Ctx)
-
-	assert.Error(t, err)
-	assert.Equal(t, errcustom.ErrUnexpectedError, err)
-}
-
 func TestRegisterAddress_UnexpectedError(t *testing.T) {
 	h, svc := newAddressHandler(t)
 
@@ -146,17 +130,6 @@ func TestSearchAllAddress_Success(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, tc.Res.Code)
-}
-
-func TestSearchAllAddress_NoSession(t *testing.T) {
-	h, _ := newAddressHandler(t)
-
-	tc := buildhttptest.SetupControllerCase("/users/address", http.MethodGet, nil)
-
-	err := h.SearchAllAdrress(tc.Ctx)
-
-	assert.Error(t, err)
-	assert.Equal(t, errcustom.ErrUnexpectedError, err)
 }
 
 func TestSearchAllAddress_UnexpectedError(t *testing.T) {
@@ -202,19 +175,6 @@ func TestDeleteAddress_MissingAddressID(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusBadRequest, httpCode(err))
-}
-
-func TestDeleteAddress_NoSession(t *testing.T) {
-	h, _ := newAddressHandler(t)
-
-	addressID := uuid.New().String()
-	tc := buildhttptest.SetupControllerCase("/users/address?address_id="+addressID, http.MethodDelete, nil)
-	tc.Ctx.QueryParams().Set("address_id", addressID)
-
-	err := h.DeleteAddress(tc.Ctx)
-
-	assert.Error(t, err)
-	assert.Equal(t, errcustom.ErrUnexpectedError, err)
 }
 
 func TestDeleteAddress_UnexpectedError(t *testing.T) {

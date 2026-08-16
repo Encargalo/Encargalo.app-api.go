@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"log/slog"
+	"time"
 
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/users/domain/dto"
@@ -274,4 +275,57 @@ func (c *customersRepo) SearchAccountByPhone(ctx context.Context, phone string, 
 	result.Role = result.RoleName
 
 	return &result.Account, nil
+}
+
+// RequestAccountDeletion marca la solicitud de eliminación de forma
+// idempotente a nivel SQL: si ya había una solicitud pendiente, el WHERE no
+// matchea ninguna fila y no reinicia el contador de 30 días.
+func (c *customersRepo) RequestAccountDeletion(ctx context.Context, userID uuid.UUID) error {
+	if _, err := c.db.NewUpdate().
+		Model((*models.Account)(nil)).
+		Set("deletion_requested_at = now()").
+		Where("id = ?", userID).
+		Where("deletion_requested_at IS NULL").
+		Exec(ctx); err != nil {
+		slog.Error("error al solicitar la eliminación de la cuenta", "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+
+	return nil
+}
+
+// CancelAccountDeletion revierte una solicitud pendiente (ej. el usuario
+// volvió a iniciar sesión dentro del período de gracia). No-op si no había
+// ninguna solicitud activa.
+func (c *customersRepo) CancelAccountDeletion(ctx context.Context, userID uuid.UUID) error {
+	if _, err := c.db.NewUpdate().
+		Model((*models.Account)(nil)).
+		Set("deletion_requested_at = NULL").
+		Where("id = ?", userID).
+		Where("deletion_requested_at IS NOT NULL").
+		Exec(ctx); err != nil {
+		slog.Error("error al cancelar la eliminación de cuenta", "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+
+	return nil
+}
+
+// FinalizePendingDeletions marca deleted_at (soft delete) en todas las
+// cuentas cuya solicitud de eliminación venció el período de gracia. Ninguna
+// otra columna se modifica ni se pierde: es el mismo mecanismo de soft
+// delete que ya usa Account (bun.soft_delete), aplicado en bloque.
+func (c *customersRepo) FinalizePendingDeletions(ctx context.Context, cutoff time.Time) (int64, error) {
+	res, err := c.db.NewDelete().
+		Model(&models.Account{}).
+		Where("deletion_requested_at IS NOT NULL").
+		Where("deletion_requested_at <= ?", cutoff).
+		Exec(ctx)
+	if err != nil {
+		slog.Error("error al finalizar cuentas con eliminación vencida", "error", err)
+		return 0, errcustom.ErrUnexpectedError
+	}
+
+	n, _ := res.RowsAffected()
+	return n, nil
 }

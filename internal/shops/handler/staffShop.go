@@ -47,10 +47,7 @@ func NewStaffShopHandler(svc ports.StaffShopApp) StaffShopHandler {
 // @Router       /shops/staff/candidates [get]
 func (h *staffShopHandler) FindOwnerCandidate(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok {
-		return errcustom.ErrUnautorized
-	}
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
 	phone := strings.TrimSpace(c.QueryParam("phone"))
 	if phone == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "phone requerido")
@@ -195,10 +192,7 @@ func (h *staffShopHandler) UpdateDraftShop(c echo.Context) error {
 // @Router       /shops/staff/{id}/activate [post]
 func (h *staffShopHandler) ActivateShop(c echo.Context) error {
 	ctx := c.Request().Context()
-	session, ok := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
-	if !ok {
-		return errcustom.ErrUnautorized
-	}
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
 	shopID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "id inválido")

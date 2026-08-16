@@ -1,6 +1,6 @@
 $kind: http-request
 name: POST /riders/withdrawal
-description: Solicita retiro del balance acumulado. Requiere balance >= +$15.
+description: Solicita retiro del balance acumulado en Bs. Requiere balance >= al equivalente dinámico de $15 según la tasa BCV vigente (ver withdrawal_min_bs en GET /riders/balance).
 url: "{{base_url}}/riders/withdrawal"
 method: POST
 order: 12000

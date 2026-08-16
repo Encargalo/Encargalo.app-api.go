@@ -27,9 +27,11 @@ type CreateOrder struct {
 	// ExpectedTotalPrice (legacy sin quote): total que el front mostró.
 	// Con quote_id se ignora. Sin quote_id sigue siendo obligatorio.
 	ExpectedTotalPrice float64 `json:"expected_total_price" example:"18.5"`
-	// BalanceAmountUSD es opcional. 0 = no usar balance. Si > 0 debe ser >= 1
-	// y <= min(balance, total). Si cubre el total no se requiere comprobante.
-	BalanceAmountUSD float64 `json:"balance_amount_usd" example:"4.0"`
+	// BalanceAmountBs es opcional, en bolívares (balance del customer es Bs).
+	// 0 = no usar balance. Si > 0 se valida (con la tasa BCV del quote) que
+	// equivalga a >= $1 y <= min(balance disponible, total de la orden). Si
+	// cubre el total no se requiere comprobante.
+	BalanceAmountBs float64 `json:"balance_amount_bs" example:"148.5"`
 
 	CreateItemsOrder []CreateItemsOrder `json:"items"`
 }
@@ -72,12 +74,12 @@ func (o *CreateOrder) Validate() error {
 	return o.validateBalanceOnly()
 }
 
+// validateBalanceOnly solo valida el signo: el mínimo equivalente a $1 y el
+// tope contra el balance/total dependen de la tasa BCV del quote, y se
+// resuelven en orderApp.CreateOrder (domain/dtos no tiene acceso a bcv).
 func (o *CreateOrder) validateBalanceOnly() error {
-	if o.BalanceAmountUSD < 0 {
-		return errors.New("balance_amount_usd no puede ser negativo")
-	}
-	if o.BalanceAmountUSD > 0 && o.BalanceAmountUSD < 1 {
-		return errors.New("balance_amount_usd mínimo es 1")
+	if o.BalanceAmountBs < 0 {
+		return errors.New("balance_amount_bs no puede ser negativo")
 	}
 	return nil
 }

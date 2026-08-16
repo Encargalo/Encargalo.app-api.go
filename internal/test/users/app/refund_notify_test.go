@@ -33,7 +33,7 @@ func TestAcceptRefund_NotifiesCustomer(t *testing.T) {
 		ID:            requestID,
 		CustomerID:    customerID,
 		TransactionID: txID,
-		AmountUSD:     8,
+		AmountBs:      8,
 		Status:        models.RefundPending,
 		PMPhone:       "04121234567",
 		PMBankCode:    "0102",

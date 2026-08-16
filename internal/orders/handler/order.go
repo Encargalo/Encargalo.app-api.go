@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
+	employeePorts "Encargalo.app-api.go/internal/employee/domain/ports"
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	modelsOrder "Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
@@ -22,12 +23,13 @@ type OrderHandler interface {
 }
 
 type orderHandler struct {
-	svc  ports.OrdersApp
-	svc2 ports.AppManagerOrder
+	svc      ports.OrdersApp
+	svc2     ports.AppManagerOrder
+	employee employeePorts.EmployeeApp
 }
 
-func NewOrderHandler(svc ports.OrdersApp, svc2 ports.AppManagerOrder) OrderHandler {
-	return &orderHandler{svc, svc2}
+func NewOrderHandler(svc ports.OrdersApp, svc2 ports.AppManagerOrder, employee employeePorts.EmployeeApp) OrderHandler {
+	return &orderHandler{svc, svc2, employee}
 }
 
 // CreateQuote godoc
@@ -48,11 +50,7 @@ func (o *orderHandler) CreateQuote(c echo.Context) error {
 	ctx := c.Request().Context()
 
 	var req dtos.CreateQuote
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		slog.Error("No se encontro el usuario en el contexto")
-		return errcustom.ErrUnexpectedError
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 	req.CustomerID = session.UserID
 
 	if err := c.Bind(&req); err != nil {
@@ -71,7 +69,7 @@ func (o *orderHandler) CreateQuote(c echo.Context) error {
 
 // CreateOrder godoc
 // @Summary      Crear una nueva orden
-// @Description  Preferido: enviar `quote_id` de POST /orders/quote (total congelado; shop/items/address salen del quote). Legacy: sin quote_id, enviar carrito + `expected_total_price` (409 si el precio cambió). Opcionalmente `balance_amount_usd`. Si queda resto Pago Móvil, requiere `payment_proof_image` y nace en Payment Review.
+// @Description  Preferido: enviar `quote_id` de POST /orders/quote (total congelado; shop/items/address salen del quote). Legacy: sin quote_id, enviar carrito + `expected_total_price` (409 si el precio cambió). Opcionalmente `balance_amount_bs` (balance del customer, en bolívares; se convierte a USD con la tasa BCV del quote). Si queda resto Pago Móvil, requiere `payment_proof_image` y nace en Payment Review.
 // @Tags         Orders
 // @Accept       json
 // @Produce      json
@@ -84,6 +82,7 @@ func (o *orderHandler) CreateQuote(c echo.Context) error {
 // @Failure      410    {object}  dtos.ErrorResponse        "Quote expirado"
 // @Failure      422    {object}  dtos.ErrorResponse        "Local cerrado o productos/adiciones no encontrados"
 // @Failure      500    {object}  dtos.ErrorResponse        "Error interno del servidor"
+// @Failure      503    {object}  dtos.ErrorResponse        "Tasa BCV no disponible para convertir balance_amount_bs"
 // @Router       /orders [post]
 func (o *orderHandler) CreateOrder(c echo.Context) error {
 
@@ -91,11 +90,7 @@ func (o *orderHandler) CreateOrder(c echo.Context) error {
 
 	var order dtos.CreateOrder
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		slog.Error("No se encontro el usuario en el contexto")
-		return errcustom.ErrUnexpectedError
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	order.CustomerID = session.UserID
 
@@ -140,12 +135,16 @@ func (o *orderHandler) CreateOrder(c echo.Context) error {
 // @Param        body  body      dtos.ConfirmCodeRequest  true  "Codigo de recogida"
 // @Success      200   {object}  map[string]string        "Pedido en camino"
 // @Failure      400   {object}  dtos.ErrorResponse       "Codigo invalido"
+// @Failure      401   {object}  dtos.ErrorResponse       "El pedido no pertenece al local autenticado"
 // @Failure      409   {object}  dtos.ErrorResponse       "Codigo ya utilizado"
 // @Failure      422   {object}  dtos.ErrorResponse       "Estado del pedido incorrecto"
 // @Failure      404   {object}  dtos.ErrorResponse       "Pedido no encontrado"
+// @Failure      429   {object}  dtos.ErrorResponse       "Demasiados intentos"
 // @Router       /orders/{id}/confirm-pickup [post]
 func (o *orderHandler) ConfirmPickup(c echo.Context) error {
 	ctx := c.Request().Context()
+
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	orderID, err := parseOrderID(c)
 	if err != nil {
@@ -161,7 +160,13 @@ func (o *orderHandler) ConfirmPickup(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	order, err := o.svc.ConfirmPickup(ctx, orderID, req.Code)
+	employee, err := o.employee.SearchEmployeeByID(ctx, session.UserID)
+	if err != nil {
+		slog.Error("Error buscando empleado", "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+
+	order, err := o.svc.ConfirmPickup(ctx, orderID, req.Code, employee.ShopID)
 	if err != nil {
 		return err
 	}
@@ -184,12 +189,16 @@ func (o *orderHandler) ConfirmPickup(c echo.Context) error {
 // @Param        body  body      dtos.ConfirmCodeRequest  true  "Codigo de entrega"
 // @Success      200   {object}  map[string]string        "Pedido entregado"
 // @Failure      400   {object}  dtos.ErrorResponse       "Codigo invalido"
+// @Failure      401   {object}  dtos.ErrorResponse       "El pedido no esta asignado al rider autenticado"
 // @Failure      409   {object}  dtos.ErrorResponse       "Codigo ya utilizado"
 // @Failure      422   {object}  dtos.ErrorResponse       "Estado del pedido incorrecto"
 // @Failure      404   {object}  dtos.ErrorResponse       "Pedido no encontrado"
+// @Failure      429   {object}  dtos.ErrorResponse       "Demasiados intentos"
 // @Router       /orders/{id}/confirm-delivery [post]
 func (o *orderHandler) ConfirmDelivery(c echo.Context) error {
 	ctx := c.Request().Context()
+
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	orderID, err := parseOrderID(c)
 	if err != nil {
@@ -205,7 +214,7 @@ func (o *orderHandler) ConfirmDelivery(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	order, err := o.svc.ConfirmDelivery(ctx, orderID, req.Code)
+	order, err := o.svc.ConfirmDelivery(ctx, orderID, req.Code, session.UserID)
 	if err != nil {
 		return err
 	}
@@ -230,11 +239,7 @@ func (o *orderHandler) ConfirmDelivery(c echo.Context) error {
 func (o *orderHandler) GetOrderHistory(c echo.Context) error {
 	ctx := c.Request().Context()
 
-	session, ok := ctx.Value(models.SessionKey).(models.ActiveSession)
-	if !ok {
-		slog.Error("No se encontro el usuario en el contexto")
-		return errcustom.ErrUnexpectedError
-	}
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
 
 	history, err := o.svc.GetOrderHistory(ctx, session.UserID)
 	if err != nil {

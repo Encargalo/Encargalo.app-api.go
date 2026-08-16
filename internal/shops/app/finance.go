@@ -26,16 +26,8 @@ func NewShopFinanceApp(repo ports.ShopFinanceRepo) ports.ShopFinanceApp {
 // negocio siga recibiendo el subtotal completo: base reconstruye ese
 // subtotal original sumando de vuelta lo que el cliente no pagó.
 func (f *shopFinanceApp) RecordSaleCommission(ctx context.Context, shopID uuid.UUID, orderID uuid.UUID, totalPrice, deliveryFee float64, method string, isLaunchPromo, isZeroCommission bool, promoSubsidyAmount float64) error {
-	base := totalPrice - deliveryFee
-	if isLaunchPromo {
-		base += promoSubsidyAmount
-	}
-
-	share := models.ShopShare
-	if isZeroCommission {
-		share = models.ZeroCommissionShare
-	}
-	delta := base * share
+	breakdown := models.ComputeShopSaleBreakdown(totalPrice, deliveryFee, promoSubsidyAmount, isLaunchPromo, isZeroCommission)
+	delta := breakdown.Net
 
 	tx := models.ShopTransaction{
 		ID:            uuid.New(),

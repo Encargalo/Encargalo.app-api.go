@@ -48,9 +48,9 @@ func (_m *CustomerFinanceApp) AcceptRefund(ctx context.Context, requestID uuid.U
 	return r0, r1
 }
 
-// CompleteRefund provides a mock function with given fields: ctx, requestID, proofImage, amountUSD
-func (_m *CustomerFinanceApp) CompleteRefund(ctx context.Context, requestID uuid.UUID, proofImage string, amountUSD float64) (dto.RefundRequestResponse, error) {
-	ret := _m.Called(ctx, requestID, proofImage, amountUSD)
+// CompleteRefund provides a mock function with given fields: ctx, requestID, proofImage, amountBs
+func (_m *CustomerFinanceApp) CompleteRefund(ctx context.Context, requestID uuid.UUID, proofImage string, amountBs float64) (dto.RefundRequestResponse, error) {
+	ret := _m.Called(ctx, requestID, proofImage, amountBs)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CompleteRefund")
@@ -59,16 +59,16 @@ func (_m *CustomerFinanceApp) CompleteRefund(ctx context.Context, requestID uuid
 	var r0 dto.RefundRequestResponse
 	var r1 error
 	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, float64) (dto.RefundRequestResponse, error)); ok {
-		return rf(ctx, requestID, proofImage, amountUSD)
+		return rf(ctx, requestID, proofImage, amountBs)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, float64) dto.RefundRequestResponse); ok {
-		r0 = rf(ctx, requestID, proofImage, amountUSD)
+		r0 = rf(ctx, requestID, proofImage, amountBs)
 	} else {
 		r0 = ret.Get(0).(dto.RefundRequestResponse)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, string, float64) error); ok {
-		r1 = rf(ctx, requestID, proofImage, amountUSD)
+		r1 = rf(ctx, requestID, proofImage, amountBs)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -104,9 +104,9 @@ func (_m *CustomerFinanceApp) CreateRefundRequest(ctx context.Context, customerI
 	return r0, r1
 }
 
-// CreditOrderRejected provides a mock function with given fields: ctx, customerID, orderID, amountUSD, refundablePMUSD
-func (_m *CustomerFinanceApp) CreditOrderRejected(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID, amountUSD float64, refundablePMUSD float64) (uuid.UUID, time.Time, error) {
-	ret := _m.Called(ctx, customerID, orderID, amountUSD, refundablePMUSD)
+// CreditOrderRejected provides a mock function with given fields: ctx, customerID, orderID, amountUSD, refundablePMUSD, bcvRate
+func (_m *CustomerFinanceApp) CreditOrderRejected(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID, amountUSD float64, refundablePMUSD float64, bcvRate float64) (uuid.UUID, time.Time, error) {
+	ret := _m.Called(ctx, customerID, orderID, amountUSD, refundablePMUSD, bcvRate)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreditOrderRejected")
@@ -115,25 +115,25 @@ func (_m *CustomerFinanceApp) CreditOrderRejected(ctx context.Context, customerI
 	var r0 uuid.UUID
 	var r1 time.Time
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) (uuid.UUID, time.Time, error)); ok {
-		return rf(ctx, customerID, orderID, amountUSD, refundablePMUSD)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64, float64) (uuid.UUID, time.Time, error)); ok {
+		return rf(ctx, customerID, orderID, amountUSD, refundablePMUSD, bcvRate)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) uuid.UUID); ok {
-		r0 = rf(ctx, customerID, orderID, amountUSD, refundablePMUSD)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64, float64) uuid.UUID); ok {
+		r0 = rf(ctx, customerID, orderID, amountUSD, refundablePMUSD, bcvRate)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(uuid.UUID)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) time.Time); ok {
-		r1 = rf(ctx, customerID, orderID, amountUSD, refundablePMUSD)
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64, float64) time.Time); ok {
+		r1 = rf(ctx, customerID, orderID, amountUSD, refundablePMUSD, bcvRate)
 	} else {
 		r1 = ret.Get(1).(time.Time)
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) error); ok {
-		r2 = rf(ctx, customerID, orderID, amountUSD, refundablePMUSD)
+	if rf, ok := ret.Get(2).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64, float64) error); ok {
+		r2 = rf(ctx, customerID, orderID, amountUSD, refundablePMUSD, bcvRate)
 	} else {
 		r2 = ret.Error(2)
 	}
@@ -141,9 +141,9 @@ func (_m *CustomerFinanceApp) CreditOrderRejected(ctx context.Context, customerI
 	return r0, r1, r2
 }
 
-// CreditPaymentOverage provides a mock function with given fields: ctx, customerID, orderID, amountUSD
-func (_m *CustomerFinanceApp) CreditPaymentOverage(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID, amountUSD float64) (uuid.UUID, time.Time, error) {
-	ret := _m.Called(ctx, customerID, orderID, amountUSD)
+// CreditPaymentOverage provides a mock function with given fields: ctx, customerID, orderID, amountUSD, bcvRate
+func (_m *CustomerFinanceApp) CreditPaymentOverage(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID, amountUSD float64, bcvRate float64) (uuid.UUID, time.Time, error) {
+	ret := _m.Called(ctx, customerID, orderID, amountUSD, bcvRate)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreditPaymentOverage")
@@ -152,25 +152,25 @@ func (_m *CustomerFinanceApp) CreditPaymentOverage(ctx context.Context, customer
 	var r0 uuid.UUID
 	var r1 time.Time
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64) (uuid.UUID, time.Time, error)); ok {
-		return rf(ctx, customerID, orderID, amountUSD)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) (uuid.UUID, time.Time, error)); ok {
+		return rf(ctx, customerID, orderID, amountUSD, bcvRate)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64) uuid.UUID); ok {
-		r0 = rf(ctx, customerID, orderID, amountUSD)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) uuid.UUID); ok {
+		r0 = rf(ctx, customerID, orderID, amountUSD, bcvRate)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(uuid.UUID)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, float64) time.Time); ok {
-		r1 = rf(ctx, customerID, orderID, amountUSD)
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) time.Time); ok {
+		r1 = rf(ctx, customerID, orderID, amountUSD, bcvRate)
 	} else {
 		r1 = ret.Get(1).(time.Time)
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, uuid.UUID, uuid.UUID, float64) error); ok {
-		r2 = rf(ctx, customerID, orderID, amountUSD)
+	if rf, ok := ret.Get(2).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) error); ok {
+		r2 = rf(ctx, customerID, orderID, amountUSD, bcvRate)
 	} else {
 		r2 = ret.Error(2)
 	}
@@ -178,9 +178,9 @@ func (_m *CustomerFinanceApp) CreditPaymentOverage(ctx context.Context, customer
 	return r0, r1, r2
 }
 
-// CreditPaymentPartial provides a mock function with given fields: ctx, customerID, orderID, amountUSD
-func (_m *CustomerFinanceApp) CreditPaymentPartial(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID, amountUSD float64) (uuid.UUID, time.Time, error) {
-	ret := _m.Called(ctx, customerID, orderID, amountUSD)
+// CreditPaymentPartial provides a mock function with given fields: ctx, customerID, orderID, amountUSD, bcvRate
+func (_m *CustomerFinanceApp) CreditPaymentPartial(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID, amountUSD float64, bcvRate float64) (uuid.UUID, time.Time, error) {
+	ret := _m.Called(ctx, customerID, orderID, amountUSD, bcvRate)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreditPaymentPartial")
@@ -189,25 +189,25 @@ func (_m *CustomerFinanceApp) CreditPaymentPartial(ctx context.Context, customer
 	var r0 uuid.UUID
 	var r1 time.Time
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64) (uuid.UUID, time.Time, error)); ok {
-		return rf(ctx, customerID, orderID, amountUSD)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) (uuid.UUID, time.Time, error)); ok {
+		return rf(ctx, customerID, orderID, amountUSD, bcvRate)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64) uuid.UUID); ok {
-		r0 = rf(ctx, customerID, orderID, amountUSD)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) uuid.UUID); ok {
+		r0 = rf(ctx, customerID, orderID, amountUSD, bcvRate)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(uuid.UUID)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, float64) time.Time); ok {
-		r1 = rf(ctx, customerID, orderID, amountUSD)
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) time.Time); ok {
+		r1 = rf(ctx, customerID, orderID, amountUSD, bcvRate)
 	} else {
 		r1 = ret.Get(1).(time.Time)
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, uuid.UUID, uuid.UUID, float64) error); ok {
-		r2 = rf(ctx, customerID, orderID, amountUSD)
+	if rf, ok := ret.Get(2).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) error); ok {
+		r2 = rf(ctx, customerID, orderID, amountUSD, bcvRate)
 	} else {
 		r2 = ret.Error(2)
 	}
@@ -215,9 +215,9 @@ func (_m *CustomerFinanceApp) CreditPaymentPartial(ctx context.Context, customer
 	return r0, r1, r2
 }
 
-// DebitForOrder provides a mock function with given fields: ctx, customerID, orderID, amountUSD
-func (_m *CustomerFinanceApp) DebitForOrder(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID, amountUSD float64) error {
-	ret := _m.Called(ctx, customerID, orderID, amountUSD)
+// DebitForOrder provides a mock function with given fields: ctx, customerID, orderID, amountBs
+func (_m *CustomerFinanceApp) DebitForOrder(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID, amountBs float64) error {
+	ret := _m.Called(ctx, customerID, orderID, amountBs)
 
 	if len(ret) == 0 {
 		panic("no return value specified for DebitForOrder")
@@ -225,7 +225,7 @@ func (_m *CustomerFinanceApp) DebitForOrder(ctx context.Context, customerID uuid
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64) error); ok {
-		r0 = rf(ctx, customerID, orderID, amountUSD)
+		r0 = rf(ctx, customerID, orderID, amountBs)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -261,6 +261,34 @@ func (_m *CustomerFinanceApp) GetBalance(ctx context.Context, customerID uuid.UU
 	return r0, r1
 }
 
+// GetBalanceBs provides a mock function with given fields: ctx, customerID
+func (_m *CustomerFinanceApp) GetBalanceBs(ctx context.Context, customerID uuid.UUID) (float64, error) {
+	ret := _m.Called(ctx, customerID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetBalanceBs")
+	}
+
+	var r0 float64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (float64, error)); ok {
+		return rf(ctx, customerID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) float64); ok {
+		r0 = rf(ctx, customerID)
+	} else {
+		r0 = ret.Get(0).(float64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, customerID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetBalancePaymentDebitForOrder provides a mock function with given fields: ctx, customerID, orderID
 func (_m *CustomerFinanceApp) GetBalancePaymentDebitForOrder(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID) (float64, error) {
 	ret := _m.Called(ctx, customerID, orderID)
@@ -282,34 +310,6 @@ func (_m *CustomerFinanceApp) GetBalancePaymentDebitForOrder(ctx context.Context
 
 	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
 		r1 = rf(ctx, customerID, orderID)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// GetBalanceUSD provides a mock function with given fields: ctx, customerID
-func (_m *CustomerFinanceApp) GetBalanceUSD(ctx context.Context, customerID uuid.UUID) (float64, error) {
-	ret := _m.Called(ctx, customerID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetBalanceUSD")
-	}
-
-	var r0 float64
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (float64, error)); ok {
-		return rf(ctx, customerID)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) float64); ok {
-		r0 = rf(ctx, customerID)
-	} else {
-		r0 = ret.Get(0).(float64)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
-		r1 = rf(ctx, customerID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -451,9 +451,9 @@ func (_m *CustomerFinanceApp) NotifyIncompleteRefunds(ctx context.Context) error
 	return r0
 }
 
-// RefundBalancePayment provides a mock function with given fields: ctx, customerID, orderID, amountUSD
-func (_m *CustomerFinanceApp) RefundBalancePayment(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID, amountUSD float64) error {
-	ret := _m.Called(ctx, customerID, orderID, amountUSD)
+// RefundBalancePayment provides a mock function with given fields: ctx, customerID, orderID, amountBs
+func (_m *CustomerFinanceApp) RefundBalancePayment(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID, amountBs float64) error {
+	ret := _m.Called(ctx, customerID, orderID, amountBs)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RefundBalancePayment")
@@ -461,7 +461,7 @@ func (_m *CustomerFinanceApp) RefundBalancePayment(ctx context.Context, customer
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64) error); ok {
-		r0 = rf(ctx, customerID, orderID, amountUSD)
+		r0 = rf(ctx, customerID, orderID, amountBs)
 	} else {
 		r0 = ret.Error(0)
 	}

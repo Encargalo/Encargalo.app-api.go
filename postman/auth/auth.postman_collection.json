@@ -10,6 +10,12 @@
       "key": "base_url",
       "value": "http://localhost:3000",
       "type": "string"
+    },
+    {
+      "key": "internal_gateway_secret",
+      "value": "",
+      "type": "string",
+      "description": "Debe coincidir con INTERNAL_GATEWAY_SECRET del backend. Solo se usa para probar Verify Session a mano en dev local."
     }
   ],
   "item": [
@@ -159,6 +165,24 @@
           "path": ["auth", "logout"]
         },
         "description": "Cierra la sesión activa. Requiere cookie `encargalo-session`. Roles permitidos: Customer, Order Manager, Owner, Rider, Staff."
+      }
+    },
+    {
+      "name": "Verify Session (Internal - ForwardAuth)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-Internal-Gateway-Secret",
+            "value": "{{internal_gateway_secret}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/internal/verify-session",
+          "host": ["{{base_url}}"],
+          "path": ["internal", "verify-session"]
+        },
+        "description": "Endpoint interno que en producción llama el reverse proxy (Traefik) vía ForwardAuth en cada request — no se llama desde el frontend/apps. Debe ser GET: por defecto ForwardAuth siempre llama al servidor de auth con GET sin importar el método original de la request (a menos que se configure preserveRequestMethod). Requiere la cookie `encargalo-session` (hacer sign-in primero) y el header `X-Internal-Gateway-Secret`. Devuelve `200` con el header de respuesta `X-Encargalo-Session` (JSON del ActiveSession), o `401` si la sesión es inválida/expirada.\n\nEn desarrollo local, sin Traefik corriendo, este request se usa a mano: 1) hacer sign-in para obtener la cookie, 2) llamar este request, 3) copiar el header `X-Encargalo-Session` de la respuesta y pegarlo como header en las siguientes requests de prueba a rutas protegidas, junto con `X-Internal-Gateway-Secret`. Ver sección \"Sesión en desarrollo local (sin Traefik)\" en el README del repo."
       }
     }
   ]

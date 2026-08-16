@@ -82,8 +82,8 @@ func (r *paymentReviewsRepo) ResolvePending(ctx context.Context, id uuid.UUID, u
 	if update.RejectionReason != nil {
 		q = q.Set("rejection_reason = ?", *update.RejectionReason)
 	}
-	if update.CreditedUSD != nil {
-		q = q.Set("credited_usd = ?", *update.CreditedUSD)
+	if update.CreditedBs != nil {
+		q = q.Set("credited_bs = ?", *update.CreditedBs)
 	}
 	if update.ReferenceLast4 != nil {
 		q = q.Set("reference_last4 = ?", *update.ReferenceLast4)

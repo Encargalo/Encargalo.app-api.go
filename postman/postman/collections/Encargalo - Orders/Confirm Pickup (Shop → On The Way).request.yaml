@@ -1,5 +1,5 @@
 $kind: http-request
-description: "El local introduce el código de 4 dígitos que le muestra el rider. Si el código es válido, el pedido pasa de 'In Preparation' o 'Ready' a 'On The Way' y se genera el código de entrega para el usuario. Requiere cookie `encargalo-session`. Roles: Order Manager, Owner."
+description: "El local introduce el código de 4 dígitos que le muestra el rider. Si el código es válido, el pedido pasa de 'In Preparation' o 'Ready' a 'On The Way' y se genera el código de entrega para el usuario. Requiere cookie `encargalo-session`. Roles: Order Manager, Owner. El pedido debe pertenecer al shop del empleado autenticado (401 si no). Rate limit: 10 intentos/min por IP."
 url: "{{base_url}}/orders/:id/confirm-pickup"
 method: POST
 headers:

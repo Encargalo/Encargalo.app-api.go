@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"time"
 
 	"Encargalo.app-api.go/internal/pkg/bycript"
 	"Encargalo.app-api.go/internal/shared/errcustom"
@@ -134,4 +135,17 @@ func (c *customersApp) UpdatePassword(ctx context.Context, customer_id uuid.UUID
 
 	return c.repo.UpdatePassword(ctx, customer_id, &customerModel)
 
+}
+
+func (c *customersApp) RequestAccountDeletion(ctx context.Context, userID uuid.UUID) error {
+	return c.repo.RequestAccountDeletion(ctx, userID)
+}
+
+func (c *customersApp) CancelPendingDeletionIfAny(ctx context.Context, userID uuid.UUID) error {
+	return c.repo.CancelAccountDeletion(ctx, userID)
+}
+
+func (c *customersApp) FinalizePendingDeletions(ctx context.Context) (int64, error) {
+	cutoff := time.Now().Add(-models.AccountDeletionGracePeriod)
+	return c.repo.FinalizePendingDeletions(ctx, cutoff)
 }

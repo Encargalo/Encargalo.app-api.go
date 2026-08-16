@@ -41,7 +41,7 @@ func TestCompleteRefund_AmountMismatch(t *testing.T) {
 	now := time.Now()
 	repo.On("GetRefundRequest", mock.Anything, requestID).Return(&models.BalanceRefundRequest{
 		ID:        requestID,
-		AmountUSD: 52,
+		AmountBs:  52,
 		Status:    models.RefundAccepted,
 		CreatedAt: now,
 		ExpiresAt: now.Add(time.Hour),
@@ -66,7 +66,7 @@ func TestCompleteRefund_UploadsAndCompletes(t *testing.T) {
 	accepted := &models.BalanceRefundRequest{
 		ID:           requestID,
 		CustomerID:   customerID,
-		AmountUSD:    52,
+		AmountBs:     52,
 		Status:       models.RefundAccepted,
 		PMPhone:      "0414",
 		PMBankCode:   "0102",
