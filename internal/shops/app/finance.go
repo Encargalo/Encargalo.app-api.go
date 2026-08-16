@@ -120,14 +120,21 @@ func toShopTransactionDTOs(txs []models.ShopTransaction, spotRate float64) []dto
 	result := make([]dtos.ShopTransactionDTO, 0, len(txs))
 	for _, t := range txs {
 		txCurrency := money.NormalizeCurrency(t.Currency, models.CurrencyUSD)
-		amountBs, amountUSD := money.TransactionDual(t.Amount, txCurrency, nil, spotRate)
+		amountBs, amountUSD := money.TransactionDual(t.Amount, txCurrency, t.BcvRate, spotRate)
 		dto := dtos.ShopTransactionDTO{
 			ID:            t.ID.String(),
 			AmountBs:      amountBs,
 			AmountUSD:     amountUSD,
+			BcvRate:       t.BcvRate,
 			MovementType:  t.MovementType,
 			PaymentMethod: t.PaymentMethod,
+			Notes:         t.Notes,
+			ProofURL:      t.ProofURL,
 			CreatedAt:     t.CreatedAt.Format(time.RFC3339),
+		}
+		if t.StaffID != nil {
+			s := t.StaffID.String()
+			dto.StaffID = &s
 		}
 		if t.OrderID != nil {
 			s := t.OrderID.String()

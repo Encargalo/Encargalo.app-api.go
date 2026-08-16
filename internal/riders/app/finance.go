@@ -174,7 +174,13 @@ func toTransactionDTOs(txs []models.Transaction, spotRate float64) []dtos.Transa
 			MovementType:  t.MovementType,
 			PaymentMethod: t.PaymentMethod,
 			DistanceKm:    t.DistanceKm,
+			Notes:         t.Notes,
+			ProofURL:      t.ProofURL,
 			CreatedAt:     t.CreatedAt.Format(time.RFC3339),
+		}
+		if t.StaffID != nil {
+			s := t.StaffID.String()
+			dto.StaffID = &s
 		}
 		if t.OrderID != nil {
 			s := t.OrderID.String()

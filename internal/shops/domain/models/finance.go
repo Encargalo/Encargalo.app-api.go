@@ -64,6 +64,9 @@ const (
 	MovementTypeSaleDeliveryBank   ShopMovementType = "sale_delivery_bank"
 	MovementTypeSaleDeliveryCash   ShopMovementType = "sale_delivery_cash"
 	MovementTypeLaunchPromoSubsidy ShopMovementType = "launch_promo_subsidy"
+	MovementTypeStaffPayout        ShopMovementType = "staff_payout"
+	MovementTypeAdjustmentCredit   ShopMovementType = "adjustment_credit"
+	MovementTypeAdjustmentDebit    ShopMovementType = "adjustment_debit"
 )
 
 type ShopBalance struct {
@@ -85,8 +88,12 @@ type ShopTransaction struct {
 	OrderID       *uuid.UUID `bun:"order_id,nullzero"`
 	Amount        float64    `bun:"amount"`
 	Currency      string     `bun:"currency"`
+	BcvRate       *float64   `bun:"bcv_rate,nullzero"`
 	MovementType  string     `bun:"movement_type"`
 	PaymentMethod *string    `bun:"payment_method"`
+	StaffID       *uuid.UUID `bun:"staff_id,nullzero"`
+	Notes         *string    `bun:"notes,nullzero"`
+	ProofURL      *string    `bun:"proof_url,nullzero"`
 	CreatedAt     time.Time  `bun:"created_at,nullzero"`
 }
 

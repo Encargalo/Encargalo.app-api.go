@@ -22,6 +22,9 @@ type TransactionDTO struct {
 	MovementType  string   `json:"movement_type"`
 	PaymentMethod *string  `json:"payment_method,omitempty"`
 	DistanceKm    *float64 `json:"distance_km,omitempty"`
+	StaffID       *string  `json:"staff_id,omitempty"`
+	Notes         *string  `json:"notes,omitempty"`
+	ProofURL      *string  `json:"proof_url,omitempty"`
 	CreatedAt     string   `json:"created_at"`
 }
 

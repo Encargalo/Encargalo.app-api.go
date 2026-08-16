@@ -48,6 +48,7 @@ var statusMap = map[error]int{
 	ErrInvalidProofURL:          http.StatusBadRequest,
 	ErrRefundAmountMismatch:     http.StatusUnprocessableEntity,
 	ErrRefundProofRequired:      http.StatusBadRequest,
+	ErrFinanceNotesRequired:     http.StatusBadRequest,
 	ErrRiderProfileIncomplete:   http.StatusUnprocessableEntity,
 	ErrRiderNotActive:           http.StatusForbidden,
 	ErrTurboOutOfCoverage:       http.StatusUnprocessableEntity,

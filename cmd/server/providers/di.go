@@ -45,6 +45,9 @@ import (
 	handRiders "Encargalo.app-api.go/internal/riders/handler"
 	repoRiders "Encargalo.app-api.go/internal/riders/repo"
 
+	appFinance "Encargalo.app-api.go/internal/finance/app"
+	repoFinance "Encargalo.app-api.go/internal/finance/repo"
+
 	ordersPorts "Encargalo.app-api.go/internal/orders/domain/ports"
 	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
 	usersPorts "Encargalo.app-api.go/internal/users/domain/ports"
@@ -109,6 +112,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(groups.NewProductsGroup)
 	_ = Container.Provide(groups.NewUsersGroup)
 	_ = Container.Provide(groups.NewOrdersGroup)
+	_ = Container.Provide(groups.NewRidersGroup)
 	_ = Container.Provide(groups.NewPaymentMethodsGroup)
 	_ = Container.Provide(groups.NewBcvGroup)
 	_ = Container.Provide(groups.NewMapsGroup)
@@ -127,6 +131,10 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(handShops.NewShopFinanceHandler)
 	_ = Container.Provide(handShops.NewShopStatsHandler)
 	_ = Container.Provide(handShops.NewStaffShopHandler)
+	_ = Container.Provide(handShops.NewStaffShopFinanceHandler)
+	_ = Container.Provide(repoFinance.NewStaffFinanceRepo)
+	_ = Container.Provide(appFinance.NewStaffFinanceApp)
+
 	_ = Container.Provide(repoShops.NewShopFinanceRepo)
 	_ = Container.Provide(repoShops.NewShopStatsRepo)
 	_ = Container.Provide(appShops.NewShopFinanceApp)
@@ -158,6 +166,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(handRiders.New)
 	_ = Container.Provide(handRiders.NewFinanceHandler)
 	_ = Container.Provide(handRiders.NewStaffRiderHandler)
+	_ = Container.Provide(handRiders.NewStaffFinanceHandler)
 	_ = Container.Provide(repoRiders.NewRidersRepo)
 	_ = Container.Provide(repoRiders.NewFinanceRepo)
 	_ = Container.Provide(repoRiders.NewRidersStream)

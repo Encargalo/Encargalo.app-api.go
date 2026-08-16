@@ -42,6 +42,7 @@ var (
 	ErrInvalidProofURL          = errors.New("url de comprobante inválida")
 	ErrRefundAmountMismatch     = errors.New("el monto ingresado no coincide con la devolución")
 	ErrRefundProofRequired      = errors.New("el comprobante de pago es requerido")
+	ErrFinanceNotesRequired     = errors.New("notes es requerido")
 	ErrRiderProfileIncomplete   = errors.New("expediente de rider incompleto")
 	ErrRiderNotActive           = errors.New("cuenta de rider no activa")
 	ErrInvalidDateRange         = errors.New("rango de fechas inválido")
