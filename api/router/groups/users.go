@@ -45,7 +45,7 @@ func (o *usersGroup) Resource(g *echo.Echo) {
 
 	group.POST("", o.handlerUsers.RegisterCustomer, o.middle.GetRequestInfo)
 
-	group.GET("", o.handlerUsers.SearchCustomer, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer, models.OrderManager, models.Owner))
+	group.GET("", o.handlerUsers.SearchCustomer, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer, models.OrderManager, models.Owner, models.Staff))
 	group.PUT("", o.handlerUsers.UpdateCustomer, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer, models.OrderManager, models.Owner))
 	group.PUT("/change-password", o.handlerUsers.UpdatePassword, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer, models.OrderManager, models.Owner))
 	group.DELETE("", o.handlerUsers.DeleteAccount, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer))
