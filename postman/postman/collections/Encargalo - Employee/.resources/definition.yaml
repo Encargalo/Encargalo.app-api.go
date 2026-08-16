@@ -1,4 +1,0 @@
-$kind: collection
-description: Endpoints de empleados. Requieren cookie `encargalo-session` con rol Order Manager.
-variables:
-  base_url: http://localhost:3000

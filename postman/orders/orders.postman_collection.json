@@ -31,37 +31,6 @@
       }
     },
     {
-      "name": "Create Order (EfectivoBs / EfectivoDolar)",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"shop_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa7\",\n  \"method_payment\": \"EfectivoBs\",\n  \"expected_total_price\": 65000,\n  \"address\": {\n    \"address\": \"Av. Principal, Caracas\",\n    \"latitude\": 10.488801,\n    \"longitude\": -66.879190,\n    \"instructions\": \"Piso 3, apto 301\"\n  },\n  \"items\": [\n    {\n      \"item_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa8\",\n      \"amount\": 2,\n      \"observation\": \"Sin cebolla\",\n      \"flavors\": {},\n      \"additions\": []\n    }\n  ]\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "{{base_url}}/orders",
-          "host": [
-            "{{base_url}}"
-          ],
-          "path": [
-            "orders"
-          ]
-        },
-        "description": "Crea una orden en efectivo. `method_payment` acepta `EfectivoBs` o `EfectivoDolar`. Al aceptar pasa directo a In Preparation. `expected_total_price` es el total que el cliente vio en el catálogo (incluye delivery fee); si al recalcular en el servidor el total difiere (p. ej. cambió un descuento o la promo de lanzamiento venció), la orden se rechaza con 409. Requiere cookie `encargalo-session`. Rol: Customer."
-      }
-    },
-    {
       "name": "Create Quote",
       "request": {
         "method": "POST",

@@ -1,9 +1,0 @@
-$kind: http-request
-description: Retorna las adiciones asignadas a un producto específico (subset del catálogo de su categoría). Público.
-url: "{{base_url}}/products/additions?item_id=00000000-0000-0000-0000-000000000000"
-method: GET
-queryParams:
-  - key: item_id
-    value: 00000000-0000-0000-0000-000000000000
-    description: UUID del producto
-order: 17000

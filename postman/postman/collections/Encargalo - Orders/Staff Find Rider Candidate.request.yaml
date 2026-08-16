@@ -1,3 +1,0 @@
-description: Busca cuenta Customer por teléfono y expediente rider si existe. Cookie + rol Staff.
-url: "{{base_url}}/riders/staff/candidates?phone=+58412..."
-method: GET

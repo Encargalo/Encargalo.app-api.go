@@ -1,9 +1,0 @@
-$kind: http-request
-description: "Elimina una dirección por su ID. Requiere cookie `encargalo-session`. Roles: Customer, customer."
-url: "{{base_url}}/users/address?address_id=00000000-0000-0000-0000-000000000000"
-method: DELETE
-queryParams:
-  - key: address_id
-    value: 00000000-0000-0000-0000-000000000000
-    description: UUID de la dirección a eliminar
-order: 5000

@@ -1,5 +1,0 @@
-$kind: http-request
-description: "Lista todas las categorías del negocio con details.flavors, selector_type, availability_status, macro_category_id y schedules. Sin items. Roles: Owner / Order Manager."
-url: "{{base_url}}/business/products/categories"
-method: GET
-order: 4000

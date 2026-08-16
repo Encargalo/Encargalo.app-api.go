@@ -1,7 +1,0 @@
-$kind: http-request
-description: "Igual que Search Category Summaries, pero solo devuelve categorías con `selector_type` `single_select` o `multi_select`. Usar al crear sabores: las categorías con `none` (sin soporte de sabores) no aparecen. Requiere cookie `encargalo-session`. Rol: Order Manager / Owner."
-url: "{{base_url}}/business/products/categories/summary?for=flavors"
-method: GET
-queryParams:
-  for: flavors
-order: 7000

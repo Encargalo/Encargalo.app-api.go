@@ -1,7 +1,0 @@
-$kind: http-request
-description: Categorías del shop con macro Adiciones (slug adiciones).
-url: "{{base_url}}/business/products/categories/summary?for=additions"
-method: GET
-queryParams:
-  for: additions
-order: 8000

@@ -1,3 +1,0 @@
-description: Elimina una foto del expediente (NULL en DB + destroy Cloudinary). Cookie + rol Staff. field = profile_photo|id_photo|carnet_photo|license_photo|circulation_card|vehicle_photo_1..4
-url: "{{base_url}}/riders/staff/profiles/:userId/photos/:field"
-method: DELETE

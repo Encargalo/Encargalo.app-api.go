@@ -1,3 +1,0 @@
-description: Lista expedientes. status=draft|active|suspended (default draft). Cookie + rol Staff.
-url: "{{base_url}}/riders/staff/profiles?status=draft"
-method: GET
