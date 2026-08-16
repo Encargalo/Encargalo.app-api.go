@@ -39,7 +39,8 @@ func TestGetBalance_Success(t *testing.T) {
 	riderID := uuid.New()
 
 	resp := dtos.BalanceResponse{
-		Balance:      25.0,
+		BalanceBs:    25.0,
+		BalanceUSD:   0.65,
 		Zone:         models.ZoneWithdrawalAvailable,
 		Transactions: []dtos.TransactionDTO{},
 	}

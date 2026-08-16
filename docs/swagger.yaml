@@ -793,16 +793,12 @@ definitions:
     type: object
   Encargalo_app-api_go_internal_riders_domain_dtos.BalanceResponse:
     properties:
-      balance:
-        type: number
       balance_bs:
         type: number
       balance_usd:
         type: number
       bcv_rate:
         type: number
-      currency:
-        type: string
       transactions:
         items:
           $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO'
@@ -909,8 +905,6 @@ definitions:
     type: object
   Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO:
     properties:
-      amount:
-        type: number
       amount_bs:
         type: number
       amount_usd:
@@ -918,8 +912,6 @@ definitions:
       bcv_rate:
         type: number
       created_at:
-        type: string
-      currency:
         type: string
       distance_km:
         type: number
@@ -1235,16 +1227,12 @@ definitions:
     type: object
   Encargalo_app-api_go_internal_shops_domain_dtos.ShopBalanceResponse:
     properties:
-      balance:
-        type: number
       balance_bs:
         type: number
       balance_usd:
         type: number
       bcv_rate:
         type: number
-      currency:
-        type: string
       transactions:
         items:
           $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionDTO'
@@ -1303,15 +1291,11 @@ definitions:
     type: object
   Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionDTO:
     properties:
-      amount:
-        type: number
       amount_bs:
         type: number
       amount_usd:
         type: number
       created_at:
-        type: string
-      currency:
         type: string
       id:
         type: string
@@ -1512,16 +1496,12 @@ definitions:
     type: object
   Encargalo_app-api_go_internal_users_domain_dto.CustomerBalanceResponse:
     properties:
-      balance:
-        type: number
       balance_bs:
         type: number
       balance_usd:
         type: number
       bcv_rate:
         type: number
-      currency:
-        type: string
       transactions:
         items:
           $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.CustomerTransactionItem'
@@ -1565,8 +1545,6 @@ definitions:
     type: object
   Encargalo_app-api_go_internal_users_domain_dto.CustomerTransactionItem:
     properties:
-      amount:
-        type: number
       amount_bs:
         type: number
       amount_usd:
@@ -1574,8 +1552,6 @@ definitions:
       can_request_refund:
         type: boolean
       created_at:
-        type: string
-      currency:
         type: string
       id:
         type: string
@@ -2678,9 +2654,8 @@ paths:
       - Business
   /business/shops/balance:
     get:
-      description: Retorna el balance actual del local en su moneda nativa (USD) junto
-        al equivalente en Bs según la tasa BCV vigente, y los últimos 10 movimientos
-        (cada uno con amount_bs y amount_usd).
+      description: Retorna balance_bs y balance_usd (tasa BCV vigente en bcv_rate)
+        y los últimos 10 movimientos (amount_bs y amount_usd).
       produces:
       - application/json
       responses:
@@ -2932,8 +2907,7 @@ paths:
       - Shops Stats
   /business/shops/transactions:
     get:
-      description: Retorna el historial paginado de movimientos de balance del local
-        (cada movimiento incluye amount_bs y amount_usd).
+      description: Retorna el historial paginado de movimientos (amount_bs y amount_usd).
       parameters:
       - description: Página (default 1)
         in: query
@@ -3715,10 +3689,9 @@ paths:
       - Products
   /riders/balance:
     get:
-      description: Retorna el balance actual del rider en su moneda nativa (Bs) junto
-        al equivalente en USD según la tasa BCV vigente, su zona de control, el mínimo
-        de retiro vigente (withdrawal_min_bs, dinámico según tasa BCV) y los últimos
-        10 movimientos (cada uno con amount_bs y amount_usd).
+      description: Retorna balance_bs y balance_usd (tasa BCV vigente en bcv_rate),
+        zona de control, mínimo de retiro (withdrawal_min_bs) y los últimos 10 movimientos
+        (amount_bs y amount_usd).
       produces:
       - application/json
       responses:
@@ -3947,8 +3920,7 @@ paths:
       - Riders Staff
   /riders/transactions:
     get:
-      description: Retorna el historial paginado de movimientos de balance del rider
-        (cada movimiento incluye amount_bs y amount_usd).
+      description: Retorna el historial paginado de movimientos (amount_bs y amount_usd).
       parameters:
       - description: Página (default 1)
         in: query
@@ -5231,12 +5203,11 @@ paths:
       - Users Address
   /users/balance:
     get:
-      description: Retorna el balance del cliente en su moneda nativa (Bs) junto al
-        equivalente en USD según la tasa BCV vigente, y los últimos 10 movimientos
-        (cada uno con amount_bs y amount_usd). Créditos elegibles incluyen can_request_refund
-        (ventana/monto/saldo; no exige Pago Móvil) y refund_eligible_until. Los débitos
-        de devolución (balance_refund_hold / processing / payout) y créditos balance_refund_restore
-        incluyen refund_request_id para abrir el detalle.
+      description: Retorna balance_bs y balance_usd (tasa BCV vigente en bcv_rate)
+        y los últimos 10 movimientos (amount_bs y amount_usd). Créditos elegibles
+        incluyen can_request_refund (ventana/monto/saldo; no exige Pago Móvil) y refund_eligible_until.
+        Los débitos de devolución (balance_refund_hold / processing / payout) y créditos
+        balance_refund_restore incluyen refund_request_id para abrir el detalle.
       produces:
       - application/json
       responses:

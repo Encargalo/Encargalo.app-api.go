@@ -27,7 +27,7 @@ func NewShopFinanceHandler(svc shopsPorts.ShopFinanceApp) ShopFinanceHandler {
 // GetBalance godoc
 //
 // @Summary      Balance del local
-// @Description  Retorna el balance actual del local en su moneda nativa (USD) junto al equivalente en Bs según la tasa BCV vigente, y los últimos 10 movimientos (cada uno con amount_bs y amount_usd).
+// @Description  Retorna balance_bs y balance_usd (tasa BCV vigente en bcv_rate) y los últimos 10 movimientos (amount_bs y amount_usd).
 // @Tags         Shops Finance
 // @Produce      json
 // @Security     SessionCookie
@@ -53,7 +53,7 @@ func (h *shopFinanceHandler) GetBalance(c echo.Context) error {
 // ListTransactions godoc
 //
 // @Summary      Historial de movimientos del local
-// @Description  Retorna el historial paginado de movimientos de balance del local (cada movimiento incluye amount_bs y amount_usd).
+// @Description  Retorna el historial paginado de movimientos (amount_bs y amount_usd).
 // @Tags         Shops Finance
 // @Produce      json
 // @Param        page   query  int  false  "Página (default 1)"

@@ -85,8 +85,6 @@ func (f *customerFinanceApp) GetBalance(ctx context.Context, customerID uuid.UUI
 		amountBs, amountUSD := money.TransactionDual(t.Amount, txCurrency, t.BcvRate, spotRate)
 		items[i] = dto.CustomerTransactionItem{
 			ID:           t.ID.String(),
-			Amount:       t.Amount,
-			Currency:     txCurrency,
 			AmountBs:     amountBs,
 			AmountUSD:    amountUSD,
 			MovementType: t.MovementType,
@@ -115,7 +113,7 @@ func (f *customerFinanceApp) GetBalance(ctx context.Context, customerID uuid.UUI
 			until := t.CreatedAt.Add(models.RefundRequestWindow)
 			untilStr := until.Format(time.RFC3339)
 			items[i].RefundEligibleUntil = &untilStr
-			if withinRefundWindow(t.CreatedAt, now) && balance >= refundableBs {
+			if withinRefundWindow(t.CreatedAt, now) && balanceBs >= refundableBs {
 				active, err := f.repo.HasActiveRefundForTransaction(ctx, t.ID)
 				if err == nil && !active {
 					items[i].CanRequestRefund = true
@@ -125,8 +123,6 @@ func (f *customerFinanceApp) GetBalance(ctx context.Context, customerID uuid.UUI
 	}
 
 	return dto.CustomerBalanceResponse{
-		Balance:      balance,
-		Currency:     currency,
 		BalanceBs:    balanceBs,
 		BalanceUSD:   balanceUSD,
 		BcvRate:      spotRate,

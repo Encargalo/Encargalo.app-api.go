@@ -77,8 +77,6 @@ func (f *shopFinanceApp) GetBalance(ctx context.Context, shopID uuid.UUID) (dtos
 	balanceBs, balanceUSD := money.BalanceDual(balance, currency, spotRate)
 
 	return dtos.ShopBalanceResponse{
-		Balance:      balance,
-		Currency:     currency,
 		BalanceBs:    balanceBs,
 		BalanceUSD:   balanceUSD,
 		BcvRate:      spotRate,
@@ -125,8 +123,6 @@ func toShopTransactionDTOs(txs []models.ShopTransaction, spotRate float64) []dto
 		amountBs, amountUSD := money.TransactionDual(t.Amount, txCurrency, nil, spotRate)
 		dto := dtos.ShopTransactionDTO{
 			ID:            t.ID.String(),
-			Amount:        t.Amount,
-			Currency:      txCurrency,
 			AmountBs:      amountBs,
 			AmountUSD:     amountUSD,
 			MovementType:  t.MovementType,

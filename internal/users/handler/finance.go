@@ -37,7 +37,7 @@ func NewCustomerFinanceHandler(svc ports.CustomerFinanceApp) CustomerFinanceHand
 
 // GetBalance godoc
 // @Summary      Balance del cliente
-// @Description  Retorna el balance del cliente en su moneda nativa (Bs) junto al equivalente en USD según la tasa BCV vigente, y los últimos 10 movimientos (cada uno con amount_bs y amount_usd). Créditos elegibles incluyen can_request_refund (ventana/monto/saldo; no exige Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold / processing / payout) y créditos balance_refund_restore incluyen refund_request_id para abrir el detalle.
+// @Description  Retorna balance_bs y balance_usd (tasa BCV vigente en bcv_rate) y los últimos 10 movimientos (amount_bs y amount_usd). Créditos elegibles incluyen can_request_refund (ventana/monto/saldo; no exige Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold / processing / payout) y créditos balance_refund_restore incluyen refund_request_id para abrir el detalle.
 // @Tags         Users Finance
 // @Produce      json
 // @Security     SessionCookie

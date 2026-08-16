@@ -67,12 +67,10 @@ func (f *financeApp) GetBalance(ctx context.Context, riderID uuid.UUID) (dtos.Ba
 	balanceBs, balanceUSD := money.BalanceDual(balance, currency, spotRate)
 	minBs := f.withdrawalMinBs(ctx)
 	return dtos.BalanceResponse{
-		Balance:         balance,
-		Currency:        currency,
 		BalanceBs:       balanceBs,
 		BalanceUSD:      balanceUSD,
 		BcvRate:         spotRate,
-		Zone:            getZone(balance, minBs),
+		Zone:            getZone(balanceBs, minBs),
 		WithdrawalMinBs: minBs,
 		Transactions:    toTransactionDTOs(txs, spotRate),
 	}, nil
@@ -170,8 +168,6 @@ func toTransactionDTOs(txs []models.Transaction, spotRate float64) []dtos.Transa
 		amountBs, amountUSD := money.TransactionDual(t.Amount, txCurrency, t.BcvRate, spotRate)
 		dto := dtos.TransactionDTO{
 			ID:            t.ID.String(),
-			Amount:        t.Amount,
-			Currency:      txCurrency,
 			AmountBs:      amountBs,
 			AmountUSD:     amountUSD,
 			BcvRate:       t.BcvRate,

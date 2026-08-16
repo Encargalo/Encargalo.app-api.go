@@ -227,7 +227,7 @@ func (r *shopStatsRepo) GetAllTransactionsInPeriod(ctx context.Context, shopID u
 	for i, t := range txs {
 		dto := dtos.ShopTransactionDTO{
 			ID:            t.ID.String(),
-			Amount:        t.Amount,
+			AmountUSD:     t.Amount,
 			MovementType:  t.MovementType,
 			PaymentMethod: t.PaymentMethod,
 			CreatedAt:     t.CreatedAt.Format(time.RFC3339),

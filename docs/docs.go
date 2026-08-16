@@ -1430,7 +1430,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna el balance actual del local en su moneda nativa (USD) junto al equivalente en Bs según la tasa BCV vigente, y los últimos 10 movimientos (cada uno con amount_bs y amount_usd).",
+                "description": "Retorna balance_bs y balance_usd (tasa BCV vigente en bcv_rate) y los últimos 10 movimientos (amount_bs y amount_usd).",
                 "produces": [
                     "application/json"
                 ],
@@ -1812,7 +1812,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna el historial paginado de movimientos de balance del local (cada movimiento incluye amount_bs y amount_usd).",
+                "description": "Retorna el historial paginado de movimientos (amount_bs y amount_usd).",
                 "produces": [
                     "application/json"
                 ],
@@ -2971,7 +2971,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna el balance actual del rider en su moneda nativa (Bs) junto al equivalente en USD según la tasa BCV vigente, su zona de control, el mínimo de retiro vigente (withdrawal_min_bs, dinámico según tasa BCV) y los últimos 10 movimientos (cada uno con amount_bs y amount_usd).",
+                "description": "Retorna balance_bs y balance_usd (tasa BCV vigente en bcv_rate), zona de control, mínimo de retiro (withdrawal_min_bs) y los últimos 10 movimientos (amount_bs y amount_usd).",
                 "produces": [
                     "application/json"
                 ],
@@ -3332,7 +3332,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna el historial paginado de movimientos de balance del rider (cada movimiento incluye amount_bs y amount_usd).",
+                "description": "Retorna el historial paginado de movimientos (amount_bs y amount_usd).",
                 "produces": [
                     "application/json"
                 ],
@@ -5284,7 +5284,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna el balance del cliente en su moneda nativa (Bs) junto al equivalente en USD según la tasa BCV vigente, y los últimos 10 movimientos (cada uno con amount_bs y amount_usd). Créditos elegibles incluyen can_request_refund (ventana/monto/saldo; no exige Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold / processing / payout) y créditos balance_refund_restore incluyen refund_request_id para abrir el detalle.",
+                "description": "Retorna balance_bs y balance_usd (tasa BCV vigente en bcv_rate) y los últimos 10 movimientos (amount_bs y amount_usd). Créditos elegibles incluyen can_request_refund (ventana/monto/saldo; no exige Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold / processing / payout) y créditos balance_refund_restore incluyen refund_request_id para abrir el detalle.",
                 "produces": [
                     "application/json"
                 ],
@@ -6825,9 +6825,6 @@ const docTemplate = `{
         "Encargalo_app-api_go_internal_riders_domain_dtos.BalanceResponse": {
             "type": "object",
             "properties": {
-                "balance": {
-                    "type": "number"
-                },
                 "balance_bs": {
                     "type": "number"
                 },
@@ -6836,9 +6833,6 @@ const docTemplate = `{
                 },
                 "bcv_rate": {
                     "type": "number"
-                },
-                "currency": {
-                    "type": "string"
                 },
                 "transactions": {
                     "type": "array",
@@ -6998,9 +6992,6 @@ const docTemplate = `{
         "Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO": {
             "type": "object",
             "properties": {
-                "amount": {
-                    "type": "number"
-                },
                 "amount_bs": {
                     "type": "number"
                 },
@@ -7011,9 +7002,6 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "created_at": {
-                    "type": "string"
-                },
-                "currency": {
                     "type": "string"
                 },
                 "distance_km": {
@@ -7489,9 +7477,6 @@ const docTemplate = `{
         "Encargalo_app-api_go_internal_shops_domain_dtos.ShopBalanceResponse": {
             "type": "object",
             "properties": {
-                "balance": {
-                    "type": "number"
-                },
                 "balance_bs": {
                     "type": "number"
                 },
@@ -7500,9 +7485,6 @@ const docTemplate = `{
                 },
                 "bcv_rate": {
                     "type": "number"
-                },
-                "currency": {
-                    "type": "string"
                 },
                 "transactions": {
                     "type": "array",
@@ -7589,9 +7571,6 @@ const docTemplate = `{
         "Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionDTO": {
             "type": "object",
             "properties": {
-                "amount": {
-                    "type": "number"
-                },
                 "amount_bs": {
                     "type": "number"
                 },
@@ -7599,9 +7578,6 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "created_at": {
-                    "type": "string"
-                },
-                "currency": {
                     "type": "string"
                 },
                 "id": {
@@ -7899,9 +7875,6 @@ const docTemplate = `{
         "Encargalo_app-api_go_internal_users_domain_dto.CustomerBalanceResponse": {
             "type": "object",
             "properties": {
-                "balance": {
-                    "type": "number"
-                },
                 "balance_bs": {
                     "type": "number"
                 },
@@ -7910,9 +7883,6 @@ const docTemplate = `{
                 },
                 "bcv_rate": {
                     "type": "number"
-                },
-                "currency": {
-                    "type": "string"
                 },
                 "transactions": {
                     "type": "array",
@@ -7970,9 +7940,6 @@ const docTemplate = `{
         "Encargalo_app-api_go_internal_users_domain_dto.CustomerTransactionItem": {
             "type": "object",
             "properties": {
-                "amount": {
-                    "type": "number"
-                },
                 "amount_bs": {
                     "type": "number"
                 },
@@ -7983,9 +7950,6 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "created_at": {
-                    "type": "string"
-                },
-                "currency": {
                     "type": "string"
                 },
                 "id": {
