@@ -131,6 +131,10 @@ Para regenerar la documentación después de modificar un handler:
 swag init -g cmd/server/main.go --parseDependency --parseInternal
 ```
 
+## Postman
+
+Las colecciones viven en el repo aparte [Encargalo.app-api.postman](https://github.com/Encargalo/Encargalo.app-api.postman) (un JSON por dominio + environments Local/Staging/Production).
+
 ## Comandos útiles
 
 ```bash

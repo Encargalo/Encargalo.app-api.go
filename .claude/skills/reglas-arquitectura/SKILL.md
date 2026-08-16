@@ -66,7 +66,7 @@ description: Reglas prescriptivas DEBE/NO DEBE para la arquitectura hexagonal de
 ## 7. Documentación
 
 - Cada handler creado o modificado DEBE actualizar las anotaciones Swagger en el mismo acto.
-- Cada handler creado o modificado DEBE actualizar la colección Postman en `postman/<dominio>/`.
+- Cada handler creado o modificado DEBE actualizar la colección Postman en el repo **Encargalo.app-api.postman** (`<dominio>/<dominio>.postman_collection.json`).
 - La URL base de Postman SIEMPRE es `http://localhost:3000`.
 - NO regenerar documentación de endpoints que no fueron tocados.
 

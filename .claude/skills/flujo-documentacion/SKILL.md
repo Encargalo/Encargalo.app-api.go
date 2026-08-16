@@ -16,7 +16,7 @@ description: Control de documentación técnica en Encargalo.app-api.go. Define 
 |---|---|---|
 | Swagger (godoc) | Comentarios en `handler/<modulo>.go` | Contratos HTTP, modelos de request/response |
 | Swagger (generado) | `docs/` | Generado con `swag` — no editar a mano |
-| Postman | `postman/<dominio>/<dominio>.postman_collection.json` | Requests listos para ejecutar |
+| Postman | Repo [Encargalo.app-api.postman](https://github.com/Encargalo/Encargalo.app-api.postman): `<dominio>/<dominio>.postman_collection.json` | Requests listos para ejecutar |
 | README | `README.md` | Visión general del proyecto |
 | CHANGELOG | `CHANGELOG.md` | Generado por release-please — no editar a mano |
 | ADRs | `docs/adr/` | Decisiones arquitectónicas |
@@ -43,7 +43,7 @@ description: Control de documentación técnica en Encargalo.app-api.go. Define 
 
 - La URL base SIEMPRE es `http://localhost:3000`.
 - Cada endpoint DEBE tener: método, URL completa, descripción, body/params de ejemplo.
-- La colección va en `postman/<dominio>/<dominio>.postman_collection.json`.
+- La colección va en el repo **Encargalo.app-api.postman**, ruta `<dominio>/<dominio>.postman_collection.json`.
 - **NO reescribir toda la colección** — agregar o actualizar solo los endpoints modificados.
 
 ## Formato de propuesta documental

@@ -43,8 +43,11 @@ internal/pkg/           — utilidades: bycript, cache, cookie, json, logs, uplo
 internal/mocks/         — mocks generados por mockery
 internal/test/          — tests de handlers y casos de uso
 docs/                   — Swagger generado (swag)
-postman/                — colecciones Postman por dominio
 specs/                  — especificaciones técnicas
+```
+
+Postman: repo aparte [Encargalo.app-api.postman](https://github.com/Encargalo/Encargalo.app-api.postman).
+
 ```
 
 ## Módulos / Bounded Contexts
