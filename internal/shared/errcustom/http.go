@@ -35,6 +35,8 @@ var statusMap = map[error]int{
 	ErrCategoryWithoutFlavors:   http.StatusBadRequest,
 	ErrCategoryHasFlavors:       http.StatusBadRequest,
 	ErrInvalidDiscountValue:     http.StatusBadRequest,
+	ErrInvalidDiscountPercent:   http.StatusBadRequest,
+	ErrInvalidDiscountFixed:     http.StatusBadRequest,
 	ErrPriceChanged:             http.StatusConflict,
 	ErrInvalidCategories:        http.StatusBadRequest,
 	ErrProductUnavailable:       http.StatusUnprocessableEntity,

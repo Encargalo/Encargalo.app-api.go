@@ -97,6 +97,11 @@ func (i *Item) ToDomainDTO(categoryDetails CategoryDetails) dtos.ItemResponse {
 		resp.Schedules = i.Category.Schedules.ToDomainDTO()
 	}
 
+	if i.Discount != nil && i.Discount.DeletedAt == nil {
+		discountDTO := i.Discount.ToDomainDTO()
+		resp.ShopDiscount = &discountDTO
+	}
+
 	return resp
 }
 

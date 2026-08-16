@@ -747,11 +747,14 @@ func validateDiscountValue(discountType string, value float64, itemPrice int) er
 	switch discountType {
 	case models.DiscountTypePercentage:
 		if value < 1 || value > 99 {
-			return errcustom.ErrInvalidDiscountValue
+			return errcustom.ErrInvalidDiscountPercent
 		}
 	case models.DiscountTypeFixed:
-		if value <= 0 || value >= float64(itemPrice) {
-			return errcustom.ErrInvalidDiscountValue
+		if value <= 0 {
+			return errcustom.ErrInvalidDiscountFixed
+		}
+		if value >= float64(itemPrice) {
+			return errcustom.ErrInvalidDiscountFixed
 		}
 	default:
 		return errcustom.ErrInvalidDiscountValue

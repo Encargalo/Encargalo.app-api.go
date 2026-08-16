@@ -29,6 +29,8 @@ var (
 	ErrCategoryWithoutFlavors   = errors.New("la categoría no admite sabores")
 	ErrCategoryHasFlavors       = errors.New("la categoría tiene sabores y no se puede desactivar la selección de sabores")
 	ErrInvalidDiscountValue     = errors.New("valor de descuento inválido para el discount_type indicado")
+	ErrInvalidDiscountPercent   = errors.New("el porcentaje debe estar entre 1 y 99")
+	ErrInvalidDiscountFixed     = errors.New("el monto fijo debe ser mayor a 0 y menor al precio del producto")
 	ErrPriceChanged             = errors.New("el precio del pedido cambió desde la última vez que se mostró al cliente")
 	ErrInvalidCategories        = errors.New("una o más categorías no pertenecen al negocio")
 	ErrProductUnavailable       = errors.New("uno o más productos no están disponibles para ordenar")
