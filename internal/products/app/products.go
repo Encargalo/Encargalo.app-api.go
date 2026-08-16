@@ -747,11 +747,14 @@ func validateDiscountValue(discountType string, value float64, itemPrice int) er
 	switch discountType {
 	case models.DiscountTypePercentage:
 		if value < 1 || value > 99 {
-			return errcustom.ErrInvalidDiscountValue
+			return errcustom.ErrInvalidDiscountPercent
 		}
 	case models.DiscountTypeFixed:
-		if value <= 0 || value >= float64(itemPrice) {
-			return errcustom.ErrInvalidDiscountValue
+		if value <= 0 {
+			return errcustom.ErrInvalidDiscountFixed
+		}
+		if value >= float64(itemPrice) {
+			return errcustom.ErrInvalidDiscountFixed
 		}
 	default:
 		return errcustom.ErrInvalidDiscountValue
@@ -824,6 +827,32 @@ func (p *productsApp) DeleteItemDiscount(ctx context.Context, discountID, shopID
 
 	if discountModel.ShopID != shopID {
 		return errcustom.ErrUnautorized
+	}
+
+	return p.repo.DeleteItemDiscount(ctx, discountModel)
+}
+
+func (p *productsApp) DeleteItemDiscountByItemID(ctx context.Context, itemID, shopID uuid.UUID) error {
+	itemModel, err := p.repo.SearchItemByID(ctx, itemID)
+	if err != nil {
+		return err
+	}
+
+	if itemModel == nil {
+		return errcustom.ErrNotFound
+	}
+
+	if itemModel.ShopID != shopID {
+		return errcustom.ErrUnautorized
+	}
+
+	discountModel, err := p.repo.SearchActiveItemDiscountByItemID(ctx, itemID)
+	if err != nil {
+		return err
+	}
+
+	if discountModel == nil {
+		return errcustom.ErrNotFound
 	}
 
 	return p.repo.DeleteItemDiscount(ctx, discountModel)

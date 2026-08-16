@@ -29,6 +29,7 @@ type ProductsHandler interface {
 	RegisterItemDiscount(e echo.Context) error
 	UpdateItemDiscount(e echo.Context) error
 	DeleteItemDiscount(e echo.Context) error
+	DeleteItemDiscountByItemID(e echo.Context) error
 	SearchCategorySummariesByShopID(e echo.Context) error
 	SearchCategoriesByShopID(e echo.Context) error
 	SearchAdditionsCatalogByShopID(e echo.Context) error
@@ -736,6 +737,41 @@ func (p *productsHandler) DeleteItemDiscount(e echo.Context) error {
 	}
 
 	if err := p.svc.DeleteItemDiscount(ctx, discountID, *session.ShopID); err != nil {
+		return err
+	}
+
+	return e.JSON(http.StatusOK, "item discount deleted successfully")
+}
+
+// DeleteItemDiscountByItemID godoc
+// @Summary      Eliminar el descuento activo de un producto
+// @Description  Elimina (soft delete) el descuento activo del producto indicado del negocio autenticado.
+// @Tags         Business
+// @Produce      json
+// @Security     SessionCookie
+// @Param        item_id  path      string  true  "ID del producto"  Format(uuid)
+// @Success      200      {string}  string  "item discount deleted successfully"
+// @Failure      400      {string}  string  "item_id inválido"
+// @Failure      401      {string}  string  "No autorizado"
+// @Failure      404      {string}  string  "Producto o descuento no encontrado"
+// @Failure      500      {string}  string  "Error interno del servidor"
+// @Router       /business/products/items/{item_id}/discount [delete]
+func (p *productsHandler) DeleteItemDiscountByItemID(e echo.Context) error {
+	ctx := e.Request().Context()
+
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
+
+	if session.ShopID == nil {
+		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
+	}
+
+	itemIDParam := e.Param("item_id")
+	itemID, err := uuid.Parse(itemIDParam)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "item_id inválido")
+	}
+
+	if err := p.svc.DeleteItemDiscountByItemID(ctx, itemID, *session.ShopID); err != nil {
 		return err
 	}
 

@@ -22,7 +22,7 @@ func NewCustomerFinanceRepo(db *bun.DB) ports.CustomerFinanceRepo {
 	return &customerFinanceRepo{db}
 }
 
-func (r *customerFinanceRepo) GetBalance(ctx context.Context, entityID uuid.UUID, entityType string) (float64, error) {
+func (r *customerFinanceRepo) GetBalance(ctx context.Context, entityID uuid.UUID, entityType string) (models.Balance, error) {
 	var b models.Balance
 	err := r.db.NewSelect().
 		Model(&b).
@@ -30,12 +30,15 @@ func (r *customerFinanceRepo) GetBalance(ctx context.Context, entityID uuid.UUID
 		Scan(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return 0, nil
+			return models.Balance{Currency: models.CurrencyVES}, nil
 		}
 		slog.Error("customer GetBalance: failed", "entityID", entityID, "error", err)
-		return 0, errcustom.ErrUnexpectedError
+		return models.Balance{}, errcustom.ErrUnexpectedError
 	}
-	return b.Amount, nil
+	if b.Currency == "" {
+		b.Currency = models.CurrencyVES
+	}
+	return b, nil
 }
 
 func (r *customerFinanceRepo) SumBalancePaymentDebit(ctx context.Context, customerID, orderID uuid.UUID) (float64, error) {

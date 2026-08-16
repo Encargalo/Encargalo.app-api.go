@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"Encargalo.app-api.go/internal/shared/config"
+	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 )
@@ -45,6 +46,19 @@ func (repo uploadImage) UploadImage(ctx context.Context, imageB64 string) (*uplo
 		return nil, fmt.Errorf("cloudinary upload failed: %s", msg)
 	}
 	return resp, nil
+}
+
+// ValidateCloudinaryURL verifica que la URL sea HTTPS de Cloudinary.
+func ValidateCloudinaryURL(raw string) error {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || u.Scheme != "https" || u.Host == "" || u.Path == "" {
+		return errcustom.ErrInvalidProofURL
+	}
+	host := strings.ToLower(u.Hostname())
+	if host == "res.cloudinary.com" || strings.HasSuffix(host, ".cloudinary.com") {
+		return nil
+	}
+	return errcustom.ErrInvalidProofURL
 }
 
 func (repo uploadImage) DeleteImage(ctx context.Context, secureURL string) error {

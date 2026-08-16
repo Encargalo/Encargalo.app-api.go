@@ -15,7 +15,7 @@ type ShopFinanceApp interface {
 }
 
 type ShopFinanceRepo interface {
-	GetBalance(ctx context.Context, entityID uuid.UUID, entityType string) (float64, error)
+	GetBalance(ctx context.Context, entityID uuid.UUID, entityType string) (models.ShopBalance, error)
 	RecordMovement(ctx context.Context, entityID uuid.UUID, entityType string, delta float64, minBalance float64, tx models.ShopTransaction) (float64, error)
 	ListTransactions(ctx context.Context, entityID uuid.UUID, entityType string, page, limit int) ([]models.ShopTransaction, int, error)
 }

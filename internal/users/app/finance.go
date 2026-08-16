@@ -63,22 +63,30 @@ func validateRefundProofURL(raw string) error {
 }
 
 func (f *customerFinanceApp) GetBalance(ctx context.Context, customerID uuid.UUID) (dto.CustomerBalanceResponse, error) {
-	balance, err := f.repo.GetBalance(ctx, customerID, models.EntityTypeCustomer)
+	balanceRec, err := f.repo.GetBalance(ctx, customerID, models.EntityTypeCustomer)
 	if err != nil {
 		return dto.CustomerBalanceResponse{}, err
 	}
+	balance := balanceRec.Amount
+	currency := balanceRec.Currency
 
 	txs, _, err := f.repo.ListTransactions(ctx, customerID, models.EntityTypeCustomer, 1, 10)
 	if err != nil {
 		return dto.CustomerBalanceResponse{}, err
 	}
 
+	spotRate := f.spotBcvRate(ctx)
+	balanceBs, balanceUSD := money.BalanceDual(balance, currency, spotRate)
+
 	now := time.Now()
 	items := make([]dto.CustomerTransactionItem, len(txs))
 	for i, t := range txs {
+		txCurrency := money.NormalizeCurrency(t.Currency, models.CurrencyVES)
+		amountBs, amountUSD := money.TransactionDual(t.Amount, txCurrency, t.BcvRate, spotRate)
 		items[i] = dto.CustomerTransactionItem{
 			ID:           t.ID.String(),
-			Amount:       t.Amount,
+			AmountBs:     amountBs,
+			AmountUSD:    amountUSD,
 			MovementType: t.MovementType,
 			CreatedAt:    t.CreatedAt.Format(time.RFC3339),
 		}
@@ -105,7 +113,7 @@ func (f *customerFinanceApp) GetBalance(ctx context.Context, customerID uuid.UUI
 			until := t.CreatedAt.Add(models.RefundRequestWindow)
 			untilStr := until.Format(time.RFC3339)
 			items[i].RefundEligibleUntil = &untilStr
-			if withinRefundWindow(t.CreatedAt, now) && balance >= refundableBs {
+			if withinRefundWindow(t.CreatedAt, now) && balanceBs >= refundableBs {
 				active, err := f.repo.HasActiveRefundForTransaction(ctx, t.ID)
 				if err == nil && !active {
 					items[i].CanRequestRefund = true
@@ -115,7 +123,9 @@ func (f *customerFinanceApp) GetBalance(ctx context.Context, customerID uuid.UUI
 	}
 
 	return dto.CustomerBalanceResponse{
-		Balance:      balance,
+		BalanceBs:    balanceBs,
+		BalanceUSD:   balanceUSD,
+		BcvRate:      spotRate,
 		Transactions: items,
 	}, nil
 }
@@ -145,7 +155,11 @@ func amountToUSD(amountBs float64, bcvRate *float64) float64 {
 }
 
 func (f *customerFinanceApp) GetBalanceBs(ctx context.Context, customerID uuid.UUID) (float64, error) {
-	return f.repo.GetBalance(ctx, customerID, models.EntityTypeCustomer)
+	b, err := f.repo.GetBalance(ctx, customerID, models.EntityTypeCustomer)
+	if err != nil {
+		return 0, err
+	}
+	return b.Amount, nil
 }
 
 func (f *customerFinanceApp) GetBalancePaymentDebitForOrder(ctx context.Context, customerID, orderID uuid.UUID) (float64, error) {
@@ -567,6 +581,20 @@ func (f *customerFinanceApp) toBroadcast(ctx context.Context, req models.Balance
 // applyAmountUSD agrega el equivalente informativo en USD (tasa BCV vigente
 // al momento de armar el broadcast, no la tasa original del movimiento) para
 // que el panel de staff pueda conciliar contra el total de la orden en USD.
+func (f *customerFinanceApp) spotBcvRate(ctx context.Context) float64 {
+	if f.bcv == nil {
+		return 0
+	}
+	rate, err := f.bcv.GetRate(ctx)
+	if err != nil || rate == nil || rate.Rate <= 0 {
+		if err != nil {
+			slog.Warn("balance dual currency: bcv rate unavailable", "error", err)
+		}
+		return 0
+	}
+	return rate.Rate
+}
+
 func (f *customerFinanceApp) applyAmountUSD(ctx context.Context, b *dto.RefundRequestBroadcast, amountBs float64) {
 	if f.bcv == nil || amountBs <= 0 {
 		return

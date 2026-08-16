@@ -220,6 +220,36 @@ func (_m *ProductsRepo) ReplaceCategorySchedules(ctx context.Context, categoryID
 	return r0
 }
 
+// SearchActiveItemDiscountByItemID provides a mock function with given fields: ctx, itemID
+func (_m *ProductsRepo) SearchActiveItemDiscountByItemID(ctx context.Context, itemID uuid.UUID) (*models.ItemDiscount, error) {
+	ret := _m.Called(ctx, itemID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SearchActiveItemDiscountByItemID")
+	}
+
+	var r0 *models.ItemDiscount
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*models.ItemDiscount, error)); ok {
+		return rf(ctx, itemID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) *models.ItemDiscount); ok {
+		r0 = rf(ctx, itemID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.ItemDiscount)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, itemID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // SearchAdditionItemsByIDs provides a mock function with given fields: ctx, shopID, additionIDs
 func (_m *ProductsRepo) SearchAdditionItemsByIDs(ctx context.Context, shopID uuid.UUID, additionIDs []uuid.UUID) (models.Items, error) {
 	ret := _m.Called(ctx, shopID, additionIDs)

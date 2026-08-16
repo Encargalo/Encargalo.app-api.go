@@ -360,6 +360,7 @@ func TestVerifySession_Success(t *testing.T) {
 
 	jwtMock.On("ValidateToken", "valid-jwt").Return(jwt.MapClaims{"session_id": sessionID.String()}, nil)
 	svc.On("SearchSessions", tc.Req.Context(), sessionID).Return(session, nil)
+	svc.On("EnsureAccountEnabled", tc.Req.Context(), session.UserID).Return(nil)
 
 	h := authhandler.NewAuthHandler(svc, jwtMock, cookieMock)
 	err := h.VerifySession(tc.Ctx)

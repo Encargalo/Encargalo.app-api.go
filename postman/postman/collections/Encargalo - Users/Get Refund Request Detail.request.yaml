@@ -1,7 +1,0 @@
-$kind: http-request
-description: Detalle de una solicitud. Cuando status=completed incluye proof_url del comprobante. Abrir desde el historial con refund_request_id. Cookie + rol Customer.
-url: "{{base_url}}/users/balance/refund-requests/:id"
-method: GET
-pathVariables:
-  id: 00000000-0000-0000-0000-000000000000
-order: 8000

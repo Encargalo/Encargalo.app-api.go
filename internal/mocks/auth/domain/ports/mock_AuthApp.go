@@ -52,6 +52,24 @@ func (_m *AuthApp) DeleteSession(ctx context.Context, session_id uuid.UUID) erro
 	return r0
 }
 
+// EnsureAccountEnabled provides a mock function with given fields: ctx, userID
+func (_m *AuthApp) EnsureAccountEnabled(ctx context.Context, userID uuid.UUID) error {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for EnsureAccountEnabled")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // SearchSessions provides a mock function with given fields: ctx, session_id
 func (_m *AuthApp) SearchSessions(ctx context.Context, session_id uuid.UUID) (*models.ActiveSession, error) {
 	ret := _m.Called(ctx, session_id)

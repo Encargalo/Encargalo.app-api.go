@@ -35,6 +35,8 @@ var statusMap = map[error]int{
 	ErrCategoryWithoutFlavors:   http.StatusBadRequest,
 	ErrCategoryHasFlavors:       http.StatusBadRequest,
 	ErrInvalidDiscountValue:     http.StatusBadRequest,
+	ErrInvalidDiscountPercent:   http.StatusBadRequest,
+	ErrInvalidDiscountFixed:     http.StatusBadRequest,
 	ErrPriceChanged:             http.StatusConflict,
 	ErrInvalidCategories:        http.StatusBadRequest,
 	ErrProductUnavailable:       http.StatusUnprocessableEntity,
@@ -48,6 +50,7 @@ var statusMap = map[error]int{
 	ErrInvalidProofURL:          http.StatusBadRequest,
 	ErrRefundAmountMismatch:     http.StatusUnprocessableEntity,
 	ErrRefundProofRequired:      http.StatusBadRequest,
+	ErrFinanceNotesRequired:     http.StatusBadRequest,
 	ErrRiderProfileIncomplete:   http.StatusUnprocessableEntity,
 	ErrRiderNotActive:           http.StatusForbidden,
 	ErrTurboOutOfCoverage:       http.StatusUnprocessableEntity,
@@ -57,6 +60,12 @@ var statusMap = map[error]int{
 	ErrInvalidShopType:          http.StatusBadRequest,
 	ErrInvalidCoordinates:       http.StatusBadRequest,
 	ErrInvalidSearchQuery:       http.StatusBadRequest,
+	ErrAccountDisabled:          http.StatusForbidden,
+	ErrEmailAlreadyExist:        http.StatusConflict,
+	ErrInvalidCursor:            http.StatusBadRequest,
+	ErrInvalidFilter:            http.StatusBadRequest,
+	ErrCannotRevokeOwnStaff:     http.StatusBadRequest,
+	ErrLastStaffMember:          http.StatusBadRequest,
 }
 
 func ToHTTPError(err error) error {

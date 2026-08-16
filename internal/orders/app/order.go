@@ -513,17 +513,6 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		return &models.Order{}, fmt.Errorf("%w: payment_proof_image es requerido cuando el balance no cubre el total", errcustom.ErrInvalidBalanceAmount)
 	}
 
-	if quote != nil {
-		ok, err := o.quotes.TryConsume(ctx, quote.QuoteID, quote.RedisTTL(time.Now()))
-		if err != nil {
-			return &models.Order{}, err
-		}
-		if !ok {
-			return &models.Order{}, errcustom.ErrQuoteConsumed
-		}
-		_ = o.quotes.ClearActiveID(ctx, order.CustomerID)
-	}
-
 	DetailsModel := new(models.Details)
 	DetailsModel.BuildDetails(orderModel, shop, customer, order.Address.Instructions, rate)
 
@@ -552,8 +541,21 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		orderModel.PendingAt = &now
 	}
 
+	// Consume the quote only after side-effect-free validation (including proof upload).
+	if quote != nil {
+		ok, err := o.quotes.TryConsume(ctx, quote.QuoteID, quote.RedisTTL(time.Now()))
+		if err != nil {
+			return &models.Order{}, err
+		}
+		if !ok {
+			return &models.Order{}, errcustom.ErrQuoteConsumed
+		}
+		_ = o.quotes.ClearActiveID(ctx, order.CustomerID)
+	}
+
 	if balanceUsedBs > 0 {
 		if err := o.customerBalance.DebitForOrder(ctx, order.CustomerID, orderModel.ID, balanceUsedBs); err != nil {
+			o.releaseQuoteConsume(ctx, quote)
 			return &models.Order{}, err
 		}
 	}
@@ -561,6 +563,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 	detailsData, err := json.Marshal(DetailsModel)
 	if err != nil {
 		o.refundBalanceDebit(ctx, order.CustomerID, orderModel.ID, balanceUsedBs)
+		o.releaseQuoteConsume(ctx, quote)
 		return &models.Order{}, err
 	}
 
@@ -569,6 +572,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 	orderDB, err := o.repo.CreateOrder(ctx, orderModel)
 	if err != nil {
 		o.refundBalanceDebit(ctx, order.CustomerID, orderModel.ID, balanceUsedBs)
+		o.releaseQuoteConsume(ctx, quote)
 		return &models.Order{}, err
 	}
 
@@ -640,6 +644,15 @@ func (o *orderApp) refundBalanceDebit(ctx context.Context, customerID, orderID u
 	}
 	if err := o.customerBalance.RefundBalancePayment(ctx, customerID, orderID, amount); err != nil {
 		slog.Error("refundBalanceDebit failed", "orderID", orderID, "amount", amount, "error", err)
+	}
+}
+
+func (o *orderApp) releaseQuoteConsume(ctx context.Context, quote *models.OrderQuote) {
+	if quote == nil || o.quotes == nil {
+		return
+	}
+	if err := o.quotes.ReleaseConsume(ctx, quote.QuoteID); err != nil {
+		slog.Error("releaseQuoteConsume failed", "quoteID", quote.QuoteID, "error", err)
 	}
 }
 

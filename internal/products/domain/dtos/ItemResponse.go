@@ -21,6 +21,7 @@ type ItemResponse struct {
 	EffectiveBs        float64                   `json:"effective_bs" example:"7000"`
 	HasShopDiscount    bool                      `json:"has_shop_discount" example:"false"`
 	HasLaunchPromo     bool                      `json:"has_launch_promo" example:"false"`
+	ShopDiscount       *ItemDiscountResponse     `json:"shop_discount,omitempty"`
 	Image              string                    `json:"image" example:"https://cdn.encargalo.app/items/pizza-hawaiana-mediana.jpg"`
 	Description        string                    `json:"description" example:"Pizza mediana con jamón, piña y queso mozzarella sobre una base de salsa napolitana."`
 	Score              float32                   `json:"score" example:"4.7"`

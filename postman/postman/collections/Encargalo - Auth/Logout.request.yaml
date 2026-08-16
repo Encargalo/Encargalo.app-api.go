@@ -1,5 +1,0 @@
-$kind: http-request
-description: "Cierra la sesión activa. Requiere cookie `encargalo-session`. Roles permitidos: Customer, Order Manager, Owner, Rider, Staff."
-url: "{{base_url}}/auth/logout"
-method: DELETE
-order: 6000

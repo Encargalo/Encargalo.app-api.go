@@ -89,7 +89,7 @@ Handlers follow this pattern:
 Every time a handler is created or modified, you **must** update the following — only for what was added or changed:
 
 1. **Swagger comments** on the handler method: keep `@Summary`, `@Description`, `@Param`, `@Success`, and `@Failure` annotations accurate and up to date.
-2. **Postman collection** under `postman/<domain>/<domain>.postman_collection.json`: add or update the corresponding request (method, URL, body, query params, description).
+2. **Postman collection** in the [Encargalo.app-api.postman](https://github.com/Encargalo/Encargalo.app-api.postman) repo under `<domain>/<domain>.postman_collection.json`: add or update the corresponding request (method, URL, body, query params, description).
 
 Do **not** regenerate or rewrite documentation for endpoints that were not touched.
 

@@ -1,5 +1,0 @@
-$kind: http-request
-description: Lista las solicitudes de devolución del customer. Cookie + rol Customer.
-url: "{{base_url}}/users/balance/refund-requests"
-method: GET
-order: 7000

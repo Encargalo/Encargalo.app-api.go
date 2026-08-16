@@ -14,7 +14,7 @@ import (
 
 func TestRecordSaleCommission_RegularSale(t *testing.T) {
 	repo := new(mocksshops.ShopFinanceRepo)
-	financeApp := app.NewShopFinanceApp(repo)
+	financeApp := app.NewShopFinanceApp(repo, nil)
 
 	shopID := uuid.New()
 	orderID := uuid.New()
@@ -33,7 +33,7 @@ func TestRecordSaleCommission_RegularSale(t *testing.T) {
 
 func TestRecordSaleCommission_ZeroCommission(t *testing.T) {
 	repo := new(mocksshops.ShopFinanceRepo)
-	financeApp := app.NewShopFinanceApp(repo)
+	financeApp := app.NewShopFinanceApp(repo, nil)
 
 	shopID := uuid.New()
 	orderID := uuid.New()
@@ -50,7 +50,7 @@ func TestRecordSaleCommission_ZeroCommission(t *testing.T) {
 
 func TestRecordSaleCommission_LaunchPromoSubsidy(t *testing.T) {
 	repo := new(mocksshops.ShopFinanceRepo)
-	financeApp := app.NewShopFinanceApp(repo)
+	financeApp := app.NewShopFinanceApp(repo, nil)
 
 	shopID := uuid.New()
 	orderID := uuid.New()

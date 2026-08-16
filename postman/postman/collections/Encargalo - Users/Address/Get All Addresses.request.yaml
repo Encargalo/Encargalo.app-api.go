@@ -1,5 +1,0 @@
-$kind: http-request
-description: "Retorna todas las direcciones del usuario autenticado. Requiere cookie `encargalo-session`. Roles: Customer, customer."
-url: "{{base_url}}/users/address"
-method: GET
-order: 4000

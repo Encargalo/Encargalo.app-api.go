@@ -28,7 +28,7 @@ func NewFinanceHandler(svc ridersPorts.FinanceApp) FinanceHandler {
 // GetBalance godoc
 //
 // @Summary      Balance del rider
-// @Description  Retorna el balance actual del rider en bolívares (Bs), su zona de control, el mínimo de retiro vigente (withdrawal_min_bs, dinámico según tasa BCV) y los últimos 10 movimientos.
+// @Description  Retorna balance_bs y balance_usd (tasa BCV vigente en bcv_rate), zona de control, mínimo de retiro (withdrawal_min_bs) y los últimos 10 movimientos (amount_bs y amount_usd).
 // @Tags         Riders Finance
 // @Produce      json
 // @Security     SessionCookie
@@ -76,7 +76,7 @@ func (h *financeHandler) RequestWithdrawal(c echo.Context) error {
 // ListTransactions godoc
 //
 // @Summary      Historial de movimientos del rider
-// @Description  Retorna el historial paginado de movimientos de balance del rider.
+// @Description  Retorna el historial paginado de movimientos (amount_bs y amount_usd).
 // @Tags         Riders Finance
 // @Produce      json
 // @Param        page   query  int  false  "Página (default 1)"

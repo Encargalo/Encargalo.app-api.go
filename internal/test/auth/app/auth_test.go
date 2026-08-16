@@ -33,9 +33,10 @@ func TestSignInCustomer_CancelsPendingDeletion(t *testing.T) {
 	customerID := uuid.New()
 	phone := "+573001112233"
 	password := "claveSegura123"
+	account := &models.Account{ID: customerID, Password: hashedPassword(t, password), Enabled: true}
 
-	svc.On("SearchCustomerBy", mock.Anything, dto.SearchCustomerBy{Phone: phone}).
-		Return(&models.Account{ID: customerID, Password: hashedPassword(t, password)}, nil)
+	svc.On("SearchCustomerBy", mock.Anything, dto.SearchCustomerBy{Phone: phone}).Return(account, nil)
+	svc.On("SearchCustomerBy", mock.Anything, dto.SearchCustomerBy{ID: customerID}).Return(account, nil)
 	svc.On("CancelPendingDeletionIfAny", mock.Anything, customerID).Return(nil)
 	repo.On("SaveSession", mock.Anything, mock.AnythingOfType("*models.ActiveSession")).Return(nil)
 
@@ -54,9 +55,10 @@ func TestSignInCustomer_CancelPendingDeletionFails_LoginStillSucceeds(t *testing
 	customerID := uuid.New()
 	phone := "+573001112233"
 	password := "claveSegura123"
+	account := &models.Account{ID: customerID, Password: hashedPassword(t, password), Enabled: true}
 
-	svc.On("SearchCustomerBy", mock.Anything, dto.SearchCustomerBy{Phone: phone}).
-		Return(&models.Account{ID: customerID, Password: hashedPassword(t, password)}, nil)
+	svc.On("SearchCustomerBy", mock.Anything, dto.SearchCustomerBy{Phone: phone}).Return(account, nil)
+	svc.On("SearchCustomerBy", mock.Anything, dto.SearchCustomerBy{ID: customerID}).Return(account, nil)
 	svc.On("CancelPendingDeletionIfAny", mock.Anything, customerID).Return(errcustom.ErrUnexpectedError)
 	repo.On("SaveSession", mock.Anything, mock.AnythingOfType("*models.ActiveSession")).Return(nil)
 
@@ -83,5 +85,24 @@ func TestSignInCustomer_AccountAlreadyFinalized_NotFound(t *testing.T) {
 	sessionID, err := authSvc.SignInCustomer(context.Background(), phone, "claveSegura123")
 
 	assert.ErrorIs(t, err, errcustom.ErrIncorrectAccessData)
+	assert.Equal(t, uuid.Nil, sessionID)
+}
+
+func TestSignInCustomer_DisabledAccount(t *testing.T) {
+	svc := mocksusersports.NewUsersApp(t)
+	repo := mocksauthports.NewAuthRepo(t)
+	authSvc := authapp.NewAuthApp(svc, bycript.NewHashPassword(), repo, nil, nil)
+
+	customerID := uuid.New()
+	phone := "+573001112233"
+	password := "claveSegura123"
+	account := &models.Account{ID: customerID, Password: hashedPassword(t, password), Enabled: false}
+
+	svc.On("SearchCustomerBy", mock.Anything, dto.SearchCustomerBy{Phone: phone}).Return(account, nil)
+	svc.On("SearchCustomerBy", mock.Anything, dto.SearchCustomerBy{ID: customerID}).Return(account, nil)
+
+	sessionID, err := authSvc.SignInCustomer(context.Background(), phone, password)
+
+	assert.ErrorIs(t, err, errcustom.ErrAccountDisabled)
 	assert.Equal(t, uuid.Nil, sessionID)
 }

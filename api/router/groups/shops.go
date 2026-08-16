@@ -23,16 +23,17 @@ type ShopsGroup interface {
 }
 
 type shopGroup struct {
-	handlerShops      handler.Shops
-	handlerFinance    handler.ShopFinanceHandler
-	handlerStats      handler.ShopStatsHandler
-	handlerStaffShops handler.StaffShopHandler
-	middleAuth        auth.AuthMiddleware
-	rateLimiter       sharedmw.RateLimiter
+	handlerShops        handler.Shops
+	handlerFinance      handler.ShopFinanceHandler
+	handlerStats        handler.ShopStatsHandler
+	handlerStaffShops   handler.StaffShopHandler
+	handlerStaffFinance handler.StaffShopFinanceHandler
+	middleAuth          auth.AuthMiddleware
+	rateLimiter         sharedmw.RateLimiter
 }
 
-func NewShopsGroup(handlerShops handler.Shops, handlerFinance handler.ShopFinanceHandler, handlerStats handler.ShopStatsHandler, handlerStaffShops handler.StaffShopHandler, middleAuth auth.AuthMiddleware, rateLimiter sharedmw.RateLimiter) ShopsGroup {
-	return &shopGroup{handlerShops, handlerFinance, handlerStats, handlerStaffShops, middleAuth, rateLimiter}
+func NewShopsGroup(handlerShops handler.Shops, handlerFinance handler.ShopFinanceHandler, handlerStats handler.ShopStatsHandler, handlerStaffShops handler.StaffShopHandler, handlerStaffFinance handler.StaffShopFinanceHandler, middleAuth auth.AuthMiddleware, rateLimiter sharedmw.RateLimiter) ShopsGroup {
+	return &shopGroup{handlerShops, handlerFinance, handlerStats, handlerStaffShops, handlerStaffFinance, middleAuth, rateLimiter}
 }
 
 func (s *shopGroup) Resource(g *echo.Echo) {
@@ -85,4 +86,10 @@ func (s *shopGroup) Resource(g *echo.Echo) {
 	staffRoutes.GET("/:id", s.handlerStaffShops.GetShop)
 	staffRoutes.PATCH("/:id", s.handlerStaffShops.UpdateDraftShop)
 	staffRoutes.POST("/:id/activate", s.handlerStaffShops.ActivateShop)
+
+	staffRoutes.GET("/finance/payables", s.handlerStaffFinance.ListPayables)
+	staffRoutes.GET("/finance/:shopId/balance", s.handlerStaffFinance.GetBalance)
+	staffRoutes.GET("/finance/:shopId/transactions", s.handlerStaffFinance.ListTransactions)
+	staffRoutes.POST("/finance/:shopId/payouts", s.handlerStaffFinance.RecordPayout)
+	staffRoutes.POST("/finance/:shopId/adjustments", s.handlerStaffFinance.RecordAdjustment)
 }

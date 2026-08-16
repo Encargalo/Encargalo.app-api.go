@@ -1,5 +1,0 @@
-$kind: http-request
-description: Retorna el balance del customer en bolívares (Bs) y los últimos 10 movimientos. Créditos elegibles pueden incluir `can_request_refund`, `refundable_pm_bs`, `refund_eligible_until`. Débitos de devolución (`balance_refund_hold` / `processing` / `payout`) y créditos `balance_refund_restore` incluyen `refund_request_id` para abrir el detalle. Cookie + rol Customer.
-url: "{{base_url}}/users/balance"
-method: GET
-order: 3000

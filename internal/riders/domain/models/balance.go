@@ -14,6 +14,10 @@ const (
 	MovementTypeRideBank MovementType = "ride_bank"
 	MovementTypeWithdraw MovementType = "withdrawal"
 
+	MovementTypeStaffPayout      MovementType = "staff_payout"
+	MovementTypeAdjustmentCredit MovementType = "adjustment_credit"
+	MovementTypeAdjustmentDebit  MovementType = "adjustment_debit"
+
 	ZoneNormal              Zone = "normal"
 	ZoneWithdrawalAvailable Zone = "withdrawal_available"
 
@@ -56,9 +60,12 @@ type Transaction struct {
 	// BcvRate es la tasa usada para convertir el monto original en USD
 	// (delivery fee) al Bs acreditado en Amount. Nil en movimientos que ya
 	// nacen en Bs y no requieren conversión (ej. withdrawal).
-	BcvRate       *float64  `bun:"bcv_rate,nullzero"`
-	MovementType  string    `bun:"movement_type"`
-	PaymentMethod *string   `bun:"payment_method"`
-	DistanceKm    *float64  `bun:"distance_km"`
-	CreatedAt     time.Time `bun:"created_at,nullzero"`
+	BcvRate       *float64   `bun:"bcv_rate,nullzero"`
+	MovementType  string     `bun:"movement_type"`
+	PaymentMethod *string    `bun:"payment_method"`
+	DistanceKm    *float64   `bun:"distance_km"`
+	StaffID       *uuid.UUID `bun:"staff_id,nullzero"`
+	Notes         *string    `bun:"notes,nullzero"`
+	ProofURL      *string    `bun:"proof_url,nullzero"`
+	CreatedAt     time.Time  `bun:"created_at,nullzero"`
 }

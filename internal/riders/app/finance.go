@@ -51,22 +51,28 @@ func (f *financeApp) RecordRideEarning(ctx context.Context, riderID uuid.UUID, o
 }
 
 func (f *financeApp) GetBalance(ctx context.Context, riderID uuid.UUID) (dtos.BalanceResponse, error) {
-	balance, err := f.repo.GetBalance(ctx, riderID, entityTypeRider)
+	balanceRec, err := f.repo.GetBalance(ctx, riderID, entityTypeRider)
 	if err != nil {
 		return dtos.BalanceResponse{}, err
 	}
+	balance := balanceRec.Amount
+	currency := balanceRec.Currency
 
 	txs, _, err := f.repo.ListTransactions(ctx, riderID, entityTypeRider, 1, 10)
 	if err != nil {
 		return dtos.BalanceResponse{}, err
 	}
 
+	spotRate := f.spotBcvRate(ctx)
+	balanceBs, balanceUSD := money.BalanceDual(balance, currency, spotRate)
 	minBs := f.withdrawalMinBs(ctx)
 	return dtos.BalanceResponse{
-		Balance:         balance,
-		Zone:            getZone(balance, minBs),
+		BalanceBs:       balanceBs,
+		BalanceUSD:      balanceUSD,
+		BcvRate:         spotRate,
+		Zone:            getZone(balanceBs, minBs),
 		WithdrawalMinBs: minBs,
-		Transactions:    toTransactionDTOs(txs),
+		Transactions:    toTransactionDTOs(txs, spotRate),
 	}, nil
 }
 
@@ -95,10 +101,11 @@ func (f *financeApp) RequestWithdrawal(ctx context.Context, riderID uuid.UUID) (
 		return dtos.WithdrawalResponse{}, errcustom.ErrBcvRateUnavailable
 	}
 
-	balance, err := f.repo.GetBalance(ctx, riderID, entityTypeRider)
+	balanceRec, err := f.repo.GetBalance(ctx, riderID, entityTypeRider)
 	if err != nil {
 		return dtos.WithdrawalResponse{}, err
 	}
+	balance := balanceRec.Amount
 
 	tx := models.Transaction{
 		ID:           uuid.New(),
@@ -124,7 +131,7 @@ func (f *financeApp) ListTransactions(ctx context.Context, riderID uuid.UUID, pa
 	}
 
 	return dtos.TransactionsResponse{
-		Transactions: toTransactionDTOs(txs),
+		Transactions: toTransactionDTOs(txs, f.spotBcvRate(ctx)),
 		Total:        total,
 		Page:         page,
 		Limit:        limit,
@@ -143,17 +150,37 @@ func RiderEarning(deliveryFee float64) float64 {
 	return deliveryFee * models.RiderShare
 }
 
-func toTransactionDTOs(txs []models.Transaction) []dtos.TransactionDTO {
+func (f *financeApp) spotBcvRate(ctx context.Context) float64 {
+	if f.bcv == nil {
+		return 0
+	}
+	rate, err := f.bcv.GetRate(ctx)
+	if err != nil || rate == nil || rate.Rate <= 0 {
+		return 0
+	}
+	return rate.Rate
+}
+
+func toTransactionDTOs(txs []models.Transaction, spotRate float64) []dtos.TransactionDTO {
 	result := make([]dtos.TransactionDTO, 0, len(txs))
 	for _, t := range txs {
+		txCurrency := money.NormalizeCurrency(t.Currency, models.CurrencyVES)
+		amountBs, amountUSD := money.TransactionDual(t.Amount, txCurrency, t.BcvRate, spotRate)
 		dto := dtos.TransactionDTO{
 			ID:            t.ID.String(),
-			Amount:        t.Amount,
+			AmountBs:      amountBs,
+			AmountUSD:     amountUSD,
 			BcvRate:       t.BcvRate,
 			MovementType:  t.MovementType,
 			PaymentMethod: t.PaymentMethod,
 			DistanceKm:    t.DistanceKm,
+			Notes:         t.Notes,
+			ProofURL:      t.ProofURL,
 			CreatedAt:     t.CreatedAt.Format(time.RFC3339),
+		}
+		if t.StaffID != nil {
+			s := t.StaffID.String()
+			dto.StaffID = &s
 		}
 		if t.OrderID != nil {
 			s := t.OrderID.String()

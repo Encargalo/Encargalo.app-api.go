@@ -51,6 +51,7 @@ func (r *productsGroup) Resource(g *echo.Echo) {
 	businessRoutes.POST("/discounts", r.handlerProducts.RegisterItemDiscount)
 	businessRoutes.PUT("/discounts/:discount_id", r.handlerProducts.UpdateItemDiscount)
 	businessRoutes.DELETE("/discounts/:discount_id", r.handlerProducts.DeleteItemDiscount)
+	businessRoutes.DELETE("/items/:item_id/discount", r.handlerProducts.DeleteItemDiscountByItemID)
 	businessRoutes.GET("/additions/catalog", r.handlerProducts.SearchAdditionsCatalogByShopID)
 	businessRoutes.PUT("/:item_id", r.handlerProducts.UpdateItem)
 

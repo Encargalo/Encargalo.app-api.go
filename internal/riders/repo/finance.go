@@ -22,7 +22,7 @@ func NewFinanceRepo(db *bun.DB) ports.FinanceRepo {
 	return &financeRepo{db}
 }
 
-func (r *financeRepo) GetBalance(ctx context.Context, entityID uuid.UUID, entityType string) (float64, error) {
+func (r *financeRepo) GetBalance(ctx context.Context, entityID uuid.UUID, entityType string) (models.Balance, error) {
 	var b models.Balance
 	err := r.db.NewSelect().
 		Model(&b).
@@ -30,12 +30,15 @@ func (r *financeRepo) GetBalance(ctx context.Context, entityID uuid.UUID, entity
 		Scan(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return 0, nil
+			return models.Balance{Currency: models.CurrencyVES}, nil
 		}
 		slog.Error("GetBalance: failed", "entityID", entityID, "error", err)
-		return 0, errcustom.ErrUnexpectedError
+		return models.Balance{}, errcustom.ErrUnexpectedError
 	}
-	return b.Amount, nil
+	if b.Currency == "" {
+		b.Currency = models.CurrencyVES
+	}
+	return b, nil
 }
 
 // RecordMovement actualiza el balance y registra el movimiento en una sola transacción.

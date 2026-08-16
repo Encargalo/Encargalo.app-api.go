@@ -1,5 +1,0 @@
-$kind: http-request
-description: "Retorna los datos del empleado autenticado. Requiere cookie `encargalo-session`. Rol: Order Manager."
-url: "{{base_url}}/employee"
-method: GET
-order: 1000

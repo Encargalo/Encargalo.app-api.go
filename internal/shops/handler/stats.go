@@ -219,7 +219,7 @@ func (h *shopStatsHandler) ExportTransactions(c echo.Context) error {
 			orderID,
 			tx.MovementType,
 			method,
-			strconv.FormatFloat(tx.Amount, 'f', 2, 64),
+			strconv.FormatFloat(tx.AmountUSD, 'f', 2, 64),
 		})
 	}
 	w.Flush()

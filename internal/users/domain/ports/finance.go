@@ -20,7 +20,7 @@ type StreamPublisher interface {
 }
 
 type CustomerFinanceRepo interface {
-	GetBalance(ctx context.Context, entityID uuid.UUID, entityType string) (float64, error)
+	GetBalance(ctx context.Context, entityID uuid.UUID, entityType string) (models.Balance, error)
 	// SumBalancePaymentDebit returns the absolute Bs debited via balance_payment for an order.
 	SumBalancePaymentDebit(ctx context.Context, customerID, orderID uuid.UUID) (float64, error)
 	RecordMovement(ctx context.Context, entityID uuid.UUID, entityType string, delta float64, minBalance float64, movement models.Transaction) (float64, error)

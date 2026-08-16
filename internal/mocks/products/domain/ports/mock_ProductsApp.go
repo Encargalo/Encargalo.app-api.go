@@ -72,6 +72,24 @@ func (_m *ProductsApp) DeleteItemDiscount(ctx context.Context, discountID uuid.U
 	return r0
 }
 
+// DeleteItemDiscountByItemID provides a mock function with given fields: ctx, itemID, shopID
+func (_m *ProductsApp) DeleteItemDiscountByItemID(ctx context.Context, itemID uuid.UUID, shopID uuid.UUID) error {
+	ret := _m.Called(ctx, itemID, shopID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteItemDiscountByItemID")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r0 = rf(ctx, itemID, shopID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // GetTrendingByCoords provides a mock function with given fields: ctx, coords
 func (_m *ProductsApp) GetTrendingByCoords(ctx context.Context, coords dtos.TrendingCoords) (dtos.TrendingResponse, error) {
 	ret := _m.Called(ctx, coords)

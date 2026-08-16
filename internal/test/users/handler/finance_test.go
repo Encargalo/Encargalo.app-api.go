@@ -34,7 +34,8 @@ func TestGetBalance_Success(t *testing.T) {
 	tc = withSessionFinance(tc, authmodels.ActiveSession{UserID: userID})
 
 	svc.On("GetBalance", mock.Anything, userID).Return(dto.CustomerBalanceResponse{
-		Balance:      12.5,
+		BalanceBs:    12.5,
+		BalanceUSD:   0.32,
 		Transactions: nil,
 	}, nil)
 

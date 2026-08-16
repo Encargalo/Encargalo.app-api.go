@@ -10,6 +10,7 @@ import (
 const (
 	EntityTypeShop            = "shop"
 	EntityTypePlatformSubsidy = "platform_subsidy"
+	CurrencyUSD               = "USD"
 	ShopShare                 = 0.90
 	// ZeroCommissionShare es el share que recibe el negocio durante sus
 	// primeros 8 días de vida (comisión 0% en vez del 10% habitual).
@@ -63,7 +64,17 @@ const (
 	MovementTypeSaleDeliveryBank   ShopMovementType = "sale_delivery_bank"
 	MovementTypeSaleDeliveryCash   ShopMovementType = "sale_delivery_cash"
 	MovementTypeLaunchPromoSubsidy ShopMovementType = "launch_promo_subsidy"
+	MovementTypeStaffPayout        ShopMovementType = "staff_payout"
+	MovementTypeAdjustmentCredit   ShopMovementType = "adjustment_credit"
+	MovementTypeAdjustmentDebit    ShopMovementType = "adjustment_debit"
 )
+
+// SaleMovementTypes son los movimientos que cuentan como ingreso por ventas en estadísticas.
+var SaleMovementTypes = []string{
+	string(MovementTypeSaleDeliveryBank),
+	string(MovementTypeSaleDeliveryCash),
+	string(MovementTypeLaunchPromoSubsidy),
+}
 
 type ShopBalance struct {
 	bun.BaseModel `bun:"table:finance.balances"`
@@ -71,6 +82,7 @@ type ShopBalance struct {
 	EntityID   uuid.UUID `bun:"entity_id,pk,type:uuid"`
 	EntityType string    `bun:"entity_type,pk"`
 	Amount     float64   `bun:"amount"`
+	Currency   string    `bun:"currency"`
 	UpdatedAt  time.Time `bun:"updated_at"`
 }
 
@@ -82,8 +94,13 @@ type ShopTransaction struct {
 	EntityType    string     `bun:"entity_type"`
 	OrderID       *uuid.UUID `bun:"order_id,nullzero"`
 	Amount        float64    `bun:"amount"`
+	Currency      string     `bun:"currency"`
+	BcvRate       *float64   `bun:"bcv_rate,nullzero"`
 	MovementType  string     `bun:"movement_type"`
 	PaymentMethod *string    `bun:"payment_method"`
+	StaffID       *uuid.UUID `bun:"staff_id,nullzero"`
+	Notes         *string    `bun:"notes,nullzero"`
+	ProofURL      *string    `bun:"proof_url,nullzero"`
 	CreatedAt     time.Time  `bun:"created_at,nullzero"`
 }
 

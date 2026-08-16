@@ -1447,6 +1447,45 @@ func TestDeleteItemDiscount_Unauthorized(t *testing.T) {
 	assert.Equal(t, errcustom.ErrUnautorized, err)
 }
 
+// --- DeleteItemDiscountByItemID ---
+
+func TestDeleteItemDiscountByItemID_Success(t *testing.T) {
+	h, svc := newHandler(t)
+
+	userID := uuid.New()
+	shopID := uuid.New()
+	itemID := uuid.New()
+	session := authmodels.ActiveSession{UserID: userID, ShopID: &shopID}
+
+	tc := buildhttptest.SetupControllerCase("/business/products/items/"+itemID.String()+"/discount", http.MethodDelete, nil)
+	tc = withSession(tc, session)
+	tc.Ctx.SetParamNames("item_id")
+	tc.Ctx.SetParamValues(itemID.String())
+
+	svc.On("DeleteItemDiscountByItemID", tc.Req.Context(), itemID, shopID).Return(nil)
+
+	err := h.DeleteItemDiscountByItemID(tc.Ctx)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, tc.Res.Code)
+}
+
+func TestDeleteItemDiscountByItemID_InvalidItemID(t *testing.T) {
+	h, _ := newHandler(t)
+
+	shopID := uuid.New()
+	session := authmodels.ActiveSession{UserID: uuid.New(), ShopID: &shopID}
+	tc := buildhttptest.SetupControllerCase("/business/products/items/not-a-uuid/discount", http.MethodDelete, nil)
+	tc = withSession(tc, session)
+	tc.Ctx.SetParamNames("item_id")
+	tc.Ctx.SetParamValues("not-a-uuid")
+
+	err := h.DeleteItemDiscountByItemID(tc.Ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusBadRequest, httpCode(err))
+}
+
 // --- SearchCategorySummariesByShopID ---
 
 func TestSearchCategorySummariesByShopID_Success(t *testing.T) {

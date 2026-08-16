@@ -1,4 +1,0 @@
-$kind: collection
-description: Endpoints de autenticación. La sesión se maneja con la cookie `encargalo-session` que se establece automáticamente al hacer sign-in.
-variables:
-  base_url: http://localhost:3000

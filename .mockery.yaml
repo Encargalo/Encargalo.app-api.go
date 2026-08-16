@@ -55,6 +55,10 @@ packages:
     config:
       dir: "internal/mocks/shops/domain/ports"
 
+  Encargalo.app-api.go/internal/finance/domain/ports:
+    config:
+      dir: "internal/mocks/finance/domain/ports"
+
   Encargalo.app-api.go/internal/bcv/domain/ports:
     config:
       dir: "internal/mocks/bcv/domain/ports"
