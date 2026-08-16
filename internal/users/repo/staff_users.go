@@ -188,3 +188,74 @@ func (r *staffUsersRepo) GetRolesForUserIDs(ctx context.Context, userIDs []uuid.
 	}
 	return out, nil
 }
+
+func (r *staffUsersRepo) EnsureStaffRole(ctx context.Context, userID, createdBy uuid.UUID) error {
+	res, err := r.db.NewRaw(`
+		UPDATE users.user_roles ur
+		SET enabled = TRUE
+		FROM users.roles ro
+		WHERE ur.role_id = ro.id AND ur.user_id = ? AND ro.name = 'Staff' AND ur.shop_id IS NULL
+	`, userID).Exec(ctx)
+	if err != nil {
+		slog.Error("staffUsers EnsureStaffRole update failed", "userID", userID, "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+	n, _ := res.RowsAffected()
+	if n > 0 {
+		return nil
+	}
+	_, err = r.db.NewRaw(`
+		INSERT INTO users.user_roles (user_id, role_id, enabled, created_by)
+		SELECT ?, id, TRUE, ? FROM users.roles WHERE name = 'Staff'
+	`, userID, createdBy).Exec(ctx)
+	if err != nil {
+		slog.Error("staffUsers EnsureStaffRole insert failed", "userID", userID, "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+	return nil
+}
+
+func (r *staffUsersRepo) DisableStaffRole(ctx context.Context, userID uuid.UUID) error {
+	_, err := r.db.NewRaw(`
+		UPDATE users.user_roles ur
+		SET enabled = FALSE
+		FROM users.roles ro
+		WHERE ur.role_id = ro.id AND ur.user_id = ? AND ro.name = 'Staff' AND ur.shop_id IS NULL
+	`, userID).Exec(ctx)
+	if err != nil {
+		slog.Error("staffUsers DisableStaffRole failed", "userID", userID, "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+	return nil
+}
+
+func (r *staffUsersRepo) HasStaffRole(ctx context.Context, userID uuid.UUID) (bool, error) {
+	exists, err := r.db.NewSelect().
+		TableExpr("users.user_roles ur").
+		Join("JOIN users.roles ro ON ro.id = ur.role_id").
+		Where("ur.user_id = ?", userID).
+		Where("ro.name = 'Staff'").
+		Where("ur.shop_id IS NULL").
+		Where("ur.enabled = TRUE").
+		Exists(ctx)
+	if err != nil {
+		slog.Error("staffUsers HasStaffRole failed", "userID", userID, "error", err)
+		return false, errcustom.ErrUnexpectedError
+	}
+	return exists, nil
+}
+
+func (r *staffUsersRepo) CountEnabledStaff(ctx context.Context) (int, error) {
+	count, err := r.db.NewSelect().
+		TableExpr("users.user_roles ur").
+		Join("JOIN users.roles ro ON ro.id = ur.role_id").
+		Where("ro.name = 'Staff'").
+		Where("ur.shop_id IS NULL").
+		Where("ur.enabled = TRUE").
+		Count(ctx)
+	if err != nil {
+		slog.Error("staffUsers CountEnabledStaff failed", "error", err)
+		return 0, errcustom.ErrUnexpectedError
+	}
+	return count, nil
+}

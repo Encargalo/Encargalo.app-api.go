@@ -6568,6 +6568,92 @@ const docTemplate = `{
                 }
             }
         },
+        "/users/staff/{userId}/grant-staff": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Habilita el rol Staff en la cuenta del usuario.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Staff"
+                ],
+                "summary": "Otorgar rol Staff",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID del usuario",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.StaffUserDetailResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/staff/{userId}/revoke-staff": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Deshabilita el rol Staff e invalida las sesiones activas del usuario.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users Staff"
+                ],
+                "summary": "Revocar rol Staff",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID del usuario",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_users_domain_dto.StaffUserDetailResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/users/staff/{userId}/unblock": {
             "post": {
                 "security": [

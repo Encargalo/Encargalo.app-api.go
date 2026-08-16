@@ -61,6 +61,8 @@ var (
 	ErrEmailAlreadyExist        = errors.New("el email ya existe")
 	ErrInvalidCursor            = errors.New("cursor inválido")
 	ErrInvalidFilter            = errors.New("filtro inválido")
+	ErrCannotRevokeOwnStaff     = errors.New("no puedes quitarte el rol Staff a ti mismo")
+	ErrLastStaffMember          = errors.New("debe quedar al menos un usuario con rol Staff")
 )
 
 var (

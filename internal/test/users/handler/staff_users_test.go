@@ -150,3 +150,22 @@ func TestStaffUsers_ListUsers_Success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, tc.Res.Code)
 }
+
+func TestStaffUsers_RevokeStaff_InvalidatesSessions(t *testing.T) {
+	h, svc, auth := newStaffUsersHandler(t)
+	staffID := uuid.New()
+	userID := uuid.New()
+	tc := buildhttptest.SetupControllerCase("/users/staff/"+userID.String()+"/revoke-staff", http.MethodPost, nil)
+	tc = withStaffSession(tc, authModels.ActiveSession{UserID: staffID})
+	tc.Ctx.SetParamNames("userId")
+	tc.Ctx.SetParamValues(userID.String())
+
+	svc.On("RevokeStaff", tc.Req.Context(), staffID, userID).
+		Return(dto.StaffUserDetailResponse{ID: userID, Roles: []string{"Customer"}}, true, nil)
+	auth.On("DeleteAllSessionsForUser", tc.Req.Context(), userID).Return(nil)
+
+	err := h.RevokeStaff(tc.Ctx)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, tc.Res.Code)
+}

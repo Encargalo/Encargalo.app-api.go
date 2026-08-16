@@ -16,6 +16,8 @@ type StaffUsersApp interface {
 	UpdateUser(ctx context.Context, staffID, userID uuid.UUID, body dto.StaffUpdateUserRequest) (dto.StaffUserDetailResponse, error)
 	BlockUser(ctx context.Context, staffID, userID uuid.UUID) (dto.StaffUserDetailResponse, error)
 	UnblockUser(ctx context.Context, staffID, userID uuid.UUID) (dto.StaffUserDetailResponse, error)
+	GrantStaff(ctx context.Context, staffID, userID uuid.UUID) (dto.StaffUserDetailResponse, error)
+	RevokeStaff(ctx context.Context, staffID, userID uuid.UUID) (dto.StaffUserDetailResponse, bool, error)
 }
 
 type StaffUsersRepo interface {
@@ -26,4 +28,8 @@ type StaffUsersRepo interface {
 	UpdateManagedCustomer(ctx context.Context, userID uuid.UUID, account *models.Account) error
 	SetAccountEnabled(ctx context.Context, userID uuid.UUID, enabled bool) error
 	GetRolesForUserIDs(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID][]string, error)
+	EnsureStaffRole(ctx context.Context, userID, createdBy uuid.UUID) error
+	DisableStaffRole(ctx context.Context, userID uuid.UUID) error
+	HasStaffRole(ctx context.Context, userID uuid.UUID) (bool, error)
+	CountEnabledStaff(ctx context.Context) (int, error)
 }

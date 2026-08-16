@@ -6174,6 +6174,60 @@ paths:
       summary: Bloquear cliente
       tags:
       - Users Staff
+  /users/staff/{userId}/grant-staff:
+    post:
+      description: Habilita el rol Staff en la cuenta del usuario.
+      parameters:
+      - description: ID del usuario
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.StaffUserDetailResponse'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Otorgar rol Staff
+      tags:
+      - Users Staff
+  /users/staff/{userId}/revoke-staff:
+    post:
+      description: Deshabilita el rol Staff e invalida las sesiones activas del usuario.
+      parameters:
+      - description: ID del usuario
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_users_domain_dto.StaffUserDetailResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Revocar rol Staff
+      tags:
+      - Users Staff
   /users/staff/{userId}/unblock:
     post:
       description: Rehabilita la cuenta (enabled=true).

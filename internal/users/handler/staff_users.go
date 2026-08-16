@@ -23,6 +23,8 @@ type StaffUsersHandler interface {
 	UpdateUser(c echo.Context) error
 	BlockUser(c echo.Context) error
 	UnblockUser(c echo.Context) error
+	GrantStaff(c echo.Context) error
+	RevokeStaff(c echo.Context) error
 }
 
 type staffUsersHandler struct {
@@ -214,5 +216,65 @@ func (h *staffUsersHandler) UnblockUser(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
+	return c.JSON(http.StatusOK, resp)
+}
+
+// GrantStaff godoc
+// @Summary      Otorgar rol Staff
+// @Description  Habilita el rol Staff en la cuenta del usuario.
+// @Tags         Users Staff
+// @Produce      json
+// @Security     SessionCookie
+// @Param        userId  path  string  true  "ID del usuario"
+// @Success      200  {object}  dto.StaffUserDetailResponse
+// @Failure      404  {string}  string
+// @Router       /users/staff/{userId}/grant-staff [post]
+func (h *staffUsersHandler) GrantStaff(c echo.Context) error {
+	ctx := c.Request().Context()
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
+
+	userID, err := uuid.Parse(c.Param("userId"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "userId inválido")
+	}
+
+	resp, err := h.svc.GrantStaff(ctx, session.UserID, userID)
+	if err != nil {
+		return errcustom.ToHTTPError(err)
+	}
+	return c.JSON(http.StatusOK, resp)
+}
+
+// RevokeStaff godoc
+// @Summary      Revocar rol Staff
+// @Description  Deshabilita el rol Staff e invalida las sesiones activas del usuario.
+// @Tags         Users Staff
+// @Produce      json
+// @Security     SessionCookie
+// @Param        userId  path  string  true  "ID del usuario"
+// @Success      200  {object}  dto.StaffUserDetailResponse
+// @Failure      400  {string}  string
+// @Failure      404  {string}  string
+// @Router       /users/staff/{userId}/revoke-staff [post]
+func (h *staffUsersHandler) RevokeStaff(c echo.Context) error {
+	ctx := c.Request().Context()
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
+
+	userID, err := uuid.Parse(c.Param("userId"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "userId inválido")
+	}
+
+	resp, revoked, err := h.svc.RevokeStaff(ctx, session.UserID, userID)
+	if err != nil {
+		return errcustom.ToHTTPError(err)
+	}
+
+	if revoked {
+		if err := h.auth.DeleteAllSessionsForUser(ctx, userID); err != nil {
+			applog.Error(ctx, "staff revocó rol pero no pudo invalidar sesiones", err, "staff_id", session.UserID.String(), "user_id", userID.String())
+		}
+	}
+
 	return c.JSON(http.StatusOK, resp)
 }

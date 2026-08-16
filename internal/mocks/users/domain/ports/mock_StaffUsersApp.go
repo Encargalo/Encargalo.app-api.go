@@ -100,6 +100,34 @@ func (_m *StaffUsersApp) GetUser(ctx context.Context, userID uuid.UUID) (dto.Sta
 	return r0, r1
 }
 
+// GrantStaff provides a mock function with given fields: ctx, staffID, userID
+func (_m *StaffUsersApp) GrantStaff(ctx context.Context, staffID uuid.UUID, userID uuid.UUID) (dto.StaffUserDetailResponse, error) {
+	ret := _m.Called(ctx, staffID, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GrantStaff")
+	}
+
+	var r0 dto.StaffUserDetailResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) (dto.StaffUserDetailResponse, error)); ok {
+		return rf(ctx, staffID, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) dto.StaffUserDetailResponse); ok {
+		r0 = rf(ctx, staffID, userID)
+	} else {
+		r0 = ret.Get(0).(dto.StaffUserDetailResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r1 = rf(ctx, staffID, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // ListUsers provides a mock function with given fields: ctx, query
 func (_m *StaffUsersApp) ListUsers(ctx context.Context, query dto.ListStaffUsersQuery) (dto.StaffUserListResponse, error) {
 	ret := _m.Called(ctx, query)
@@ -126,6 +154,41 @@ func (_m *StaffUsersApp) ListUsers(ctx context.Context, query dto.ListStaffUsers
 	}
 
 	return r0, r1
+}
+
+// RevokeStaff provides a mock function with given fields: ctx, staffID, userID
+func (_m *StaffUsersApp) RevokeStaff(ctx context.Context, staffID uuid.UUID, userID uuid.UUID) (dto.StaffUserDetailResponse, bool, error) {
+	ret := _m.Called(ctx, staffID, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RevokeStaff")
+	}
+
+	var r0 dto.StaffUserDetailResponse
+	var r1 bool
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) (dto.StaffUserDetailResponse, bool, error)); ok {
+		return rf(ctx, staffID, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) dto.StaffUserDetailResponse); ok {
+		r0 = rf(ctx, staffID, userID)
+	} else {
+		r0 = ret.Get(0).(dto.StaffUserDetailResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) bool); ok {
+		r1 = rf(ctx, staffID, userID)
+	} else {
+		r1 = ret.Get(1).(bool)
+	}
+
+	if rf, ok := ret.Get(2).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r2 = rf(ctx, staffID, userID)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // UnblockUser provides a mock function with given fields: ctx, staffID, userID

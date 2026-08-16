@@ -18,6 +18,70 @@ type StaffUsersRepo struct {
 	mock.Mock
 }
 
+// CountEnabledStaff provides a mock function with given fields: ctx
+func (_m *StaffUsersRepo) CountEnabledStaff(ctx context.Context) (int, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CountEnabledStaff")
+	}
+
+	var r0 int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (int, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) int); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// DisableStaffRole provides a mock function with given fields: ctx, userID
+func (_m *StaffUsersRepo) DisableStaffRole(ctx context.Context, userID uuid.UUID) error {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DisableStaffRole")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// EnsureStaffRole provides a mock function with given fields: ctx, userID, createdBy
+func (_m *StaffUsersRepo) EnsureStaffRole(ctx context.Context, userID uuid.UUID, createdBy uuid.UUID) error {
+	ret := _m.Called(ctx, userID, createdBy)
+
+	if len(ret) == 0 {
+		panic("no return value specified for EnsureStaffRole")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r0 = rf(ctx, userID, createdBy)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // FindManagedCustomerByPhone provides a mock function with given fields: ctx, phone
 func (_m *StaffUsersRepo) FindManagedCustomerByPhone(ctx context.Context, phone string) (*models.Account, error) {
 	ret := _m.Called(ctx, phone)
@@ -101,6 +165,34 @@ func (_m *StaffUsersRepo) GetRolesForUserIDs(ctx context.Context, userIDs []uuid
 
 	if rf, ok := ret.Get(1).(func(context.Context, []uuid.UUID) error); ok {
 		r1 = rf(ctx, userIDs)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// HasStaffRole provides a mock function with given fields: ctx, userID
+func (_m *StaffUsersRepo) HasStaffRole(ctx context.Context, userID uuid.UUID) (bool, error) {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for HasStaffRole")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (bool, error)); ok {
+		return rf(ctx, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) bool); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, userID)
 	} else {
 		r1 = ret.Error(1)
 	}

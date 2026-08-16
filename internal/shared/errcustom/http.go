@@ -64,6 +64,8 @@ var statusMap = map[error]int{
 	ErrEmailAlreadyExist:        http.StatusConflict,
 	ErrInvalidCursor:            http.StatusBadRequest,
 	ErrInvalidFilter:            http.StatusBadRequest,
+	ErrCannotRevokeOwnStaff:     http.StatusBadRequest,
+	ErrLastStaffMember:          http.StatusBadRequest,
 }
 
 func ToHTTPError(err error) error {

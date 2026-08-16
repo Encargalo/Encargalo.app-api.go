@@ -82,6 +82,8 @@ func (o *usersGroup) Resource(g *echo.Echo) {
 	group.PATCH("/staff/:userId", o.handlerStaffUsers.UpdateUser, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Staff))
 	group.POST("/staff/:userId/block", o.handlerStaffUsers.BlockUser, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Staff))
 	group.POST("/staff/:userId/unblock", o.handlerStaffUsers.UnblockUser, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Staff))
+	group.POST("/staff/:userId/grant-staff", o.handlerStaffUsers.GrantStaff, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Staff))
+	group.POST("/staff/:userId/revoke-staff", o.handlerStaffUsers.RevokeStaff, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Staff))
 	group.POST("/address", o.handlerAddress.RegisterAddress, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer, models.OrderManager, models.Owner))
 	group.GET("/address", o.handlerAddress.SearchAllAdrress, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer, models.OrderManager, models.Owner))
 	group.DELETE("/address", o.handlerAddress.DeleteAddress, o.middle.GetRequestInfo, o.middleAuth.Auth, o.middleAuth.Require(models.Customer, models.OrderManager, models.Owner))

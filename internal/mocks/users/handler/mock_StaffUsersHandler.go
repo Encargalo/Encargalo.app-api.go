@@ -67,12 +67,48 @@ func (_m *StaffUsersHandler) GetUser(c echo.Context) error {
 	return r0
 }
 
+// GrantStaff provides a mock function with given fields: c
+func (_m *StaffUsersHandler) GrantStaff(c echo.Context) error {
+	ret := _m.Called(c)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GrantStaff")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(echo.Context) error); ok {
+		r0 = rf(c)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // ListUsers provides a mock function with given fields: c
 func (_m *StaffUsersHandler) ListUsers(c echo.Context) error {
 	ret := _m.Called(c)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListUsers")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(echo.Context) error); ok {
+		r0 = rf(c)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// RevokeStaff provides a mock function with given fields: c
+func (_m *StaffUsersHandler) RevokeStaff(c echo.Context) error {
+	ret := _m.Called(c)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RevokeStaff")
 	}
 
 	var r0 error

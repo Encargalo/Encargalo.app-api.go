@@ -216,6 +216,62 @@ func (a *staffUsersApp) UnblockUser(ctx context.Context, staffID, userID uuid.UU
 	return a.GetUser(ctx, userID)
 }
 
+func (a *staffUsersApp) GrantStaff(ctx context.Context, staffID, userID uuid.UUID) (dto.StaffUserDetailResponse, error) {
+	if _, err := a.repo.GetManagedCustomerByID(ctx, userID); err != nil {
+		return dto.StaffUserDetailResponse{}, err
+	}
+
+	hasStaff, err := a.repo.HasStaffRole(ctx, userID)
+	if err != nil {
+		return dto.StaffUserDetailResponse{}, err
+	}
+	if hasStaff {
+		return a.GetUser(ctx, userID)
+	}
+
+	if err := a.repo.EnsureStaffRole(ctx, userID, staffID); err != nil {
+		return dto.StaffUserDetailResponse{}, err
+	}
+
+	slog.Info("staff otorgó rol Staff", "staffID", staffID, "userID", userID)
+	return a.GetUser(ctx, userID)
+}
+
+func (a *staffUsersApp) RevokeStaff(ctx context.Context, staffID, userID uuid.UUID) (dto.StaffUserDetailResponse, bool, error) {
+	if staffID == userID {
+		return dto.StaffUserDetailResponse{}, false, errcustom.ErrCannotRevokeOwnStaff
+	}
+
+	if _, err := a.repo.GetManagedCustomerByID(ctx, userID); err != nil {
+		return dto.StaffUserDetailResponse{}, false, err
+	}
+
+	hasStaff, err := a.repo.HasStaffRole(ctx, userID)
+	if err != nil {
+		return dto.StaffUserDetailResponse{}, false, err
+	}
+	if !hasStaff {
+		resp, err := a.GetUser(ctx, userID)
+		return resp, false, err
+	}
+
+	count, err := a.repo.CountEnabledStaff(ctx)
+	if err != nil {
+		return dto.StaffUserDetailResponse{}, false, err
+	}
+	if count <= 1 {
+		return dto.StaffUserDetailResponse{}, false, errcustom.ErrLastStaffMember
+	}
+
+	if err := a.repo.DisableStaffRole(ctx, userID); err != nil {
+		return dto.StaffUserDetailResponse{}, false, err
+	}
+
+	slog.Info("staff revocó rol Staff", "staffID", staffID, "userID", userID)
+	resp, err := a.GetUser(ctx, userID)
+	return resp, true, err
+}
+
 func (a *staffUsersApp) accountDetailWithRoles(ctx context.Context, acc *models.Account) (dto.StaffUserDetailResponse, error) {
 	roles, err := a.rolesForUser(ctx, acc.ID)
 	if err != nil {
