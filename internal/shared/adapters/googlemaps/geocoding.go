@@ -13,8 +13,10 @@ import (
 
 // ReverseGeocodeResult is the resolved address for a lat/lng pair.
 type ReverseGeocodeResult struct {
-	FormattedAddress string
-	ShortAddress     string
+	FormattedAddress  string
+	ShortAddress      string
+	Parts             AddressParts
+	AddressComponents []AddressComponent
 }
 
 // ReverseGeocode resolves a lat/lng pair into a human-readable address via
@@ -47,10 +49,8 @@ func ReverseGeocode(ctx context.Context, lat, lng float64) (*ReverseGeocodeResul
 	var data struct {
 		Status  string `json:"status"`
 		Results []struct {
-			FormattedAddress  string `json:"formatted_address"`
-			AddressComponents []struct {
-				LongName string `json:"long_name"`
-			} `json:"address_components"`
+			FormattedAddress  string                   `json:"formatted_address"`
+			AddressComponents []googleAddressComponent `json:"address_components"`
 		} `json:"results"`
 	}
 
@@ -69,13 +69,16 @@ func ReverseGeocode(ctx context.Context, lat, lng float64) (*ReverseGeocodeResul
 	}
 
 	result := data.Results[0]
+	components, parts := parseAddressComponents(result.AddressComponents)
 	shortAddress := result.FormattedAddress
-	if len(result.AddressComponents) > 0 {
-		shortAddress = result.AddressComponents[0].LongName
+	if len(components) > 0 {
+		shortAddress = components[0].LongName
 	}
 
 	return &ReverseGeocodeResult{
-		FormattedAddress: result.FormattedAddress,
-		ShortAddress:     shortAddress,
+		FormattedAddress:  result.FormattedAddress,
+		ShortAddress:      shortAddress,
+		Parts:             parts,
+		AddressComponents: components,
 	}, nil
 }
