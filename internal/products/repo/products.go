@@ -558,7 +558,7 @@ func (p *productsRepo) GetTrendingByCoords(ctx context.Context, coords dtos.Tren
 
 	var rows []models.TrendingRow
 
-	err := p.db.NewRaw(`
+	query := `
 		SELECT
 			s.id::text        AS shop_id,
 			s.name            AS shop_name,
@@ -582,18 +582,28 @@ func (p *productsRepo) GetTrendingByCoords(ctx context.Context, coords dtos.Tren
 		JOIN products.items i ON i.shop_id = s.id
 		WHERE s.opened = true
 			AND s.license_status = 'active'
-			AND s.latitude IS NOT NULL
-			AND s.longitude IS NOT NULL
 			AND i.is_available = true
 			AND i.sold > 0
+	`
+	var args []any
+	if config.Get().Environment.Current == "production" {
+		query += `
+			AND s.latitude IS NOT NULL
+			AND s.longitude IS NOT NULL
 			AND 6371 * acos(
 				cos(radians(?)) * cos(radians(s.latitude)) *
 				cos(radians(s.longitude) - radians(?)) +
 				sin(radians(?)) * sin(radians(s.latitude))
 			) <= 1
+		`
+		args = append(args, lat, lon, lat)
+	}
+	query += `
 		ORDER BY i.sold DESC
 		LIMIT 30
-	`, lat, lon, lat).Scan(ctx, &rows)
+	`
+
+	err := p.db.NewRaw(query, args...).Scan(ctx, &rows)
 	if err != nil {
 		slog.Error("error al obtener trending products", "error", err)
 		return nil, errcustom.ErrUnexpectedError
