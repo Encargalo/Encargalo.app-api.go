@@ -104,12 +104,15 @@ func (f *customerFinanceApp) GetBalance(ctx context.Context, customerID uuid.UUI
 		}
 
 		refundableBs := refundableAmount(t)
-		refundableUSD := amountToUSD(refundableBs, t.BcvRate)
+		rate := 0.0
+		if t.BcvRate != nil {
+			rate = *t.BcvRate
+		}
 		// can_request_refund = elegible por ventana/monto/saldo. El débito de la
 		// solicitud ocurre al crear; el balance ya refleja holds pending/accepted.
-		// El umbral mínimo (RefundMinAmountUSD) se compara en USD usando la tasa
-		// congelada en el propio movimiento, no una tasa "spot" nueva.
-		if refundableUSD > models.RefundMinAmountUSD && models.IsRefundableCreditMovement(t.MovementType) {
+		// El umbral mínimo (más de $1) se compara en Bs con la tasa congelada
+		// del movimiento, no una tasa "spot" nueva.
+		if models.MeetsRefundMin(refundableBs, rate) && models.IsRefundableCreditMovement(t.MovementType) {
 			until := t.CreatedAt.Add(models.RefundRequestWindow)
 			untilStr := until.Format(time.RFC3339)
 			items[i].RefundEligibleUntil = &untilStr
@@ -143,17 +146,6 @@ func refundableAmount(t models.Transaction) float64 {
 	return 0
 }
 
-// amountToUSD reconstruye el equivalente en USD de un monto en Bs usando la
-// tasa BCV congelada en el propio movimiento (Transaction.BcvRate), no una
-// tasa "spot" nueva — así el umbral RefundMinAmountUSD se compara siempre
-// contra el USD real que originó el crédito.
-func amountToUSD(amountBs float64, bcvRate *float64) float64 {
-	if bcvRate == nil || *bcvRate <= 0 {
-		return 0
-	}
-	return amountBs / *bcvRate
-}
-
 func (f *customerFinanceApp) GetBalanceBs(ctx context.Context, customerID uuid.UUID) (float64, error) {
 	b, err := f.repo.GetBalance(ctx, customerID, models.EntityTypeCustomer)
 	if err != nil {
@@ -166,15 +158,13 @@ func (f *customerFinanceApp) GetBalancePaymentDebitForOrder(ctx context.Context,
 	return f.repo.SumBalancePaymentDebit(ctx, customerID, orderID)
 }
 
-// creditWithRefundable convierte amountUSD/refundablePM a Bs con bcvRate (la
-// tasa resuelta por el caller — quote/payment review — no una tasa "spot"
-// nueva) y acredita el balance en Bs, dejando bcvRate grabado en el
-// movimiento para poder reconstruir el USD original más adelante.
-func (f *customerFinanceApp) creditWithRefundable(ctx context.Context, customerID, orderID uuid.UUID, amountUSD, refundablePM, bcvRate float64, movementType models.MovementType) (uuid.UUID, time.Time, error) {
-	if amountUSD <= 0 || bcvRate <= 0 {
+// creditWithRefundable acredita amountBs al ledger (moneda nativa) y congela
+// bcvRate en el movimiento para el umbral de devolución y la proyección USD.
+func (f *customerFinanceApp) creditWithRefundable(ctx context.Context, customerID, orderID uuid.UUID, amountBs, refundablePMBs, bcvRate float64, movementType models.MovementType) (uuid.UUID, time.Time, error) {
+	if amountBs <= 0 || bcvRate <= 0 {
 		return uuid.Nil, time.Time{}, nil
 	}
-	amountBs := money.RoundBs(amountUSD * bcvRate)
+	amountBs = money.RoundBs(amountBs)
 	oid := orderID
 	createdAt := time.Now()
 	rate := bcvRate
@@ -186,8 +176,8 @@ func (f *customerFinanceApp) creditWithRefundable(ctx context.Context, customerI
 		BcvRate:      &rate,
 		CreatedAt:    createdAt,
 	}
-	if refundablePM > 0 {
-		r := money.RoundBs(refundablePM * bcvRate)
+	if refundablePMBs > 0 {
+		r := money.RoundBs(refundablePMBs)
 		tx.RefundablePMBs = &r
 	}
 	_, err := f.repo.RecordMovement(ctx, customerID, models.EntityTypeCustomer, amountBs, 0, tx)
@@ -197,16 +187,16 @@ func (f *customerFinanceApp) creditWithRefundable(ctx context.Context, customerI
 	return tx.ID, createdAt, nil
 }
 
-func (f *customerFinanceApp) CreditPaymentOverage(ctx context.Context, customerID, orderID uuid.UUID, amountUSD, bcvRate float64) (uuid.UUID, time.Time, error) {
-	return f.creditWithRefundable(ctx, customerID, orderID, amountUSD, amountUSD, bcvRate, models.MovementTypePaymentOverage)
+func (f *customerFinanceApp) CreditPaymentOverage(ctx context.Context, customerID, orderID uuid.UUID, amountBs, bcvRate float64) (uuid.UUID, time.Time, error) {
+	return f.creditWithRefundable(ctx, customerID, orderID, amountBs, amountBs, bcvRate, models.MovementTypePaymentOverage)
 }
 
-func (f *customerFinanceApp) CreditPaymentPartial(ctx context.Context, customerID, orderID uuid.UUID, amountUSD, bcvRate float64) (uuid.UUID, time.Time, error) {
-	return f.creditWithRefundable(ctx, customerID, orderID, amountUSD, amountUSD, bcvRate, models.MovementTypePaymentPartialCredit)
+func (f *customerFinanceApp) CreditPaymentPartial(ctx context.Context, customerID, orderID uuid.UUID, amountBs, bcvRate float64) (uuid.UUID, time.Time, error) {
+	return f.creditWithRefundable(ctx, customerID, orderID, amountBs, amountBs, bcvRate, models.MovementTypePaymentPartialCredit)
 }
 
-func (f *customerFinanceApp) CreditOrderRejected(ctx context.Context, customerID, orderID uuid.UUID, amountUSD, refundablePMUSD, bcvRate float64) (uuid.UUID, time.Time, error) {
-	return f.creditWithRefundable(ctx, customerID, orderID, amountUSD, refundablePMUSD, bcvRate, models.MovementTypeOrderRejectedRefund)
+func (f *customerFinanceApp) CreditOrderRejected(ctx context.Context, customerID, orderID uuid.UUID, amountBs, refundablePMBs, bcvRate float64) (uuid.UUID, time.Time, error) {
+	return f.creditWithRefundable(ctx, customerID, orderID, amountBs, refundablePMBs, bcvRate, models.MovementTypeOrderRejectedRefund)
 }
 
 // DebitForOrder/RefundBalancePayment operan directo en Bs: amountBs es lo que
@@ -292,7 +282,11 @@ func (f *customerFinanceApp) CreateRefundRequest(ctx context.Context, customerID
 	}
 
 	amountBs := refundableAmount(*tx)
-	if amountToUSD(amountBs, tx.BcvRate) <= models.RefundMinAmountUSD {
+	rate := 0.0
+	if tx.BcvRate != nil {
+		rate = *tx.BcvRate
+	}
+	if !models.MeetsRefundMin(amountBs, rate) {
 		return dto.RefundRequestResponse{}, errcustom.ErrRefundNotEligible
 	}
 	if !withinRefundWindow(tx.CreatedAt, time.Now()) {

@@ -14,24 +14,31 @@ type Details struct {
 	PaymentDetails  *PaymentDetails `json:"payment,omitempty"`
 }
 
-// PaymentDetails congela el estado de la revisión de pago manual para que el
-// cliente sepa, sin depender del WS de staff, cuánto se esperaba, cuánto se
-// detectó en el comprobante, la diferencia (si pagó de más o de menos), el
-// motivo si fue rechazado (comprobante inválido o pago incompleto) y cuánto
-// se le acreditó a su balance en esos casos. `Status` refleja el estado de
-// la revisión (PaymentReviewStatus) para que el front distinga el motivo
+// PaymentDetails congela el estado de la revisi?n de pago manual para que el
+// cliente sepa, sin depender del WS de staff, cu?nto se esperaba, cu?nto se
+// detect? en el comprobante, la diferencia (si pag? de m?s o de menos), el
+// motivo si fue rechazado (comprobante inv?lido o pago incompleto) y cu?nto
+// se le acredit? a su balance en esos casos. `Status` refleja el estado de
+// la revisi?n (PaymentReviewStatus) para que el front distinga el motivo
 // exacto sin llamadas adicionales.
 type PaymentDetails struct {
-	PaymentProofURL    string              `json:"payment_proof_url,omitempty"`
-	Status             PaymentReviewStatus `json:"status,omitempty"`
-	ExpectedAmountBs   float64             `json:"expected_amount_bs,omitempty"`
-	ObservedAmountBs   *float64            `json:"observed_amount_bs,omitempty"`
-	DifferenceBs       *float64            `json:"difference_bs,omitempty"`
-	RejectionReason    *string             `json:"rejection_reason,omitempty"`
-	CreditedBs         *float64            `json:"credited_bs,omitempty"`
-	BalanceAmountBs    float64             `json:"balance_amount_bs,omitempty"`
-	PagoMovilAmountUSD float64             `json:"pago_movil_amount_usd,omitempty"`
-	// Campos para solicitar devoluci?n en efectivo desde el order_update WS
+	PaymentProofURL   string              `json:"payment_proof_url,omitempty"`
+	Status            PaymentReviewStatus `json:"status,omitempty"`
+	ExpectedAmountBs  float64             `json:"expected_amount_bs,omitempty"`
+	ObservedAmountBs  *float64            `json:"observed_amount_bs,omitempty"`
+	DifferenceBs      *float64            `json:"difference_bs,omitempty"`
+	RejectionReason   *string             `json:"rejection_reason,omitempty"`
+	CreditedBs        *float64            `json:"credited_bs,omitempty"`
+	BalanceAmountBs   float64             `json:"balance_amount_bs,omitempty"`
+	PagoMovilAmountBs float64             `json:"pago_movil_amount_bs,omitempty"`
+	// PagoMovilAmountUSD se lee de pedidos viejos (pre-migracion a Bs). No se
+	// emite en escrituras nuevas; paymentSplitFromDetails lo convierte con la
+	// tasa congelada si PagoMovilAmountBs viene vacio.
+	PagoMovilAmountUSD float64 `json:"pago_movil_amount_usd,omitempty"`
+	// BcvRate es la tasa del quote/review congelada al crear la orden. Sirve
+	// para reconstruir total_bs y el fallback de pago_movil_amount_usd.
+	BcvRate float64 `json:"bcv_rate,omitempty"`
+	// Campos para solicitar devolucion en efectivo desde el order_update WS
 	// (misma info que GET /users/balance sobre el movimiento cash-refundable).
 	TransactionID       *uuid.UUID `json:"transaction_id,omitempty"`
 	RefundablePMBs      *float64   `json:"refundable_pm_bs,omitempty"`
@@ -40,9 +47,9 @@ type PaymentDetails struct {
 }
 
 // BuildDetails congela una foto del pedido para mostrarla luego (historial,
-// recibo, panel del local) sin depender de que el catálogo original no haya
+// recibo, panel del local) sin depender de que el cat?logo original no haya
 // cambiado. rate es la tasa BCV vigente al momento de crear la orden: se usa
-// para fijar de una vez los montos en bolívares de cada item/adición, igual
+// para fijar de una vez los montos en bol?vares de cada item/adici?n, igual
 // que Order.ApplyBsPrice hace con el total y el delivery fee.
 func (d *Details) BuildDetails(order *Order, shop *ShopOrder, customer *models.Account, addressInstructions string, rate float64) {
 

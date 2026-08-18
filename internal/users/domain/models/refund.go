@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	"Encargalo.app-api.go/internal/pkg/money"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
@@ -16,12 +17,30 @@ const (
 	RefundRejected  RefundRequestStatus = "rejected"
 
 	RefundRequestWindow = 15 * time.Minute
-	// RefundMinAmountUSD es el piso de negocio, expresado en USD porque es la
-	// unidad estable de referencia. Se convierte a Bs con la tasa BCV vigente
-	// en el momento de validar (ver customerFinanceApp), igual que el mínimo
-	// de retiro de riders.
+	// RefundMinAmountUSD es el piso de negocio (más de $1), expresado en USD
+	// porque es la unidad estable de referencia. Se convierte a Bs con la
+	// tasa BCV congelada del crédito (Transaction.BcvRate), no una tasa spot.
 	RefundMinAmountUSD = 1.0
 )
+
+// RefundMinAmountBs es el equivalente en Bs de RefundMinAmountUSD a la tasa
+// congelada del movimiento. 0 si la tasa no es usable.
+func RefundMinAmountBs(bcvRate float64) float64 {
+	if bcvRate <= 0 {
+		return 0
+	}
+	return money.RoundBs(RefundMinAmountUSD * bcvRate)
+}
+
+// MeetsRefundMin reporta si refundableBs supera el piso de más de $1 a la
+// tasa congelada. Sin tasa válida no hay elegibilidad (mismo comportamiento
+// que reconstruir USD y comparar contra RefundMinAmountUSD).
+func MeetsRefundMin(refundableBs, bcvRate float64) bool {
+	if bcvRate <= 0 {
+		return false
+	}
+	return refundableBs > RefundMinAmountBs(bcvRate)
+}
 
 type BalanceRefundRequest struct {
 	bun.BaseModel `bun:"table:finance.balance_refund_requests"`

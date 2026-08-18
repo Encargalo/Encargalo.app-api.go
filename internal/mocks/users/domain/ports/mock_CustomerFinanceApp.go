@@ -104,9 +104,9 @@ func (_m *CustomerFinanceApp) CreateRefundRequest(ctx context.Context, customerI
 	return r0, r1
 }
 
-// CreditOrderRejected provides a mock function with given fields: ctx, customerID, orderID, amountUSD, refundablePMUSD, bcvRate
-func (_m *CustomerFinanceApp) CreditOrderRejected(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID, amountUSD float64, refundablePMUSD float64, bcvRate float64) (uuid.UUID, time.Time, error) {
-	ret := _m.Called(ctx, customerID, orderID, amountUSD, refundablePMUSD, bcvRate)
+// CreditOrderRejected provides a mock function with given fields: ctx, customerID, orderID, amountBs, refundablePMBs, bcvRate
+func (_m *CustomerFinanceApp) CreditOrderRejected(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID, amountBs float64, refundablePMBs float64, bcvRate float64) (uuid.UUID, time.Time, error) {
+	ret := _m.Called(ctx, customerID, orderID, amountBs, refundablePMBs, bcvRate)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreditOrderRejected")
@@ -116,10 +116,10 @@ func (_m *CustomerFinanceApp) CreditOrderRejected(ctx context.Context, customerI
 	var r1 time.Time
 	var r2 error
 	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64, float64) (uuid.UUID, time.Time, error)); ok {
-		return rf(ctx, customerID, orderID, amountUSD, refundablePMUSD, bcvRate)
+		return rf(ctx, customerID, orderID, amountBs, refundablePMBs, bcvRate)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64, float64) uuid.UUID); ok {
-		r0 = rf(ctx, customerID, orderID, amountUSD, refundablePMUSD, bcvRate)
+		r0 = rf(ctx, customerID, orderID, amountBs, refundablePMBs, bcvRate)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(uuid.UUID)
@@ -127,13 +127,13 @@ func (_m *CustomerFinanceApp) CreditOrderRejected(ctx context.Context, customerI
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64, float64) time.Time); ok {
-		r1 = rf(ctx, customerID, orderID, amountUSD, refundablePMUSD, bcvRate)
+		r1 = rf(ctx, customerID, orderID, amountBs, refundablePMBs, bcvRate)
 	} else {
 		r1 = ret.Get(1).(time.Time)
 	}
 
 	if rf, ok := ret.Get(2).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64, float64) error); ok {
-		r2 = rf(ctx, customerID, orderID, amountUSD, refundablePMUSD, bcvRate)
+		r2 = rf(ctx, customerID, orderID, amountBs, refundablePMBs, bcvRate)
 	} else {
 		r2 = ret.Error(2)
 	}
@@ -141,9 +141,9 @@ func (_m *CustomerFinanceApp) CreditOrderRejected(ctx context.Context, customerI
 	return r0, r1, r2
 }
 
-// CreditPaymentOverage provides a mock function with given fields: ctx, customerID, orderID, amountUSD, bcvRate
-func (_m *CustomerFinanceApp) CreditPaymentOverage(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID, amountUSD float64, bcvRate float64) (uuid.UUID, time.Time, error) {
-	ret := _m.Called(ctx, customerID, orderID, amountUSD, bcvRate)
+// CreditPaymentOverage provides a mock function with given fields: ctx, customerID, orderID, amountBs, bcvRate
+func (_m *CustomerFinanceApp) CreditPaymentOverage(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID, amountBs float64, bcvRate float64) (uuid.UUID, time.Time, error) {
+	ret := _m.Called(ctx, customerID, orderID, amountBs, bcvRate)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreditPaymentOverage")
@@ -153,10 +153,10 @@ func (_m *CustomerFinanceApp) CreditPaymentOverage(ctx context.Context, customer
 	var r1 time.Time
 	var r2 error
 	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) (uuid.UUID, time.Time, error)); ok {
-		return rf(ctx, customerID, orderID, amountUSD, bcvRate)
+		return rf(ctx, customerID, orderID, amountBs, bcvRate)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) uuid.UUID); ok {
-		r0 = rf(ctx, customerID, orderID, amountUSD, bcvRate)
+		r0 = rf(ctx, customerID, orderID, amountBs, bcvRate)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(uuid.UUID)
@@ -164,13 +164,13 @@ func (_m *CustomerFinanceApp) CreditPaymentOverage(ctx context.Context, customer
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) time.Time); ok {
-		r1 = rf(ctx, customerID, orderID, amountUSD, bcvRate)
+		r1 = rf(ctx, customerID, orderID, amountBs, bcvRate)
 	} else {
 		r1 = ret.Get(1).(time.Time)
 	}
 
 	if rf, ok := ret.Get(2).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) error); ok {
-		r2 = rf(ctx, customerID, orderID, amountUSD, bcvRate)
+		r2 = rf(ctx, customerID, orderID, amountBs, bcvRate)
 	} else {
 		r2 = ret.Error(2)
 	}
@@ -178,9 +178,9 @@ func (_m *CustomerFinanceApp) CreditPaymentOverage(ctx context.Context, customer
 	return r0, r1, r2
 }
 
-// CreditPaymentPartial provides a mock function with given fields: ctx, customerID, orderID, amountUSD, bcvRate
-func (_m *CustomerFinanceApp) CreditPaymentPartial(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID, amountUSD float64, bcvRate float64) (uuid.UUID, time.Time, error) {
-	ret := _m.Called(ctx, customerID, orderID, amountUSD, bcvRate)
+// CreditPaymentPartial provides a mock function with given fields: ctx, customerID, orderID, amountBs, bcvRate
+func (_m *CustomerFinanceApp) CreditPaymentPartial(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID, amountBs float64, bcvRate float64) (uuid.UUID, time.Time, error) {
+	ret := _m.Called(ctx, customerID, orderID, amountBs, bcvRate)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreditPaymentPartial")
@@ -190,10 +190,10 @@ func (_m *CustomerFinanceApp) CreditPaymentPartial(ctx context.Context, customer
 	var r1 time.Time
 	var r2 error
 	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) (uuid.UUID, time.Time, error)); ok {
-		return rf(ctx, customerID, orderID, amountUSD, bcvRate)
+		return rf(ctx, customerID, orderID, amountBs, bcvRate)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) uuid.UUID); ok {
-		r0 = rf(ctx, customerID, orderID, amountUSD, bcvRate)
+		r0 = rf(ctx, customerID, orderID, amountBs, bcvRate)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(uuid.UUID)
@@ -201,13 +201,13 @@ func (_m *CustomerFinanceApp) CreditPaymentPartial(ctx context.Context, customer
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) time.Time); ok {
-		r1 = rf(ctx, customerID, orderID, amountUSD, bcvRate)
+		r1 = rf(ctx, customerID, orderID, amountBs, bcvRate)
 	} else {
 		r1 = ret.Get(1).(time.Time)
 	}
 
 	if rf, ok := ret.Get(2).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) error); ok {
-		r2 = rf(ctx, customerID, orderID, amountUSD, bcvRate)
+		r2 = rf(ctx, customerID, orderID, amountBs, bcvRate)
 	} else {
 		r2 = ret.Error(2)
 	}
