@@ -1,4 +1,4 @@
-# Guía Frontend — Balance USD y devoluciones en efectivo
+# Guía Frontend — Balance Bs y devoluciones en efectivo
 
 Contrato para la **app cliente** y el **CRM staff**.  
 No cubre payment review / quotes (eso está en [`frontend-payment-review.md`](./frontend-payment-review.md)).
@@ -32,7 +32,7 @@ Reglas:
 - El dinero se **reserva (debita) al crear** la solicitud, para que el cliente no pueda gastarlo en otra compra mientras staff responde.
 - Tener Pago Móvil registrado **no** es requisito para mostrar el CTA; se exige al **crear** la solicitud.
 - La ventana de 15 min **solo aplica para crear**. Una vez `pending`/`accepted`, no expira sola.
-- Mínimo refundable: **más de $1** USD.
+- Mínimo refundable: **más de $1** USD, evaluado en Bs con la tasa BCV **congelada** del crédito (no la tasa spot).
 
 Hay **dos vías** para el CTA de “solicitar devolución”:
 
@@ -71,7 +71,7 @@ CRM    ──staff/refund-requests──► snapshot + refund_request_update
 |---|---|---|
 | Staff aprobó con exceso | `payment_overage` | Todo el crédito |
 | Staff rechazó por pago incompleto | `payment_partial_credit` | La porción PM observada |
-| Local rechazó / timeout 10 min Pending | `order_rejected_refund` | **Solo** la porción Pago Móvil (`total − balance_used`). El crédito al balance es el total (incluye lo que ya era balance), pero `refundable_pm_usd` / CTA **nunca** incluyen lo pagado con balance. Si fue 100% balance → no elegible |
+| Local rechazó / timeout 10 min Pending | `order_rejected_refund` | **Solo** la porción Pago Móvil (`total_bs − balance_used_bs`). El crédito al balance es el total (incluye lo que ya era balance), pero `refundable_pm_bs` / CTA **nunca** incluyen lo pagado con balance. Si fue 100% balance → no elegible |
 
 ---
 
@@ -81,15 +81,18 @@ CRM    ──staff/refund-requests──► snapshot + refund_request_update
 
 ```json
 {
-  "balance": 52,
+  "balance_bs": 2080,
+  "balance_usd": 52,
+  "bcv_rate": 40,
   "transactions": [
     {
       "id": "b7b91d01-d7d6-4636-b30b-0b1716ca86ea",
-      "amount": 52,
+      "amount_bs": 2080,
+      "amount_usd": 52,
       "movement_type": "order_rejected_refund",
       "order_id": "9dcf4657-73ae-4214-9582-ba8259929d2e",
       "created_at": "2026-07-18T19:13:36Z",
-      "refundable_pm_usd": 52,
+      "refundable_pm_bs": 2080,
       "can_request_refund": true,
       "refund_eligible_until": "2026-07-18T19:28:36Z"
     }
@@ -102,10 +105,10 @@ CRM    ──staff/refund-requests──► snapshot + refund_request_update
 | `id` | Es el `transaction_id` para crear la solicitud |
 | `can_request_refund` | Solo viene si es `true` (`omitempty`). **Si no está → no mostrar CTA** |
 | `refund_eligible_until` | Countdown: `until - Date.now()` |
-| `refundable_pm_usd` | **Monto del CTA / solicitud** (solo Pago Móvil). No uses `amount` ni `credited_usd` del crédito — esos pueden ser el total de la orden |
+| `refundable_pm_bs` | **Monto del CTA / solicitud** (solo Pago Móvil). No uses `amount_bs` ni `credited_bs` del crédito — esos pueden ser el total de la orden |
 | `refund_request_id` | En débitos `balance_refund_hold` / `processing` / `payout` y créditos `balance_refund_restore`: abrir detalle |
 
-`can_request_refund` considera: ventana 15 min, monto > $1, saldo actual del ledger, y que no haya ya una solicitud activa. **No** exige Pago Móvil.
+`can_request_refund` considera: ventana 15 min, monto > $1 equivalente en Bs a la tasa congelada, saldo actual del ledger, y que no haya ya una solicitud activa. **No** exige Pago Móvil.
 
 Al crear la solicitud llega `refund_request_update` con `pending` → **refrescar balance** (ya bajó; tipo `hold`).  
 Al recibir `accepted` / `completed` → **refrescar balance** (mismo débito cambia a `processing` / `payout`; el monto no cambia).  
@@ -201,9 +204,9 @@ Cuando llega un crédito cash-refundable, `order.details.payment` puede traer:
     "details": {
       "payment": {
         "status": "refunded_shop_reject",
-        "credited_usd": 52,
+        "credited_bs": 2080,
         "transaction_id": "b7b91d01-…",
-        "refundable_pm_usd": 52,
+        "refundable_pm_bs": 2080,
         "can_request_refund": true,
         "refund_eligible_until": "2026-07-18T19:28:36Z"
       }
@@ -294,11 +297,11 @@ Cada `refund_request_update` incluye, además de PM destino:
 
 | Campo | Uso CRM |
 |---|---|
-| `amount_usd` | Monto a devolver (validación al completar) |
-| `amount_bs` | **Monto en Bs a pagar por Pago Móvil** (`amount_usd × bcv_rate`, tasa vigente) |
-| `bcv_rate` | Tasa BCV usada para calcular `amount_bs` |
+| `amount_bs` | **Monto en Bs a pagar por Pago Móvil** (fuente de verdad; es lo que se valida al completar) |
+| `amount_usd` | Equivalente informativo (`amount_bs / bcv_rate`) |
+| `bcv_rate` | Tasa BCV usada para el equivalente USD |
 
-Si BCV no está disponible, `amount_bs` / `bcv_rate` pueden omitirse (0 / ausentes).
+Si BCV no está disponible, `amount_usd` / `bcv_rate` pueden omitirse (0 / ausentes). `amount_bs` siempre viene.
 
 ### 8.2 Accept / Reject (WS)
 
@@ -329,20 +332,20 @@ Subir comprobante por imagen (no pegar URL) y validar monto:
 
 ```json
 {
-  "amount_usd": 52,
+  "amount_bs": 2080,
   "proof_image": "data:image/jpeg;base64,/9j/4AAQ..."
 }
 ```
 
 | Campo | Regla |
 |---|---|
-| `amount_usd` | Debe coincidir con `amount_usd` de la solicitud (± $0.01). Si no → `422` “el monto ingresado no coincide…” |
+| `amount_bs` | Debe coincidir con `amount_bs` de la solicitud (± 0.01 Bs). Si no → `422` “el monto ingresado no coincide…” |
 | `proof_image` | Data-URL / base64 de imagen; el API la sube a Cloudinary |
 
 UX del modal CRM:
 
-1. Mostrar **`amount_bs`** (a transferir) + `amount_usd` + datos PM destino.
-2. Input de monto USD: **verde** si coincide con `amount_usd`, **rojo** si no.
+1. Mostrar **`amount_bs`** (a transferir) + `amount_usd` informativo + datos PM destino.
+2. Input de monto Bs: **verde** si coincide con `amount_bs`, **rojo** si no.
 3. Upload de imagen del comprobante (JPG/PNG/WEBP, máx. 5 MB).
 4. Confirmar → `POST …/complete` → sacar card de la cola.
 
@@ -354,7 +357,7 @@ Errores útiles del complete:
 | `422` | Monto no coincide / estado no es `accepted` |
 | `422` | Error subiendo imagen |
 
-(Opcional) El mismo complete también existe por WS con `type: "complete"` + `amount_usd` + `proof_image`, pero el CRM usa HTTP por el tamaño de la imagen.
+(Opcional) El mismo complete también existe por WS con `type: "complete"` + `amount_bs` + `proof_image`, pero el CRM usa HTTP por el tamaño de la imagen.
 
 ---
 

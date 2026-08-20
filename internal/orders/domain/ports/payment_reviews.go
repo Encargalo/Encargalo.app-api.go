@@ -20,17 +20,17 @@ type PaymentReviewsRepo interface {
 }
 
 // CustomerBalanceCreditor is implemented by users finance to credit/debit the
-// customer's Bs balance. Credit* reciben el monto original en USD + la tasa
-// BCV a aplicar (resuelta por orders, ver review.BcvRate / quote.BcvRate);
+// customer's Bs balance. Credit* reciben el monto ya en Bs + la tasa BCV
+// congelada (review.BcvRate / quote.BcvRate) para grabarla en el movimiento;
 // Debit/Refund operan directo en Bs (ya es lo que el customer pidió usar).
 type CustomerBalanceCreditor interface {
 	GetBalanceBs(ctx context.Context, customerID uuid.UUID) (float64, error)
 	// GetBalancePaymentDebitForOrder returns the Bs debited from balance for this order
 	// (absolute value of balance_payment movements). 0 if none.
 	GetBalancePaymentDebitForOrder(ctx context.Context, customerID, orderID uuid.UUID) (float64, error)
-	CreditPaymentOverage(ctx context.Context, customerID, orderID uuid.UUID, amountUSD, bcvRate float64) (txID uuid.UUID, createdAt time.Time, err error)
-	CreditPaymentPartial(ctx context.Context, customerID, orderID uuid.UUID, amountUSD, bcvRate float64) (txID uuid.UUID, createdAt time.Time, err error)
-	CreditOrderRejected(ctx context.Context, customerID, orderID uuid.UUID, amountUSD, refundablePMUSD, bcvRate float64) (txID uuid.UUID, createdAt time.Time, err error)
+	CreditPaymentOverage(ctx context.Context, customerID, orderID uuid.UUID, amountBs, bcvRate float64) (txID uuid.UUID, createdAt time.Time, err error)
+	CreditPaymentPartial(ctx context.Context, customerID, orderID uuid.UUID, amountBs, bcvRate float64) (txID uuid.UUID, createdAt time.Time, err error)
+	CreditOrderRejected(ctx context.Context, customerID, orderID uuid.UUID, amountBs, refundablePMBs, bcvRate float64) (txID uuid.UUID, createdAt time.Time, err error)
 	DebitForOrder(ctx context.Context, customerID, orderID uuid.UUID, amountBs float64) error
 	RefundBalancePayment(ctx context.Context, customerID, orderID uuid.UUID, amountBs float64) error
 }
@@ -49,7 +49,7 @@ type PaymentReviewsApp interface {
 	// y el resultado trae Action=reject_invalid + DuplicateReject=true.
 	Approve(ctx context.Context, reviewID, staffID uuid.UUID, referenceLast4 string) (models.StaffReviewResult, error)
 	ApproveOverpay(ctx context.Context, reviewID, staffID uuid.UUID, observedBs float64, referenceLast4 string) (models.StaffReviewResult, error)
-	// RejectUnderpaid rechaza la orden por pago incompleto: acredita a USD lo
+	// RejectUnderpaid rechaza la orden por pago incompleto: acredita en Bs lo
 	// efectivamente pagado (observedBs) al balance del cliente y cancela la
 	// orden de inmediato. No hay espera ni comprobante adicional; si el
 	// cliente quiere reintentar, arma una nueva orden (puede pagar con su

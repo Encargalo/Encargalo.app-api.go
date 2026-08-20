@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"math"
 	"regexp"
 	"strings"
 	"time"
@@ -118,9 +117,7 @@ func (a *paymentReviewsApp) ApproveOverpay(ctx context.Context, reviewID, staffI
 	}
 
 	diff := observedBs - review.ExpectedAmountBs
-	pmBaseUSD := pagoMovilAmountUSD(order, review.BcvRate)
-	creditedUSD := bsToUSD(diff, review.BcvRate, pmBaseUSD, review.ExpectedAmountBs)
-	creditedBs := money.RoundBs(creditedUSD * review.BcvRate)
+	creditedBs := money.RoundBs(diff)
 
 	update := &models.PaymentReview{
 		Status:           models.ReviewOverpaid,
@@ -138,7 +135,7 @@ func (a *paymentReviewsApp) ApproveOverpay(ctx context.Context, reviewID, staffI
 		return models.StaffReviewResult{}, errcustom.ErrInvalidStatus
 	}
 
-	txID, createdAt, err := a.finance.CreditPaymentOverage(ctx, order.CustomerID, order.ID, creditedUSD, review.BcvRate)
+	txID, createdAt, err := a.finance.CreditPaymentOverage(ctx, order.CustomerID, order.ID, creditedBs, review.BcvRate)
 	if err != nil {
 		slog.Error("ApproveOverpay credit failed", "orderID", order.ID, "error", err)
 		return models.StaffReviewResult{}, err
@@ -158,9 +155,9 @@ func (a *paymentReviewsApp) ApproveOverpay(ctx context.Context, reviewID, staffI
 	return models.StaffReviewResult{Order: orderOut, Action: "approve_overpay"}, nil
 }
 
-// RejectUnderpaid resuelve un comprobante con monto insuficiente: acredita a
-// USD lo que efectivamente se pagó (observedBs, según la tasa BCV vigente al
-// crear la revisión) al balance del cliente y rechaza la orden de inmediato.
+// RejectUnderpaid resuelve un comprobante con monto insuficiente: acredita en
+// Bs lo que efectivamente se pagó (observedBs) al balance del cliente y rechaza
+// la orden de inmediato.
 // No hay espera ni comprobante adicional para completar la diferencia: si el
 // cliente quiere reintentar, debe armar una nueva orden (el front decide si
 // le ofrece pagar con su balance + un nuevo comprobante).
@@ -182,11 +179,9 @@ func (a *paymentReviewsApp) RejectUnderpaid(ctx context.Context, reviewID, staff
 	}
 
 	diff := review.ExpectedAmountBs - observedBs
-	pmBaseUSD := pagoMovilAmountUSD(order, review.BcvRate)
-	pmCreditedUSD := bsToUSD(observedBs, review.BcvRate, pmBaseUSD, review.ExpectedAmountBs)
-	pmCreditedBs := money.RoundBs(pmCreditedUSD * review.BcvRate)
+	pmCreditedBs := money.RoundBs(observedBs)
 	balanceUsedBs := balanceAmountBs(order)
-	totalCreditedBs := pmCreditedBs + balanceUsedBs
+	totalCreditedBs := money.RoundBs(pmCreditedBs + balanceUsedBs)
 
 	update := &models.PaymentReview{
 		Status:           models.ReviewRejectedUnderpaid,
@@ -204,7 +199,7 @@ func (a *paymentReviewsApp) RejectUnderpaid(ctx context.Context, reviewID, staff
 		return models.StaffReviewResult{}, errcustom.ErrInvalidStatus
 	}
 
-	txID, createdAt, err := a.finance.CreditPaymentPartial(ctx, order.CustomerID, order.ID, pmCreditedUSD, review.BcvRate)
+	txID, createdAt, err := a.finance.CreditPaymentPartial(ctx, order.CustomerID, order.ID, pmCreditedBs, review.BcvRate)
 	if err != nil {
 		slog.Error("RejectUnderpaid credit failed", "orderID", order.ID, "error", err)
 		return models.StaffReviewResult{}, err
@@ -343,23 +338,23 @@ func (a *paymentReviewsApp) syncPaymentDetails(
 
 func (a *paymentReviewsApp) BuildBroadcast(ctx context.Context, review *models.PaymentReview, order *models.Order) models.PaymentReviewBroadcast {
 	b := models.PaymentReviewBroadcast{
-		Type:               "payment_review_update",
-		ReviewID:           review.ID,
-		OrderID:            order.ID,
-		ShopID:             order.ShopID,
-		CustomerID:         order.CustomerID,
-		ProofURL:           review.ProofURL,
-		ExpectedAmountBs:   review.ExpectedAmountBs,
-		ObservedAmountBs:   review.ObservedAmountBs,
-		DifferenceBs:       review.DifferenceBs,
-		Status:             review.Status,
-		RejectionReason:    review.RejectionReason,
-		CreditedBs:         review.CreditedBs,
-		BalanceAmountBs:    balanceAmountBs(order),
-		PagoMovilAmountUSD: pagoMovilAmountUSD(order, review.BcvRate),
-		TotalUSD:           order.TotalPrice,
-		OrderStatus:        order.Status,
-		CreatedAt:          review.CreatedAt,
+		Type:              "payment_review_update",
+		ReviewID:          review.ID,
+		OrderID:           order.ID,
+		ShopID:            order.ShopID,
+		CustomerID:        order.CustomerID,
+		ProofURL:          review.ProofURL,
+		ExpectedAmountBs:  review.ExpectedAmountBs,
+		ObservedAmountBs:  review.ObservedAmountBs,
+		DifferenceBs:      review.DifferenceBs,
+		Status:            review.Status,
+		RejectionReason:   review.RejectionReason,
+		CreditedBs:        review.CreditedBs,
+		BalanceAmountBs:   balanceAmountBs(order),
+		PagoMovilAmountBs: pagoMovilAmountBs(order, review.BcvRate),
+		TotalUSD:          order.TotalPrice,
+		OrderStatus:       order.Status,
+		CreatedAt:         review.CreatedAt,
 	}
 
 	var details models.Details
@@ -387,25 +382,32 @@ func balanceAmountBs(order *models.Order) float64 {
 	return details.PaymentDetails.BalanceAmountBs
 }
 
-// pagoMovilAmountUSD es la porción pagada por Pago Móvil (cash-refundable),
-// en USD. bcvRate convierte el balance usado (persistido en Bs) de vuelta a
-// USD para poder restarlo del total de la orden (también USD).
-// Nunca debe incluir lo pagado con balance.
-func pagoMovilAmountUSD(order *models.Order, bcvRate float64) float64 {
-	balanceUsedBs, pmFromDetails, hasPD := paymentSplitFromDetails(order)
-	balanceUsedUSD := 0.0
-	if bcvRate > 0 {
-		balanceUsedUSD = balanceUsedBs / bcvRate
+func bcvRateFromPaymentDetails(order *models.Order) float64 {
+	if order == nil || len(order.Details) == 0 {
+		return 0
 	}
-	return cashRefundablePMUSD(order.TotalPrice, balanceUsedUSD, pmFromDetails, hasPD)
+	var details models.Details
+	if err := json.Unmarshal(order.Details, &details); err != nil || details.PaymentDetails == nil {
+		return 0
+	}
+	return details.PaymentDetails.BcvRate
 }
 
-// paymentSplitFromDetails devuelve el balance usado en Bs (moneda nativa
-// persistida) y la porción Pago Móvil en USD, tal cual quedaron en
-// order.Details al crear la orden. El caller decide con qué tasa convertir
-// balanceUsedBs a USD según el contexto (review.BcvRate si hay una revisión
-// activa, o la tasa BCV vigente si el pedido ya no tiene una).
-func paymentSplitFromDetails(order *models.Order) (balanceUsedBs, pmFromDetails float64, hasPaymentDetails bool) {
+// pagoMovilAmountBs es la porción pagada por Pago Móvil (cash-refundable),
+// en Bs. Nunca debe incluir lo pagado con balance.
+func pagoMovilAmountBs(order *models.Order, bcvRate float64) float64 {
+	balanceUsedBs, pmFromDetails, hasPD := paymentSplitFromDetails(order, bcvRate)
+	totalBs := 0.0
+	if bcvRate > 0 {
+		totalBs = money.RoundBs(order.TotalPrice * bcvRate)
+	}
+	return cashRefundablePMBs(totalBs, balanceUsedBs, pmFromDetails, hasPD)
+}
+
+// paymentSplitFromDetails devuelve el balance usado y la porción Pago Móvil
+// en Bs, tal cual quedaron en order.Details al crear la orden. Pedidos
+// viejos con solo pago_movil_amount_usd se convierten con rate.
+func paymentSplitFromDetails(order *models.Order, rate float64) (balanceUsedBs, pmFromDetailsBs float64, hasPaymentDetails bool) {
 	if order == nil || len(order.Details) == 0 {
 		return 0, 0, false
 	}
@@ -413,35 +415,38 @@ func paymentSplitFromDetails(order *models.Order) (balanceUsedBs, pmFromDetails 
 	if err := json.Unmarshal(order.Details, &details); err != nil || details.PaymentDetails == nil {
 		return 0, 0, false
 	}
-	return details.PaymentDetails.BalanceAmountBs, details.PaymentDetails.PagoMovilAmountUSD, true
+	pmBs := details.PaymentDetails.PagoMovilAmountBs
+	if pmBs <= 0 && details.PaymentDetails.PagoMovilAmountUSD > 0 && rate > 0 {
+		pmBs = money.RoundBs(details.PaymentDetails.PagoMovilAmountUSD * rate)
+	}
+	return details.PaymentDetails.BalanceAmountBs, pmBs, true
 }
 
-// cashRefundablePMUSD calcula el monto elegible para devolución en efectivo.
+// cashRefundablePMBs calcula el monto elegible para devolución en efectivo.
 // Si hubo pago con balance, el cash-refundable es total−balance (no el total entero).
-func cashRefundablePMUSD(orderTotal, balanceUsed, pmFromDetails float64, hasPaymentDetails bool) float64 {
-	orderTotal = money.RoundUSD(orderTotal)
-	balanceUsed = money.RoundUSD(balanceUsed)
-	pmFromDetails = money.RoundUSD(pmFromDetails)
+func cashRefundablePMBs(orderTotalBs, balanceUsedBs, pmFromDetailsBs float64, hasPaymentDetails bool) float64 {
+	orderTotalBs = money.RoundBs(orderTotalBs)
+	balanceUsedBs = money.RoundBs(balanceUsedBs)
+	pmFromDetailsBs = money.RoundBs(pmFromDetailsBs)
 
-	if balanceUsed > 0 {
-		derived := money.RoundUSD(orderTotal - balanceUsed)
+	if balanceUsedBs > 0 {
+		derived := money.RoundBs(orderTotalBs - balanceUsedBs)
 		if derived < 0 {
 			return 0
 		}
 		// Si details trae un PM que incluye el balance (p.ej. igual al total), ignorarlo.
-		if pmFromDetails > 0 && pmFromDetails <= derived+0.01 {
-			return pmFromDetails
+		if pmFromDetailsBs > 0 && pmFromDetailsBs <= derived+0.01 {
+			return pmFromDetailsBs
 		}
 		return derived
 	}
-	if pmFromDetails > 0 {
-		return pmFromDetails
+	if pmFromDetailsBs > 0 {
+		return pmFromDetailsBs
 	}
 	if !hasPaymentDetails {
-		// Legacy sin split: se asume 100% Pago Móvil.
-		return orderTotal
+		return orderTotalBs
 	}
-	return orderTotal
+	return orderTotalBs
 }
 
 func (a *paymentReviewsApp) refundBalanceUsed(ctx context.Context, order *models.Order, amount float64) error {
@@ -525,17 +530,4 @@ func (a *paymentReviewsApp) releaseToShop(ctx context.Context, order *models.Ord
 		}
 	}
 	return *order, nil
-}
-
-func bsToUSD(amountBs, rate, orderTotalUSD, expectedBs float64) float64 {
-	if amountBs <= 0 {
-		return 0
-	}
-	if rate > 0 {
-		return math.Round((amountBs/rate)*100) / 100
-	}
-	if expectedBs > 0 && orderTotalUSD > 0 {
-		return math.Round((orderTotalUSD*(amountBs/expectedBs))*100) / 100
-	}
-	return 0
 }

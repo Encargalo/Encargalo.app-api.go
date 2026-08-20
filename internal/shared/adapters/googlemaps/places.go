@@ -20,9 +20,11 @@ type PlacePrediction struct {
 
 // PlaceDetailsResult is the resolved address/coordinates for a place_id.
 type PlaceDetailsResult struct {
-	Address string
-	Lat     float64
-	Lng     float64
+	Address           string
+	Lat               float64
+	Lng               float64
+	Parts             AddressParts
+	AddressComponents []AddressComponent
 }
 
 // AutocompletePlaces returns place predictions for query, optionally biased
@@ -96,7 +98,7 @@ func AutocompletePlaces(ctx context.Context, query string, biasLat, biasLng *flo
 func PlaceDetails(ctx context.Context, placeID, sessionToken string) (*PlaceDetailsResult, error) {
 	params := url.Values{}
 	params.Set("place_id", placeID)
-	params.Set("fields", "geometry,formatted_address")
+	params.Set("fields", "geometry,formatted_address,address_component")
 	params.Set("sessiontoken", sessionToken)
 	params.Set("key", config.Get().Google.ServerKey)
 
@@ -121,8 +123,9 @@ func PlaceDetails(ctx context.Context, placeID, sessionToken string) (*PlaceDeta
 	var data struct {
 		Status string `json:"status"`
 		Result struct {
-			FormattedAddress string `json:"formatted_address"`
-			Geometry         struct {
+			FormattedAddress  string                   `json:"formatted_address"`
+			AddressComponents []googleAddressComponent `json:"address_components"`
+			Geometry          struct {
 				Location struct {
 					Lat float64 `json:"lat"`
 					Lng float64 `json:"lng"`
@@ -145,9 +148,13 @@ func PlaceDetails(ctx context.Context, placeID, sessionToken string) (*PlaceDeta
 		return nil, ErrNoResults
 	}
 
+	components, parts := parseAddressComponents(data.Result.AddressComponents)
+
 	return &PlaceDetailsResult{
-		Address: data.Result.FormattedAddress,
-		Lat:     data.Result.Geometry.Location.Lat,
-		Lng:     data.Result.Geometry.Location.Lng,
+		Address:           data.Result.FormattedAddress,
+		Lat:               data.Result.Geometry.Location.Lat,
+		Lng:               data.Result.Geometry.Location.Lng,
+		Parts:             parts,
+		AddressComponents: components,
 	}, nil
 }

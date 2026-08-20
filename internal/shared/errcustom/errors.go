@@ -63,6 +63,8 @@ var (
 	ErrInvalidFilter            = errors.New("filtro inválido")
 	ErrCannotRevokeOwnStaff     = errors.New("no puedes quitarte el rol Staff a ti mismo")
 	ErrLastStaffMember          = errors.New("debe quedar al menos un usuario con rol Staff")
+	ErrInvalidTrackingType      = errors.New("type de tracking inválido")
+	ErrTrackingParamsTooLarge   = errors.New("params de tracking demasiado grandes")
 )
 
 var (

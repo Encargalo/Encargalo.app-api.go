@@ -1,9 +1,38 @@
 package models
 
+// AddressComponent is one Google address_components entry, passed through so
+// the client can assemble the address however it needs.
+type AddressComponent struct {
+	LongName  string   `json:"long_name"`
+	ShortName string   `json:"short_name"`
+	Types     []string `json:"types"`
+}
+
+// AddressParts is the same Google data flattened by type. Names match Google's
+// type identifiers: locality = city, administrative_area_level_1 = state,
+// administrative_area_level_2 = municipality/province.
+type AddressParts struct {
+	StreetNumber             string `json:"street_number,omitempty"`
+	Route                    string `json:"route,omitempty"`
+	Neighborhood             string `json:"neighborhood,omitempty"`
+	Sublocality              string `json:"sublocality,omitempty"`
+	Locality                 string `json:"locality,omitempty"`
+	AdministrativeAreaLevel3 string `json:"administrative_area_level_3,omitempty"`
+	AdministrativeAreaLevel2 string `json:"administrative_area_level_2,omitempty"`
+	AdministrativeAreaLevel1 string `json:"administrative_area_level_1,omitempty"`
+	Country                  string `json:"country,omitempty"`
+	CountryCode              string `json:"country_code,omitempty"`
+	PostalCode               string `json:"postal_code,omitempty"`
+	Premise                  string `json:"premise,omitempty"`
+	Subpremise               string `json:"subpremise,omitempty"`
+}
+
 // ReverseGeocodeResult is the resolved address for a lat/lng pair.
 type ReverseGeocodeResult struct {
-	FormattedAddress string `json:"formatted_address"`
-	ShortAddress     string `json:"short_address"`
+	FormattedAddress  string             `json:"formatted_address"`
+	ShortAddress      string             `json:"short_address"`
+	Parts             AddressParts       `json:"parts"`
+	AddressComponents []AddressComponent `json:"address_components"`
 }
 
 // PlacePrediction is one autocomplete suggestion.
@@ -15,7 +44,9 @@ type PlacePrediction struct {
 
 // PlaceDetails is the resolved address/coordinates for a place_id.
 type PlaceDetails struct {
-	Address string  `json:"address"`
-	Lat     float64 `json:"lat"`
-	Lng     float64 `json:"lng"`
+	Address           string             `json:"address"`
+	Lat               float64            `json:"lat"`
+	Lng               float64            `json:"lng"`
+	Parts             AddressParts       `json:"parts"`
+	AddressComponents []AddressComponent `json:"address_components"`
 }

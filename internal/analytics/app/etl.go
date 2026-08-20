@@ -140,6 +140,12 @@ func (a *etlApp) syncEntity(ctx context.Context, entity models.ETLEntity, from, 
 			rows[i].GMV = models.GMV(rows[i].TotalPrice, rows[i].DeliveryFee)
 		}
 		return len(rows), a.sink.UpsertOrders(ctx, rows)
+	case models.EntityFactTrackingEvent:
+		rows, err := a.source.FetchTrackingEvents(ctx, from, to)
+		if err != nil {
+			return 0, err
+		}
+		return len(rows), a.sink.UpsertTrackingEvents(ctx, rows)
 	default:
 		return 0, errcustom.ErrUnknownETLEntity
 	}

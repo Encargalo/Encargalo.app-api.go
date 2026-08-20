@@ -69,16 +69,14 @@ type CustomerFinanceApp interface {
 	GetBalanceBs(ctx context.Context, customerID uuid.UUID) (float64, error)
 	// GetBalancePaymentDebitForOrder returns Bs taken from balance for this order (0 if none).
 	GetBalancePaymentDebitForOrder(ctx context.Context, customerID, orderID uuid.UUID) (float64, error)
-	// Credit* reciben el monto original en USD (fuente: total/exceso de la orden,
-	// que sigue calculándose en USD) y la tasa BCV a aplicar para convertirlo y
-	// acreditarlo en Bs. El caller (orders/app) resuelve qué tasa corresponde
-	// (la congelada en el quote/payment review). Devuelven el id del movimiento
-	// y su created_at (para WS / details.payment).
-	CreditPaymentOverage(ctx context.Context, customerID, orderID uuid.UUID, amountUSD, bcvRate float64) (txID uuid.UUID, createdAt time.Time, err error)
-	CreditPaymentPartial(ctx context.Context, customerID, orderID uuid.UUID, amountUSD, bcvRate float64) (txID uuid.UUID, createdAt time.Time, err error)
-	// CreditOrderRejected acredita amountUSD (convertido a Bs con bcvRate) al balance;
-	// refundablePMUSD es la porción cash-refundable (también convertida).
-	CreditOrderRejected(ctx context.Context, customerID, orderID uuid.UUID, amountUSD, refundablePMUSD, bcvRate float64) (txID uuid.UUID, createdAt time.Time, err error)
+	// Credit* reciben montos ya en Bs (moneda nativa del ledger) y la tasa
+	// BCV congelada del quote/review para grabarla en el movimiento (umbral
+	// de devolución y proyección USD informativa). El caller resuelve la tasa.
+	CreditPaymentOverage(ctx context.Context, customerID, orderID uuid.UUID, amountBs, bcvRate float64) (txID uuid.UUID, createdAt time.Time, err error)
+	CreditPaymentPartial(ctx context.Context, customerID, orderID uuid.UUID, amountBs, bcvRate float64) (txID uuid.UUID, createdAt time.Time, err error)
+	// CreditOrderRejected acredita amountBs al balance; refundablePMBs es la
+	// porción cash-refundable (Pago Móvil). bcvRate se congela en el movimiento.
+	CreditOrderRejected(ctx context.Context, customerID, orderID uuid.UUID, amountBs, refundablePMBs, bcvRate float64) (txID uuid.UUID, createdAt time.Time, err error)
 	// DebitForOrder/RefundBalancePayment operan directo en Bs: es lo que el
 	// customer pidió usar de su balance al crear la orden, ya en su moneda nativa.
 	DebitForOrder(ctx context.Context, customerID, orderID uuid.UUID, amountBs float64) error

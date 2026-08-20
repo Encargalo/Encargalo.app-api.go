@@ -11,8 +11,8 @@ import (
 // applyBalanceCreditToPaymentDetails rellena en details.payment los campos para
 // que el cliente pueda solicitar devolución desde el order_update WS (misma
 // info que GET /users/balance sobre el movimiento cash-refundable). Recibe
-// los montos ya en Bs (moneda nativa del balance) y bcvRate para reconstruir
-// el umbral RefundMinAmountUSD igual que customerFinanceApp.amountToUSD.
+// los montos ya en Bs (moneda nativa del balance) y bcvRate congelada para
+// el umbral RefundMinAmountUSD, igual que usersModels.MeetsRefundMin.
 func applyBalanceCreditToPaymentDetails(
 	pd *models.PaymentDetails,
 	txID uuid.UUID,
@@ -28,7 +28,7 @@ func applyBalanceCreditToPaymentDetails(
 		c := creditedBs
 		pd.CreditedBs = &c
 	}
-	if bcvRate <= 0 || refundablePMBs/bcvRate <= usersModels.RefundMinAmountUSD {
+	if !usersModels.MeetsRefundMin(refundablePMBs, bcvRate) {
 		return
 	}
 	r := refundablePMBs

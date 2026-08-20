@@ -113,3 +113,137 @@ FROM analytics.cube_order
 WHERE created_at >= $__timeFrom()
   AND created_at < $__timeTo();
 ```
+
+## Tracking — pixels / CTAs (`fact_tracking_event`)
+
+Los campos de negocio viven en `params` JSONB. Convención v1 del cliente (el backend no la impone):
+
+- `type = 'pixel'` y `params.name = 'app_open'` — abrió la app
+- `type = 'pixel'` y `params.name = 'shop_view'` + `params.shop_id` — entró a un local
+- `type = 'cta'` — botones / llamadas a la acción
+
+`user_id` y `session_id` los inyecta la API en `params`. Día en `America/Caracas`.
+
+### Usuarios únicos que abrieron la app
+
+```sql
+SELECT COUNT(DISTINCT params->>'user_id') AS users
+FROM analytics.fact_tracking_event
+WHERE type = 'pixel'
+  AND params->>'name' = 'app_open'
+  AND created_at >= $__timeFrom()
+  AND created_at < $__timeTo();
+```
+
+### Serie diaria: abrió la app
+
+```sql
+SELECT
+  (created_at AT TIME ZONE 'America/Caracas')::date AS time,
+  COUNT(DISTINCT params->>'user_id') AS users
+FROM analytics.fact_tracking_event
+WHERE type = 'pixel'
+  AND params->>'name' = 'app_open'
+  AND created_at >= $__timeFrom()
+  AND created_at < $__timeTo()
+GROUP BY 1
+ORDER BY 1;
+```
+
+### Quiénes abrieron la app
+
+```sql
+SELECT DISTINCT u.user_id, u.name, u.phone
+FROM analytics.fact_tracking_event e
+JOIN analytics.dim_user u ON u.user_id = (e.params->>'user_id')::uuid
+WHERE e.type = 'pixel'
+  AND e.params->>'name' = 'app_open'
+  AND e.created_at >= $__timeFrom()
+  AND e.created_at < $__timeTo()
+ORDER BY u.name;
+```
+
+### Usuarios únicos que visitaron un local (`$shop_id`)
+
+```sql
+SELECT COUNT(DISTINCT params->>'user_id') AS users
+FROM analytics.fact_tracking_event
+WHERE type = 'pixel'
+  AND params->>'name' = 'shop_view'
+  AND params->>'shop_id' = '$shop_id'
+  AND created_at >= $__timeFrom()
+  AND created_at < $__timeTo();
+```
+
+### Quiénes visitaron un local
+
+```sql
+SELECT DISTINCT u.user_id, u.name, u.phone
+FROM analytics.fact_tracking_event e
+JOIN analytics.dim_user u ON u.user_id = (e.params->>'user_id')::uuid
+WHERE e.type = 'pixel'
+  AND e.params->>'name' = 'shop_view'
+  AND e.params->>'shop_id' = '$shop_id'
+  AND e.created_at >= $__timeFrom()
+  AND e.created_at < $__timeTo()
+ORDER BY u.name;
+```
+
+### Visitó el local y compró vs no compró
+
+```sql
+SELECT
+  COUNT(DISTINCT e.params->>'user_id') AS visitors,
+  COUNT(DISTINCT o.customer_id) AS bought,
+  COUNT(DISTINCT e.params->>'user_id')
+    FILTER (WHERE o.order_id IS NULL) AS visited_no_buy
+FROM analytics.fact_tracking_event e
+LEFT JOIN analytics.cube_order o
+  ON o.customer_id = (e.params->>'user_id')::uuid
+ AND o.shop_id = (e.params->>'shop_id')::uuid
+ AND o.created_at >= $__timeFrom()
+ AND o.created_at < $__timeTo()
+WHERE e.type = 'pixel'
+  AND e.params->>'name' = 'shop_view'
+  AND e.params->>'shop_id' = '$shop_id'
+  AND e.created_at >= $__timeFrom()
+  AND e.created_at < $__timeTo();
+```
+
+### Quiénes visitaron y no compraron
+
+```sql
+SELECT DISTINCT u.user_id, u.name, u.phone
+FROM analytics.fact_tracking_event e
+JOIN analytics.dim_user u ON u.user_id = (e.params->>'user_id')::uuid
+LEFT JOIN analytics.cube_order o
+  ON o.customer_id = u.user_id
+ AND o.shop_id = (e.params->>'shop_id')::uuid
+ AND o.created_at >= $__timeFrom()
+ AND o.created_at < $__timeTo()
+WHERE e.type = 'pixel'
+  AND e.params->>'name' = 'shop_view'
+  AND e.params->>'shop_id' = '$shop_id'
+  AND e.created_at >= $__timeFrom()
+  AND e.created_at < $__timeTo()
+  AND o.order_id IS NULL
+ORDER BY u.name;
+```
+
+### Panel genérico (cualquier `type` / `params.name`)
+
+Variables Grafana: `$type`, `$event_name`.
+
+```sql
+SELECT
+  (created_at AT TIME ZONE 'America/Caracas')::date AS time,
+  COUNT(*) AS events,
+  COUNT(DISTINCT params->>'user_id') AS users
+FROM analytics.fact_tracking_event
+WHERE type = '$type'
+  AND params->>'name' = '$event_name'
+  AND created_at >= $__timeFrom()
+  AND created_at < $__timeTo()
+GROUP BY 1
+ORDER BY 1;
+```

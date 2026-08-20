@@ -70,3 +70,7 @@ packages:
   Encargalo.app-api.go/internal/maps/domain/ports:
     config:
       dir: "internal/mocks/maps/domain/ports"
+
+  Encargalo.app-api.go/internal/tracking/domain/ports:
+    config:
+      dir: "internal/mocks/tracking/domain/ports"

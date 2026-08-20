@@ -483,9 +483,10 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 	if balanceUsedBs > 0 {
 		balanceUsedUSD = money.RoundUSD(balanceUsedBs / rate)
 	}
-	pagoMovilUSD := money.RoundUSD(orderModel.TotalPrice - balanceUsedUSD)
-	if pagoMovilUSD < 0 {
-		pagoMovilUSD = 0
+	totalBs := money.RoundBs(orderModel.TotalPrice * rate)
+	pagoMovilBs := money.RoundBs(totalBs - balanceUsedBs)
+	if pagoMovilBs < 0 {
+		pagoMovilBs = 0
 	}
 
 	if balanceUsedBs > 0 {
@@ -504,12 +505,12 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		}
 		// Cap floating noise: treat near-total as full cover.
 		if math.Abs(orderModel.TotalPrice-balanceUsedUSD) <= priceTolerance {
-			balanceUsedBs = money.RoundBs(orderModel.TotalPrice * rate)
-			pagoMovilUSD = 0
+			balanceUsedBs = totalBs
+			pagoMovilBs = 0
 		}
 	}
 
-	if pagoMovilUSD > priceTolerance && order.PaymentProofImage == "" {
+	if pagoMovilBs > priceTolerance && order.PaymentProofImage == "" {
 		return &models.Order{}, fmt.Errorf("%w: payment_proof_image es requerido cuando el balance no cubre el total", errcustom.ErrInvalidBalanceAmount)
 	}
 
@@ -517,12 +518,13 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 	DetailsModel.BuildDetails(orderModel, shop, customer, order.Address.Instructions, rate)
 
 	DetailsModel.PaymentDetails = &models.PaymentDetails{
-		BalanceAmountBs:    balanceUsedBs,
-		PagoMovilAmountUSD: pagoMovilUSD,
+		BalanceAmountBs:   balanceUsedBs,
+		PagoMovilAmountBs: pagoMovilBs,
+		BcvRate:           rate,
 	}
 
 	var proofURL string
-	if pagoMovilUSD > priceTolerance {
+	if pagoMovilBs > priceTolerance {
 		proofUpload, err := o.uploadImage.UploadImage(ctx, order.PaymentProofImage)
 		if err != nil {
 			return &models.Order{}, errcustom.ErrUploadingImage
@@ -532,7 +534,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 			return &models.Order{}, errcustom.ErrUploadingImage
 		}
 		DetailsModel.PaymentDetails.PaymentProofURL = proofURL
-		DetailsModel.PaymentDetails.ExpectedAmountBs = money.RoundBs(pagoMovilUSD * rate)
+		DetailsModel.PaymentDetails.ExpectedAmountBs = pagoMovilBs
 		orderModel.Status = string(models.StatusPaymentReview)
 	} else {
 		// 100% balance (or no PM remainder): va directo al local.
@@ -579,7 +581,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 	orderDB.ApplyBsPrice(rate)
 
 	if proofURL != "" {
-		expectedBs := money.RoundBs(pagoMovilUSD * rate)
+		expectedBs := pagoMovilBs
 		review := &models.PaymentReview{
 			ID:               uuid.New(),
 			OrderID:          orderDB.ID,
@@ -601,19 +603,19 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		}
 		if o.staffHub != nil {
 			b := models.PaymentReviewBroadcast{
-				Type:               "payment_review_update",
-				ReviewID:           review.ID,
-				OrderID:            orderDB.ID,
-				ShopID:             orderDB.ShopID,
-				CustomerID:         orderDB.CustomerID,
-				ProofURL:           review.ProofURL,
-				ExpectedAmountBs:   review.ExpectedAmountBs,
-				Status:             review.Status,
-				BalanceAmountBs:    balanceUsedBs,
-				PagoMovilAmountUSD: pagoMovilUSD,
-				TotalUSD:           orderDB.TotalPrice,
-				OrderStatus:        orderDB.Status,
-				CreatedAt:          review.CreatedAt,
+				Type:              "payment_review_update",
+				ReviewID:          review.ID,
+				OrderID:           orderDB.ID,
+				ShopID:            orderDB.ShopID,
+				CustomerID:        orderDB.CustomerID,
+				ProofURL:          review.ProofURL,
+				ExpectedAmountBs:  review.ExpectedAmountBs,
+				Status:            review.Status,
+				BalanceAmountBs:   balanceUsedBs,
+				PagoMovilAmountBs: pagoMovilBs,
+				TotalUSD:          orderDB.TotalPrice,
+				OrderStatus:       orderDB.Status,
+				CreatedAt:         review.CreatedAt,
 			}
 			if DetailsModel.CustomerDetails.Name != "" {
 				b.CustomerName = DetailsModel.CustomerDetails.Name
@@ -733,29 +735,29 @@ func (o *orderApp) refundCustomerOnShopRejectWithReason(ctx context.Context, ord
 		return
 	}
 
-	// No hay tasa congelada persistida para esta orden a esta altura del ciclo
-	// de vida (el quote/review ya expiraron); se usa la tasa BCV vigente.
-	rate := o.bcvRate(ctx)
+	rate := bcvRateFromPaymentDetails(order)
+	if rate <= 0 {
+		// No hay tasa congelada en details (pedido legado); se usa la vigente.
+		rate = o.bcvRate(ctx)
+	}
 	if rate <= 0 {
 		slog.Error("refundCustomerOnShopReject: bcv rate unavailable", "orderID", order.ID)
 		return
 	}
 
-	balanceUsedBs, pmFromDetails, hasPD := paymentSplitFromDetails(order)
+	balanceUsedBs, pmFromDetails, hasPD := paymentSplitFromDetails(order, rate)
 	// Fuente de verdad del ledger si details no trae el split (o lo trae mal).
 	if debited, err := o.customerBalance.GetBalancePaymentDebitForOrder(ctx, order.CustomerID, order.ID); err == nil && debited > balanceUsedBs {
 		balanceUsedBs = debited
 	}
-	balanceUsedUSD := money.RoundUSD(balanceUsedBs / rate)
-	refundablePMUSD := cashRefundablePMUSD(order.TotalPrice, balanceUsedUSD, pmFromDetails, hasPD)
-	txID, createdAt, err := o.customerBalance.CreditOrderRejected(ctx, order.CustomerID, order.ID, order.TotalPrice, refundablePMUSD, rate)
+	totalBs := money.RoundBs(order.TotalPrice * rate)
+	refundablePMBs := cashRefundablePMBs(totalBs, balanceUsedBs, pmFromDetails, hasPD)
+	txID, createdAt, err := o.customerBalance.CreditOrderRejected(ctx, order.CustomerID, order.ID, totalBs, refundablePMBs, rate)
 	if err != nil {
 		slog.Error("refundCustomerOnShopReject credit failed", "orderID", order.ID, "error", err)
 		return
 	}
 
-	creditedBs := money.RoundBs(order.TotalPrice * rate)
-	refundablePMBs := money.RoundBs(refundablePMUSD * rate)
 	var details models.Details
 	if len(order.Details) > 0 {
 		_ = json.Unmarshal(order.Details, &details)
@@ -763,12 +765,12 @@ func (o *orderApp) refundCustomerOnShopRejectWithReason(ctx context.Context, ord
 	if details.PaymentDetails == nil {
 		details.PaymentDetails = &models.PaymentDetails{}
 	}
-	// Persistir split corregido para lecturas posteriores.
 	details.PaymentDetails.BalanceAmountBs = balanceUsedBs
-	details.PaymentDetails.PagoMovilAmountUSD = refundablePMUSD
+	details.PaymentDetails.PagoMovilAmountBs = refundablePMBs
+	details.PaymentDetails.BcvRate = rate
 	details.PaymentDetails.Status = models.ReviewRefundedShopReject
 	details.PaymentDetails.RejectionReason = &reason
-	applyBalanceCreditToPaymentDetails(details.PaymentDetails, txID, creditedBs, refundablePMBs, rate, createdAt)
+	applyBalanceCreditToPaymentDetails(details.PaymentDetails, txID, totalBs, refundablePMBs, rate, createdAt)
 
 	data, err := json.Marshal(details)
 	if err != nil {

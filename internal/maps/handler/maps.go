@@ -25,7 +25,7 @@ func NewMapsHandler(svc ports.MapsApp) MapsHandler {
 
 // ReverseGeocode godoc
 // @Summary      Geocoding inverso
-// @Description  Resuelve una dirección legible a partir de una coordenada, usando la Google Geocoding API. Cacheado por el servidor por coordenadas redondeadas.
+// @Description  Resuelve una dirección a partir de una coordenada, usando la Google Geocoding API. Incluye formatted_address, parts (locality=ciudad, administrative_area_level_1=estado, administrative_area_level_2=municipio/provincia) y address_components crudos de Google para que el cliente arme la dirección. Cacheado por el servidor por coordenadas redondeadas.
 // @Tags         Maps
 // @Produce      json
 // @Security     SessionCookie
@@ -98,7 +98,7 @@ func (h *mapsHandler) AutocompletePlaces(e echo.Context) error {
 
 // PlaceDetails godoc
 // @Summary      Detalle de un lugar
-// @Description  Resuelve dirección y coordenadas de un place_id devuelto por /maps/places/autocomplete, usando la Google Places Details API. Cacheado por el servidor por place_id.
+// @Description  Resuelve dirección y coordenadas de un place_id devuelto por /maps/places/autocomplete, usando la Google Places Details API. Incluye address, lat/lng, parts (locality=ciudad, administrative_area_level_1=estado, administrative_area_level_2=municipio/provincia) y address_components crudos de Google para que el cliente arme la dirección. Cacheado por el servidor por place_id.
 // @Tags         Maps
 // @Produce      json
 // @Security     SessionCookie

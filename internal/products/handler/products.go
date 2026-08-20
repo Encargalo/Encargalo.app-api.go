@@ -402,7 +402,7 @@ func (p *productsHandler) RegisterItem(e echo.Context) error {
 
 // GetTrendingProducts godoc
 // @Summary      Productos más vendidos cerca del usuario
-// @Description  Retorna el producto más vendido de cada local abierto dentro de un radio de 1 km de las coordenadas dadas. Máximo 10 resultados, excluyendo productos cuya categoría tiene un horario configurado que no cubre la hora actual (America/Caracas). Cacheado 15 minutos.
+// @Description  Retorna productos más vendidos de locales abiertos. En producción se limita a un radio de 1 km de las coordenadas dadas; fuera de producción no se aplica el recorte por distancia. Máximo 10 resultados, excluyendo productos cuya categoría tiene un horario configurado que no cubre la hora actual (America/Caracas). Cacheado 15 minutos.
 // @Tags         Products
 // @Produce      json
 // @Security     SessionCookie

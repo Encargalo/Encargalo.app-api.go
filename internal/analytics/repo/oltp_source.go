@@ -215,3 +215,39 @@ func (r *oltpSourceRepo) FetchOrders(ctx context.Context, from, to time.Time) ([
 	}
 	return out, nil
 }
+
+type trackingEventRow struct {
+	ID        uuid.UUID      `bun:"id"`
+	Type      string         `bun:"type"`
+	Params    map[string]any `bun:"params,type:jsonb"`
+	CreatedAt time.Time      `bun:"created_at"`
+}
+
+func (r *oltpSourceRepo) FetchTrackingEvents(ctx context.Context, from, to time.Time) ([]models.FactTrackingEvent, error) {
+	var rows []trackingEventRow
+	err := r.db.NewSelect().
+		TableExpr("tracking.events AS e").
+		Column("e.id", "e.type", "e.params", "e.created_at").
+		Where("e.created_at >= ? AND e.created_at < ?", from, to).
+		Scan(ctx, &rows)
+	if err != nil {
+		return nil, errcustom.Unexpected(err)
+	}
+
+	now := time.Now().UTC()
+	out := make([]models.FactTrackingEvent, len(rows))
+	for i, row := range rows {
+		params := row.Params
+		if params == nil {
+			params = map[string]any{}
+		}
+		out[i] = models.FactTrackingEvent{
+			ID:        row.ID,
+			Type:      row.Type,
+			Params:    params,
+			CreatedAt: row.CreatedAt,
+			SyncedAt:  now,
+		}
+	}
+	return out, nil
+}

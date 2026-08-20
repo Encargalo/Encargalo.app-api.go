@@ -16,10 +16,12 @@ import (
 )
 
 const (
-	reverseGeocodePrefix = "maps:reverse_geocode:"
+	// v2: payload now includes address_components + parts; bumping the prefix
+	// discards cached responses that only had formatted_address.
+	reverseGeocodePrefix = "maps:reverse_geocode:v2:"
 	reverseGeocodeTTL    = 15 * time.Minute
 
-	placeDetailsPrefix = "maps:place_details:"
+	placeDetailsPrefix = "maps:place_details:v2:"
 	placeDetailsTTL    = 24 * time.Hour
 )
 
@@ -54,8 +56,10 @@ func (r *mapsRepo) ReverseGeocode(ctx context.Context, lat, lng float64) (*model
 	}
 
 	result := &models.ReverseGeocodeResult{
-		FormattedAddress: raw.FormattedAddress,
-		ShortAddress:     raw.ShortAddress,
+		FormattedAddress:  raw.FormattedAddress,
+		ShortAddress:      raw.ShortAddress,
+		Parts:             toDomainParts(raw.Parts),
+		AddressComponents: toDomainComponents(raw.AddressComponents),
 	}
 
 	if err := r.cache.Set(ctx, cacheKey, result, reverseGeocodeTTL); err != nil {
@@ -108,9 +112,11 @@ func (r *mapsRepo) GetPlaceDetails(ctx context.Context, placeID, sessionToken st
 	}
 
 	details := &models.PlaceDetails{
-		Address: raw.Address,
-		Lat:     raw.Lat,
-		Lng:     raw.Lng,
+		Address:           raw.Address,
+		Lat:               raw.Lat,
+		Lng:               raw.Lng,
+		Parts:             toDomainParts(raw.Parts),
+		AddressComponents: toDomainComponents(raw.AddressComponents),
 	}
 
 	if err := r.cache.Set(ctx, cacheKey, details, placeDetailsTTL); err != nil {
@@ -118,4 +124,34 @@ func (r *mapsRepo) GetPlaceDetails(ctx context.Context, placeID, sessionToken st
 	}
 
 	return details, nil
+}
+
+func toDomainParts(src googlemaps.AddressParts) models.AddressParts {
+	return models.AddressParts{
+		StreetNumber:             src.StreetNumber,
+		Route:                    src.Route,
+		Neighborhood:             src.Neighborhood,
+		Sublocality:              src.Sublocality,
+		Locality:                 src.Locality,
+		AdministrativeAreaLevel3: src.AdministrativeAreaLevel3,
+		AdministrativeAreaLevel2: src.AdministrativeAreaLevel2,
+		AdministrativeAreaLevel1: src.AdministrativeAreaLevel1,
+		Country:                  src.Country,
+		CountryCode:              src.CountryCode,
+		PostalCode:               src.PostalCode,
+		Premise:                  src.Premise,
+		Subpremise:               src.Subpremise,
+	}
+}
+
+func toDomainComponents(src []googlemaps.AddressComponent) []models.AddressComponent {
+	components := make([]models.AddressComponent, 0, len(src))
+	for _, c := range src {
+		components = append(components, models.AddressComponent{
+			LongName:  c.LongName,
+			ShortName: c.ShortName,
+			Types:     c.Types,
+		})
+	}
+	return components
 }

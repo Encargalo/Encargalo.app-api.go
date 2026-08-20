@@ -185,7 +185,7 @@ Reglas:
 
 - Mínimo a usar de balance: **$1**. Máximo: **`min(balance_disponible, total)`**.
 - Consultar saldo antes: `GET /users/balance`.
-- En `details.payment` quedan `balance_amount_usd` y `pago_movil_amount_usd`.
+- En `details.payment` quedan `balance_amount_bs` y `pago_movil_amount_bs`.
 - Staff valida solo el **resto** en Bs (`expected_amount_bs` del comprobante).
 - `expected_total_price` hoy solo detecta carrito desfasado (**409**); **no** es un precio confiable para honrar pagos ya hechos (ver sección 0).
 
@@ -193,8 +193,8 @@ Reembolsos si algo falla después:
 
 | Caso | Qué vuelve al balance |
 |---|---|
-| Staff `rejected_invalid` | Solo `balance_amount_usd` |
-| Staff `rejected_underpaid` | `balance_amount_usd` + lo observado del PM |
+| Staff `rejected_invalid` | Solo `balance_amount_bs` |
+| Staff `rejected_underpaid` | `balance_amount_bs` + lo observado del PM |
 | Local `refunded_shop_reject` | `total_price` (recupera todo) |
 
 ### Devolución en efectivo (ventana 15 min)
@@ -216,7 +216,7 @@ La ventana de **15 minutos** aplica solo para **crear** la solicitud (`can_reque
 |---|---|
 | `payment_overage` | todo el crédito |
 | `payment_partial_credit` | todo el crédito PM |
-| `order_rejected_refund` | solo `pago_movil_amount_usd` (0 si 100% balance → no elegible) |
+| `order_rejected_refund` | solo `pago_movil_amount_bs` (0 si 100% balance → no elegible) |
 
 Flujo: `POST /users/balance/refund-requests` (debita como `balance_refund_hold`) → staff WS `accept` (`hold`→`processing`) → `complete` + imagen (`processing`→`payout`) | `reject` (restaura con `balance_refund_restore`). El cliente abre el detalle con `refund_request_id` desde el movimiento de reserva.
 
@@ -285,11 +285,11 @@ En `approve` / `approve_overpay` / `reject_underpaid` el staff **debe** enviar l
         "observed_amount_bs": 1600.0,
         "difference_bs": 250.0,
         "rejection_reason": "texto opcional",
-        "credited_usd": 2.5,
-        "balance_amount_usd": 4.0,
-        "pago_movil_amount_usd": 4.5,
+        "credited_bs": 250.0,
+        "balance_amount_bs": 400.0,
+        "pago_movil_amount_bs": 1450.0,
         "transaction_id": "uuid-del-movimiento-cash-refundable",
-        "refundable_pm_usd": 2.5,
+        "refundable_pm_bs": 2.5,
         "can_request_refund": true,
         "refund_eligible_until": "2026-07-18T19:28:36Z"
       }
@@ -343,9 +343,9 @@ En `approve` / `approve_overpay` / `reject_underpaid` el staff **debe** enviar l
 |---|---|
 | `order.status` | `"Pending"` |
 | `details.payment.status` | `"overpaid"` |
-| Campos clave | `expected_amount_bs`, `observed_amount_bs`, `difference_bs`, `credited_usd`, `transaction_id`, `refundable_pm_usd`, `can_request_refund`, `refund_eligible_until` |
-| Qué ve el cliente | “Pago confirmado. Detectamos un exceso de X Bs; te acreditamos Y USD a tu balance.” |
-| Balance | Sube `credited_usd` (`movement_type: payment_overage`) |
+| Campos clave | `expected_amount_bs`, `observed_amount_bs`, `difference_bs`, `credited_bs`, `transaction_id`, `refundable_pm_bs`, `can_request_refund`, `refund_eligible_until` |
+| Qué ve el cliente | “Pago confirmado. Detectamos un exceso de X Bs; te acreditamos Y Bs a tu balance.” |
+| Balance | Sube `credited_bs` (`movement_type: payment_overage`) |
 | Acciones | Continuar tracking. Si `can_request_refund`: CTA devolución con `transaction_id` (o vía historial de balance). |
 
 **Ejemplo de lectura:**
@@ -354,7 +354,7 @@ En `approve` / `approve_overpay` / `reject_underpaid` el staff **debe** enviar l
 const p = order.details?.payment
 if (order.status === 'Pending' && p?.status === 'overpaid') {
   // p.difference_bs = exceso en Bs
-  // p.credited_usd  = lo acreditado al balance
+  // p.credited_bs  = lo acreditado al balance
 }
 ```
 
@@ -366,9 +366,9 @@ if (order.status === 'Pending' && p?.status === 'overpaid') {
 |---|---|
 | `order.status` | `"Rejected"` |
 | `details.payment.status` | `"rejected_underpaid"` |
-| Campos clave | `expected_amount_bs`, `observed_amount_bs`, `difference_bs`, `credited_usd`, `transaction_id` (crédito PM), `refundable_pm_usd`, `can_request_refund`, `refund_eligible_until` |
+| Campos clave | `expected_amount_bs`, `observed_amount_bs`, `difference_bs`, `credited_bs`, `transaction_id` (crédito PM), `refundable_pm_bs`, `can_request_refund`, `refund_eligible_until` |
 | Qué ve el cliente | “Tu pedido fue rechazado porque el pago estaba incompleto. Lo que pagaste (X Bs ≈ Y USD) quedó en tu balance.” |
-| Balance | Sube `credited_usd` con **todo lo observado** (`movement_type: payment_partial_credit`) |
+| Balance | Sube `credited_bs` con **todo lo observado** (`movement_type: payment_partial_credit`) |
 | Acciones | **No** pedir segundo comprobante en esta orden. Si `can_request_refund`: CTA devolución. También “Hacer un nuevo pedido” / “Usar mi balance”. |
 
 **Reglas de producto (importante):**
@@ -386,7 +386,7 @@ if (order.status === 'Rejected' && p?.status === 'rejected_underpaid') {
   // p.expected_amount_bs  = lo que debía pagar
   // p.observed_amount_bs  = lo que efectivamente llegó
   // p.difference_bs       = lo que faltó (expected - observed)
-  // p.credited_usd        = lo acreditado al balance (conversión de observed)
+  // p.credited_bs        = lo acreditado al balance (observed_bs)
 }
 ```
 
@@ -418,9 +418,9 @@ Incluye dos disparadores con el **mismo** payload para el front:
 |---|---|
 | `order.status` | `"Rejected"` |
 | `details.payment.status` | `"refunded_shop_reject"` |
-| Campos clave | `credited_usd` (= `order.total_price`), `rejection_reason`, y si hay porción PM: `transaction_id`, `refundable_pm_usd`, `can_request_refund`, `refund_eligible_until` |
-| Qué ve el cliente | “El local rechazó tu pedido. Te acreditamos $X a tu balance.” (o el `rejection_reason` si lo muestran) |
-| Balance | Sube `order.total_price` USD (`movement_type: order_rejected_refund`) |
+| Campos clave | `credited_bs` (= total de la orden en Bs), `rejection_reason`, y si hay porción PM: `transaction_id`, `refundable_pm_bs`, `can_request_refund`, `refund_eligible_until` |
+| Qué ve el cliente | “El local rechazó tu pedido. Te acreditamos X Bs a tu balance.” (o el `rejection_reason` si lo muestran) |
+| Balance | Sube el total de la orden en Bs (`movement_type: order_rejected_refund`) |
 | Nota | Si antes hubo overpay, el exceso **ya** estaba en balance; este crédito es el total de la orden (lo que se “cobró” por el pedido). En 100% balance, esto **devuelve** lo debitado al crear. |
 | Acciones | CTA devolución si `can_request_refund` (usar `transaction_id` del mismo `details.payment`); también vía `GET /users/balance`. Alternativa: “Hacer un nuevo pedido” |
 
@@ -450,7 +450,7 @@ Usen siempre `details.payment.status`:
 
 Si por algún motivo no llega `details.payment.status`, fallback:
 
-- Si hay `credited_usd` + montos observados → tratar como underpaid.
+- Si hay `credited_bs` + montos observados → tratar como underpaid.
 - Si hay `rejection_reason` y no hay crédito → inválido.
 
 ---
@@ -576,7 +576,7 @@ function handleOrderUpdate(msg: { type: string; order: Order }) {
       if (payment?.status === 'overpaid') {
         showAcceptedWithOverage({
           differenceBs: payment.difference_bs,
-          creditedUsd: payment.credited_usd,
+          creditedBs: payment.credited_bs,
         })
       } else {
         showAccepted(order)
@@ -589,14 +589,14 @@ function handleOrderUpdate(msg: { type: string; order: Order }) {
           expectedBs: payment.expected_amount_bs,
           observedBs: payment.observed_amount_bs,
           missingBs: payment.difference_bs,
-          creditedUsd: payment.credited_usd,
+          creditedBs: payment.credited_bs,
         })
         refreshBalance()
       } else if (payment?.status === 'rejected_invalid') {
         showRejectedInvalid(payment.rejection_reason)
       } else if (payment?.status === 'refunded_shop_reject') {
         showShopRejectedRefund({
-          creditedUsd: payment.credited_usd, // = order.total_price
+          creditedBs: payment.credited_bs, // total de la orden en Bs
           reason: payment.rejection_reason,
         })
         refreshBalance()
