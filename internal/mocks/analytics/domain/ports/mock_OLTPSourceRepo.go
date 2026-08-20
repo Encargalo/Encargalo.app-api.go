@@ -106,6 +106,36 @@ func (_m *OLTPSourceRepo) FetchShops(ctx context.Context, from time.Time, to tim
 	return r0, r1
 }
 
+// FetchTrackingEvents provides a mock function with given fields: ctx, from, to
+func (_m *OLTPSourceRepo) FetchTrackingEvents(ctx context.Context, from time.Time, to time.Time) ([]models.FactTrackingEvent, error) {
+	ret := _m.Called(ctx, from, to)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FetchTrackingEvents")
+	}
+
+	var r0 []models.FactTrackingEvent
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time) ([]models.FactTrackingEvent, error)); ok {
+		return rf(ctx, from, to)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time) []models.FactTrackingEvent); ok {
+		r0 = rf(ctx, from, to)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.FactTrackingEvent)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, time.Time, time.Time) error); ok {
+		r1 = rf(ctx, from, to)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // FetchUsers provides a mock function with given fields: ctx, from, to
 func (_m *OLTPSourceRepo) FetchUsers(ctx context.Context, from time.Time, to time.Time) ([]models.DimUser, error) {
 	ret := _m.Called(ctx, from, to)

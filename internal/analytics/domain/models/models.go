@@ -10,10 +10,11 @@ import (
 type ETLEntity string
 
 const (
-	EntityDimShop   ETLEntity = "dim_shop"
-	EntityDimUser   ETLEntity = "dim_user"
-	EntityDimRider  ETLEntity = "dim_rider"
-	EntityCubeOrder ETLEntity = "cube_order"
+	EntityDimShop           ETLEntity = "dim_shop"
+	EntityDimUser           ETLEntity = "dim_user"
+	EntityDimRider          ETLEntity = "dim_rider"
+	EntityCubeOrder         ETLEntity = "cube_order"
+	EntityFactTrackingEvent ETLEntity = "fact_tracking_event"
 )
 
 var DefaultETLEntities = []ETLEntity{
@@ -21,6 +22,7 @@ var DefaultETLEntities = []ETLEntity{
 	EntityDimUser,
 	EntityDimRider,
 	EntityCubeOrder,
+	EntityFactTrackingEvent,
 }
 
 type DateRange struct {
@@ -80,6 +82,16 @@ type DimRider struct {
 	ActivatedAt  *time.Time `bun:"activated_at"`
 	UpdatedAt    time.Time  `bun:"updated_at,notnull"`
 	SyncedAt     time.Time  `bun:"synced_at,notnull"`
+}
+
+type FactTrackingEvent struct {
+	bun.BaseModel `bun:"table:analytics.fact_tracking_event"`
+
+	ID        uuid.UUID      `bun:"id,pk,type:uuid"`
+	Type      string         `bun:"type,notnull"`
+	Params    map[string]any `bun:"params,type:jsonb,notnull"`
+	CreatedAt time.Time      `bun:"created_at,notnull"`
+	SyncedAt  time.Time      `bun:"synced_at,notnull"`
 }
 
 type CubeOrder struct {

@@ -115,3 +115,21 @@ func (r *olapSinkRepo) UpsertOrders(ctx context.Context, rows []models.CubeOrder
 	}
 	return nil
 }
+
+func (r *olapSinkRepo) UpsertTrackingEvents(ctx context.Context, rows []models.FactTrackingEvent) error {
+	if len(rows) == 0 {
+		return nil
+	}
+	_, err := r.db.NewInsert().
+		Model(&rows).
+		On("CONFLICT (id) DO UPDATE").
+		Set("type = EXCLUDED.type").
+		Set("params = EXCLUDED.params").
+		Set("created_at = EXCLUDED.created_at").
+		Set("synced_at = EXCLUDED.synced_at").
+		Exec(ctx)
+	if err != nil {
+		return errcustom.Unexpected(err)
+	}
+	return nil
+}

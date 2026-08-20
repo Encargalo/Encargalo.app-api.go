@@ -71,10 +71,15 @@ func TestRun_SyncsAllEntities(t *testing.T) {
 	from := time.Now().Add(-time.Hour)
 	to := time.Now()
 
+	events := []models.FactTrackingEvent{{
+		ID: uuid.New(), Type: "pixel", Params: map[string]any{"name": "app_open"},
+	}}
+
 	source.On("FetchShops", mock.Anything, from, to).Return(shops, nil)
 	source.On("FetchUsers", mock.Anything, from, to).Return(users, nil)
 	source.On("FetchRiders", mock.Anything, from, to).Return(riders, nil)
 	source.On("FetchOrders", mock.Anything, from, to).Return(orders, nil)
+	source.On("FetchTrackingEvents", mock.Anything, from, to).Return(events, nil)
 
 	sink.On("UpsertShops", mock.Anything, shops).Return(nil)
 	sink.On("UpsertUsers", mock.Anything, users).Return(nil)
@@ -82,16 +87,18 @@ func TestRun_SyncsAllEntities(t *testing.T) {
 	sink.On("UpsertOrders", mock.Anything, mock.MatchedBy(func(rows []models.CubeOrder) bool {
 		return len(rows) == 1 && rows[0].GMV == 90
 	})).Return(nil)
+	sink.On("UpsertTrackingEvents", mock.Anything, events).Return(nil)
 
 	syncLog.On("Upsert", mock.Anything, models.EntityDimShop, to).Return(nil)
 	syncLog.On("Upsert", mock.Anything, models.EntityDimUser, to).Return(nil)
 	syncLog.On("Upsert", mock.Anything, models.EntityDimRider, to).Return(nil)
 	syncLog.On("Upsert", mock.Anything, models.EntityCubeOrder, to).Return(nil)
+	syncLog.On("Upsert", mock.Anything, models.EntityFactTrackingEvent, to).Return(nil)
 
 	etl := newETLApp(source, sink, syncLog)
 	result, err := etl.Run(context.Background(), from, to, nil)
 	require.NoError(t, err)
-	require.Equal(t, 4, len(result.Results))
+	require.Equal(t, 5, len(result.Results))
 	for _, item := range result.Results {
 		require.True(t, item.Success, item.Entity)
 	}

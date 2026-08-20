@@ -66,6 +66,8 @@ var statusMap = map[error]int{
 	ErrInvalidFilter:            http.StatusBadRequest,
 	ErrCannotRevokeOwnStaff:     http.StatusBadRequest,
 	ErrLastStaffMember:          http.StatusBadRequest,
+	ErrInvalidTrackingType:      http.StatusBadRequest,
+	ErrTrackingParamsTooLarge:   http.StatusBadRequest,
 }
 
 func ToHTTPError(err error) error {
