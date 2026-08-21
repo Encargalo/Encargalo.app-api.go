@@ -17,6 +17,8 @@ type PaymentReviewsRepo interface {
 	// ExistsResolvedReferenceLast4 reports whether last4 is already used by an
 	// approved / overpaid / rejected_underpaid review.
 	ExistsResolvedReferenceLast4(ctx context.Context, last4 string) (bool, error)
+	ListPendingForAlert(ctx context.Context, alertBefore time.Time) ([]models.PaymentReview, error)
+	MarkAlerted(ctx context.Context, id uuid.UUID, alertedAt, alertBefore time.Time) (bool, error)
 }
 
 // CustomerBalanceCreditor is implemented by users finance to credit/debit the
@@ -58,4 +60,7 @@ type PaymentReviewsApp interface {
 	RejectInvalid(ctx context.Context, reviewID, staffID uuid.UUID, reason string) (models.Order, error)
 	ListActiveForStaff(ctx context.Context) ([]models.PaymentReviewBroadcast, error)
 	BuildBroadcast(ctx context.Context, review *models.PaymentReview, order *models.Order) models.PaymentReviewBroadcast
+	// NotifyPendingPaymentProofs republica payment_proof_pending cada
+	// PaymentProofAlertInterval mientras status sea pending_review.
+	NotifyPendingPaymentProofs(ctx context.Context) error
 }

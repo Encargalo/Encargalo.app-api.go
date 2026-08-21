@@ -582,6 +582,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 
 	if proofURL != "" {
 		expectedBs := pagoMovilBs
+		nowReview := time.Now()
 		review := &models.PaymentReview{
 			ID:               uuid.New(),
 			OrderID:          orderDB.ID,
@@ -589,7 +590,8 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 			ExpectedAmountBs: expectedBs,
 			BcvRate:          rate,
 			Status:           models.ReviewPendingReview,
-			CreatedAt:        time.Now(),
+			CreatedAt:        nowReview,
+			LastAlertedAt:    &nowReview,
 		}
 		if err := o.reviewsRepo.Create(ctx, review); err != nil {
 			slog.Error("CreateOrder: payment review failed", "orderID", orderDB.ID, "error", err)
@@ -597,7 +599,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 			return &models.Order{}, err
 		}
 		event := models.DataEventPaymentProofPending{}
-		event.BuildFrom(*orderDB, *review)
+		event.BuildFrom(*orderDB, *review, 0)
 		if err := o.stream.PublisherEvent(ctx, event); err != nil {
 			slog.Error("error producing payment_proof_pending", "error", err)
 		}
@@ -809,10 +811,28 @@ func (o *orderApp) AutoRejectStalePending(ctx context.Context) ([]models.Order, 
 		order.Status = string(models.StatusRejected)
 		o.refundCustomerOnShopRejectWithReason(ctx, &order, "El local no aceptó el pedido a tiempo")
 		o.tryCloseShopBatch(ctx, order.ShopID)
+		o.publishOrderAutoRejected(ctx, order)
 		out = append(out, order)
 		slog.Info("AutoRejectStalePending rejected order", "orderID", order.ID, "shopID", order.ShopID)
 	}
 	return out, nil
+}
+
+func (o *orderApp) publishOrderAutoRejected(ctx context.Context, order models.Order) {
+	if o.stream == nil {
+		return
+	}
+	minutes := int(models.PendingAcceptTimeout / time.Minute)
+	if order.PendingAt != nil {
+		minutes = max(int(time.Since(*order.PendingAt)/time.Minute), minutes)
+	}
+	event := models.DataEventOrderAutoRejected{}
+	event.BuildFromOrder(order, minutes)
+	if err := o.stream.PublisherEvent(ctx, event); err != nil {
+		slog.Error("AutoRejectStalePending publish failed", "orderID", order.ID, "error", err)
+		return
+	}
+	slog.Info("order_auto_rejected published", "orderID", order.ID, "shopID", order.ShopID, "minutesPending", minutes)
 }
 
 // NotifyPendingUnassigned publica order_pending_unassigned en los minutos 4 y 8

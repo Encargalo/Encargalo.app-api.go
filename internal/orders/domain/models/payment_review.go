@@ -39,7 +39,12 @@ type PaymentReview struct {
 	ReferenceLast4 *string    `bun:"reference_last4" json:"reference_last4,omitempty"`
 	CreatedAt      time.Time  `bun:"created_at,notnull,default:now()" json:"created_at"`
 	ResolvedAt     *time.Time `bun:"resolved_at" json:"resolved_at,omitempty"`
+	LastAlertedAt  *time.Time `bun:"last_alerted_at,nullzero" json:"last_alerted_at,omitempty"`
 }
+
+// PaymentProofAlertInterval: cada cuánto se republica payment_proof_pending
+// mientras el comprobante sigue en pending_review.
+const PaymentProofAlertInterval = 3 * time.Minute
 
 // StaffReviewResult es el resultado de una acción del staff sobre un review.
 // Action refleja lo efectivamente aplicado (puede ser reject_invalid si hubo

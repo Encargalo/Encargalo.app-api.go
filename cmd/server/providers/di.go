@@ -216,6 +216,7 @@ func BuildContainer() *dig.Container {
 		return fa
 	})
 	_ = Container.Provide(appOrders.NewPaymentReviewsApp)
+	_ = Container.Provide(appOrders.NewPaymentProofAlertWorker)
 	_ = Container.Provide(handOrders.NewStaffReviewsHandler)
 	_ = Container.Provide(appOrders.NewOrderApp)
 	_ = Container.Provide(appOrders.NewManagerOrderApp)

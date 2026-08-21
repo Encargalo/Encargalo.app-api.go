@@ -39,6 +39,7 @@ func NewPaymentReviewsApp(
 }
 
 func (a *paymentReviewsApp) CreateForOrder(ctx context.Context, order *models.Order, proofURL string, expectedBs, bcvRate float64) (*models.PaymentReview, error) {
+	now := time.Now()
 	review := &models.PaymentReview{
 		ID:               uuid.New(),
 		OrderID:          order.ID,
@@ -46,14 +47,15 @@ func (a *paymentReviewsApp) CreateForOrder(ctx context.Context, order *models.Or
 		ExpectedAmountBs: expectedBs,
 		BcvRate:          bcvRate,
 		Status:           models.ReviewPendingReview,
-		CreatedAt:        time.Now(),
+		CreatedAt:        now,
+		LastAlertedAt:    &now,
 	}
 	if err := a.repo.Create(ctx, review); err != nil {
 		return nil, err
 	}
 
 	event := models.DataEventPaymentProofPending{}
-	event.BuildFrom(*order, *review)
+	event.BuildFrom(*order, *review, 0)
 	if err := a.stream.PublisherEvent(ctx, event); err != nil {
 		slog.Error("error producing payment_proof_pending", "error", err)
 	}
@@ -289,6 +291,47 @@ func (a *paymentReviewsApp) ListActiveForStaff(ctx context.Context) ([]models.Pa
 		out = append(out, a.BuildBroadcast(ctx, &reviews[i], order))
 	}
 	return out, nil
+}
+
+func (a *paymentReviewsApp) NotifyPendingPaymentProofs(ctx context.Context) error {
+	if a.stream == nil {
+		return nil
+	}
+	now := time.Now()
+	alertBefore := now.Add(-models.PaymentProofAlertInterval)
+	list, err := a.repo.ListPendingForAlert(ctx, alertBefore)
+	if err != nil {
+		return err
+	}
+	for i := range list {
+		review := list[i]
+		ok, err := a.repo.MarkAlerted(ctx, review.ID, now, alertBefore)
+		if err != nil {
+			slog.Error("NotifyPendingPaymentProofs MarkAlerted failed", "reviewID", review.ID, "error", err)
+			continue
+		}
+		if !ok {
+			continue
+		}
+		order, err := a.orders.SearchOrdersByID(ctx, review.OrderID)
+		if err != nil || order == nil {
+			slog.Error("NotifyPendingPaymentProofs order lookup failed", "reviewID", review.ID, "orderID", review.OrderID, "error", err)
+			continue
+		}
+		minutes := max(int(now.Sub(review.CreatedAt)/time.Minute), 0)
+		event := models.DataEventPaymentProofPending{}
+		event.BuildFrom(*order, review, minutes)
+		if err := a.stream.PublisherEvent(ctx, event); err != nil {
+			slog.Error("NotifyPendingPaymentProofs publish failed", "reviewID", review.ID, "error", err)
+			continue
+		}
+		slog.Info("payment_proof_pending published",
+			"reviewID", review.ID,
+			"orderID", review.OrderID,
+			"minutesPending", minutes,
+		)
+	}
+	return nil
 }
 
 // syncPaymentDetails congela el estado actual de la revisión (montos,

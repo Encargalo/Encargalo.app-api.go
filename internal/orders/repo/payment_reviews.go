@@ -114,3 +114,35 @@ func (r *paymentReviewsRepo) ExistsResolvedReferenceLast4(ctx context.Context, l
 	}
 	return exists, nil
 }
+
+func (r *paymentReviewsRepo) ListPendingForAlert(ctx context.Context, alertBefore time.Time) ([]models.PaymentReview, error) {
+	var list []models.PaymentReview
+	err := r.db.NewSelect().
+		Model(&list).
+		Where("status = ?", models.ReviewPendingReview).
+		Where("last_alerted_at IS NULL OR last_alerted_at <= ?", alertBefore).
+		OrderExpr("created_at ASC").
+		Limit(100).
+		Scan(ctx)
+	if err != nil {
+		slog.Error("paymentReviews ListPendingForAlert failed", "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+	return list, nil
+}
+
+func (r *paymentReviewsRepo) MarkAlerted(ctx context.Context, id uuid.UUID, alertedAt, alertBefore time.Time) (bool, error) {
+	res, err := r.db.NewUpdate().
+		Model((*models.PaymentReview)(nil)).
+		Set("last_alerted_at = ?", alertedAt).
+		Where("id = ?", id).
+		Where("status = ?", models.ReviewPendingReview).
+		Where("last_alerted_at IS NULL OR last_alerted_at <= ?", alertBefore).
+		Exec(ctx)
+	if err != nil {
+		slog.Error("paymentReviews MarkAlerted failed", "id", id, "error", err)
+		return false, errcustom.ErrUnexpectedError
+	}
+	n, _ := res.RowsAffected()
+	return n > 0, nil
+}
