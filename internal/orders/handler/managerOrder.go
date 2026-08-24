@@ -38,7 +38,7 @@ func New(
 		svc:      svc,
 		svc2:     svc2,
 		svcOrder: svcOrder,
-		upgrader: ws.BuildUpgrader(cfg.Environment.Current == "production", cfg.Server.AllowedOrigins),
+		upgrader: ws.BuildUpgrader(cfg.IsProduction(), cfg.Server.AllowedOrigins),
 	}
 }
 

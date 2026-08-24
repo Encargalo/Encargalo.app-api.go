@@ -2,6 +2,8 @@ package config
 
 import (
 	"log"
+	"os"
+	"strings"
 	"sync"
 
 	"github.com/shepherd-go/gosuite/config"
@@ -62,6 +64,25 @@ type JWT struct {
 type Environment struct {
 	Current string `validate:"required" env:"current"`
 }
+
+// IsProduction is true when ENVIRONMENT_CURRENT is production.
+// Railway uses "produccion"; docs and some services use "production".
+func (e Environment) IsProduction() bool {
+	switch strings.ToLower(strings.TrimSpace(e.Current)) {
+	case "production", "produccion", "producción", "prod":
+		return true
+	default:
+		return false
+	}
+}
+
+func (c *Config) IsProduction() bool {
+	if c == nil {
+		return false
+	}
+	return c.Environment.IsProduction()
+}
+
 type Google struct {
 	ServerKey string `validate:"required" env:"server_key"`
 	ClientID  string `validate:"required" env:"client_id"`
@@ -103,6 +124,13 @@ type InternalGateway struct {
 
 func Environments() {
 	Once.Do(func() {
+		// Railway healthcheck y el private DNS usan PORT; el tag espera SERVER_PORT.
+		if os.Getenv("SERVER_PORT") == "" {
+			if p := os.Getenv("PORT"); p != "" {
+				_ = os.Setenv("SERVER_PORT", p)
+			}
+		}
+
 		cfg = new(Config)
 		if err := config.GetConfigFromEnv(cfg); err != nil {
 			log.Panicf("error parsing enviroment vars \n%v", err)

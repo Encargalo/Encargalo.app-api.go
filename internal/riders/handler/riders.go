@@ -28,7 +28,7 @@ func New(svc ridersPorts.RidersApp) RiderHandler {
 	cfg := config.Get()
 	return &riderHandler{
 		svc:      svc,
-		upgrader: ws.BuildUpgrader(cfg.Environment.Current == "production", cfg.Server.AllowedOrigins),
+		upgrader: ws.BuildUpgrader(cfg.IsProduction(), cfg.Server.AllowedOrigins),
 	}
 }
 

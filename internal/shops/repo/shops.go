@@ -106,7 +106,7 @@ func (s *shopsRepo) GetAllShops(ctx context.Context, query shopsDTO.ListShopsQue
 
 	coords := query.Coords()
 
-	if config.Get().Environment.Current == "production" {
+	if config.Get().IsProduction() {
 		q.Where("latitude IS NOT NULL AND longitude IS NOT NULL").
 			Where(`
 		6371 * acos(
@@ -128,7 +128,7 @@ func (s *shopsRepo) GetAllShops(ctx context.Context, query shopsDTO.ListShopsQue
 
 	var resp shopsDTO.ShopsResponse
 
-	if config.Get().Environment.Current == "production" {
+	if config.Get().IsProduction() {
 		result, err := calculateDistances(coords, &shops)
 		if err != nil {
 			slog.Error("error al calcular distancias", "error", err)
@@ -186,7 +186,7 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 		q.Where("slug = ?", criteria.Slug)
 	}
 
-	if config.Get().Environment.Current == "production" {
+	if config.Get().IsProduction() {
 		q.Where("latitude IS NOT NULL AND longitude IS NOT NULL").
 			Where(`
 		6371 * acos(
@@ -208,7 +208,7 @@ func (s *shopsRepo) GetShopsBy(ctx context.Context, criteria shopsDTO.SearchShop
 
 	var resp shopsDTO.ShopsResponse
 
-	if config.Get().Environment.Current == "production" {
+	if config.Get().IsProduction() {
 		result, err := calculateDistances(coords, &shops)
 		if err != nil {
 			slog.Error("error al calcular distancias", "error", err)
@@ -320,7 +320,7 @@ func (s *shopsRepo) ResolveTurboShop(ctx context.Context, shopID uuid.UUID, coor
 	}
 
 	distance := entity.ShopDistance{ShopID: shop.ID}
-	if config.Get().Environment.Current == "production" {
+	if config.Get().IsProduction() {
 		shopsToMeasure := shops.Shops{shop}
 		result, err := calculateDistances(coords, &shopsToMeasure)
 		if err != nil {
@@ -333,7 +333,7 @@ func (s *shopsRepo) ResolveTurboShop(ctx context.Context, shopID uuid.UUID, coor
 	}
 
 	resp := shop.ToDomainDTO(distance)
-	if config.Get().Environment.Current != "production" {
+	if !config.Get().IsProduction() {
 		resp.DeliveryFee = deliveryfee.DevPlaceholderFee
 		resp.Time = devTimeMinutes(resp.Type)
 	}
@@ -450,7 +450,7 @@ func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.Sea
 		distances[i] = entity.ShopDistance{ShopID: row.ID}
 	}
 
-	if config.Get().Environment.Current == "production" {
+	if config.Get().IsProduction() {
 		coords := shopsDTO.Coords{Latitude: query.Latitude, Longitude: query.Longitude}
 		prodDistances, err := calculateDistances(coords, &shopModels)
 		if err != nil {
@@ -465,7 +465,7 @@ func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.Sea
 		distMap[d.ShopID] = d
 	}
 
-	isProd := config.Get().Environment.Current == "production"
+	isProd := config.Get().IsProduction()
 	candidates := make([]shopsDTO.SearchShopCandidate, 0, len(rows))
 	for i, row := range rows {
 		dist, ok := distMap[row.ID]

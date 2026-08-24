@@ -194,7 +194,7 @@ func NewStaffRefundHandler(hub ports.StaffRefundHub, finance ports.CustomerFinan
 	return &staffRefundHandler{
 		hub:      hub,
 		finance:  finance,
-		upgrader: ws.BuildUpgrader(cfg.Environment.Current == "production", cfg.Server.AllowedOrigins),
+		upgrader: ws.BuildUpgrader(cfg.IsProduction(), cfg.Server.AllowedOrigins),
 	}
 }
 
