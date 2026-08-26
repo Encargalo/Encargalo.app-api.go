@@ -10,6 +10,7 @@ import (
 	"Encargalo.app-api.go/internal/shared/applog"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shared/jwt"
+	"Encargalo.app-api.go/internal/shared/response"
 	"github.com/labstack/echo/v4"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
@@ -68,7 +69,7 @@ func (c *customersHandler) RegisterCustomer(e echo.Context) error {
 	sessionId, err := c.auth.SignInCustomer(ctx, customer.Phone, customer.Password)
 	if err != nil {
 		applog.Error(ctx, "auto-login tras registro falló", err, "phone", customer.Phone)
-		return e.JSON(http.StatusCreated, "customer successfully registered")
+		return response.Send(e, http.StatusCreated, "customer successfully registered")
 	}
 
 	jwtSession, err := c.jwt.CreateSession(sessionId)
@@ -78,7 +79,7 @@ func (c *customersHandler) RegisterCustomer(e echo.Context) error {
 
 	e.SetCookie(c.cookie.CreateCookieSession(jwtSession))
 
-	return e.JSON(http.StatusCreated, "customer successfully registered")
+	return response.Send(e, http.StatusCreated, "customer successfully registered")
 }
 
 // SearchCustomer godoc
@@ -103,7 +104,7 @@ func (c *customersHandler) SearchCustomer(e echo.Context) error {
 		return errcustom.ToHTTPError(err)
 	}
 
-	return e.JSON(http.StatusOK, profile.ToDomainDTO())
+	return response.Send(e, http.StatusOK, profile.ToDomainDTO())
 }
 
 // UpdateCustomer godoc
@@ -141,7 +142,7 @@ func (c *customersHandler) UpdateCustomer(e echo.Context) error {
 		return errcustom.ToHTTPError(err)
 	}
 
-	return e.JSON(http.StatusOK, "customer updated success")
+	return response.Send(e, http.StatusOK, "customer updated success")
 }
 
 // UpdatePassword godoc
@@ -178,7 +179,7 @@ func (c *customersHandler) UpdatePassword(e echo.Context) error {
 		return errcustom.ToHTTPError(err)
 	}
 
-	return e.JSON(http.StatusOK, "password updated success")
+	return response.Send(e, http.StatusOK, "password updated success")
 }
 
 // DeleteAccount godoc
@@ -207,5 +208,5 @@ func (c *customersHandler) DeleteAccount(e echo.Context) error {
 
 	e.SetCookie(c.cookie.DeleteCookieSession())
 
-	return e.JSON(http.StatusOK, "account scheduled for deletion")
+	return response.Send(e, http.StatusOK, "account scheduled for deletion")
 }

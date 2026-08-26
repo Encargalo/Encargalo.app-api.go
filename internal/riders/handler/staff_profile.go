@@ -11,6 +11,7 @@ import (
 	"Encargalo.app-api.go/internal/riders/domain/models"
 	"Encargalo.app-api.go/internal/riders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/shared/response"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
@@ -53,7 +54,7 @@ func (h *staffRiderHandler) FindCandidate(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // ListProfiles godoc
@@ -76,7 +77,7 @@ func (h *staffRiderHandler) ListProfiles(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, list)
+	return response.Send(c, http.StatusOK, list)
 }
 
 // GetProfile godoc
@@ -96,7 +97,7 @@ func (h *staffRiderHandler) GetProfile(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // UpsertProfile godoc
@@ -123,7 +124,7 @@ func (h *staffRiderHandler) UpsertProfile(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // DeletePhoto godoc
@@ -151,7 +152,7 @@ func (h *staffRiderHandler) DeletePhoto(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // Activate godoc
@@ -179,14 +180,19 @@ func (h *staffRiderHandler) Activate(c echo.Context) error {
 			if getErr == nil {
 				missing = profile.Completion.Missing
 			}
-			return c.JSON(http.StatusUnprocessableEntity, dtos.ActivateErrorResponse{
-				Message: errcustom.ErrRiderProfileIncomplete.Error(),
-				Missing: missing,
-			})
+			return response.SendError(c, http.StatusUnprocessableEntity,
+				dtos.ActivateErrorResponse{
+					Message: errcustom.ErrRiderProfileIncomplete.Error(),
+					Missing: missing,
+				},
+				errcustom.Code(errcustom.ErrRiderProfileIncomplete),
+				errcustom.ErrRiderProfileIncomplete.Error(),
+				map[string]any{"missing": missing},
+			)
 		}
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // Suspend godoc
@@ -206,7 +212,7 @@ func (h *staffRiderHandler) Suspend(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // TouchContact godoc
@@ -230,5 +236,5 @@ func (h *staffRiderHandler) TouchContact(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }

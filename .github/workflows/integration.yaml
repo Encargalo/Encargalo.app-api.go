@@ -2,7 +2,9 @@ name: Continuous Integration
 
 on:
   pull_request:
-    branches:  ["main", "dev"]  
+    branches: ["main", "dev"]
+  push:
+    branches: ["main"]
 
 jobs:
   build:
@@ -37,7 +39,7 @@ jobs:
       - name: Check if tests exist
         id: check_tests
         run: |
-          if ls **/*_test.go 1> /dev/null 2>&1; then
+          if find . -type f -name '*_test.go' | grep -q .; then
             echo "has_tests=true" >> $GITHUB_OUTPUT
           else
             echo "has_tests=false" >> $GITHUB_OUTPUT

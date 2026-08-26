@@ -29,7 +29,7 @@ func NewStaffReviewsHandler(hub portsOrder.StaffReviewHub, reviews portsOrder.Pa
 	return &staffReviews{
 		hub:      hub,
 		reviews:  reviews,
-		upgrader: ws.BuildUpgrader(cfg.Environment.Current == "production", cfg.Server.AllowedOrigins),
+		upgrader: ws.BuildUpgrader(cfg.IsProduction(), cfg.Server.AllowedOrigins),
 	}
 }
 

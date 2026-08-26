@@ -8,6 +8,7 @@ import (
 
 	authModels "Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/shared/response"
 	"Encargalo.app-api.go/internal/shops/domain/dtos"
 	shopsPorts "Encargalo.app-api.go/internal/shops/domain/ports"
 	"github.com/labstack/echo/v4"
@@ -57,7 +58,7 @@ func (h *shopStatsHandler) GetSummary(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // GetTopProducts godoc
@@ -94,7 +95,7 @@ func (h *shopStatsHandler) GetTopProducts(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // GetSalesOverTime godoc
@@ -134,7 +135,7 @@ func (h *shopStatsHandler) GetSalesOverTime(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // GetCustomerStats godoc
@@ -165,7 +166,7 @@ func (h *shopStatsHandler) GetCustomerStats(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // ExportTransactions godoc

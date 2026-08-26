@@ -66,6 +66,7 @@ func run() error {
 		hub *appOrders.StaffReviewHubImpl,
 		reviews ordersPorts.PaymentReviewsApp,
 		pendingWorker *appOrders.PendingAcceptWorker,
+		paymentProofAlertWorker *appOrders.PaymentProofAlertWorker,
 		batchCloseWorker *appShops.BatchCloseWorker,
 		refundHub *appCustomer.StaffRefundHubImpl,
 		finance usersPorts.CustomerFinanceApp,
@@ -80,6 +81,7 @@ func run() error {
 
 		bcv.Start(context.Background())
 		pendingWorker.Start(context.Background())
+		paymentProofAlertWorker.Start(context.Background())
 		batchCloseWorker.Start(context.Background())
 		refundAlertWorker.Start(context.Background())
 		accountDeletionWorker.Start(context.Background())

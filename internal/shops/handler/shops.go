@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
+	"Encargalo.app-api.go/internal/shared/response"
 	"Encargalo.app-api.go/internal/shops/domain/dtos"
 	ports "Encargalo.app-api.go/internal/shops/domain/ports"
 	"github.com/labstack/echo/v4"
@@ -85,7 +86,7 @@ func (s *shops) GetMyShop(c echo.Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, shop)
+	return response.Send(c, http.StatusOK, shop)
 }
 
 // SearchShops godoc
@@ -121,7 +122,7 @@ func (s *shops) SearchShops(c echo.Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, result)
+	return response.Send(c, http.StatusOK, result)
 }
 
 // GetAllShops godoc
@@ -158,7 +159,7 @@ func (s *shops) GetAllShops(c echo.Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, shops)
+	return response.Send(c, http.StatusOK, shops)
 }
 
 // GetShopsBy godoc
@@ -205,7 +206,7 @@ func (p *shops) GetShopsBy(c echo.Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, products)
+	return response.Send(c, http.StatusOK, products)
 }
 
 // GetTurboEntry godoc
@@ -237,5 +238,5 @@ func (s *shops) GetTurboEntry(c echo.Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, entry)
+	return response.Send(c, http.StatusOK, entry)
 }

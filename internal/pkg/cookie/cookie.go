@@ -68,7 +68,7 @@ func (c *cookie) DeleteCookieSession() *http.Cookie {
 }
 
 func setSameSite() http.SameSite {
-	if config.Get().Environment.Current != "production" {
+	if !config.Get().IsProduction() {
 		return http.SameSiteNoneMode
 	}
 	return http.SameSiteStrictMode

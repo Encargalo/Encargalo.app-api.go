@@ -9,6 +9,7 @@ import (
 	authModels "Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/shared/response"
 	"Encargalo.app-api.go/internal/shared/ws"
 	"Encargalo.app-api.go/internal/users/domain/dto"
 	_ "Encargalo.app-api.go/internal/users/domain/dto"
@@ -54,7 +55,7 @@ func (h *customerFinanceHandler) GetBalance(c echo.Context) error {
 		return errcustom.ToHTTPError(err)
 	}
 
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // GetPagoMovil godoc
@@ -74,7 +75,7 @@ func (h *customerFinanceHandler) GetPagoMovil(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // UpsertPagoMovil godoc
@@ -100,7 +101,7 @@ func (h *customerFinanceHandler) UpsertPagoMovil(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // CreateRefundRequest godoc
@@ -131,7 +132,7 @@ func (h *customerFinanceHandler) CreateRefundRequest(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusCreated, resp)
+	return response.Send(c, http.StatusCreated, resp)
 }
 
 // ListRefundRequests godoc
@@ -150,7 +151,7 @@ func (h *customerFinanceHandler) ListRefundRequests(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // GetRefundRequest godoc
@@ -175,7 +176,7 @@ func (h *customerFinanceHandler) GetRefundRequest(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 type StaffRefundHandler interface {
@@ -194,7 +195,7 @@ func NewStaffRefundHandler(hub ports.StaffRefundHub, finance ports.CustomerFinan
 	return &staffRefundHandler{
 		hub:      hub,
 		finance:  finance,
-		upgrader: ws.BuildUpgrader(cfg.Environment.Current == "production", cfg.Server.AllowedOrigins),
+		upgrader: ws.BuildUpgrader(cfg.IsProduction(), cfg.Server.AllowedOrigins),
 	}
 }
 
@@ -337,5 +338,5 @@ func (h *staffRefundHandler) CompleteRefund(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }

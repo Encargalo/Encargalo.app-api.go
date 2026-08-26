@@ -9,9 +9,10 @@ type DataEventPaymentProofPending struct {
 	ExpectedAmountBs float64 `json:"expected_amount_bs"`
 	ProofURL         string  `json:"proof_url"`
 	TotalUSD         float64 `json:"total_usd"`
+	MinutesPending   int     `json:"minutes_pending"`
 }
 
-func (d *DataEventPaymentProofPending) BuildFrom(order Order, review PaymentReview) {
+func (d *DataEventPaymentProofPending) BuildFrom(order Order, review PaymentReview, minutesPending int) {
 	d.MessageType = "payment_proof_pending"
 	d.OrderID = order.ID.String()
 	d.ReviewID = review.ID.String()
@@ -20,4 +21,5 @@ func (d *DataEventPaymentProofPending) BuildFrom(order Order, review PaymentRevi
 	d.ExpectedAmountBs = review.ExpectedAmountBs
 	d.ProofURL = review.ProofURL
 	d.TotalUSD = order.TotalPrice
+	d.MinutesPending = minutesPending
 }

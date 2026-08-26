@@ -6,6 +6,7 @@ import (
 
 	authModels "Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/shared/response"
 	_ "Encargalo.app-api.go/internal/shops/domain/dtos"
 	shopsPorts "Encargalo.app-api.go/internal/shops/domain/ports"
 	"github.com/labstack/echo/v4"
@@ -47,7 +48,7 @@ func (h *shopFinanceHandler) GetBalance(c echo.Context) error {
 		return errcustom.ToHTTPError(err)
 	}
 
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // ListTransactions godoc
@@ -84,5 +85,5 @@ func (h *shopFinanceHandler) ListTransactions(c echo.Context) error {
 		return errcustom.ToHTTPError(err)
 	}
 
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }

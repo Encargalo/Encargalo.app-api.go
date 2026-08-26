@@ -8,6 +8,8 @@ import (
 	models "Encargalo.app-api.go/internal/orders/domain/models"
 	mock "github.com/stretchr/testify/mock"
 
+	time "time"
+
 	uuid "github.com/google/uuid"
 )
 
@@ -115,6 +117,64 @@ func (_m *PaymentReviewsRepo) ListActiveForStaff(ctx context.Context) ([]models.
 
 	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
 		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ListPendingForAlert provides a mock function with given fields: ctx, alertBefore
+func (_m *PaymentReviewsRepo) ListPendingForAlert(ctx context.Context, alertBefore time.Time) ([]models.PaymentReview, error) {
+	ret := _m.Called(ctx, alertBefore)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListPendingForAlert")
+	}
+
+	var r0 []models.PaymentReview
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time) ([]models.PaymentReview, error)); ok {
+		return rf(ctx, alertBefore)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time) []models.PaymentReview); ok {
+		r0 = rf(ctx, alertBefore)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.PaymentReview)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, time.Time) error); ok {
+		r1 = rf(ctx, alertBefore)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MarkAlerted provides a mock function with given fields: ctx, id, alertedAt, alertBefore
+func (_m *PaymentReviewsRepo) MarkAlerted(ctx context.Context, id uuid.UUID, alertedAt time.Time, alertBefore time.Time) (bool, error) {
+	ret := _m.Called(ctx, id, alertedAt, alertBefore)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MarkAlerted")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, time.Time, time.Time) (bool, error)); ok {
+		return rf(ctx, id, alertedAt, alertBefore)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, time.Time, time.Time) bool); ok {
+		r0 = rf(ctx, id, alertedAt, alertBefore)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, time.Time, time.Time) error); ok {
+		r1 = rf(ctx, id, alertedAt, alertBefore)
 	} else {
 		r1 = ret.Error(1)
 	}

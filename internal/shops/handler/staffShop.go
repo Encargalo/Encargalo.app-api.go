@@ -9,6 +9,7 @@ import (
 
 	authModels "Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/shared/response"
 	"Encargalo.app-api.go/internal/shops/domain/dtos"
 	shopsmodels "Encargalo.app-api.go/internal/shops/domain/models/shops"
 	"Encargalo.app-api.go/internal/shops/domain/ports"
@@ -60,7 +61,7 @@ func (h *staffShopHandler) FindOwnerCandidate(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // CreateDraftShop godoc
@@ -87,7 +88,7 @@ func (h *staffShopHandler) CreateDraftShop(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusCreated, resp)
+	return response.Send(c, http.StatusCreated, resp)
 }
 
 // ListShops godoc
@@ -124,7 +125,7 @@ func (h *staffShopHandler) ListShops(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, list)
+	return response.Send(c, http.StatusOK, list)
 }
 
 // GetShop godoc
@@ -146,7 +147,7 @@ func (h *staffShopHandler) GetShop(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // UpdateDraftShop godoc
@@ -176,7 +177,7 @@ func (h *staffShopHandler) UpdateDraftShop(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // ActivateShop godoc
@@ -205,12 +206,17 @@ func (h *staffShopHandler) ActivateShop(c echo.Context) error {
 			if getErr == nil {
 				missing = shop.Completion.Missing
 			}
-			return c.JSON(http.StatusUnprocessableEntity, dtos.ShopActivateErrorResponse{
-				Message: errcustom.ErrShopOnboardingIncomplete.Error(),
-				Missing: missing,
-			})
+			return response.SendError(c, http.StatusUnprocessableEntity,
+				dtos.ShopActivateErrorResponse{
+					Message: errcustom.ErrShopOnboardingIncomplete.Error(),
+					Missing: missing,
+				},
+				errcustom.Code(errcustom.ErrShopOnboardingIncomplete),
+				errcustom.ErrShopOnboardingIncomplete.Error(),
+				map[string]any{"missing": missing},
+			)
 		}
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }

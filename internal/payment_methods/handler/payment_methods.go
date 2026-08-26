@@ -5,6 +5,7 @@ import (
 
 	"Encargalo.app-api.go/internal/payment_methods/domain/models"
 	"Encargalo.app-api.go/internal/payment_methods/domain/ports"
+	"Encargalo.app-api.go/internal/shared/response"
 	"github.com/labstack/echo/v4"
 )
 
@@ -35,5 +36,5 @@ func (p *paymentMethods) GetPaymentMethods(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(http.StatusOK, ([]models.PaymentMethod)(methods))
+	return response.Send(c, http.StatusOK, ([]models.PaymentMethod)(methods))
 }

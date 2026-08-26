@@ -6,6 +6,7 @@ import (
 	"Encargalo.app-api.go/internal/bcv/domain/models"
 	"Encargalo.app-api.go/internal/bcv/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/shared/response"
 	"github.com/labstack/echo/v4"
 )
 
@@ -38,5 +39,5 @@ func (h *bcvHandler) GetRate(e echo.Context) error {
 		return errcustom.ErrUnexpectedError
 	}
 
-	return e.JSON(http.StatusOK, rate)
+	return response.Send(e, http.StatusOK, rate)
 }

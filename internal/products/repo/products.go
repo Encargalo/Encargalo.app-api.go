@@ -583,10 +583,11 @@ func (p *productsRepo) GetTrendingByCoords(ctx context.Context, coords dtos.Tren
 		WHERE s.opened = true
 			AND s.license_status = 'active'
 			AND i.is_available = true
+			AND i.availability_status != ?
 			AND i.sold > 0
 	`
-	var args []any
-	if config.Get().Environment.Current == "production" {
+	args := []any{models.AvailabilityHidden}
+	if config.Get().IsProduction() {
 		query += `
 			AND s.latitude IS NOT NULL
 			AND s.longitude IS NOT NULL
@@ -721,7 +722,7 @@ func (p *productsRepo) deliveryEstimatesByShop(coords dtos.TrendingCoords, rows 
 	fee := make(map[uuid.UUID]float64)
 	minutes := make(map[uuid.UUID]int)
 
-	if config.Get().Environment.Current != "production" {
+	if !config.Get().IsProduction() {
 		for _, r := range rows {
 			shopID, err := uuid.Parse(r.ShopID)
 			if err != nil {

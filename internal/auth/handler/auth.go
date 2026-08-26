@@ -12,6 +12,7 @@ import (
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shared/jwt"
 	sharedmw "Encargalo.app-api.go/internal/shared/middleware"
+	"Encargalo.app-api.go/internal/shared/response"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
@@ -76,7 +77,7 @@ func (a *auth) SignInCustomer(e echo.Context) error {
 
 	e.SetCookie(a.cookie.CreateCookieSession(jwtSession))
 
-	return e.JSON(http.StatusCreated, "session created")
+	return response.Send(e, http.StatusCreated, "session created")
 }
 
 // SignInEmployee godoc
@@ -119,7 +120,7 @@ func (a *auth) SignInEmployee(e echo.Context) error {
 
 	e.SetCookie(a.cookie.CreateCookieSession(jwtSession))
 
-	return e.JSON(http.StatusCreated, "session created")
+	return response.Send(e, http.StatusCreated, "session created")
 }
 
 // SignInRider godoc
@@ -161,7 +162,7 @@ func (a *auth) SignInRider(e echo.Context) error {
 
 	e.SetCookie(a.cookie.CreateCookieSession(jwtSession))
 
-	return e.JSON(http.StatusCreated, "session created")
+	return response.Send(e, http.StatusCreated, "session created")
 }
 
 // SignInStaff godoc
@@ -203,7 +204,7 @@ func (a *auth) SignInStaff(e echo.Context) error {
 
 	e.SetCookie(a.cookie.CreateCookieSession(jwtSession))
 
-	return e.JSON(http.StatusCreated, "session created")
+	return response.Send(e, http.StatusCreated, "session created")
 }
 
 // SignInGoogle godoc
@@ -248,7 +249,7 @@ func (a *auth) SignInGoogle(e echo.Context) error {
 
 	e.SetCookie(a.cookie.CreateCookieSession(jwtSession))
 
-	return e.JSON(http.StatusCreated, "session created")
+	return response.Send(e, http.StatusCreated, "session created")
 }
 
 // VerifySession godoc
@@ -339,7 +340,7 @@ func (s *auth) Logout(e echo.Context) error {
 
 	e.SetCookie(s.cookie.DeleteCookieSession())
 
-	return e.JSON(http.StatusOK, LogoutResponse{
+	return response.Send(e, http.StatusOK, LogoutResponse{
 		Message: "session deleted success",
 	})
 }

@@ -9,6 +9,7 @@ import (
 	financeModels "Encargalo.app-api.go/internal/finance/domain/models"
 	financePorts "Encargalo.app-api.go/internal/finance/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/shared/response"
 	_ "Encargalo.app-api.go/internal/shops/domain/dtos"
 	shopsPorts "Encargalo.app-api.go/internal/shops/domain/ports"
 	"github.com/google/uuid"
@@ -62,7 +63,7 @@ func (h *staffShopFinanceHandler) ListPayables(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, mapShopPayables(resp))
+	return response.Send(c, http.StatusOK, mapShopPayables(resp))
 }
 
 // GetBalance godoc
@@ -86,7 +87,7 @@ func (h *staffShopFinanceHandler) GetBalance(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // ListTransactions godoc
@@ -120,7 +121,7 @@ func (h *staffShopFinanceHandler) ListTransactions(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // RecordPayout godoc
@@ -156,7 +157,7 @@ func (h *staffShopFinanceHandler) RecordPayout(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // RecordAdjustment godoc
@@ -195,7 +196,7 @@ func (h *staffShopFinanceHandler) RecordAdjustment(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 func mapShopPayables(resp financedtos.PayablesResponse) shopPayablesResponse {
