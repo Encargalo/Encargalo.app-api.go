@@ -6,6 +6,7 @@ import (
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/shared/response"
 	"Encargalo.app-api.go/internal/users/domain/dto"
 	"Encargalo.app-api.go/internal/users/domain/ports"
 	"github.com/google/uuid"
@@ -62,7 +63,7 @@ func (c *customersAddrssHandler) RegisterAddress(e echo.Context) error {
 		return errcustom.ToHTTPError(err)
 	}
 
-	return e.JSON(http.StatusCreated, "address registred")
+	return response.Send(e, http.StatusCreated, "address registred")
 }
 
 // SearchAllAdrress godoc
@@ -87,7 +88,7 @@ func (c *customersAddrssHandler) SearchAllAdrress(e echo.Context) error {
 		return errcustom.ToHTTPError(err)
 	}
 
-	return e.JSON(http.StatusOK, addresses)
+	return response.Send(e, http.StatusOK, addresses)
 }
 
 // DeleteAddress godoc
@@ -122,5 +123,5 @@ func (c *customersAddrssHandler) DeleteAddress(e echo.Context) error {
 		return errcustom.ToHTTPError(err)
 	}
 
-	return e.JSON(http.StatusOK, "address deleted success")
+	return response.Send(e, http.StatusOK, "address deleted success")
 }

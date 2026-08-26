@@ -11,6 +11,7 @@ import (
 	_ "Encargalo.app-api.go/internal/riders/domain/dtos"
 	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/shared/response"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
@@ -64,7 +65,7 @@ func (h *staffFinanceHandler) ListPayables(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, mapRiderPayables(resp))
+	return response.Send(c, http.StatusOK, mapRiderPayables(resp))
 }
 
 // GetBalance godoc
@@ -88,7 +89,7 @@ func (h *staffFinanceHandler) GetBalance(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // ListTransactions godoc
@@ -122,7 +123,7 @@ func (h *staffFinanceHandler) ListTransactions(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // RecordPayout godoc
@@ -158,7 +159,7 @@ func (h *staffFinanceHandler) RecordPayout(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // RecordAdjustment godoc
@@ -197,7 +198,7 @@ func (h *staffFinanceHandler) RecordAdjustment(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 func mapRiderPayables(resp financedtos.PayablesResponse) riderPayablesResponse {

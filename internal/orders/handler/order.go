@@ -10,6 +10,7 @@ import (
 	modelsOrder "Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/shared/response"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
@@ -64,7 +65,7 @@ func (o *orderHandler) CreateQuote(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(http.StatusCreated, quote)
+	return response.Send(c, http.StatusCreated, quote)
 }
 
 // CreateOrder godoc
@@ -116,7 +117,7 @@ func (o *orderHandler) CreateOrder(c echo.Context) error {
 		slog.Error("error broadcasting order to websockets", "error", err)
 	}
 
-	return c.JSON(http.StatusCreated, dtos.CreateOrderResponse{
+	return response.Send(c, http.StatusCreated, dtos.CreateOrderResponse{
 		Message:            "Order created successfully",
 		TotalPrice:         orderModel.TotalPrice,
 		IsLaunchPromo:      orderModel.IsLaunchPromo,
@@ -175,7 +176,7 @@ func (o *orderHandler) ConfirmPickup(c echo.Context) error {
 		slog.Error("error broadcasting order after confirm-pickup", "error", err)
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{"message": "Order is now on the way"})
+	return response.Send(c, http.StatusOK, map[string]string{"message": "Order is now on the way"})
 }
 
 // ConfirmDelivery godoc
@@ -223,7 +224,7 @@ func (o *orderHandler) ConfirmDelivery(c echo.Context) error {
 		slog.Error("error broadcasting order after confirm-delivery", "error", err)
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{"message": "Order delivered successfully"})
+	return response.Send(c, http.StatusOK, map[string]string{"message": "Order delivered successfully"})
 }
 
 // GetOrderHistory godoc
@@ -246,7 +247,7 @@ func (o *orderHandler) GetOrderHistory(c echo.Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, history)
+	return response.Send(c, http.StatusOK, history)
 }
 
 func parseOrderID(c echo.Context) (uuid.UUID, error) {

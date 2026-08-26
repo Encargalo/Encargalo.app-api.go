@@ -8,6 +8,7 @@ import (
 	_ "Encargalo.app-api.go/internal/riders/domain/dtos"
 	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/shared/response"
 	"github.com/labstack/echo/v4"
 )
 
@@ -45,7 +46,7 @@ func (h *financeHandler) GetBalance(c echo.Context) error {
 		return errcustom.ToHTTPError(err)
 	}
 
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // RequestWithdrawal godoc
@@ -70,7 +71,7 @@ func (h *financeHandler) RequestWithdrawal(c echo.Context) error {
 		return errcustom.ToHTTPError(err)
 	}
 
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // ListTransactions godoc
@@ -104,5 +105,5 @@ func (h *financeHandler) ListTransactions(c echo.Context) error {
 		return errcustom.ToHTTPError(err)
 	}
 
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }

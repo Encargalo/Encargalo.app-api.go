@@ -6,6 +6,7 @@ import (
 	"Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/products/domain/dtos"
 	"Encargalo.app-api.go/internal/products/domain/ports"
+	"Encargalo.app-api.go/internal/shared/response"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
@@ -75,7 +76,7 @@ func (p *productsHandler) SearchProductsByShopID(e echo.Context) error {
 		return err
 	}
 
-	return e.JSON(http.StatusOK, items)
+	return response.Send(e, http.StatusOK, items)
 }
 
 // SearchAdditionsByItemID godoc
@@ -110,7 +111,7 @@ func (p *productsHandler) SearchAdditionsByItemID(e echo.Context) error {
 		return err
 	}
 
-	return e.JSON(http.StatusOK, additions)
+	return response.Send(e, http.StatusOK, additions)
 }
 
 // SearchAdditionsCatalogByShopID godoc
@@ -137,7 +138,7 @@ func (p *productsHandler) SearchAdditionsCatalogByShopID(e echo.Context) error {
 		return err
 	}
 
-	return e.JSON(http.StatusOK, additions)
+	return response.Send(e, http.StatusOK, additions)
 }
 
 // SearchFlavorsByItemID godoc
@@ -172,7 +173,7 @@ func (p *productsHandler) SearchFlavorsByItemID(e echo.Context) error {
 		return err
 	}
 
-	return e.JSON(http.StatusOK, flavors)
+	return response.Send(e, http.StatusOK, flavors)
 }
 
 // SearchFlavorsByCategoryID godoc
@@ -208,7 +209,7 @@ func (p *productsHandler) SearchFlavorsByCategoryID(e echo.Context) error {
 		return err
 	}
 
-	return e.JSON(http.StatusOK, flavors)
+	return response.Send(e, http.StatusOK, flavors)
 }
 
 // SearchBestSellersByShopID godoc
@@ -243,7 +244,7 @@ func (p *productsHandler) SearchBestSellersByShopID(e echo.Context) error {
 		return err
 	}
 
-	return e.JSON(http.StatusOK, topSeller)
+	return response.Send(e, http.StatusOK, topSeller)
 }
 
 // GetMyProducts godoc
@@ -272,7 +273,7 @@ func (p *productsHandler) GetMyProducts(e echo.Context) error {
 		return err
 	}
 
-	return e.JSON(http.StatusOK, items)
+	return response.Send(e, http.StatusOK, items)
 }
 
 // RegisterCategory godoc
@@ -312,7 +313,7 @@ func (p *productsHandler) RegisterCategory(e echo.Context) error {
 		return err
 	}
 
-	return e.JSON(http.StatusCreated, "category registered successfully")
+	return response.Send(e, http.StatusCreated, "category registered successfully")
 }
 
 // UpdateCategory godoc
@@ -357,7 +358,7 @@ func (p *productsHandler) UpdateCategory(e echo.Context) error {
 		return err
 	}
 
-	return e.JSON(http.StatusOK, "category update success")
+	return response.Send(e, http.StatusOK, "category update success")
 }
 
 // RegisterItem godoc
@@ -397,7 +398,7 @@ func (p *productsHandler) RegisterItem(e echo.Context) error {
 		return err
 	}
 
-	return e.JSON(http.StatusCreated, "product registered successfully")
+	return response.Send(e, http.StatusCreated, "product registered successfully")
 }
 
 // GetTrendingProducts godoc
@@ -429,7 +430,7 @@ func (p *productsHandler) GetTrendingProducts(e echo.Context) error {
 		return err
 	}
 
-	return e.JSON(http.StatusOK, result)
+	return response.Send(e, http.StatusOK, result)
 }
 
 // UpdateItem godoc
@@ -474,7 +475,7 @@ func (p *productsHandler) UpdateItem(e echo.Context) error {
 		return err
 	}
 
-	return e.JSON(http.StatusOK, "item update success")
+	return response.Send(e, http.StatusOK, "item update success")
 }
 
 // RegisterFlavor godoc
@@ -515,7 +516,7 @@ func (p *productsHandler) RegisterFlavor(e echo.Context) error {
 		return err
 	}
 
-	return e.JSON(http.StatusCreated, "flavor registered successfully")
+	return response.Send(e, http.StatusCreated, "flavor registered successfully")
 }
 
 // UpdateFlavor godoc
@@ -560,7 +561,7 @@ func (p *productsHandler) UpdateFlavor(e echo.Context) error {
 		return err
 	}
 
-	return e.JSON(http.StatusOK, "flavor update success")
+	return response.Send(e, http.StatusOK, "flavor update success")
 }
 
 // DeleteFlavor godoc
@@ -595,7 +596,7 @@ func (p *productsHandler) DeleteFlavor(e echo.Context) error {
 		return err
 	}
 
-	return e.JSON(http.StatusOK, "flavor deleted successfully")
+	return response.Send(e, http.StatusOK, "flavor deleted successfully")
 }
 
 // SearchMacroCategories godoc
@@ -619,7 +620,7 @@ func (p *productsHandler) SearchMacroCategories(e echo.Context) error {
 		return err
 	}
 
-	return e.JSON(http.StatusOK, macroCategories)
+	return response.Send(e, http.StatusOK, macroCategories)
 }
 
 // RegisterItemDiscount godoc
@@ -660,7 +661,7 @@ func (p *productsHandler) RegisterItemDiscount(e echo.Context) error {
 		return err
 	}
 
-	return e.JSON(http.StatusCreated, "item discount registered successfully")
+	return response.Send(e, http.StatusCreated, "item discount registered successfully")
 }
 
 // UpdateItemDiscount godoc
@@ -705,7 +706,7 @@ func (p *productsHandler) UpdateItemDiscount(e echo.Context) error {
 		return err
 	}
 
-	return e.JSON(http.StatusOK, "item discount update success")
+	return response.Send(e, http.StatusOK, "item discount update success")
 }
 
 // DeleteItemDiscount godoc
@@ -740,7 +741,7 @@ func (p *productsHandler) DeleteItemDiscount(e echo.Context) error {
 		return err
 	}
 
-	return e.JSON(http.StatusOK, "item discount deleted successfully")
+	return response.Send(e, http.StatusOK, "item discount deleted successfully")
 }
 
 // DeleteItemDiscountByItemID godoc
@@ -775,7 +776,7 @@ func (p *productsHandler) DeleteItemDiscountByItemID(e echo.Context) error {
 		return err
 	}
 
-	return e.JSON(http.StatusOK, "item discount deleted successfully")
+	return response.Send(e, http.StatusOK, "item discount deleted successfully")
 }
 
 // SearchCategoriesByShopID godoc
@@ -804,7 +805,7 @@ func (p *productsHandler) SearchCategoriesByShopID(e echo.Context) error {
 		return err
 	}
 
-	return e.JSON(http.StatusOK, categories)
+	return response.Send(e, http.StatusOK, categories)
 }
 
 // SearchCategorySummariesByShopID godoc
@@ -835,5 +836,5 @@ func (p *productsHandler) SearchCategorySummariesByShopID(e echo.Context) error 
 		return err
 	}
 
-	return e.JSON(http.StatusOK, categories)
+	return response.Send(e, http.StatusOK, categories)
 }

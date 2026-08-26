@@ -6,6 +6,7 @@ import (
 
 	"Encargalo.app-api.go/internal/maps/domain/models"
 	"Encargalo.app-api.go/internal/maps/domain/ports"
+	"Encargalo.app-api.go/internal/shared/response"
 	"github.com/labstack/echo/v4"
 )
 
@@ -56,7 +57,7 @@ func (h *mapsHandler) ReverseGeocode(e echo.Context) error {
 		return err
 	}
 
-	return e.JSON(http.StatusOK, result)
+	return response.Send(e, http.StatusOK, result)
 }
 
 // Autocomplete godoc
@@ -93,7 +94,7 @@ func (h *mapsHandler) AutocompletePlaces(e echo.Context) error {
 		return err
 	}
 
-	return e.JSON(http.StatusOK, predictions)
+	return response.Send(e, http.StatusOK, predictions)
 }
 
 // PlaceDetails godoc
@@ -129,7 +130,7 @@ func (h *mapsHandler) GetPlaceDetails(e echo.Context) error {
 		return err
 	}
 
-	return e.JSON(http.StatusOK, details)
+	return response.Send(e, http.StatusOK, details)
 }
 
 // parseOptionalCoords reads lat/lng as an optional bias pair — absent or

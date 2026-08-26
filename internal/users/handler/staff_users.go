@@ -10,6 +10,7 @@ import (
 	authPorts "Encargalo.app-api.go/internal/auth/domain/ports"
 	"Encargalo.app-api.go/internal/shared/applog"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/shared/response"
 	"Encargalo.app-api.go/internal/users/domain/dto"
 	"Encargalo.app-api.go/internal/users/domain/ports"
 	"github.com/google/uuid"
@@ -69,7 +70,7 @@ func (h *staffUsersHandler) ListUsers(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // FindCandidate godoc
@@ -96,7 +97,7 @@ func (h *staffUsersHandler) FindCandidate(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // GetUser godoc
@@ -118,7 +119,7 @@ func (h *staffUsersHandler) GetUser(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // UpdateUser godoc
@@ -159,7 +160,7 @@ func (h *staffUsersHandler) UpdateUser(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // BlockUser godoc
@@ -190,7 +191,7 @@ func (h *staffUsersHandler) BlockUser(c echo.Context) error {
 		applog.Error(ctx, "staff bloqueó usuario pero no pudo invalidar sesiones", err, "staff_id", session.UserID.String(), "user_id", userID.String())
 	}
 
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // UnblockUser godoc
@@ -216,7 +217,7 @@ func (h *staffUsersHandler) UnblockUser(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // GrantStaff godoc
@@ -242,7 +243,7 @@ func (h *staffUsersHandler) GrantStaff(c echo.Context) error {
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // RevokeStaff godoc
@@ -276,5 +277,5 @@ func (h *staffUsersHandler) RevokeStaff(c echo.Context) error {
 		}
 	}
 
-	return c.JSON(http.StatusOK, resp)
+	return response.Send(c, http.StatusOK, resp)
 }
