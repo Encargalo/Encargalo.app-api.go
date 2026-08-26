@@ -10,20 +10,20 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-      with: 
-        fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.26'
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
 
-    - name: Install dependencies
-      run: go get ./...
+      - name: Install dependencies
+        run: go get ./...
 
-    - name: Build
-      run: go build -v ./...
+      - name: Build
+        run: go build -v ./...
 
   test:
     runs-on: ubuntu-latest
@@ -34,7 +34,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.26'
+          go-version: "1.26"
 
       - name: Check if tests exist
         id: check_tests
@@ -51,7 +51,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: steps.check_tests.outputs.has_tests == 'true'
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.out
@@ -68,5 +68,3 @@ jobs:
 
       - name: Validate Dockerfile build
         run: docker build --no-cache .
-
-  
