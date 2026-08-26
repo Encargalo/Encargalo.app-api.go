@@ -1,9 +1,9 @@
 # Encargalo App — API
 
 [![CI](https://github.com/Encargalo/Encargalo.app-api.go/actions/workflows/integration.yaml/badge.svg)](https://github.com/Encargalo/Encargalo.app-api.go/actions/workflows/integration.yaml)
-[![Release](https://img.shields.io/github/v/release/Encargalo/Encargalo.app-api.go)](https://github.com/Encargalo/Encargalo.app-api.go/releases)
+[![Release](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Shepherd-Go/e62dfeeb26535ed0041b22867484d04c/raw/release-badge.json)](https://github.com/Encargalo/Encargalo.app-api.go/releases)
 [![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)](https://go.dev/)
-[![codecov](https://codecov.io/gh/Encargalo/Encargalo.app-api.go/branch/main/graph/badge.svg)](https://codecov.io/gh/Encargalo/Encargalo.app-api.go)
+[![codecov](https://codecov.io/gh/Encargalo/Encargalo.app-api.go/graph/badge.svg?token=1MC2UPHI8Y)](https://codecov.io/gh/Encargalo/Encargalo.app-api.go)
 
 REST API del backend de Encargalo, construida en Go con arquitectura hexagonal.
 

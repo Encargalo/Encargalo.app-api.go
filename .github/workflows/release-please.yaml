@@ -21,3 +21,14 @@ jobs:
           target-branch: main
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      - name: Update release badge gist
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: e62dfeeb26535ed0041b22867484d04c
+          filename: release-badge.json
+          label: release
+          message: ${{ steps.release.outputs.tag_name }}
+          color: blue
