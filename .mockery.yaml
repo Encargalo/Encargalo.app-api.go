@@ -74,3 +74,11 @@ packages:
   Encargalo.app-api.go/internal/tracking/domain/ports:
     config:
       dir: "internal/mocks/tracking/domain/ports"
+
+  Encargalo.app-api.go/internal/pkg/uploadImage:
+    config:
+      dir: "internal/mocks/pkg/uploadImage"
+
+  Encargalo.app-api.go/internal/shared/adapters/googleauth:
+    config:
+      dir: "internal/mocks/shared/adapters/googleauth"
