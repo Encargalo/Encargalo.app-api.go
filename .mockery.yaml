@@ -74,3 +74,7 @@ packages:
   Encargalo.app-api.go/internal/tracking/domain/ports:
     config:
       dir: "internal/mocks/tracking/domain/ports"
+
+  Encargalo.app-api.go/internal/pkg/uploadImage:
+    config:
+      dir: "internal/mocks/pkg/uploadImage"
