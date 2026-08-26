@@ -73,7 +73,7 @@ func TestSearchAccountByPhone_DelegatesToRepo(t *testing.T) {
 	svc := app.NewUserApp(repo, bycript.NewHashPassword())
 
 	roles := []string{"OrderManager"}
-	repo.On("SearchAccountByPhone", mock.Anything, "0414", roles).Return(&models.Account{Phone: strPtr("0414")}, nil)
+	repo.On("SearchAccountByPhone", mock.Anything, "0414", roles).Return(&models.Account{Phone: new("0414")}, nil)
 
 	acc, err := svc.SearchAccountByPhone(context.Background(), "0414", roles)
 
@@ -81,5 +81,3 @@ func TestSearchAccountByPhone_DelegatesToRepo(t *testing.T) {
 	require.NotNil(t, acc.Phone)
 	assert.Equal(t, "0414", *acc.Phone)
 }
-
-func strPtr(s string) *string { return &s }
