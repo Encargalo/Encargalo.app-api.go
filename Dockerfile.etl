@@ -1,11 +1,11 @@
 #build stage
 FROM golang:1.26-alpine3.23 AS builder
-RUN apk add --no-cache git upx
+RUN apk add --no-cache git upx gcc musl-dev
 WORKDIR /app
 COPY ["go.mod", "go.sum", "./"]
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -tags timetzdata -o app ./cmd/etl
+RUN CGO_ENABLED=1 go build -tags timetzdata -ldflags '-linkmode external -extldflags "-static"' -o app ./cmd/etl
 RUN upx app
 
 #final stage
