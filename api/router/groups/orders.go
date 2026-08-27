@@ -8,7 +8,11 @@ import (
 	"Encargalo.app-api.go/internal/orders/handler"
 	sharedmw "Encargalo.app-api.go/internal/shared/middleware"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
+
+// createOrderBodyLimit da margen sobre el comprobante en base64 (~6.99MB) más el resto del JSON.
+const createOrderBodyLimit = "8M"
 
 // confirmCodeRateLimit acota los intentos de confirm-pickup/confirm-delivery
 // por IP para mitigar fuerza bruta sobre el código de 4 dígitos.
@@ -46,7 +50,7 @@ func (o *ordersGroup) Resource(g *echo.Echo) {
 		return o.rateLimiter.LimitByIP("orders:"+route, confirmCodeRateLimitCount, confirmCodeRateLimitWindow)
 	}
 
-	group.POST("", o.handlerOrders.CreateOrder, o.middle.Auth, o.middle.Require(models.Customer))
+	group.POST("", o.handlerOrders.CreateOrder, middleware.BodyLimit(createOrderBodyLimit), o.middle.Auth, o.middle.Require(models.Customer))
 	group.POST("/quote", o.handlerOrders.CreateQuote, o.middle.Auth, o.middle.Require(models.Customer))
 	group.GET("/history", o.handlerOrders.GetOrderHistory, o.middle.Auth, o.middle.Require(models.Customer))
 	group.GET("/manager", o.hanlderManagerOrders.HandleWebSocket, o.middle.Auth, o.middle.Require(models.Customer, models.OrderManager, models.Owner))

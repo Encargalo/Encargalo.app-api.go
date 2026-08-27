@@ -1,6 +1,7 @@
 package deliveryfee
 
 import (
+	"context"
 	"math"
 	"time"
 
@@ -33,8 +34,8 @@ func FromDistance(distanceMeters float64) float64 {
 }
 
 // Calculate obtiene la distancia vial entre tienda y dirección de entrega y retorna la tarifa.
-func Calculate(shopLat, shopLon, deliveryLat, deliveryLon float64) (float64, error) {
-	distMeters, err := googlemaps.DistanceMeters(shopLat, shopLon, deliveryLat, deliveryLon)
+func Calculate(ctx context.Context, shopLat, shopLon, deliveryLat, deliveryLon float64) (float64, error) {
+	distMeters, err := googlemaps.DistanceMeters(ctx, shopLat, shopLon, deliveryLat, deliveryLon)
 	if err != nil {
 		return 0, err
 	}

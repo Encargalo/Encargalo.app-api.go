@@ -1,0 +1,80 @@
+name: Sync PR merge to Project board
+
+# Mueve el item del Project (PR y/o issues que cierra) al estado correspondiente
+# cuando se mergea un PR: base=dev -> "In staging", base=main -> "Done".
+# Requiere el secret PROJECTS_TOKEN (PAT con permiso "Projects: Read and write"
+# sobre la org Encargalo) porque el GITHUB_TOKEN por defecto no puede escribir
+# en Projects v2 a nivel de organización.
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  sync-project-status:
+    if: github.event.pull_request.merged == true && (github.event.pull_request.base.ref == 'dev' || github.event.pull_request.base.ref == 'main')
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.PROJECTS_TOKEN }}
+      PROJECT_ID: PVT_kwDODYO3gs4BKl0v
+      STATUS_FIELD_ID: PVTSSF_lADODYO3gs4BKl0vzg6ab3I
+      STATUS_IN_STAGING: f29138ee
+      STATUS_DONE: 98236657
+    steps:
+      - name: Determine target status option
+        id: target
+        run: |
+          if [ "${{ github.event.pull_request.base.ref }}" = "main" ]; then
+            echo "option_id=$STATUS_DONE" >> "$GITHUB_OUTPUT"
+          else
+            echo "option_id=$STATUS_IN_STAGING" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Collect project item ids (PR + linked issues)
+        id: items
+        run: |
+          set -euo pipefail
+          REPO_OWNER="${{ github.repository_owner }}"
+          REPO_NAME="${{ github.event.repository.name }}"
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+
+          ids=$(gh api graphql -f query='
+            query($owner:String!, $repo:String!, $number:Int!) {
+              repository(owner:$owner, name:$repo) {
+                pullRequest(number:$number) {
+                  projectItems(first: 20) {
+                    nodes { id project { id } }
+                  }
+                  closingIssuesReferences(first: 20) {
+                    nodes {
+                      projectItems(first: 20) {
+                        nodes { id project { id } }
+                      }
+                    }
+                  }
+                }
+              }
+            }' -f owner="$REPO_OWNER" -f repo="$REPO_NAME" -F number="$PR_NUMBER" \
+            --jq '[.data.repository.pullRequest.projectItems.nodes[], (.data.repository.pullRequest.closingIssuesReferences.nodes[].projectItems.nodes[])] | map(select(.project.id == "'"$PROJECT_ID"'")) | map(.id) | @tsv')
+
+          echo "ids=$ids" >> "$GITHUB_OUTPUT"
+
+      - name: Update status on each item
+        if: steps.items.outputs.ids != ''
+        run: |
+          set -euo pipefail
+          for item_id in ${{ steps.items.outputs.ids }}; do
+            gh api graphql -f query='
+              mutation($project:ID!, $item:ID!, $field:ID!, $option:String!) {
+                updateProjectV2ItemFieldValue(input: {
+                  projectId: $project,
+                  itemId: $item,
+                  fieldId: $field,
+                  value: { singleSelectOptionId: $option }
+                }) { projectV2Item { id } }
+              }' -f project="$PROJECT_ID" -f item="$item_id" -f field="$STATUS_FIELD_ID" -f option="${{ steps.target.outputs.option_id }}"
+          done

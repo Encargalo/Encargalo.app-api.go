@@ -1,18 +1,26 @@
 package googlemaps
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"strings"
 
 	"Encargalo.app-api.go/internal/shared/config"
+	"Encargalo.app-api.go/internal/shared/reqctx"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 )
 
 // DistanceMeters returns the driving distance in meters between origin and destination.
-func DistanceMeters(originLat, originLon, destLat, destLon float64) (float64, error) {
+func DistanceMeters(ctx context.Context, originLat, originLon, destLat, destLon float64) (float64, error) {
+	ctx, span := otel.Tracer(reqctx.ServiceName).Start(ctx, "googlemaps.DistanceMeters")
+	defer span.End()
+
 	params := url.Values{}
 	params.Set("origins", fmt.Sprintf("%f,%f", originLat, originLon))
 	params.Set("destinations", fmt.Sprintf("%f,%f", destLat, destLon))
@@ -21,8 +29,15 @@ func DistanceMeters(originLat, originLon, destLat, destLon float64) (float64, er
 
 	fullURL := "https://maps.googleapis.com/maps/api/distancematrix/json?" + params.Encode()
 
-	resp, err := httpClient.Get(fullURL) //nolint:noctx
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fullURL, nil)
 	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		return 0, fmt.Errorf("building google maps request: %w", err)
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
 		return 0, fmt.Errorf("google maps request failed: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
