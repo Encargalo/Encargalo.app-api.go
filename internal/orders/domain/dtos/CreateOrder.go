@@ -19,11 +19,12 @@ type CreateOrder struct {
 	CustomerID uuid.UUID `json:"customer_id" swaggerignore:"true"`
 	// QuoteID congela el total en el servidor (POST /orders/quote). Si viene,
 	// shop/address/items/expected_total_price se toman del quote (pueden omitirse).
-	QuoteID           uuid.UUID `json:"quote_id,omitempty" example:"3fa85f64-5717-4562-b3fc-2c963f66afa6"`
-	ShopID            uuid.UUID `json:"shop_id" example:"3fa85f64-5717-4562-b3fc-2c963f66afa6"`
-	MethodPayment     string    `json:"method_payment" validate:"required,oneof=PagoMovil" example:"PagoMovil"`
-	PaymentProofImage string    `json:"payment_proof_image" example:"data:image/jpeg;base64,/9j/4AAQ..."`
-	Address           Address   `json:"address"`
+	QuoteID       uuid.UUID `json:"quote_id,omitempty" example:"3fa85f64-5717-4562-b3fc-2c963f66afa6"`
+	ShopID        uuid.UUID `json:"shop_id" example:"3fa85f64-5717-4562-b3fc-2c963f66afa6"`
+	MethodPayment string    `json:"method_payment" validate:"required,oneof=PagoMovil" example:"PagoMovil"`
+	// 7_000_000 ~ 5MB (límite del front) en base64.
+	PaymentProofImage string  `json:"payment_proof_image" validate:"max=7000000" example:"data:image/jpeg;base64,/9j/4AAQ..."`
+	Address           Address `json:"address"`
 	// ExpectedTotalPrice (legacy sin quote): total que el front mostró.
 	// Con quote_id se ignora. Sin quote_id sigue siendo obligatorio.
 	ExpectedTotalPrice float64 `json:"expected_total_price" example:"18.5"`

@@ -14,6 +14,7 @@ import (
 	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 )
 
@@ -33,6 +34,7 @@ func NewUploadImage(cld *cloudinary.Cloudinary) UploadImage {
 
 func (repo uploadImage) UploadImage(ctx context.Context, imageB64 string) (*uploader.UploadResult, error) {
 	ctx, span := otel.Tracer(reqctx.ServiceName).Start(ctx, "cloudinary.Upload")
+	span.SetAttributes(attribute.Int("image_bytes", len(imageB64)))
 	defer span.End()
 
 	folder := config.Get().Cloudinary.Folder
