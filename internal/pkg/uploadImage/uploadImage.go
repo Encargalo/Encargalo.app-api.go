@@ -10,8 +10,11 @@ import (
 
 	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/shared/reqctx"
 	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 )
 
 type UploadImage interface {
@@ -29,9 +32,13 @@ func NewUploadImage(cld *cloudinary.Cloudinary) UploadImage {
 }
 
 func (repo uploadImage) UploadImage(ctx context.Context, imageB64 string) (*uploader.UploadResult, error) {
+	ctx, span := otel.Tracer(reqctx.ServiceName).Start(ctx, "cloudinary.Upload")
+	defer span.End()
+
 	folder := config.Get().Cloudinary.Folder
 	resp, err := repo.cld.Upload.Upload(ctx, imageB64, uploader.UploadParams{Folder: folder})
 	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
 		slog.Error("error uploading image", "error", err)
 		return nil, err
 	}
@@ -42,6 +49,7 @@ func (repo uploadImage) UploadImage(ctx context.Context, imageB64 string) (*uplo
 		if resp != nil && resp.Error.Message != "" {
 			msg = resp.Error.Message
 		}
+		span.SetStatus(codes.Error, msg)
 		slog.Error("error uploading image", "error", msg)
 		return nil, fmt.Errorf("cloudinary upload failed: %s", msg)
 	}

@@ -121,6 +121,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(groups.NewBcvGroup)
 	_ = Container.Provide(groups.NewMapsGroup)
 	_ = Container.Provide(groups.NewTrackingGroup)
+	_ = Container.Provide(groups.NewDiagnosticsGroup)
 	_ = Container.Provide(handPayment.NewPaymentMethodsHandler)
 	_ = Container.Provide(appPayment.NewPaymentMethodsApp)
 	_ = Container.Provide(repoPayment.NewPaymentMethodsRepo)

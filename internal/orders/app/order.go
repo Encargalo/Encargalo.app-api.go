@@ -309,7 +309,7 @@ func (o *orderApp) priceOrderDraft(ctx context.Context, order *dtos.CreateOrder)
 
 	var fee float64
 	if config.Get().IsProduction() {
-		fee, err = deliveryfee.Calculate(shop.Latitude, shop.Longitude, order.Address.Latitude, order.Address.Longitude)
+		fee, err = deliveryfee.Calculate(ctx, shop.Latitude, shop.Longitude, order.Address.Latitude, order.Address.Longitude)
 		if err != nil {
 			slog.Error("calcDeliveryFee: google maps failed", "shopID", shop.ID, "error", err)
 			return nil, errcustom.ErrUnexpectedError

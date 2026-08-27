@@ -31,6 +31,7 @@ type Router struct {
 	bcvGroup            groups.BcvGroup
 	mapsGroup           groups.MapsGroup
 	trackingGroup       groups.TrackingGroup
+	diagnosticsGroup    groups.DiagnosticsGroup
 }
 
 func New(
@@ -46,6 +47,7 @@ func New(
 	bcvGroup groups.BcvGroup,
 	mapsGroup groups.MapsGroup,
 	trackingGroup groups.TrackingGroup,
+	diagnosticsGroup groups.DiagnosticsGroup,
 ) *Router {
 	return &Router{
 		server,
@@ -61,6 +63,7 @@ func New(
 		bcvGroup,
 		mapsGroup,
 		trackingGroup,
+		diagnosticsGroup,
 	}
 }
 
@@ -92,5 +95,6 @@ func (r *Router) Init() {
 	r.bcvGroup.Resource(r.server)
 	r.mapsGroup.Resource(r.server)
 	r.trackingGroup.Resource(r.server)
+	r.diagnosticsGroup.Resource(r.server)
 
 }
