@@ -3776,6 +3776,11 @@ paths:
       consumes:
       - application/json
       description: Establece una conexión WebSocket exclusiva para el rol Rider.
+      parameters:
+      - description: orders|trips (default orders)
+        in: query
+        name: mode
+        type: string
       produces:
       - application/json
       responses:

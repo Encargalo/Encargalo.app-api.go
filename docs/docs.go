@@ -2392,6 +2392,14 @@ const docTemplate = `{
                     "Riders WebSocket"
                 ],
                 "summary": "WebSocket de gestión de órdenes para riders",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "orders|trips (default orders)",
+                        "name": "mode",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "401": {
                         "description": "Sesión no encontrada o inválida",
