@@ -32,6 +32,7 @@ type Router struct {
 	mapsGroup           groups.MapsGroup
 	trackingGroup       groups.TrackingGroup
 	diagnosticsGroup    groups.DiagnosticsGroup
+	tripsGroup          groups.TripsGroup
 }
 
 func New(
@@ -48,6 +49,7 @@ func New(
 	mapsGroup groups.MapsGroup,
 	trackingGroup groups.TrackingGroup,
 	diagnosticsGroup groups.DiagnosticsGroup,
+	tripsGroup groups.TripsGroup,
 ) *Router {
 	return &Router{
 		server,
@@ -64,6 +66,7 @@ func New(
 		mapsGroup,
 		trackingGroup,
 		diagnosticsGroup,
+		tripsGroup,
 	}
 }
 
@@ -96,5 +99,6 @@ func (r *Router) Init() {
 	r.mapsGroup.Resource(r.server)
 	r.trackingGroup.Resource(r.server)
 	r.diagnosticsGroup.Resource(r.server)
+	r.tripsGroup.Resource(r.server)
 
 }

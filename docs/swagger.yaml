@@ -79,14 +79,60 @@ definitions:
     - amount_bs
     - proof_image
     type: object
+  Encargalo_app-api_go_internal_maps_domain_models.AddressComponent:
+    properties:
+      long_name:
+        type: string
+      short_name:
+        type: string
+      types:
+        items:
+          type: string
+        type: array
+    type: object
+  Encargalo_app-api_go_internal_maps_domain_models.AddressParts:
+    properties:
+      administrative_area_level_1:
+        type: string
+      administrative_area_level_2:
+        type: string
+      administrative_area_level_3:
+        type: string
+      country:
+        type: string
+      country_code:
+        type: string
+      locality:
+        type: string
+      neighborhood:
+        type: string
+      postal_code:
+        type: string
+      premise:
+        type: string
+      route:
+        type: string
+      street_number:
+        type: string
+      sublocality:
+        type: string
+      subpremise:
+        type: string
+    type: object
   Encargalo_app-api_go_internal_maps_domain_models.PlaceDetails:
     properties:
       address:
         type: string
+      address_components:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_maps_domain_models.AddressComponent'
+        type: array
       lat:
         type: number
       lng:
         type: number
+      parts:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_maps_domain_models.AddressParts'
     type: object
   Encargalo_app-api_go_internal_maps_domain_models.PlacePrediction:
     properties:
@@ -99,8 +145,14 @@ definitions:
     type: object
   Encargalo_app-api_go_internal_maps_domain_models.ReverseGeocodeResult:
     properties:
+      address_components:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_maps_domain_models.AddressComponent'
+        type: array
       formatted_address:
         type: string
+      parts:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_maps_domain_models.AddressParts'
       short_address:
         type: string
     type: object
@@ -184,7 +236,9 @@ definitions:
         example: PagoMovil
         type: string
       payment_proof_image:
+        description: 7_000_000 ~ 5MB (límite del front) en base64.
         example: data:image/jpeg;base64,/9j/4AAQ...
+        maxLength: 7000000
         type: string
       quote_id:
         description: |-
@@ -1530,6 +1584,84 @@ definitions:
       name:
         type: string
       slug:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_tracking_domain_dtos.TrackEvent:
+    properties:
+      id:
+        type: string
+      params:
+        additionalProperties: {}
+        type: object
+      type:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_trips_domain_dtos.CreateTripRequest:
+    properties:
+      dropoff_address:
+        example: CC Sambil, Caracas
+        type: string
+      dropoff_latitude:
+        example: 10.4956
+        type: number
+      dropoff_longitude:
+        example: -66.8517
+        type: number
+      pickup_address:
+        example: Av. Libertador, Caracas
+        type: string
+      pickup_latitude:
+        example: 10.4806
+        type: number
+      pickup_longitude:
+        example: -66.9036
+        type: number
+    required:
+    - dropoff_address
+    - dropoff_latitude
+    - dropoff_longitude
+    - pickup_address
+    - pickup_latitude
+    - pickup_longitude
+    type: object
+  Encargalo_app-api_go_internal_trips_domain_dtos.TripHistoryResponse:
+    properties:
+      trips:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.TripResponse'
+        type: array
+    type: object
+  Encargalo_app-api_go_internal_trips_domain_dtos.TripResponse:
+    properties:
+      accepted_at:
+        type: string
+      cancelled_at:
+        type: string
+      completed_at:
+        type: string
+      customer_id:
+        type: string
+      dropoff_address:
+        type: string
+      dropoff_latitude:
+        type: number
+      dropoff_longitude:
+        type: number
+      fare:
+        type: number
+      id:
+        type: string
+      pickup_address:
+        type: string
+      pickup_latitude:
+        type: number
+      pickup_longitude:
+        type: number
+      requested_at:
+        type: string
+      rider_id:
+        type: string
+      status:
         type: string
     type: object
   Encargalo_app-api_go_internal_users_domain_dto.Address:
@@ -3226,8 +3358,11 @@ paths:
       - Internal
   /maps/geocode/reverse:
     get:
-      description: Resuelve una dirección legible a partir de una coordenada, usando
-        la Google Geocoding API. Cacheado por el servidor por coordenadas redondeadas.
+      description: Resuelve una dirección a partir de una coordenada, usando la Google
+        Geocoding API. Incluye formatted_address, parts (locality=ciudad, administrative_area_level_1=estado,
+        administrative_area_level_2=municipio/provincia) y address_components crudos
+        de Google para que el cliente arme la dirección. Cacheado por el servidor
+        por coordenadas redondeadas.
       parameters:
       - description: Latitud
         in: query
@@ -3330,7 +3465,10 @@ paths:
   /maps/places/details:
     get:
       description: Resuelve dirección y coordenadas de un place_id devuelto por /maps/places/autocomplete,
-        usando la Google Places Details API. Cacheado por el servidor por place_id.
+        usando la Google Places Details API. Incluye address, lat/lng, parts (locality=ciudad,
+        administrative_area_level_1=estado, administrative_area_level_2=municipio/provincia)
+        y address_components crudos de Google para que el cliente arme la dirección.
+        Cacheado por el servidor por place_id.
       parameters:
       - description: ID de lugar de Google
         in: query
@@ -3910,10 +4048,11 @@ paths:
       - Products
   /products/trending:
     get:
-      description: Retorna el producto más vendido de cada local abierto dentro de
-        un radio de 1 km de las coordenadas dadas. Máximo 10 resultados, excluyendo
-        productos cuya categoría tiene un horario configurado que no cubre la hora
-        actual (America/Caracas). Cacheado 15 minutos.
+      description: Retorna productos más vendidos de locales abiertos. En producción
+        se limita a un radio de 1 km de las coordenadas dadas; fuera de producción
+        no se aplica el recorte por distancia. Máximo 10 resultados, excluyendo productos
+        cuya categoría tiene un horario configurado que no cubre la hora actual (America/Caracas).
+        Cacheado 15 minutos.
       parameters:
       - description: Latitud del usuario
         in: query
@@ -5555,6 +5694,176 @@ paths:
       summary: Negocios con saldo por pagar (staff)
       tags:
       - Shops Staff Finance
+  /tracking:
+    post:
+      consumes:
+      - application/json
+      description: Persiste un evento genérico (pixel, cta u otro type). El body `params`
+        se guarda tal cual en JSONB; el servidor inyecta user_id y session_id desde
+        la sesión. Idempotente por `id`.
+      parameters:
+      - description: Evento de tracking
+        in: body
+        name: event
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_tracking_domain_dtos.TrackEvent'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Registrado o ya existía
+          schema:
+            type: string
+        "400":
+          description: Body inválido, type inválido o params demasiado grandes
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "429":
+          description: Demasiadas solicitudes
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Registrar evento de tracking
+      tags:
+      - Tracking
+  /trips:
+    post:
+      consumes:
+      - application/json
+      description: Crea un viaje en estado "requested" con punto de recogida y destino.
+        El matching con conductores cercanos no está incluido en este endpoint.
+      parameters:
+      - description: Datos del viaje
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.CreateTripRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.TripResponse'
+        "400":
+          description: payload inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Solicitar un viaje
+      tags:
+      - Trips
+  /trips/{id}:
+    get:
+      parameters:
+      - description: Trip ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.TripResponse'
+        "400":
+          description: id inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "403":
+          description: El viaje no pertenece a este cliente
+          schema:
+            type: string
+        "404":
+          description: No encontrado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Detalle de un viaje
+      tags:
+      - Trips
+  /trips/{id}/cancel:
+    post:
+      description: Solo permitido mientras el viaje esté en requested/searching/accepted/arriving.
+      parameters:
+      - description: Trip ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.TripResponse'
+        "400":
+          description: id inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "403":
+          description: El viaje no pertenece a este cliente
+          schema:
+            type: string
+        "404":
+          description: No encontrado
+          schema:
+            type: string
+        "422":
+          description: El viaje no se puede cancelar en su estado actual
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Cancelar un viaje
+      tags:
+      - Trips
+  /trips/history:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.TripHistoryResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Historial de viajes del cliente
+      tags:
+      - Trips
   /turbo/entry:
     get:
       description: 'Dadas las coordenadas del cliente, asigna el nodo Turbo abierto
@@ -5834,7 +6143,8 @@ paths:
     get:
       description: Retorna balance_bs y balance_usd (tasa BCV vigente en bcv_rate)
         y los últimos 10 movimientos (amount_bs y amount_usd). Créditos elegibles
-        incluyen can_request_refund (ventana/monto/saldo; no exige Pago Móvil) y refund_eligible_until.
+        incluyen refundable_pm_bs, can_request_refund (ventana/monto > $1 equivalente
+        en Bs a la tasa congelada/saldo; no exige Pago Móvil) y refund_eligible_until.
         Los débitos de devolución (balance_refund_hold / processing / payout) y créditos
         balance_refund_restore incluyen refund_request_id para abrir el detalle.
       produces:
