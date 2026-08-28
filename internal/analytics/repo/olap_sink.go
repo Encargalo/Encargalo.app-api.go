@@ -32,6 +32,7 @@ func (r *olapSinkRepo) UpsertShops(ctx context.Context, rows []models.DimShop) e
 			Set("created_at = EXCLUDED.created_at").
 			Set("updated_at = EXCLUDED.updated_at").
 			Set("synced_at = EXCLUDED.synced_at").
+			Set("h3_cell = EXCLUDED.h3_cell").
 			Exec(ctx)
 		if err != nil {
 			return errcustom.Unexpected(err)
@@ -104,6 +105,7 @@ func (r *olapSinkRepo) UpsertOrders(ctx context.Context, rows []models.CubeOrder
 			Set("order_date = EXCLUDED.order_date").
 			Set("created_at = EXCLUDED.created_at").
 			Set("synced_at = EXCLUDED.synced_at").
+			Set("h3_cell = EXCLUDED.h3_cell").
 			Exec(ctx)
 		if err != nil {
 			return errcustom.Unexpected(err)
