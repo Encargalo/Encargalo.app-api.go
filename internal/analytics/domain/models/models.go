@@ -51,6 +51,7 @@ type DimShop struct {
 	CreatedAt     time.Time `bun:"created_at,notnull"`
 	UpdatedAt     time.Time `bun:"updated_at,notnull"`
 	SyncedAt      time.Time `bun:"synced_at,notnull"`
+	H3Cell        *string   `bun:"h3_cell"`
 }
 
 type DimUser struct {
@@ -112,6 +113,7 @@ type CubeOrder struct {
 	OrderDate          time.Time  `bun:"order_date,notnull"`
 	CreatedAt          time.Time  `bun:"created_at,notnull"`
 	SyncedAt           time.Time  `bun:"synced_at,notnull"`
+	H3Cell             *string    `bun:"h3_cell"`
 }
 
 type ETLEntityResult struct {
