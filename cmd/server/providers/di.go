@@ -70,6 +70,10 @@ import (
 	appPayment "Encargalo.app-api.go/internal/payment_methods/app"
 	handPayment "Encargalo.app-api.go/internal/payment_methods/handler"
 	repoPayment "Encargalo.app-api.go/internal/payment_methods/repo"
+
+	appTrips "Encargalo.app-api.go/internal/trips/app"
+	handTrips "Encargalo.app-api.go/internal/trips/handler"
+	repoTrips "Encargalo.app-api.go/internal/trips/repo"
 )
 
 var Container *dig.Container
@@ -122,9 +126,13 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(groups.NewMapsGroup)
 	_ = Container.Provide(groups.NewTrackingGroup)
 	_ = Container.Provide(groups.NewDiagnosticsGroup)
+	_ = Container.Provide(groups.NewTripsGroup)
 	_ = Container.Provide(handPayment.NewPaymentMethodsHandler)
 	_ = Container.Provide(appPayment.NewPaymentMethodsApp)
 	_ = Container.Provide(repoPayment.NewPaymentMethodsRepo)
+	_ = Container.Provide(handTrips.NewTripsHandler)
+	_ = Container.Provide(appTrips.NewTripsApp)
+	_ = Container.Provide(repoTrips.NewTripsRepo)
 
 	_ = Container.Provide(requestinfo.NewRequestMiddleware)
 	_ = Container.Provide(sharedmw.NewRateLimiter)
