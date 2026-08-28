@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"Encargalo.app-api.go/internal/pkg/geo"
 	jsonutil "Encargalo.app-api.go/internal/pkg/json"
 	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
 	"Encargalo.app-api.go/internal/shared/errcustom"
@@ -151,6 +152,12 @@ func (a *staffShopApp) UpdateDraftShop(ctx context.Context, shopID uuid.UUID, re
 		if req.Longitude.Valid {
 			lon := req.Longitude.Value
 			shop.Longitude = &lon
+		}
+	}
+	shop.H3Cell = nil
+	if shop.Latitude != nil && shop.Longitude != nil {
+		if cell, err := geo.LatLngToCell(*shop.Latitude, *shop.Longitude, geo.ZoneAnalyticsResolution); err == nil {
+			shop.H3Cell = &cell
 		}
 	}
 	if req.LogoImage.Set {

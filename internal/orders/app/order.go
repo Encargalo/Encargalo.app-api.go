@@ -571,6 +571,12 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 
 	orderModel.Details = detailsData
 
+	cell, err := geo.LatLngToCell(orderModel.Latitude, orderModel.Longitude, geo.ZoneAnalyticsResolution)
+	if err != nil {
+		slog.Warn("CreateOrder: failed to compute h3_cell", "orderID", orderModel.ID, "error", err)
+	}
+	orderModel.H3Cell = cell
+
 	orderDB, err := o.repo.CreateOrder(ctx, orderModel)
 	if err != nil {
 		o.refundBalanceDebit(ctx, order.CustomerID, orderModel.ID, balanceUsedBs)

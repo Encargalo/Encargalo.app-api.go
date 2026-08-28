@@ -22,6 +22,7 @@ type Order struct {
 	Address            string          `bun:"address" json:"address"`
 	Latitude           float64         `bun:"latitude" json:"latitude"`
 	Longitude          float64         `bun:"longitude" json:"longitude"`
+	H3Cell             string          `bun:"h3_cell" json:"h3_cell,omitempty"`
 	MethodPayment      string          `bun:"method_payment" json:"method_payment"`
 	Status             string          `bun:"status" json:"status"`
 	DeliveryFee        float64         `bun:"delivery_fee" json:"delivery_fee"`
