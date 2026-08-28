@@ -11,6 +11,7 @@ import (
 
 	bcvPorts "Encargalo.app-api.go/internal/bcv/domain/ports"
 	ordersModels "Encargalo.app-api.go/internal/orders/domain/models"
+	"Encargalo.app-api.go/internal/pkg/geo"
 	riderModels "Encargalo.app-api.go/internal/riders/domain/models"
 	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/deliveryfee"
@@ -24,6 +25,8 @@ type appRidersManager struct {
 	mu              sync.RWMutex
 	availableRiders map[uuid.UUID]ridersPorts.RiderConn
 	assignedOrders  map[uuid.UUID][]uuid.UUID // riderID → []orderID
+	riderMode       map[uuid.UUID]riderModels.RiderMode
+	riderLocation   map[uuid.UUID]riderModels.RiderLocation
 	repo            ridersPorts.RidersRepo
 	stream          ridersPorts.RidersStream
 	bcv             bcvPorts.BcvApp
@@ -33,15 +36,22 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 	return &appRidersManager{
 		availableRiders: make(map[uuid.UUID]ridersPorts.RiderConn),
 		assignedOrders:  make(map[uuid.UUID][]uuid.UUID),
+		riderMode:       make(map[uuid.UUID]riderModels.RiderMode),
+		riderLocation:   make(map[uuid.UUID]riderModels.RiderLocation),
 		repo:            repo,
 		stream:          stream,
 		bcv:             bcv,
 	}
 }
 
-func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn ridersPorts.RiderConn) error {
+func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn ridersPorts.RiderConn, mode riderModels.RiderMode) error {
+	if mode != riderModels.RiderModeTrips {
+		mode = riderModels.RiderModeOrders
+	}
+
 	r.mu.Lock()
 	r.availableRiders[riderID] = conn
+	r.riderMode[riderID] = mode
 	r.mu.Unlock()
 
 	activeOrders, err := r.repo.SearchActiveOrdersByRiderID(ctx, riderID)
@@ -92,10 +102,44 @@ func (r *appRidersManager) Unregister(riderID uuid.UUID, conn ridersPorts.RiderC
 	r.mu.Lock()
 	if stored, ok := r.availableRiders[riderID]; ok && stored == conn {
 		delete(r.availableRiders, riderID)
+		delete(r.riderMode, riderID)
+		delete(r.riderLocation, riderID)
 	}
 	r.mu.Unlock()
 
 	conn.Close()
+}
+
+func (r *appRidersManager) UpdateLocation(ctx context.Context, riderID uuid.UUID, lat, lng float64) error {
+	cell, err := geo.LatLngToCell(lat, lng, geo.DriverMatchResolution)
+	if err != nil {
+		return errcustom.ErrInvalidCoordinates
+	}
+
+	r.mu.Lock()
+	r.riderLocation[riderID] = riderModels.RiderLocation{
+		Latitude:  lat,
+		Longitude: lng,
+		H3Cell:    cell,
+		UpdatedAt: time.Now(),
+	}
+	r.mu.Unlock()
+
+	return nil
+}
+
+func (r *appRidersManager) SnapshotTripsRiders() []riderModels.RiderLocationEntry {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	out := make([]riderModels.RiderLocationEntry, 0, len(r.riderLocation))
+	for riderID, loc := range r.riderLocation {
+		if r.riderMode[riderID] != riderModels.RiderModeTrips {
+			continue
+		}
+		out = append(out, riderModels.RiderLocationEntry{RiderID: riderID, Location: loc})
+	}
+	return out
 }
 
 func (r *appRidersManager) BroadcastNewOrder(ctx context.Context, order ordersModels.Order) {
@@ -112,7 +156,10 @@ func (r *appRidersManager) BroadcastNewOrder(ctx context.Context, order ordersMo
 
 	r.mu.RLock()
 	clients := make([]ridersPorts.RiderConn, 0, len(r.availableRiders))
-	for _, c := range r.availableRiders {
+	for riderID, c := range r.availableRiders {
+		if r.riderMode[riderID] == riderModels.RiderModeTrips {
+			continue
+		}
 		clients = append(clients, c)
 	}
 	r.mu.RUnlock()
