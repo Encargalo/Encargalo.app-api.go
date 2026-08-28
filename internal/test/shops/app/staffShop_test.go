@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	mocksshops "Encargalo.app-api.go/internal/mocks/shops/domain/ports"
+	"Encargalo.app-api.go/internal/pkg/geo"
 	jsonutil "Encargalo.app-api.go/internal/pkg/json"
 	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
 	"Encargalo.app-api.go/internal/shared/errcustom"
@@ -218,4 +219,55 @@ func TestActivateShop_AlreadyActiveIsIdempotent(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "active", resp.Status)
 	repo.AssertNotCalled(t, "ActivateShop", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestUpdateDraftShop_ComputesH3CellFromCoordinates(t *testing.T) {
+	repo := mocksshops.NewStaffShopRepo(t)
+	staffApp := app.NewStaffShopApp(repo, nil, nil)
+
+	shopID := uuid.New()
+	existing := &shopsmodels.Shop{ID: shopID, Name: "Pizzería Don Luigi", Type: "Restaurant"}
+	lat, lon := 10.4806, -66.9036
+	wantCell, err := geo.LatLngToCell(lat, lon, geo.ZoneAnalyticsResolution)
+	require.NoError(t, err)
+
+	repo.On("GetShopByID", context.Background(), shopID).Return(existing, nil).Once()
+	repo.On("UpdateDraftShop", context.Background(), mock.MatchedBy(func(s *shopsmodels.Shop) bool {
+		return s.H3Cell != nil && *s.H3Cell == wantCell
+	})).Return(nil)
+	repo.On("GetShopByID", context.Background(), shopID).Return(existing, nil).Once()
+
+	_, err = staffApp.UpdateDraftShop(context.Background(), shopID, dtos.UpdateDraftShopRequest{
+		Latitude:  jsonutil.Nullable[float64]{Set: true, Valid: true, Value: lat},
+		Longitude: jsonutil.Nullable[float64]{Set: true, Valid: true, Value: lon},
+	})
+
+	require.NoError(t, err)
+	repo.AssertExpectations(t)
+}
+
+func TestUpdateDraftShop_ClearsH3CellWhenCoordinateRemoved(t *testing.T) {
+	repo := mocksshops.NewStaffShopRepo(t)
+	staffApp := app.NewStaffShopApp(repo, nil, nil)
+
+	shopID := uuid.New()
+	lat, lon := 10.4806, -66.9036
+	prevCell := "8718360cdffffff"
+	existing := &shopsmodels.Shop{
+		ID: shopID, Name: "Pizzería Don Luigi", Type: "Restaurant",
+		Latitude: &lat, Longitude: &lon, H3Cell: &prevCell,
+	}
+
+	repo.On("GetShopByID", context.Background(), shopID).Return(existing, nil).Once()
+	repo.On("UpdateDraftShop", context.Background(), mock.MatchedBy(func(s *shopsmodels.Shop) bool {
+		return s.H3Cell == nil
+	})).Return(nil)
+	repo.On("GetShopByID", context.Background(), shopID).Return(existing, nil).Once()
+
+	_, err := staffApp.UpdateDraftShop(context.Background(), shopID, dtos.UpdateDraftShopRequest{
+		Longitude: jsonutil.Nullable[float64]{Set: true, Valid: false},
+	})
+
+	require.NoError(t, err)
+	repo.AssertExpectations(t)
 }

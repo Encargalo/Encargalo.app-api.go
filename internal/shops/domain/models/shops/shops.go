@@ -40,6 +40,7 @@ type Shop struct {
 	HomePhone     string     `bun:"home_phone,type:varchar"`
 	Latitude      *float64   `bun:"latitude,type:float"`
 	Longitude     *float64   `bun:"longitude,type:float"`
+	H3Cell        *string    `bun:"h3_cell,type:varchar"`
 	LogoImage     string     `bun:"logo_image,type:varchar"`
 	Banner        string     `bun:"banner,type:varchar"`
 	Opened        bool       `bun:"opened,default:false"`

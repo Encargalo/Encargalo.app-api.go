@@ -8,6 +8,7 @@ import (
 	bcvmodels "Encargalo.app-api.go/internal/bcv/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	ordermodels "Encargalo.app-api.go/internal/orders/domain/models"
+	"Encargalo.app-api.go/internal/pkg/geo"
 	productmodels "Encargalo.app-api.go/internal/products/domain/models"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	usersdto "Encargalo.app-api.go/internal/users/domain/dto"
@@ -340,6 +341,42 @@ func TestCreateOrder_WithQuote_ProductBecameUnavailable(t *testing.T) {
 	_, err := svc.CreateOrder(context.Background(), order)
 
 	assert.ErrorIs(t, err, errcustom.ErrProductUnavailable)
+}
+
+func TestCreateOrder_ComputesH3CellFromAddress(t *testing.T) {
+	svc, m := newOrderAppFixture(t)
+	orderID, quoteID, shopID, customerID, itemID := uuid.New(), uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	quote := sampleQuoteForOrder(quoteID, customerID, shopID, itemID, 22, 2, 40)
+	wantCell, err := geo.LatLngToCell(quote.Address.Latitude, quote.Address.Longitude, geo.ZoneAnalyticsResolution)
+	require.NoError(t, err)
+
+	m.repo.On("SearchOrdersByID", mock.Anything, orderID).Return(nil, errcustom.ErrNotFound)
+	m.quotes.On("Get", mock.Anything, quoteID).Return(quote, nil)
+	m.repo.On("SearchShopByID", mock.Anything, shopID).Return(sampleOpenShop(shopID), nil)
+	m.shops.On("SearchBatchByShopID", mock.Anything, shopID).Return(uuid.New(), nil)
+	m.repo.On("SearchItemsByID", mock.Anything, mock.Anything).Return(productmodels.Items{sampleCatalogItem(itemID, 10)}, nil)
+	m.users.On("SearchCustomerBy", mock.Anything, usersdto.SearchCustomerBy{ID: customerID}).Return(sampleAccount(customerID), nil)
+	m.customerBalance.On("GetBalanceBs", mock.Anything, customerID).Return(880.0, nil)
+	m.quotes.On("TryConsume", mock.Anything, quoteID, mock.Anything).Return(true, nil)
+	m.quotes.On("ClearActiveID", mock.Anything, customerID).Return(nil)
+	m.customerBalance.On("DebitForOrder", mock.Anything, customerID, orderID, 880.0).Return(nil)
+	m.repo.On("CreateOrder", mock.Anything, mock.MatchedBy(func(o *ordermodels.Order) bool {
+		return o.H3Cell == wantCell
+	})).Return(&ordermodels.Order{
+		ID: orderID, ShopID: shopID, CustomerID: customerID, TotalPrice: 22, DeliveryFee: 2,
+		MethodPayment: "PagoMovil", Status: string(ordermodels.StatusPending),
+	}, nil)
+	m.stream.On("PublisherEvent", mock.Anything, mock.Anything).Return(nil)
+
+	order := &dtos.CreateOrder{
+		ID: orderID, QuoteID: quoteID, CustomerID: customerID, MethodPayment: "PagoMovil",
+		BalanceAmountBs: 880,
+	}
+
+	_, err = svc.CreateOrder(context.Background(), order)
+
+	require.NoError(t, err)
+	m.repo.AssertExpectations(t)
 }
 
 func TestCreateOrder_BcvRateUnavailable(t *testing.T) {
