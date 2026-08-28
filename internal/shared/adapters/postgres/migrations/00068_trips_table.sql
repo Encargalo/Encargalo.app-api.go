@@ -4,7 +4,7 @@ CREATE SCHEMA IF NOT EXISTS trips;
 CREATE TABLE IF NOT EXISTS trips.trips
 (
     id                 UUID             DEFAULT UUID_GENERATE_V4() NOT NULL PRIMARY KEY,
-    customer_id        UUID             NOT NULL REFERENCES customers.accounts (id),
+    customer_id        UUID             NOT NULL REFERENCES users.accounts (id),
     rider_id           UUID,
     status             VARCHAR          NOT NULL DEFAULT 'requested',
     pickup_address     VARCHAR          NOT NULL,
