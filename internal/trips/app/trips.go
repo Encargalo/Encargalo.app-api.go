@@ -41,10 +41,16 @@ func (a *tripsApp) RequestTrip(ctx context.Context, customerID uuid.UUID, req dt
 		return dtos.TripResponse{}, err
 	}
 
-	if ok, err := a.repo.UpdateTripStatus(ctx, trip.ID, models.TripStatusRequested, models.TripStatusSearching); err == nil && ok {
-		trip.Status = models.TripStatusSearching
-		a.matcher.OfferTrip(ctx, *trip)
+	ok, err := a.repo.UpdateTripStatus(ctx, trip.ID, models.TripStatusRequested, models.TripStatusSearching)
+	if err != nil {
+		return dtos.TripResponse{}, err
 	}
+	if !ok {
+		return dtos.TripResponse{}, errcustom.ErrUnexpectedError
+	}
+
+	trip.Status = models.TripStatusSearching
+	a.matcher.OfferTrip(ctx, *trip)
 
 	return trip.ToDTO(), nil
 }

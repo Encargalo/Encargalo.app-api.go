@@ -17,8 +17,8 @@ import (
 	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/deliveryfee"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	tripsDtos "Encargalo.app-api.go/internal/trips/domain/dtos"
 	tripsModels "Encargalo.app-api.go/internal/trips/domain/models"
-	tripsPorts "Encargalo.app-api.go/internal/trips/domain/ports"
 	"github.com/google/uuid"
 )
 
@@ -40,10 +40,10 @@ type appRidersManager struct {
 	repo            ridersPorts.RidersRepo
 	stream          ridersPorts.RidersStream
 	bcv             bcvPorts.BcvApp
-	tripsRepo       tripsPorts.TripsRepo
+	tripsRepo       ridersPorts.TripsStore
 }
 
-func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPorts.BcvApp, tripsRepo tripsPorts.TripsRepo) ridersPorts.RidersApp {
+func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPorts.BcvApp, tripsRepo ridersPorts.TripsStore) ridersPorts.RidersApp {
 	return &appRidersManager{
 		availableRiders: make(map[uuid.UUID]ridersPorts.RiderConn),
 		assignedOrders:  make(map[uuid.UUID][]uuid.UUID),
@@ -323,7 +323,7 @@ func (r *appRidersManager) OfferTrip(ctx context.Context, trip tripsModels.Trip)
 		return
 	}
 
-	data, err := json.Marshal(tripBroadcast{Type: "trip_offer", Trip: trip})
+	data, err := json.Marshal(tripBroadcast{Type: "trip_offer", Trip: trip.ToDTO()})
 	if err != nil {
 		slog.Error("error marshaling trip_offer broadcast", "error", err)
 		return
@@ -375,7 +375,10 @@ func (r *appRidersManager) nearestTripsRiders(trip tripsModels.Trip) []riderMode
 		return nil
 	}
 
-	all := r.SnapshotTripsRiders()
+	byCell := make(map[string][]riderModels.RiderLocationEntry)
+	for _, e := range r.SnapshotTripsRiders() {
+		byCell[e.Location.H3Cell] = append(byCell[e.Location.H3Cell], e)
+	}
 
 	for k := 0; k <= tripSearchMaxRings; k++ {
 		cells, err := geo.GridDisk(*trip.PickupH3Cell, k)
@@ -384,49 +387,45 @@ func (r *appRidersManager) nearestTripsRiders(trip tripsModels.Trip) []riderMode
 			return nil
 		}
 
-		cellSet := make(map[string]bool, len(cells))
+		matched := make([]riderModels.RiderLocationEntry, 0, tripOfferCandidateCount)
 		for _, cell := range cells {
-			cellSet[cell] = true
-		}
-
-		matched := make([]riderModels.RiderLocationEntry, 0, len(all))
-		for _, e := range all {
-			if cellSet[e.Location.H3Cell] {
-				matched = append(matched, e)
-			}
+			matched = append(matched, byCell[cell]...)
 		}
 
 		if len(matched) < tripOfferCandidateCount && k < tripSearchMaxRings {
 			continue
 		}
 
-		distances := make([]float64, len(matched))
-		for i, e := range matched {
-			distances[i] = geo.HaversineKm(trip.PickupLatitude, trip.PickupLongitude, e.Location.Latitude, e.Location.Longitude)
-		}
-		sort.Sort(&riderLocationsByDistance{entries: matched, distances: distances})
-
-		if len(matched) > tripOfferCandidateCount {
-			matched = matched[:tripOfferCandidateCount]
-		}
-		return matched
+		return nearestByDistance(trip, matched)
 	}
 
 	return nil
 }
 
-type riderLocationsByDistance struct {
-	entries   []riderModels.RiderLocationEntry
-	distances []float64
-}
+func nearestByDistance(trip tripsModels.Trip, candidates []riderModels.RiderLocationEntry) []riderModels.RiderLocationEntry {
+	type scored struct {
+		entry riderModels.RiderLocationEntry
+		km    float64
+	}
 
-func (s *riderLocationsByDistance) Len() int { return len(s.entries) }
+	ranked := make([]scored, len(candidates))
+	for i, e := range candidates {
+		ranked[i] = scored{
+			entry: e,
+			km:    geo.HaversineKm(trip.PickupLatitude, trip.PickupLongitude, e.Location.Latitude, e.Location.Longitude),
+		}
+	}
+	sort.Slice(ranked, func(i, j int) bool { return ranked[i].km < ranked[j].km })
 
-func (s *riderLocationsByDistance) Less(i, j int) bool { return s.distances[i] < s.distances[j] }
+	if len(ranked) > tripOfferCandidateCount {
+		ranked = ranked[:tripOfferCandidateCount]
+	}
 
-func (s *riderLocationsByDistance) Swap(i, j int) {
-	s.entries[i], s.entries[j] = s.entries[j], s.entries[i]
-	s.distances[i], s.distances[j] = s.distances[j], s.distances[i]
+	out := make([]riderModels.RiderLocationEntry, len(ranked))
+	for i, s := range ranked {
+		out[i] = s.entry
+	}
+	return out
 }
 
 func (r *appRidersManager) AcceptTrip(ctx context.Context, riderID, tripID uuid.UUID, conn ridersPorts.RiderConn) error {
@@ -455,15 +454,17 @@ func (r *appRidersManager) AcceptTrip(ctx context.Context, riderID, tripID uuid.
 	delete(r.tripOffers, tripID)
 	r.mu.Unlock()
 
+	acceptedAt := time.Now()
 	trip.RiderID = &riderID
 	trip.Status = tripsModels.TripStatusAccepted
-	accepted, _ := json.Marshal(tripBroadcast{Type: "trip_accepted", Trip: *trip})
+	trip.AcceptedAt = &acceptedAt
+	accepted, _ := json.Marshal(tripBroadcast{Type: "trip_accepted", Trip: trip.ToDTO()})
 	conn.Send(accepted)
 
 	return nil
 }
 
 type tripBroadcast struct {
-	Type string           `json:"type"`
-	Trip tripsModels.Trip `json:"trip"`
+	Type string                 `json:"type"`
+	Trip tripsDtos.TripResponse `json:"trip"`
 }

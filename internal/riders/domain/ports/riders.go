@@ -4,6 +4,7 @@ import (
 	"context"
 
 	riderModels "Encargalo.app-api.go/internal/riders/domain/models"
+	tripsModels "Encargalo.app-api.go/internal/trips/domain/models"
 	"github.com/google/uuid"
 )
 
@@ -27,4 +28,13 @@ type RidersApp interface {
 
 type RidersStream interface {
 	PublisherEvent(ctx context.Context, data any) error
+}
+
+// TripsStore is the slice of trips persistence the riders domain needs to
+// offer and accept trips — narrower than the full trips/domain/ports.TripsRepo
+// surface, which also covers trip creation and history unrelated to matching.
+type TripsStore interface {
+	GetTripByID(ctx context.Context, tripID uuid.UUID) (*tripsModels.Trip, error)
+	UpdateTripStatus(ctx context.Context, tripID uuid.UUID, fromStatus, toStatus tripsModels.TripStatus) (bool, error)
+	AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID) (bool, error)
 }

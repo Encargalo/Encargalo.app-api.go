@@ -75,10 +75,9 @@ func TestRequestTrip_SkipsMatcherWhenSearchingTransitionFails(t *testing.T) {
 	}).Return(nil)
 	repo.On("UpdateTripStatus", mock.Anything, mock.AnythingOfType("uuid.UUID"), models.TripStatusRequested, models.TripStatusSearching).Return(false, nil)
 
-	resp, err := svc.RequestTrip(context.Background(), customerID, req)
+	_, err := svc.RequestTrip(context.Background(), customerID, req)
 
-	require.NoError(t, err)
-	require.Equal(t, string(models.TripStatusRequested), resp.Status)
+	require.ErrorIs(t, err, errcustom.ErrUnexpectedError)
 	matcher.AssertNotCalled(t, "OfferTrip", mock.Anything, mock.Anything)
 }
 
