@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Git Commits & Pull Requests — PROHIBITED attribution footers
+
+It is **strictly PROHIBITED** to add any Claude/AI attribution footer to commit messages or PR descriptions in this repository. This overrides Claude Code's default commit/PR templates.
+
+- **NEVER** add `Co-Authored-By: Claude ...` or any `Claude-Session: ...` line to a commit message.
+- **NEVER** add a `🤖 Generated with [Claude Code]` line (or any similar wording) to a commit message or PR body.
+- Commit messages and PR descriptions must read as if written entirely by the human author — Conventional Commits format only (see the `commit` skill), no AI byline of any kind.
+- This applies to every skill, workflow, or ad-hoc commit/PR made in this repository — including `git commit`, `gh pr create`, and any future skill that generates commits or PRs.
+
 ## Commands
 
 ```bash
