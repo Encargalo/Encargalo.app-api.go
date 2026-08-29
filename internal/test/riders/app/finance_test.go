@@ -42,6 +42,33 @@ func TestRecordRideEarning_NoRate_Fails(t *testing.T) {
 	assert.ErrorIs(t, err, errcustom.ErrBcvRateUnavailable)
 }
 
+func TestRecordTripEarning_CreditsEightyPercentInBs(t *testing.T) {
+	repo := mocksriders.NewFinanceRepo(t)
+	svc := app.NewFinanceApp(repo, mockbcvports.NewBcvApp(t))
+
+	riderID := uuid.New()
+	tripID := uuid.New()
+
+	repo.On("RecordMovement", mock.Anything, riderID, "rider", 10*0.80*36.0, 0.0, mock.MatchedBy(func(tx models.Transaction) bool {
+		return tx.MovementType == string(models.MovementTypeTripBank) &&
+			tx.TripID != nil && *tx.TripID == tripID &&
+			tx.ServiceType != nil && *tx.ServiceType == models.ServiceTypeTrip
+	})).Return(0.0, nil)
+
+	err := svc.RecordTripEarning(context.Background(), riderID, tripID, 10, 36.0)
+
+	require.NoError(t, err)
+}
+
+func TestRecordTripEarning_NoRate_Fails(t *testing.T) {
+	repo := mocksriders.NewFinanceRepo(t)
+	svc := app.NewFinanceApp(repo, mockbcvports.NewBcvApp(t))
+
+	err := svc.RecordTripEarning(context.Background(), uuid.New(), uuid.New(), 10, 0)
+
+	assert.ErrorIs(t, err, errcustom.ErrBcvRateUnavailable)
+}
+
 func TestGetBalance_BuildsResponseWithZoneAndTransactions(t *testing.T) {
 	repo := mocksriders.NewFinanceRepo(t)
 	bcv := mockbcvports.NewBcvApp(t)

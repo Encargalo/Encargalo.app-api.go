@@ -65,6 +65,8 @@ var (
 	ErrLastStaffMember          = errors.New("debe quedar al menos un usuario con rol Staff")
 	ErrInvalidTrackingType      = errors.New("type de tracking inválido")
 	ErrTrackingParamsTooLarge   = errors.New("params de tracking demasiado grandes")
+	ErrTripForbidden            = errors.New("el viaje no pertenece a este cliente")
+	ErrTripNotCancellable       = errors.New("el viaje no se puede cancelar en su estado actual")
 )
 
 var (

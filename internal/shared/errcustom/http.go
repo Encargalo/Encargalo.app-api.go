@@ -71,6 +71,8 @@ var statusMap = map[error]int{
 	ErrLastStaffMember:          http.StatusBadRequest,
 	ErrInvalidTrackingType:      http.StatusBadRequest,
 	ErrTrackingParamsTooLarge:   http.StatusBadRequest,
+	ErrTripForbidden:            http.StatusForbidden,
+	ErrTripNotCancellable:       http.StatusUnprocessableEntity,
 }
 
 var codeMap = map[error]string{
@@ -133,6 +135,8 @@ var codeMap = map[error]string{
 	ErrLastStaffMember:          "last_staff_member",
 	ErrInvalidTrackingType:      "invalid_tracking_type",
 	ErrTrackingParamsTooLarge:   "tracking_params_too_large",
+	ErrTripForbidden:            "trip_forbidden",
+	ErrTripNotCancellable:       "trip_not_cancellable",
 }
 
 func Code(sentinel error) string {

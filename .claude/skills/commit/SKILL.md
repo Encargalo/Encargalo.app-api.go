@@ -37,6 +37,8 @@ Ejecuta en paralelo:
 [BREAKING CHANGE: descripción, solo si aplica]
 ```
 
+**PROHIBIDO**: no agregar `Co-Authored-By: Claude ...`, `Claude-Session: ...`, `🤖 Generated with Claude Code` ni ninguna firma/atribución de IA al mensaje de commit — ver "Git Commits & Pull Requests" en `CLAUDE.md`. El mensaje termina en el `BREAKING CHANGE` (si aplica) o en la descripción/cuerpo, sin ningún footer adicional.
+
 ## 4. Respuesta
 
 Muestra:

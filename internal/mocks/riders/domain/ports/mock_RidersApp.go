@@ -5,8 +5,10 @@ package mocks
 import (
 	context "context"
 
-	ports "Encargalo.app-api.go/internal/riders/domain/ports"
+	models "Encargalo.app-api.go/internal/riders/domain/models"
 	mock "github.com/stretchr/testify/mock"
+
+	ports "Encargalo.app-api.go/internal/riders/domain/ports"
 
 	uuid "github.com/google/uuid"
 )
@@ -34,19 +36,75 @@ func (_m *RidersApp) AcceptOrder(ctx context.Context, riderID uuid.UUID, orderID
 	return r0
 }
 
-// Register provides a mock function with given fields: ctx, riderID, conn
-func (_m *RidersApp) Register(ctx context.Context, riderID uuid.UUID, conn ports.RiderConn) error {
-	ret := _m.Called(ctx, riderID, conn)
+// AcceptTrip provides a mock function with given fields: ctx, riderID, tripID, conn
+func (_m *RidersApp) AcceptTrip(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, conn ports.RiderConn) error {
+	ret := _m.Called(ctx, riderID, tripID, conn)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AcceptTrip")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, ports.RiderConn) error); ok {
+		r0 = rf(ctx, riderID, tripID, conn)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// AdvanceTrip provides a mock function with given fields: ctx, riderID, tripID, conn
+func (_m *RidersApp) AdvanceTrip(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, conn ports.RiderConn) error {
+	ret := _m.Called(ctx, riderID, tripID, conn)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AdvanceTrip")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, ports.RiderConn) error); ok {
+		r0 = rf(ctx, riderID, tripID, conn)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// Register provides a mock function with given fields: ctx, riderID, conn, mode
+func (_m *RidersApp) Register(ctx context.Context, riderID uuid.UUID, conn ports.RiderConn, mode models.RiderMode) error {
+	ret := _m.Called(ctx, riderID, conn, mode)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Register")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, ports.RiderConn) error); ok {
-		r0 = rf(ctx, riderID, conn)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, ports.RiderConn, models.RiderMode) error); ok {
+		r0 = rf(ctx, riderID, conn, mode)
 	} else {
 		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SnapshotTripsRiders provides a mock function with no fields
+func (_m *RidersApp) SnapshotTripsRiders() []models.RiderLocationEntry {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for SnapshotTripsRiders")
+	}
+
+	var r0 []models.RiderLocationEntry
+	if rf, ok := ret.Get(0).(func() []models.RiderLocationEntry); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.RiderLocationEntry)
+		}
 	}
 
 	return r0
@@ -55,6 +113,24 @@ func (_m *RidersApp) Register(ctx context.Context, riderID uuid.UUID, conn ports
 // Unregister provides a mock function with given fields: riderID, conn
 func (_m *RidersApp) Unregister(riderID uuid.UUID, conn ports.RiderConn) {
 	_m.Called(riderID, conn)
+}
+
+// UpdateLocation provides a mock function with given fields: ctx, riderID, lat, lng
+func (_m *RidersApp) UpdateLocation(ctx context.Context, riderID uuid.UUID, lat float64, lng float64) error {
+	ret := _m.Called(ctx, riderID, lat, lng)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateLocation")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, float64, float64) error); ok {
+		r0 = rf(ctx, riderID, lat, lng)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // NewRidersApp creates a new instance of RidersApp. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

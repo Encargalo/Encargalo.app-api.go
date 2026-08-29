@@ -1931,7 +1931,7 @@
                         "SessionCookie": []
                     }
                 ],
-                "description": "Resuelve una dirección legible a partir de una coordenada, usando la Google Geocoding API. Cacheado por el servidor por coordenadas redondeadas.",
+                "description": "Resuelve una dirección a partir de una coordenada, usando la Google Geocoding API. Incluye formatted_address, parts (locality=ciudad, administrative_area_level_1=estado, administrative_area_level_2=municipio/provincia) y address_components crudos de Google para que el cliente arme la dirección. Cacheado por el servidor por coordenadas redondeadas.",
                 "produces": [
                     "application/json"
                 ],
@@ -2082,7 +2082,7 @@
                         "SessionCookie": []
                     }
                 ],
-                "description": "Resuelve dirección y coordenadas de un place_id devuelto por /maps/places/autocomplete, usando la Google Places Details API. Cacheado por el servidor por place_id.",
+                "description": "Resuelve dirección y coordenadas de un place_id devuelto por /maps/places/autocomplete, usando la Google Places Details API. Incluye address, lat/lng, parts (locality=ciudad, administrative_area_level_1=estado, administrative_area_level_2=municipio/provincia) y address_components crudos de Google para que el cliente arme la dirección. Cacheado por el servidor por place_id.",
                 "produces": [
                     "application/json"
                 ],
@@ -2381,6 +2381,14 @@
                     "Riders WebSocket"
                 ],
                 "summary": "WebSocket de gestión de órdenes para riders",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "orders|trips (default orders)",
+                        "name": "mode",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "401": {
                         "description": "Sesión no encontrada o inválida",
@@ -2957,7 +2965,7 @@
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna el producto más vendido de cada local abierto dentro de un radio de 1 km de las coordenadas dadas. Máximo 10 resultados, excluyendo productos cuya categoría tiene un horario configurado que no cubre la hora actual (America/Caracas). Cacheado 15 minutos.",
+                "description": "Retorna productos más vendidos de locales abiertos. En producción se limita a un radio de 1 km de las coordenadas dadas; fuera de producción no se aplica el recorte por distancia. Máximo 10 resultados, excluyendo productos cuya categoría tiene un horario configurado que no cubre la hora actual (America/Caracas). Cacheado 15 minutos.",
                 "produces": [
                     "application/json"
                 ],
@@ -5482,6 +5490,271 @@
                 }
             }
         },
+        "/tracking": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Persiste un evento genérico (pixel, cta u otro type). El body `params` se guarda tal cual en JSONB; el servidor inyecta user_id y session_id desde la sesión. Idempotente por `id`.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tracking"
+                ],
+                "summary": "Registrar evento de tracking",
+                "parameters": [
+                    {
+                        "description": "Evento de tracking",
+                        "name": "event",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_tracking_domain_dtos.TrackEvent"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Registrado o ya existía",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Body inválido, type inválido o params demasiado grandes",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "429": {
+                        "description": "Demasiadas solicitudes",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/trips": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Crea un viaje en estado \"requested\" con punto de recogida y destino. El matching con conductores cercanos no está incluido en este endpoint.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Trips"
+                ],
+                "summary": "Solicitar un viaje",
+                "parameters": [
+                    {
+                        "description": "Datos del viaje",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.CreateTripRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.TripResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "payload inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/trips/history": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Trips"
+                ],
+                "summary": "Historial de viajes del cliente",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.TripHistoryResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/trips/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Trips"
+                ],
+                "summary": "Detalle de un viaje",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trip ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.TripResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "id inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "El viaje no pertenece a este cliente",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/trips/{id}/cancel": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Solo permitido mientras el viaje esté en requested/searching/accepted/arriving.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Trips"
+                ],
+                "summary": "Cancelar un viaje",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trip ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.TripResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "id inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "El viaje no pertenece a este cliente",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "El viaje no se puede cancelar en su estado actual",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/turbo/entry": {
             "get": {
                 "security": [
@@ -5894,7 +6167,7 @@
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna balance_bs y balance_usd (tasa BCV vigente en bcv_rate) y los últimos 10 movimientos (amount_bs y amount_usd). Créditos elegibles incluyen can_request_refund (ventana/monto/saldo; no exige Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold / processing / payout) y créditos balance_refund_restore incluyen refund_request_id para abrir el detalle.",
+                "description": "Retorna balance_bs y balance_usd (tasa BCV vigente en bcv_rate) y los últimos 10 movimientos (amount_bs y amount_usd). Créditos elegibles incluyen refundable_pm_bs, can_request_refund (ventana/monto \u003e $1 equivalente en Bs a la tasa congelada/saldo; no exige Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold / processing / payout) y créditos balance_refund_restore incluyen refund_request_id para abrir el detalle.",
                 "produces": [
                     "application/json"
                 ],
@@ -6804,17 +7077,87 @@
                 }
             }
         },
+        "Encargalo_app-api_go_internal_maps_domain_models.AddressComponent": {
+            "type": "object",
+            "properties": {
+                "long_name": {
+                    "type": "string"
+                },
+                "short_name": {
+                    "type": "string"
+                },
+                "types": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_maps_domain_models.AddressParts": {
+            "type": "object",
+            "properties": {
+                "administrative_area_level_1": {
+                    "type": "string"
+                },
+                "administrative_area_level_2": {
+                    "type": "string"
+                },
+                "administrative_area_level_3": {
+                    "type": "string"
+                },
+                "country": {
+                    "type": "string"
+                },
+                "country_code": {
+                    "type": "string"
+                },
+                "locality": {
+                    "type": "string"
+                },
+                "neighborhood": {
+                    "type": "string"
+                },
+                "postal_code": {
+                    "type": "string"
+                },
+                "premise": {
+                    "type": "string"
+                },
+                "route": {
+                    "type": "string"
+                },
+                "street_number": {
+                    "type": "string"
+                },
+                "sublocality": {
+                    "type": "string"
+                },
+                "subpremise": {
+                    "type": "string"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_maps_domain_models.PlaceDetails": {
             "type": "object",
             "properties": {
                 "address": {
                     "type": "string"
                 },
+                "address_components": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_maps_domain_models.AddressComponent"
+                    }
+                },
                 "lat": {
                     "type": "number"
                 },
                 "lng": {
                     "type": "number"
+                },
+                "parts": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_maps_domain_models.AddressParts"
                 }
             }
         },
@@ -6835,8 +7178,17 @@
         "Encargalo_app-api_go_internal_maps_domain_models.ReverseGeocodeResult": {
             "type": "object",
             "properties": {
+                "address_components": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_maps_domain_models.AddressComponent"
+                    }
+                },
                 "formatted_address": {
                     "type": "string"
+                },
+                "parts": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_maps_domain_models.AddressParts"
                 },
                 "short_address": {
                     "type": "string"
@@ -6953,7 +7305,9 @@
                     "example": "PagoMovil"
                 },
                 "payment_proof_image": {
+                    "description": "7_000_000 ~ 5MB (límite del front) en base64.",
                     "type": "string",
+                    "maxLength": 7000000,
                     "example": "data:image/jpeg;base64,/9j/4AAQ..."
                 },
                 "quote_id": {
@@ -8118,7 +8472,13 @@
                 "proof_url": {
                     "type": "string"
                 },
+                "service_type": {
+                    "type": "string"
+                },
                 "staff_id": {
+                    "type": "string"
+                },
+                "trip_id": {
                     "type": "string"
                 }
             }
@@ -8918,6 +9278,119 @@
                     "type": "string"
                 },
                 "slug": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_tracking_domain_dtos.TrackEvent": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "params": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_trips_domain_dtos.CreateTripRequest": {
+            "type": "object",
+            "required": [
+                "dropoff_address",
+                "dropoff_latitude",
+                "dropoff_longitude",
+                "pickup_address",
+                "pickup_latitude",
+                "pickup_longitude"
+            ],
+            "properties": {
+                "dropoff_address": {
+                    "type": "string",
+                    "example": "CC Sambil, Caracas"
+                },
+                "dropoff_latitude": {
+                    "type": "number",
+                    "example": 10.4956
+                },
+                "dropoff_longitude": {
+                    "type": "number",
+                    "example": -66.8517
+                },
+                "pickup_address": {
+                    "type": "string",
+                    "example": "Av. Libertador, Caracas"
+                },
+                "pickup_latitude": {
+                    "type": "number",
+                    "example": 10.4806
+                },
+                "pickup_longitude": {
+                    "type": "number",
+                    "example": -66.9036
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_trips_domain_dtos.TripHistoryResponse": {
+            "type": "object",
+            "properties": {
+                "trips": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.TripResponse"
+                    }
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_trips_domain_dtos.TripResponse": {
+            "type": "object",
+            "properties": {
+                "accepted_at": {
+                    "type": "string"
+                },
+                "cancelled_at": {
+                    "type": "string"
+                },
+                "completed_at": {
+                    "type": "string"
+                },
+                "customer_id": {
+                    "type": "string"
+                },
+                "dropoff_address": {
+                    "type": "string"
+                },
+                "dropoff_latitude": {
+                    "type": "number"
+                },
+                "dropoff_longitude": {
+                    "type": "number"
+                },
+                "fare": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "pickup_address": {
+                    "type": "string"
+                },
+                "pickup_latitude": {
+                    "type": "number"
+                },
+                "pickup_longitude": {
+                    "type": "number"
+                },
+                "requested_at": {
+                    "type": "string"
+                },
+                "rider_id": {
+                    "type": "string"
+                },
+                "status": {
                     "type": "string"
                 }
             }

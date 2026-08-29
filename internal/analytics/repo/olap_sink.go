@@ -32,6 +32,7 @@ func (r *olapSinkRepo) UpsertShops(ctx context.Context, rows []models.DimShop) e
 			Set("created_at = EXCLUDED.created_at").
 			Set("updated_at = EXCLUDED.updated_at").
 			Set("synced_at = EXCLUDED.synced_at").
+			Set("h3_cell = EXCLUDED.h3_cell").
 			Exec(ctx)
 		if err != nil {
 			return errcustom.Unexpected(err)
@@ -102,6 +103,29 @@ func (r *olapSinkRepo) UpsertOrders(ctx context.Context, rows []models.CubeOrder
 			Set("is_launch_promo = EXCLUDED.is_launch_promo").
 			Set("is_zero_commission = EXCLUDED.is_zero_commission").
 			Set("order_date = EXCLUDED.order_date").
+			Set("created_at = EXCLUDED.created_at").
+			Set("synced_at = EXCLUDED.synced_at").
+			Set("h3_cell = EXCLUDED.h3_cell").
+			Exec(ctx)
+		if err != nil {
+			return errcustom.Unexpected(err)
+		}
+		return nil
+	})
+}
+
+func (r *olapSinkRepo) UpsertTrips(ctx context.Context, rows []models.CubeTrip) error {
+	return insertInChunks(rows, func(chunk []models.CubeTrip) error {
+		_, err := r.db.NewInsert().
+			Model(&chunk).
+			On("CONFLICT (trip_id) DO UPDATE").
+			Set("customer_id = EXCLUDED.customer_id").
+			Set("rider_id = EXCLUDED.rider_id").
+			Set("status = EXCLUDED.status").
+			Set("fare = EXCLUDED.fare").
+			Set("pickup_h3_cell = EXCLUDED.pickup_h3_cell").
+			Set("dropoff_h3_cell = EXCLUDED.dropoff_h3_cell").
+			Set("trip_date = EXCLUDED.trip_date").
 			Set("created_at = EXCLUDED.created_at").
 			Set("synced_at = EXCLUDED.synced_at").
 			Exec(ctx)

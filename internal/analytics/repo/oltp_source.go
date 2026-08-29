@@ -29,13 +29,14 @@ type shopRow struct {
 	Opened        bool      `bun:"opened"`
 	CreatedAt     time.Time `bun:"created_at"`
 	UpdatedAt     time.Time `bun:"updated_at"`
+	H3Cell        *string   `bun:"h3_cell"`
 }
 
 func (r *oltpSourceRepo) FetchShops(ctx context.Context, from, to time.Time) ([]models.DimShop, error) {
 	var rows []shopRow
 	err := r.db.NewSelect().
 		TableExpr("business.shops AS s").
-		Column("s.id", "s.name", "s.slug", "s.address", "s.type", "s.license_status", "s.opened", "s.created_at", "s.updated_at").
+		Column("s.id", "s.name", "s.slug", "s.address", "s.type", "s.license_status", "s.opened", "s.created_at", "s.updated_at", "s.h3_cell").
 		Where("s.deleted_at IS NULL").
 		Where("s.updated_at >= ? AND s.updated_at < ?", from, to).
 		Scan(ctx, &rows)
@@ -57,6 +58,7 @@ func (r *oltpSourceRepo) FetchShops(ctx context.Context, from, to time.Time) ([]
 			CreatedAt:     row.CreatedAt,
 			UpdatedAt:     row.UpdatedAt,
 			SyncedAt:      now,
+			H3Cell:        row.H3Cell,
 		}
 	}
 	return out, nil
@@ -175,6 +177,7 @@ type orderRow struct {
 	IsLaunchPromo      bool       `bun:"is_launch_promo"`
 	IsZeroCommission   bool       `bun:"is_zero_commission"`
 	CreatedAt          time.Time  `bun:"created_at"`
+	H3Cell             *string    `bun:"h3_cell"`
 }
 
 func (r *oltpSourceRepo) FetchOrders(ctx context.Context, from, to time.Time) ([]models.CubeOrder, error) {
@@ -185,7 +188,7 @@ func (r *oltpSourceRepo) FetchOrders(ctx context.Context, from, to time.Time) ([
 		Column(
 			"o.id", "o.shop_id", "o.customer_id", "o.rider_id", "o.status", "o.method_payment",
 			"o.total_price", "o.delivery_fee", "o.promo_subsidy_amount", "o.is_launch_promo",
-			"o.is_zero_commission", "o.created_at",
+			"o.is_zero_commission", "o.created_at", "o.h3_cell",
 		).
 		Where("o.created_at >= ? AND o.created_at < ?", from, to).
 		Scan(ctx, &rows)
@@ -211,6 +214,52 @@ func (r *oltpSourceRepo) FetchOrders(ctx context.Context, from, to time.Time) ([
 			OrderDate:          row.CreatedAt.UTC().Truncate(24 * time.Hour),
 			CreatedAt:          row.CreatedAt,
 			SyncedAt:           now,
+			H3Cell:             row.H3Cell,
+		}
+	}
+	return out, nil
+}
+
+type tripRow struct {
+	ID                uuid.UUID  `bun:"id"`
+	CustomerID        uuid.UUID  `bun:"customer_id"`
+	RiderID           *uuid.UUID `bun:"rider_id"`
+	Status            string     `bun:"status"`
+	Fare              *float64   `bun:"fare"`
+	PickupH3CellZone  *string    `bun:"pickup_h3_cell_zone"`
+	DropoffH3CellZone *string    `bun:"dropoff_h3_cell_zone"`
+	CreatedAt         time.Time  `bun:"created_at"`
+}
+
+// Sin updated_at en trips: re-sincronizamos por ventana de created_at (lookback cubre status tardíos).
+func (r *oltpSourceRepo) FetchTrips(ctx context.Context, from, to time.Time) ([]models.CubeTrip, error) {
+	var rows []tripRow
+	err := r.db.NewSelect().
+		TableExpr("trips.trips AS t").
+		Column(
+			"t.id", "t.customer_id", "t.rider_id", "t.status", "t.fare",
+			"t.pickup_h3_cell_zone", "t.dropoff_h3_cell_zone", "t.created_at",
+		).
+		Where("t.created_at >= ? AND t.created_at < ?", from, to).
+		Scan(ctx, &rows)
+	if err != nil {
+		return nil, errcustom.Unexpected(err)
+	}
+
+	now := time.Now().UTC()
+	out := make([]models.CubeTrip, len(rows))
+	for i, row := range rows {
+		out[i] = models.CubeTrip{
+			TripID:        row.ID,
+			CustomerID:    row.CustomerID,
+			RiderID:       row.RiderID,
+			Status:        row.Status,
+			Fare:          row.Fare,
+			PickupH3Cell:  row.PickupH3CellZone,
+			DropoffH3Cell: row.DropoffH3CellZone,
+			TripDate:      row.CreatedAt.UTC().Truncate(24 * time.Hour),
+			CreatedAt:     row.CreatedAt,
+			SyncedAt:      now,
 		}
 	}
 	return out, nil

@@ -35,15 +35,43 @@ func (f *financeApp) RecordRideEarning(ctx context.Context, riderID uuid.UUID, o
 	}
 	deltaBs := money.RoundBs(deliveryFee * models.RiderShare * bcvRate)
 	rate := bcvRate
+	serviceType := models.ServiceTypeDelivery
 
 	tx := models.Transaction{
 		ID:            uuid.New(),
 		OrderID:       &orderID,
 		MovementType:  string(models.MovementTypeRideBank),
+		ServiceType:   &serviceType,
 		PaymentMethod: &method,
 		Currency:      models.CurrencyVES,
 		BcvRate:       &rate,
 		CreatedAt:     time.Now(),
+	}
+
+	_, err := f.repo.RecordMovement(ctx, riderID, entityTypeRider, deltaBs, 0, tx)
+	return err
+}
+
+// RecordTripEarning credits the rider's balance with RiderShare of the trip
+// fare (USD, calculado por distancia vial pickup→dropoff), convertido a Bs
+// con bcvRate — análogo a RecordRideEarning pero sin payment_method (los
+// viajes no lo tienen todavía).
+func (f *financeApp) RecordTripEarning(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare, bcvRate float64) error {
+	if bcvRate <= 0 {
+		return errcustom.ErrBcvRateUnavailable
+	}
+	deltaBs := money.RoundBs(fare * models.RiderShare * bcvRate)
+	rate := bcvRate
+	serviceType := models.ServiceTypeTrip
+
+	tx := models.Transaction{
+		ID:           uuid.New(),
+		TripID:       &tripID,
+		MovementType: string(models.MovementTypeTripBank),
+		ServiceType:  &serviceType,
+		Currency:     models.CurrencyVES,
+		BcvRate:      &rate,
+		CreatedAt:    time.Now(),
 	}
 
 	_, err := f.repo.RecordMovement(ctx, riderID, entityTypeRider, deltaBs, 0, tx)
@@ -172,6 +200,7 @@ func toTransactionDTOs(txs []models.Transaction, spotRate float64) []dtos.Transa
 			AmountUSD:     amountUSD,
 			BcvRate:       t.BcvRate,
 			MovementType:  t.MovementType,
+			ServiceType:   t.ServiceType,
 			PaymentMethod: t.PaymentMethod,
 			DistanceKm:    t.DistanceKm,
 			Notes:         t.Notes,
@@ -185,6 +214,10 @@ func toTransactionDTOs(txs []models.Transaction, spotRate float64) []dtos.Transa
 		if t.OrderID != nil {
 			s := t.OrderID.String()
 			dto.OrderID = &s
+		}
+		if t.TripID != nil {
+			s := t.TripID.String()
+			dto.TripID = &s
 		}
 		result = append(result, dto)
 	}
