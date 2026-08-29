@@ -36,6 +36,12 @@ func (a *tripsApp) RequestTrip(ctx context.Context, customerID uuid.UUID, req dt
 	if cell, err := geo.LatLngToCell(req.PickupLatitude, req.PickupLongitude, geo.DriverMatchResolution); err == nil {
 		trip.PickupH3Cell = &cell
 	}
+	if cell, err := geo.LatLngToCell(req.PickupLatitude, req.PickupLongitude, geo.ZoneAnalyticsResolution); err == nil {
+		trip.PickupH3CellZone = &cell
+	}
+	if cell, err := geo.LatLngToCell(req.DropoffLatitude, req.DropoffLongitude, geo.ZoneAnalyticsResolution); err == nil {
+		trip.DropoffH3CellZone = &cell
+	}
 
 	if err := a.repo.CreateTrip(ctx, trip); err != nil {
 		return dtos.TripResponse{}, err

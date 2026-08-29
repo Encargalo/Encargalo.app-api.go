@@ -59,6 +59,7 @@ func TestRun_SyncsAllEntities(t *testing.T) {
 	userID := uuid.New()
 	riderID := uuid.New()
 	orderID := uuid.New()
+	tripID := uuid.New()
 
 	shops := []models.DimShop{{ShopID: shopID, Name: "A"}}
 	users := []models.DimUser{{UserID: userID, Name: "U", Roles: []string{"Customer"}}}
@@ -66,6 +67,9 @@ func TestRun_SyncsAllEntities(t *testing.T) {
 	orders := []models.CubeOrder{{
 		OrderID: orderID, ShopID: shopID, CustomerID: userID,
 		Status: "Completed", TotalPrice: 100, DeliveryFee: 10,
+	}}
+	trips := []models.CubeTrip{{
+		TripID: tripID, CustomerID: userID, RiderID: &riderID, Status: "completed",
 	}}
 
 	from := time.Now().Add(-time.Hour)
@@ -79,6 +83,7 @@ func TestRun_SyncsAllEntities(t *testing.T) {
 	source.On("FetchUsers", mock.Anything, from, to).Return(users, nil)
 	source.On("FetchRiders", mock.Anything, from, to).Return(riders, nil)
 	source.On("FetchOrders", mock.Anything, from, to).Return(orders, nil)
+	source.On("FetchTrips", mock.Anything, from, to).Return(trips, nil)
 	source.On("FetchTrackingEvents", mock.Anything, from, to).Return(events, nil)
 
 	sink.On("UpsertShops", mock.Anything, shops).Return(nil)
@@ -87,18 +92,20 @@ func TestRun_SyncsAllEntities(t *testing.T) {
 	sink.On("UpsertOrders", mock.Anything, mock.MatchedBy(func(rows []models.CubeOrder) bool {
 		return len(rows) == 1 && rows[0].GMV == 90
 	})).Return(nil)
+	sink.On("UpsertTrips", mock.Anything, trips).Return(nil)
 	sink.On("UpsertTrackingEvents", mock.Anything, events).Return(nil)
 
 	syncLog.On("Upsert", mock.Anything, models.EntityDimShop, to).Return(nil)
 	syncLog.On("Upsert", mock.Anything, models.EntityDimUser, to).Return(nil)
 	syncLog.On("Upsert", mock.Anything, models.EntityDimRider, to).Return(nil)
 	syncLog.On("Upsert", mock.Anything, models.EntityCubeOrder, to).Return(nil)
+	syncLog.On("Upsert", mock.Anything, models.EntityCubeTrip, to).Return(nil)
 	syncLog.On("Upsert", mock.Anything, models.EntityFactTrackingEvent, to).Return(nil)
 
 	etl := newETLApp(source, sink, syncLog)
 	result, err := etl.Run(context.Background(), from, to, nil)
 	require.NoError(t, err)
-	require.Equal(t, 5, len(result.Results))
+	require.Equal(t, 6, len(result.Results))
 	for _, item := range result.Results {
 		require.True(t, item.Success, item.Entity)
 	}

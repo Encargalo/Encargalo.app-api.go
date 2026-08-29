@@ -22,6 +22,7 @@ type OLTPSourceRepo interface {
 	FetchUsers(ctx context.Context, from, to time.Time) ([]models.DimUser, error)
 	FetchRiders(ctx context.Context, from, to time.Time) ([]models.DimRider, error)
 	FetchOrders(ctx context.Context, from, to time.Time) ([]models.CubeOrder, error)
+	FetchTrips(ctx context.Context, from, to time.Time) ([]models.CubeTrip, error)
 	FetchTrackingEvents(ctx context.Context, from, to time.Time) ([]models.FactTrackingEvent, error)
 }
 
@@ -30,5 +31,6 @@ type OLAPSinkRepo interface {
 	UpsertUsers(ctx context.Context, rows []models.DimUser) error
 	UpsertRiders(ctx context.Context, rows []models.DimRider) error
 	UpsertOrders(ctx context.Context, rows []models.CubeOrder) error
+	UpsertTrips(ctx context.Context, rows []models.CubeTrip) error
 	UpsertTrackingEvents(ctx context.Context, rows []models.FactTrackingEvent) error
 }

@@ -220,6 +220,51 @@ func (r *oltpSourceRepo) FetchOrders(ctx context.Context, from, to time.Time) ([
 	return out, nil
 }
 
+type tripRow struct {
+	ID                uuid.UUID  `bun:"id"`
+	CustomerID        uuid.UUID  `bun:"customer_id"`
+	RiderID           *uuid.UUID `bun:"rider_id"`
+	Status            string     `bun:"status"`
+	Fare              *float64   `bun:"fare"`
+	PickupH3CellZone  *string    `bun:"pickup_h3_cell_zone"`
+	DropoffH3CellZone *string    `bun:"dropoff_h3_cell_zone"`
+	CreatedAt         time.Time  `bun:"created_at"`
+}
+
+// Sin updated_at en trips: re-sincronizamos por ventana de created_at (lookback cubre status tardíos).
+func (r *oltpSourceRepo) FetchTrips(ctx context.Context, from, to time.Time) ([]models.CubeTrip, error) {
+	var rows []tripRow
+	err := r.db.NewSelect().
+		TableExpr("trips.trips AS t").
+		Column(
+			"t.id", "t.customer_id", "t.rider_id", "t.status", "t.fare",
+			"t.pickup_h3_cell_zone", "t.dropoff_h3_cell_zone", "t.created_at",
+		).
+		Where("t.created_at >= ? AND t.created_at < ?", from, to).
+		Scan(ctx, &rows)
+	if err != nil {
+		return nil, errcustom.Unexpected(err)
+	}
+
+	now := time.Now().UTC()
+	out := make([]models.CubeTrip, len(rows))
+	for i, row := range rows {
+		out[i] = models.CubeTrip{
+			TripID:        row.ID,
+			CustomerID:    row.CustomerID,
+			RiderID:       row.RiderID,
+			Status:        row.Status,
+			Fare:          row.Fare,
+			PickupH3Cell:  row.PickupH3CellZone,
+			DropoffH3Cell: row.DropoffH3CellZone,
+			TripDate:      row.CreatedAt.UTC().Truncate(24 * time.Hour),
+			CreatedAt:     row.CreatedAt,
+			SyncedAt:      now,
+		}
+	}
+	return out, nil
+}
+
 type trackingEventRow struct {
 	ID        uuid.UUID      `bun:"id"`
 	Type      string         `bun:"type"`

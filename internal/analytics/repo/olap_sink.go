@@ -114,6 +114,28 @@ func (r *olapSinkRepo) UpsertOrders(ctx context.Context, rows []models.CubeOrder
 	})
 }
 
+func (r *olapSinkRepo) UpsertTrips(ctx context.Context, rows []models.CubeTrip) error {
+	return insertInChunks(rows, func(chunk []models.CubeTrip) error {
+		_, err := r.db.NewInsert().
+			Model(&chunk).
+			On("CONFLICT (trip_id) DO UPDATE").
+			Set("customer_id = EXCLUDED.customer_id").
+			Set("rider_id = EXCLUDED.rider_id").
+			Set("status = EXCLUDED.status").
+			Set("fare = EXCLUDED.fare").
+			Set("pickup_h3_cell = EXCLUDED.pickup_h3_cell").
+			Set("dropoff_h3_cell = EXCLUDED.dropoff_h3_cell").
+			Set("trip_date = EXCLUDED.trip_date").
+			Set("created_at = EXCLUDED.created_at").
+			Set("synced_at = EXCLUDED.synced_at").
+			Exec(ctx)
+		if err != nil {
+			return errcustom.Unexpected(err)
+		}
+		return nil
+	})
+}
+
 func (r *olapSinkRepo) UpsertTrackingEvents(ctx context.Context, rows []models.FactTrackingEvent) error {
 	return insertInChunks(rows, func(chunk []models.FactTrackingEvent) error {
 		_, err := r.db.NewInsert().
