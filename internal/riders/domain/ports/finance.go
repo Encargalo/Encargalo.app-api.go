@@ -20,7 +20,17 @@ type FinanceApp interface {
 	// RecordRideEarning recibe deliveryFee en USD y bcvRate para convertir y
 	// acreditar en Bs (moneda nativa del balance de riders).
 	RecordRideEarning(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee, totalPrice, bcvRate float64, method string) error
+	// RecordTripEarning recibe fare (tarifa del viaje) en USD y bcvRate para
+	// convertir y acreditar en Bs, análogo a RecordRideEarning pero sin
+	// método de pago (los viajes no tienen ese concepto todavía).
+	RecordTripEarning(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare, bcvRate float64) error
 	GetBalance(ctx context.Context, riderID uuid.UUID) (dtos.BalanceResponse, error)
 	RequestWithdrawal(ctx context.Context, riderID uuid.UUID) (dtos.WithdrawalResponse, error)
 	ListTransactions(ctx context.Context, riderID uuid.UUID, page, limit int) (dtos.TransactionsResponse, error)
+}
+
+// TripEarningRecorder is the narrow slice of FinanceApp that the rider-trip
+// matching flow needs to credit a completed trip — implemented by financeApp.
+type TripEarningRecorder interface {
+	RecordTripEarning(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare, bcvRate float64) error
 }

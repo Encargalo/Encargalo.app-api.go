@@ -54,6 +54,24 @@ func (_m *RidersApp) AcceptTrip(ctx context.Context, riderID uuid.UUID, tripID u
 	return r0
 }
 
+// AdvanceTrip provides a mock function with given fields: ctx, riderID, tripID, conn
+func (_m *RidersApp) AdvanceTrip(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, conn ports.RiderConn) error {
+	ret := _m.Called(ctx, riderID, tripID, conn)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AdvanceTrip")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, ports.RiderConn) error); ok {
+		r0 = rf(ctx, riderID, tripID, conn)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // Register provides a mock function with given fields: ctx, riderID, conn, mode
 func (_m *RidersApp) Register(ctx context.Context, riderID uuid.UUID, conn ports.RiderConn, mode models.RiderMode) error {
 	ret := _m.Called(ctx, riderID, conn, mode)

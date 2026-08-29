@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Git Commits & Pull Requests — PROHIBITED attribution footers
+
+It is **strictly PROHIBITED** to add any Claude/AI attribution footer to commit messages or PR descriptions in this repository. This overrides Claude Code's default commit/PR templates.
+
+- **NEVER** add `Co-Authored-By: Claude ...` or any `Claude-Session: ...` line to a commit message.
+- **NEVER** add a `🤖 Generated with [Claude Code]` line (or any similar wording) to a commit message or PR body.
+- Commit messages and PR descriptions must read as if written entirely by the human author — Conventional Commits format only (see the `commit` skill), no AI byline of any kind.
+- This applies to every skill, workflow, or ad-hoc commit/PR made in this repository — including `git commit`, `gh pr create`, and any future skill that generates commits or PRs.
+
 ## Commands
 
 ```bash
@@ -107,6 +116,12 @@ A credit commission (10% of `totalPrice - deliveryFee`) is sent via HTTP to the 
 - `update_status`: `{"type":"update_status","order_id":"<uuid>","new_status":"<string>"}` — updates the order and broadcasts it to all connected clients.
 
 `OrderManager` role connections are keyed by `shop_id`; all other roles are keyed by `user_id`.
+
+## Trips & Riders
+
+`internal/trips` owns the `Trip` entity and its customer-driven transitions (`RequestTrip`, `CancelTrip`, via REST). Everything the **rider** drives — `accept_trip` and `advance_trip` (`accepted→arriving→in_progress→completed`, plus fare calculation and `RecordTripEarning`) — is implemented in `internal/riders/app` instead, over the WebSocket connection at `GET /orders/rider`, not in `internal/trips/app`.
+
+This is a deliberate split, not an oversight: rider-driven transitions need the same in-memory rider connection/offer state (`appRidersManager`) that `accept_trip` already uses for the "first to accept wins" CAS pattern, so keeping them together avoids threading that state across a domain boundary. `riders/app` reaches `trips` persistence through a narrow `ridersPorts.TripsStore` port (a subset of `tripsPorts.TripsRepo`: `GetTripByID`, `UpdateTripStatus`, `AssignTripRider`, `CompleteTrip`), not through `tripsPorts.TripsApp` — so `trips/app`'s own business rules (e.g. `IsCancellable`) never see these transitions. Keep this split in mind before adding new `Trip` invariants: a rule added only to `trips/app` will not apply to rider-driven transitions.
 
 ## Testing
 

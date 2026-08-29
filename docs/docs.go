@@ -8483,7 +8483,13 @@ const docTemplate = `{
                 "proof_url": {
                     "type": "string"
                 },
+                "service_type": {
+                    "type": "string"
+                },
                 "staff_id": {
+                    "type": "string"
+                },
+                "trip_id": {
                     "type": "string"
                 }
             }
