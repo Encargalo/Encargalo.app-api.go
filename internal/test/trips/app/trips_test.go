@@ -16,10 +16,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newTripsApp(t *testing.T) (ports.TripsApp, *mockstrips.TripsRepo) {
+func newTripsApp(t *testing.T) (ports.TripsApp, *mockstrips.TripsRepo, *mockstrips.TripRiderMatcher) {
 	t.Helper()
 	repo := mockstrips.NewTripsRepo(t)
-	return app.NewTripsApp(repo), repo
+	matcher := mockstrips.NewTripRiderMatcher(t)
+	return app.NewTripsApp(repo, matcher), repo, matcher
 }
 
 func sampleCreateTripRequest() dtos.CreateTripRequest {
@@ -34,7 +35,7 @@ func sampleCreateTripRequest() dtos.CreateTripRequest {
 }
 
 func TestRequestTrip_ComputesH3CellAndPersists(t *testing.T) {
-	svc, repo := newTripsApp(t)
+	svc, repo, matcher := newTripsApp(t)
 	customerID := uuid.New()
 	req := sampleCreateTripRequest()
 	wantCell, err := geo.LatLngToCell(req.PickupLatitude, req.PickupLongitude, geo.DriverMatchResolution)
@@ -49,17 +50,40 @@ func TestRequestTrip_ComputesH3CellAndPersists(t *testing.T) {
 		trip := args.Get(1).(*models.Trip)
 		trip.ID = uuid.New()
 	}).Return(nil)
+	repo.On("UpdateTripStatus", mock.Anything, mock.AnythingOfType("uuid.UUID"), models.TripStatusRequested, models.TripStatusSearching).Return(true, nil)
+	matcher.On("OfferTrip", mock.Anything, mock.MatchedBy(func(trip models.Trip) bool {
+		return trip.CustomerID == customerID
+	})).Return()
+
+	resp, err := svc.RequestTrip(context.Background(), customerID, req)
+
+	require.NoError(t, err)
+	require.Equal(t, string(models.TripStatusSearching), resp.Status)
+	require.Equal(t, customerID, resp.CustomerID)
+	repo.AssertExpectations(t)
+	matcher.AssertExpectations(t)
+}
+
+func TestRequestTrip_SkipsMatcherWhenSearchingTransitionFails(t *testing.T) {
+	svc, repo, matcher := newTripsApp(t)
+	customerID := uuid.New()
+	req := sampleCreateTripRequest()
+
+	repo.On("CreateTrip", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		trip := args.Get(1).(*models.Trip)
+		trip.ID = uuid.New()
+	}).Return(nil)
+	repo.On("UpdateTripStatus", mock.Anything, mock.AnythingOfType("uuid.UUID"), models.TripStatusRequested, models.TripStatusSearching).Return(false, nil)
 
 	resp, err := svc.RequestTrip(context.Background(), customerID, req)
 
 	require.NoError(t, err)
 	require.Equal(t, string(models.TripStatusRequested), resp.Status)
-	require.Equal(t, customerID, resp.CustomerID)
-	repo.AssertExpectations(t)
+	matcher.AssertNotCalled(t, "OfferTrip", mock.Anything, mock.Anything)
 }
 
 func TestGetTrip_ForbiddenWhenNotOwner(t *testing.T) {
-	svc, repo := newTripsApp(t)
+	svc, repo, _ := newTripsApp(t)
 	tripID, ownerID, requesterID := uuid.New(), uuid.New(), uuid.New()
 
 	repo.On("GetTripByID", mock.Anything, tripID).Return(&models.Trip{ID: tripID, CustomerID: ownerID}, nil)
@@ -70,7 +94,7 @@ func TestGetTrip_ForbiddenWhenNotOwner(t *testing.T) {
 }
 
 func TestGetTrip_NotFound(t *testing.T) {
-	svc, repo := newTripsApp(t)
+	svc, repo, _ := newTripsApp(t)
 	tripID, requesterID := uuid.New(), uuid.New()
 
 	repo.On("GetTripByID", mock.Anything, tripID).Return(nil, errcustom.ErrNotFound)
@@ -81,7 +105,7 @@ func TestGetTrip_NotFound(t *testing.T) {
 }
 
 func TestGetTripHistory_MapsAllTrips(t *testing.T) {
-	svc, repo := newTripsApp(t)
+	svc, repo, _ := newTripsApp(t)
 	customerID := uuid.New()
 
 	repo.On("GetTripHistoryByCustomer", mock.Anything, customerID).Return([]models.Trip{
@@ -96,7 +120,7 @@ func TestGetTripHistory_MapsAllTrips(t *testing.T) {
 }
 
 func TestCancelTrip_ForbiddenWhenNotOwner(t *testing.T) {
-	svc, repo := newTripsApp(t)
+	svc, repo, _ := newTripsApp(t)
 	tripID, ownerID, requesterID := uuid.New(), uuid.New(), uuid.New()
 
 	repo.On("GetTripByID", mock.Anything, tripID).Return(&models.Trip{ID: tripID, CustomerID: ownerID, Status: models.TripStatusRequested}, nil)
@@ -108,7 +132,7 @@ func TestCancelTrip_ForbiddenWhenNotOwner(t *testing.T) {
 }
 
 func TestCancelTrip_RejectsTerminalStatus(t *testing.T) {
-	svc, repo := newTripsApp(t)
+	svc, repo, _ := newTripsApp(t)
 	tripID, customerID := uuid.New(), uuid.New()
 
 	repo.On("GetTripByID", mock.Anything, tripID).Return(&models.Trip{ID: tripID, CustomerID: customerID, Status: models.TripStatusCompleted}, nil)
@@ -120,7 +144,7 @@ func TestCancelTrip_RejectsTerminalStatus(t *testing.T) {
 }
 
 func TestCancelTrip_CASLossReturnsNotCancellable(t *testing.T) {
-	svc, repo := newTripsApp(t)
+	svc, repo, _ := newTripsApp(t)
 	tripID, customerID := uuid.New(), uuid.New()
 
 	repo.On("GetTripByID", mock.Anything, tripID).Return(&models.Trip{ID: tripID, CustomerID: customerID, Status: models.TripStatusRequested}, nil)
@@ -132,7 +156,7 @@ func TestCancelTrip_CASLossReturnsNotCancellable(t *testing.T) {
 }
 
 func TestCancelTrip_Success(t *testing.T) {
-	svc, repo := newTripsApp(t)
+	svc, repo, _ := newTripsApp(t)
 	tripID, customerID := uuid.New(), uuid.New()
 
 	repo.On("GetTripByID", mock.Anything, tripID).Return(&models.Trip{ID: tripID, CustomerID: customerID, Status: models.TripStatusSearching}, nil)

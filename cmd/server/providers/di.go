@@ -72,6 +72,7 @@ import (
 	repoPayment "Encargalo.app-api.go/internal/payment_methods/repo"
 
 	appTrips "Encargalo.app-api.go/internal/trips/app"
+	tripsPorts "Encargalo.app-api.go/internal/trips/domain/ports"
 	handTrips "Encargalo.app-api.go/internal/trips/handler"
 	repoTrips "Encargalo.app-api.go/internal/trips/repo"
 )
@@ -188,6 +189,9 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(appRiders.NewRiderProfileApp)
 	_ = Container.Provide(func(mgr ridersPorts.RidersApp) ordersPorts.OrderRiderBroadcaster {
 		return mgr.(ordersPorts.OrderRiderBroadcaster)
+	})
+	_ = Container.Provide(func(mgr ridersPorts.RidersApp) tripsPorts.TripRiderMatcher {
+		return mgr.(tripsPorts.TripRiderMatcher)
 	})
 	_ = Container.Provide(func(fa ridersPorts.FinanceApp) ordersPorts.RideEarningRecorder {
 		return fa.(ordersPorts.RideEarningRecorder)

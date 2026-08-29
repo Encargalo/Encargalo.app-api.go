@@ -22,6 +22,7 @@ type RidersApp interface {
 	AcceptOrder(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, conn RiderConn) error
 	UpdateLocation(ctx context.Context, riderID uuid.UUID, lat, lng float64) error
 	SnapshotTripsRiders() []riderModels.RiderLocationEntry
+	AcceptTrip(ctx context.Context, riderID, tripID uuid.UUID, conn RiderConn) error
 }
 
 type RidersStream interface {

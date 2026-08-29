@@ -13,11 +13,12 @@ import (
 )
 
 type tripsApp struct {
-	repo ports.TripsRepo
+	repo    ports.TripsRepo
+	matcher ports.TripRiderMatcher
 }
 
-func NewTripsApp(repo ports.TripsRepo) ports.TripsApp {
-	return &tripsApp{repo: repo}
+func NewTripsApp(repo ports.TripsRepo, matcher ports.TripRiderMatcher) ports.TripsApp {
+	return &tripsApp{repo: repo, matcher: matcher}
 }
 
 func (a *tripsApp) RequestTrip(ctx context.Context, customerID uuid.UUID, req dtos.CreateTripRequest) (dtos.TripResponse, error) {
@@ -39,6 +40,12 @@ func (a *tripsApp) RequestTrip(ctx context.Context, customerID uuid.UUID, req dt
 	if err := a.repo.CreateTrip(ctx, trip); err != nil {
 		return dtos.TripResponse{}, err
 	}
+
+	if ok, err := a.repo.UpdateTripStatus(ctx, trip.ID, models.TripStatusRequested, models.TripStatusSearching); err == nil && ok {
+		trip.Status = models.TripStatusSearching
+		a.matcher.OfferTrip(ctx, *trip)
+	}
+
 	return trip.ToDTO(), nil
 }
 

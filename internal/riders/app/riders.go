@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"slices"
+	"sort"
 	"sync"
 	"time"
 
@@ -16,10 +17,18 @@ import (
 	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/deliveryfee"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	tripsModels "Encargalo.app-api.go/internal/trips/domain/models"
+	tripsPorts "Encargalo.app-api.go/internal/trips/domain/ports"
 	"github.com/google/uuid"
 )
 
 const orderAcceptTimeout = 10 * time.Minute
+
+const (
+	tripOfferCandidateCount = 3
+	tripSearchMaxRings      = 3
+	tripAcceptTimeout       = 2 * time.Minute
+)
 
 type appRidersManager struct {
 	mu              sync.RWMutex
@@ -27,20 +36,24 @@ type appRidersManager struct {
 	assignedOrders  map[uuid.UUID][]uuid.UUID // riderID → []orderID
 	riderMode       map[uuid.UUID]riderModels.RiderMode
 	riderLocation   map[uuid.UUID]riderModels.RiderLocation
+	tripOffers      map[uuid.UUID]map[uuid.UUID]struct{}
 	repo            ridersPorts.RidersRepo
 	stream          ridersPorts.RidersStream
 	bcv             bcvPorts.BcvApp
+	tripsRepo       tripsPorts.TripsRepo
 }
 
-func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPorts.BcvApp) ridersPorts.RidersApp {
+func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPorts.BcvApp, tripsRepo tripsPorts.TripsRepo) ridersPorts.RidersApp {
 	return &appRidersManager{
 		availableRiders: make(map[uuid.UUID]ridersPorts.RiderConn),
 		assignedOrders:  make(map[uuid.UUID][]uuid.UUID),
 		riderMode:       make(map[uuid.UUID]riderModels.RiderMode),
 		riderLocation:   make(map[uuid.UUID]riderModels.RiderLocation),
+		tripOffers:      make(map[uuid.UUID]map[uuid.UUID]struct{}),
 		repo:            repo,
 		stream:          stream,
 		bcv:             bcv,
+		tripsRepo:       tripsRepo,
 	}
 }
 
@@ -301,4 +314,156 @@ type riderBroadcast struct {
 	Order    riderModels.RiderOrder        `json:"order"`
 	Shop     *ordersModels.ShopOrder       `json:"shop,omitempty"`
 	Customer *riderModels.CustomerLocation `json:"customer,omitempty"`
+}
+
+func (r *appRidersManager) OfferTrip(ctx context.Context, trip tripsModels.Trip) {
+	candidates := r.nearestTripsRiders(trip)
+	if len(candidates) == 0 {
+		r.expireTripIfStillSearching(trip.ID)
+		return
+	}
+
+	data, err := json.Marshal(tripBroadcast{Type: "trip_offer", Trip: trip})
+	if err != nil {
+		slog.Error("error marshaling trip_offer broadcast", "error", err)
+		return
+	}
+
+	offered := make(map[uuid.UUID]struct{}, len(candidates))
+	for _, c := range candidates {
+		offered[c.RiderID] = struct{}{}
+	}
+	r.mu.Lock()
+	r.tripOffers[trip.ID] = offered
+	r.mu.Unlock()
+
+	r.mu.RLock()
+	for _, c := range candidates {
+		if conn, ok := r.availableRiders[c.RiderID]; ok {
+			conn.Send(data)
+		}
+	}
+	r.mu.RUnlock()
+
+	go func() {
+		time.Sleep(tripAcceptTimeout)
+		r.expireTripIfStillSearching(trip.ID)
+	}()
+}
+
+func (r *appRidersManager) expireTripIfStillSearching(tripID uuid.UUID) {
+	ctx := context.Background()
+	_, err := r.tripsRepo.UpdateTripStatus(ctx, tripID, tripsModels.TripStatusSearching, tripsModels.TripStatusNoDriver)
+	if err != nil {
+		slog.Error("error expiring trip to no_driver", "tripID", tripID, "error", err)
+	}
+
+	r.mu.Lock()
+	delete(r.tripOffers, tripID)
+	r.mu.Unlock()
+}
+
+func (r *appRidersManager) wasOfferedTrip(tripID, riderID uuid.UUID) bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	_, ok := r.tripOffers[tripID][riderID]
+	return ok
+}
+
+func (r *appRidersManager) nearestTripsRiders(trip tripsModels.Trip) []riderModels.RiderLocationEntry {
+	if trip.PickupH3Cell == nil {
+		return nil
+	}
+
+	all := r.SnapshotTripsRiders()
+
+	for k := 0; k <= tripSearchMaxRings; k++ {
+		cells, err := geo.GridDisk(*trip.PickupH3Cell, k)
+		if err != nil {
+			slog.Error("error expanding H3 rings for trip matching", "tripID", trip.ID, "error", err)
+			return nil
+		}
+
+		cellSet := make(map[string]bool, len(cells))
+		for _, cell := range cells {
+			cellSet[cell] = true
+		}
+
+		matched := make([]riderModels.RiderLocationEntry, 0, len(all))
+		for _, e := range all {
+			if cellSet[e.Location.H3Cell] {
+				matched = append(matched, e)
+			}
+		}
+
+		if len(matched) < tripOfferCandidateCount && k < tripSearchMaxRings {
+			continue
+		}
+
+		distances := make([]float64, len(matched))
+		for i, e := range matched {
+			distances[i] = geo.HaversineKm(trip.PickupLatitude, trip.PickupLongitude, e.Location.Latitude, e.Location.Longitude)
+		}
+		sort.Sort(&riderLocationsByDistance{entries: matched, distances: distances})
+
+		if len(matched) > tripOfferCandidateCount {
+			matched = matched[:tripOfferCandidateCount]
+		}
+		return matched
+	}
+
+	return nil
+}
+
+type riderLocationsByDistance struct {
+	entries   []riderModels.RiderLocationEntry
+	distances []float64
+}
+
+func (s *riderLocationsByDistance) Len() int { return len(s.entries) }
+
+func (s *riderLocationsByDistance) Less(i, j int) bool { return s.distances[i] < s.distances[j] }
+
+func (s *riderLocationsByDistance) Swap(i, j int) {
+	s.entries[i], s.entries[j] = s.entries[j], s.entries[i]
+	s.distances[i], s.distances[j] = s.distances[j], s.distances[i]
+}
+
+func (r *appRidersManager) AcceptTrip(ctx context.Context, riderID, tripID uuid.UUID, conn ridersPorts.RiderConn) error {
+	trip, err := r.tripsRepo.GetTripByID(ctx, tripID)
+	if err != nil {
+		return err
+	}
+	if trip.Status != tripsModels.TripStatusSearching {
+		return errcustom.ErrInvalidTransition
+	}
+	if !r.wasOfferedTrip(tripID, riderID) {
+		return errcustom.ErrInvalidTransition
+	}
+
+	ok, err := r.tripsRepo.AssignTripRider(ctx, tripID, riderID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		msg, _ := json.Marshal(map[string]string{"type": "trip_taken", "trip_id": tripID.String()})
+		conn.Send(msg)
+		return nil
+	}
+
+	r.mu.Lock()
+	delete(r.tripOffers, tripID)
+	r.mu.Unlock()
+
+	trip.RiderID = &riderID
+	trip.Status = tripsModels.TripStatusAccepted
+	accepted, _ := json.Marshal(tripBroadcast{Type: "trip_accepted", Trip: *trip})
+	conn.Send(accepted)
+
+	return nil
+}
+
+type tripBroadcast struct {
+	Type string           `json:"type"`
+	Trip tripsModels.Trip `json:"trip"`
 }
