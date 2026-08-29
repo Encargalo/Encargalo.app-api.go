@@ -16,10 +16,12 @@ type BalanceResponse struct {
 type TransactionDTO struct {
 	ID            string   `json:"id"`
 	OrderID       *string  `json:"order_id,omitempty"`
+	TripID        *string  `json:"trip_id,omitempty"`
 	AmountBs      float64  `json:"amount_bs"`
 	AmountUSD     float64  `json:"amount_usd"`
 	BcvRate       *float64 `json:"bcv_rate,omitempty"`
 	MovementType  string   `json:"movement_type"`
+	ServiceType   *string  `json:"service_type,omitempty"`
 	PaymentMethod *string  `json:"payment_method,omitempty"`
 	DistanceKm    *float64 `json:"distance_km,omitempty"`
 	StaffID       *string  `json:"staff_id,omitempty"`

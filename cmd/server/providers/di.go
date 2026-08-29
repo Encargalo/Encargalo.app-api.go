@@ -196,6 +196,9 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(func(repo tripsPorts.TripsRepo) ridersPorts.TripsStore {
 		return repo
 	})
+	_ = Container.Provide(func(fa ridersPorts.FinanceApp) ridersPorts.TripEarningRecorder {
+		return fa.(ridersPorts.TripEarningRecorder)
+	})
 	_ = Container.Provide(func(fa ridersPorts.FinanceApp) ordersPorts.RideEarningRecorder {
 		return fa.(ordersPorts.RideEarningRecorder)
 	})

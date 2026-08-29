@@ -44,6 +44,34 @@ func (_m *TripsRepo) AssignTripRider(ctx context.Context, tripID uuid.UUID, ride
 	return r0, r1
 }
 
+// CompleteTrip provides a mock function with given fields: ctx, tripID, fare
+func (_m *TripsRepo) CompleteTrip(ctx context.Context, tripID uuid.UUID, fare float64) (bool, error) {
+	ret := _m.Called(ctx, tripID, fare)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CompleteTrip")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, float64) (bool, error)); ok {
+		return rf(ctx, tripID, fare)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, float64) bool); ok {
+		r0 = rf(ctx, tripID, fare)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, float64) error); ok {
+		r1 = rf(ctx, tripID, fare)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // CreateTrip provides a mock function with given fields: ctx, trip
 func (_m *TripsRepo) CreateTrip(ctx context.Context, trip *models.Trip) error {
 	ret := _m.Called(ctx, trip)

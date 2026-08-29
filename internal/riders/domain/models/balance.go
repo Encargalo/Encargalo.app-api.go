@@ -12,6 +12,7 @@ type Zone string
 
 const (
 	MovementTypeRideBank MovementType = "ride_bank"
+	MovementTypeTripBank MovementType = "trip_bank"
 	MovementTypeWithdraw MovementType = "withdrawal"
 
 	MovementTypeStaffPayout      MovementType = "staff_payout"
@@ -27,15 +28,18 @@ const (
 	// el poder adquisitivo del piso no se erosione con la tasa.
 	WithdrawalMinUSD   float64 = 15.0
 	WithdrawalCooldown         = 24 * time.Hour
-	RateDay            float64 = 0.40
-	RateNight          float64 = 0.60
 	RiderShare         float64 = 0.80
-	NightHour          int     = 22
 
 	// CurrencyVES es la moneda nativa del balance de riders: cada movimiento
 	// se registra ya convertido a bolívares con la tasa BCV vigente al
 	// momento del movimiento (ver Transaction.BcvRate).
 	CurrencyVES = "VES"
+
+	// ServiceTypeDelivery y ServiceTypeTrip distinguen, en movimientos
+	// ride_bank/trip_bank, si la ganancia del rider vino de un domicilio o de
+	// un viaje (ambos comparten el mismo ledger de balance/transactions).
+	ServiceTypeDelivery = "delivery"
+	ServiceTypeTrip     = "trip"
 )
 
 type Balance struct {
@@ -55,6 +59,7 @@ type Transaction struct {
 	EntityID   uuid.UUID  `bun:"entity_id"`
 	EntityType string     `bun:"entity_type"`
 	OrderID    *uuid.UUID `bun:"order_id,nullzero"`
+	TripID     *uuid.UUID `bun:"trip_id,nullzero"`
 	Amount     float64    `bun:"amount"`
 	Currency   string     `bun:"currency"`
 	// BcvRate es la tasa usada para convertir el monto original en USD
@@ -62,6 +67,7 @@ type Transaction struct {
 	// nacen en Bs y no requieren conversión (ej. withdrawal).
 	BcvRate       *float64   `bun:"bcv_rate,nullzero"`
 	MovementType  string     `bun:"movement_type"`
+	ServiceType   *string    `bun:"service_type,nullzero"`
 	PaymentMethod *string    `bun:"payment_method"`
 	DistanceKm    *float64   `bun:"distance_km"`
 	StaffID       *uuid.UUID `bun:"staff_id,nullzero"`

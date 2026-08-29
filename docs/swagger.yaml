@@ -1051,7 +1051,11 @@ definitions:
         type: string
       proof_url:
         type: string
+      service_type:
+        type: string
       staff_id:
+        type: string
+      trip_id:
         type: string
     type: object
   Encargalo_app-api_go_internal_riders_domain_dtos.TransactionsResponse:

@@ -90,6 +90,28 @@ func (r *tripsRepo) UpdateTripStatus(ctx context.Context, tripID uuid.UUID, from
 	return rows > 0, nil
 }
 
+func (r *tripsRepo) CompleteTrip(ctx context.Context, tripID uuid.UUID, fare float64) (bool, error) {
+	res, err := r.db.NewUpdate().
+		TableExpr("trips.trips").
+		Set("status = ?", models.TripStatusCompleted).
+		Set("fare = ?", fare).
+		Set("completed_at = now()").
+		Set("updated_at = now()").
+		Where("id = ? AND status = ?", tripID, models.TripStatusInProgress).
+		Exec(ctx)
+	if err != nil {
+		slog.Error("trips CompleteTrip failed", "tripID", tripID, "error", err)
+		return false, errcustom.Unexpected(err)
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		slog.Error("trips CompleteTrip: failed to read rows affected", "tripID", tripID, "error", err)
+		return false, errcustom.Unexpected(err)
+	}
+	return rows > 0, nil
+}
+
 func (r *tripsRepo) AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID) (bool, error) {
 	res, err := r.db.NewUpdate().
 		TableExpr("trips.trips").

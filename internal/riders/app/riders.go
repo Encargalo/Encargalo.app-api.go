@@ -15,12 +15,21 @@ import (
 	"Encargalo.app-api.go/internal/pkg/geo"
 	riderModels "Encargalo.app-api.go/internal/riders/domain/models"
 	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
+	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/deliveryfee"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	tripsDtos "Encargalo.app-api.go/internal/trips/domain/dtos"
 	tripsModels "Encargalo.app-api.go/internal/trips/domain/models"
 	"github.com/google/uuid"
 )
+
+// tripForwardStatus mapea cada estado al siguiente en la máquina lineal
+// accepted→arriving→in_progress; in_progress→completed se maneja aparte en
+// completeTrip porque además calcula la tarifa y acredita la ganancia.
+var tripForwardStatus = map[tripsModels.TripStatus]tripsModels.TripStatus{
+	tripsModels.TripStatusAccepted: tripsModels.TripStatusArriving,
+	tripsModels.TripStatusArriving: tripsModels.TripStatusInProgress,
+}
 
 const orderAcceptTimeout = 10 * time.Minute
 
@@ -41,9 +50,10 @@ type appRidersManager struct {
 	stream          ridersPorts.RidersStream
 	bcv             bcvPorts.BcvApp
 	tripsRepo       ridersPorts.TripsStore
+	tripEarnings    ridersPorts.TripEarningRecorder
 }
 
-func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPorts.BcvApp, tripsRepo ridersPorts.TripsStore) ridersPorts.RidersApp {
+func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPorts.BcvApp, tripsRepo ridersPorts.TripsStore, tripEarnings ridersPorts.TripEarningRecorder) ridersPorts.RidersApp {
 	return &appRidersManager{
 		availableRiders: make(map[uuid.UUID]ridersPorts.RiderConn),
 		assignedOrders:  make(map[uuid.UUID][]uuid.UUID),
@@ -54,6 +64,7 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 		stream:          stream,
 		bcv:             bcv,
 		tripsRepo:       tripsRepo,
+		tripEarnings:    tripEarnings,
 	}
 }
 
@@ -462,6 +473,93 @@ func (r *appRidersManager) AcceptTrip(ctx context.Context, riderID, tripID uuid.
 	conn.Send(accepted)
 
 	return nil
+}
+
+// AdvanceTrip mueve el trip asignado al siguiente estado. Solo el rider
+// asignado puede avanzarlo; in_progress→completed se resuelve en
+// completeTrip porque además calcula la tarifa y acredita la ganancia.
+func (r *appRidersManager) AdvanceTrip(ctx context.Context, riderID, tripID uuid.UUID, conn ridersPorts.RiderConn) error {
+	trip, err := r.tripsRepo.GetTripByID(ctx, tripID)
+	if err != nil {
+		return err
+	}
+	if trip.RiderID == nil || *trip.RiderID != riderID {
+		return errcustom.ErrInvalidTransition
+	}
+
+	if trip.Status == tripsModels.TripStatusInProgress {
+		return r.completeTrip(ctx, trip, conn)
+	}
+
+	next, ok := tripForwardStatus[trip.Status]
+	if !ok {
+		return errcustom.ErrInvalidTransition
+	}
+
+	updated, err := r.tripsRepo.UpdateTripStatus(ctx, tripID, trip.Status, next)
+	if err != nil {
+		return err
+	}
+	if !updated {
+		return errcustom.ErrInvalidTransition
+	}
+
+	trip.Status = next
+	data, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: trip.ToDTO()})
+	conn.Send(data)
+
+	return nil
+}
+
+// completeTrip calcula la tarifa por distancia vial pickup→dropoff, persiste
+// la transición in_progress→completed junto con esa tarifa de forma atómica,
+// y acredita la ganancia del rider. Un fallo al acreditar (ej. tasa BCV no
+// disponible) no revierte la finalización del trip: se loguea y el rider
+// puede reclamarlo por soporte, igual que RecordRideEarning en orders.
+func (r *appRidersManager) completeTrip(ctx context.Context, trip *tripsModels.Trip, conn ridersPorts.RiderConn) error {
+	fare, err := r.tripFare(ctx, trip)
+	if err != nil {
+		return err
+	}
+
+	updated, err := r.tripsRepo.CompleteTrip(ctx, trip.ID, fare)
+	if err != nil {
+		return err
+	}
+	if !updated {
+		return errcustom.ErrInvalidTransition
+	}
+
+	completedAt := time.Now()
+	trip.Status = tripsModels.TripStatusCompleted
+	trip.Fare = &fare
+	trip.CompletedAt = &completedAt
+	data, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: trip.ToDTO()})
+	conn.Send(data)
+
+	if err := r.tripEarnings.RecordTripEarning(ctx, *trip.RiderID, trip.ID, fare, r.bcvRate(ctx)); err != nil {
+		slog.Error("error recording trip earning", "tripID", trip.ID, "riderID", *trip.RiderID, "error", err)
+	}
+
+	return nil
+}
+
+// tripFare calcula la tarifa por distancia vial pickup→dropoff. Fuera de
+// producción usa un placeholder fijo para no gastar cuota de Google Maps,
+// mismo patrón que priceOrderDraft en orders/app.
+func (r *appRidersManager) tripFare(ctx context.Context, trip *tripsModels.Trip) (float64, error) {
+	if !config.Get().IsProduction() {
+		return deliveryfee.DevPlaceholderFee, nil
+	}
+	return deliveryfee.Calculate(ctx, trip.PickupLatitude, trip.PickupLongitude, trip.DropoffLatitude, trip.DropoffLongitude)
+}
+
+func (r *appRidersManager) bcvRate(ctx context.Context) float64 {
+	rate, err := r.bcv.GetRate(ctx)
+	if err != nil || rate == nil {
+		return 0
+	}
+	return rate.Rate
 }
 
 type tripBroadcast struct {
