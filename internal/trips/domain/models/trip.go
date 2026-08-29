@@ -44,13 +44,16 @@ type Trip struct {
 	DropoffAddress   string     `bun:"dropoff_address,notnull"`
 	DropoffLatitude  float64    `bun:"dropoff_latitude,notnull"`
 	DropoffLongitude float64    `bun:"dropoff_longitude,notnull"`
-	Fare             *float64   `bun:"fare"`
-	RequestedAt      time.Time  `bun:"requested_at,notnull,default:current_timestamp"`
-	AcceptedAt       *time.Time `bun:"accepted_at,nullzero"`
-	CompletedAt      *time.Time `bun:"completed_at,nullzero"`
-	CancelledAt      *time.Time `bun:"cancelled_at,nullzero"`
-	CreatedAt        time.Time  `bun:"created_at,notnull,default:current_timestamp"`
-	UpdatedAt        time.Time  `bun:"updated_at,notnull,default:current_timestamp"`
+	// A diferencia de PickupH3Cell (DriverMatchResolution), usan ZoneAnalyticsResolution para el heatmap.
+	PickupH3CellZone  *string    `bun:"pickup_h3_cell_zone"`
+	DropoffH3CellZone *string    `bun:"dropoff_h3_cell_zone"`
+	Fare              *float64   `bun:"fare"`
+	RequestedAt       time.Time  `bun:"requested_at,notnull,default:current_timestamp"`
+	AcceptedAt        *time.Time `bun:"accepted_at,nullzero"`
+	CompletedAt       *time.Time `bun:"completed_at,nullzero"`
+	CancelledAt       *time.Time `bun:"cancelled_at,nullzero"`
+	CreatedAt         time.Time  `bun:"created_at,notnull,default:current_timestamp"`
+	UpdatedAt         time.Time  `bun:"updated_at,notnull,default:current_timestamp"`
 }
 
 func (t *Trip) IsCancellable() bool {

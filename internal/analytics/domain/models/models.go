@@ -14,6 +14,7 @@ const (
 	EntityDimUser           ETLEntity = "dim_user"
 	EntityDimRider          ETLEntity = "dim_rider"
 	EntityCubeOrder         ETLEntity = "cube_order"
+	EntityCubeTrip          ETLEntity = "cube_trip"
 	EntityFactTrackingEvent ETLEntity = "fact_tracking_event"
 )
 
@@ -22,6 +23,7 @@ var DefaultETLEntities = []ETLEntity{
 	EntityDimUser,
 	EntityDimRider,
 	EntityCubeOrder,
+	EntityCubeTrip,
 	EntityFactTrackingEvent,
 }
 
@@ -114,6 +116,22 @@ type CubeOrder struct {
 	CreatedAt          time.Time  `bun:"created_at,notnull"`
 	SyncedAt           time.Time  `bun:"synced_at,notnull"`
 	H3Cell             *string    `bun:"h3_cell"`
+}
+
+// Fare es nulo hasta completar el trip; PickupH3Cell/DropoffH3Cell son resolución 7 (zona), no la 8 de trips.trips.pickup_h3_cell.
+type CubeTrip struct {
+	bun.BaseModel `bun:"table:analytics.cube_trip"`
+
+	TripID        uuid.UUID  `bun:"trip_id,pk,type:uuid"`
+	CustomerID    uuid.UUID  `bun:"customer_id,type:uuid,notnull"`
+	RiderID       *uuid.UUID `bun:"rider_id,type:uuid"`
+	Status        string     `bun:"status,notnull"`
+	Fare          *float64   `bun:"fare"`
+	PickupH3Cell  *string    `bun:"pickup_h3_cell"`
+	DropoffH3Cell *string    `bun:"dropoff_h3_cell"`
+	TripDate      time.Time  `bun:"trip_date,notnull"`
+	CreatedAt     time.Time  `bun:"created_at,notnull"`
+	SyncedAt      time.Time  `bun:"synced_at,notnull"`
 }
 
 type ETLEntityResult struct {

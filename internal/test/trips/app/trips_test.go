@@ -40,11 +40,17 @@ func TestRequestTrip_ComputesH3CellAndPersists(t *testing.T) {
 	req := sampleCreateTripRequest()
 	wantCell, err := geo.LatLngToCell(req.PickupLatitude, req.PickupLongitude, geo.DriverMatchResolution)
 	require.NoError(t, err)
+	wantPickupZone, err := geo.LatLngToCell(req.PickupLatitude, req.PickupLongitude, geo.ZoneAnalyticsResolution)
+	require.NoError(t, err)
+	wantDropoffZone, err := geo.LatLngToCell(req.DropoffLatitude, req.DropoffLongitude, geo.ZoneAnalyticsResolution)
+	require.NoError(t, err)
 
 	repo.On("CreateTrip", mock.Anything, mock.MatchedBy(func(trip *models.Trip) bool {
 		return trip.CustomerID == customerID &&
 			trip.Status == models.TripStatusRequested &&
 			trip.PickupH3Cell != nil && *trip.PickupH3Cell == wantCell &&
+			trip.PickupH3CellZone != nil && *trip.PickupH3CellZone == wantPickupZone &&
+			trip.DropoffH3CellZone != nil && *trip.DropoffH3CellZone == wantDropoffZone &&
 			trip.DropoffAddress == req.DropoffAddress
 	})).Run(func(args mock.Arguments) {
 		trip := args.Get(1).(*models.Trip)

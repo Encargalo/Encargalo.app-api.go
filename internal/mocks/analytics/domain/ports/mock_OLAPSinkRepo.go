@@ -86,6 +86,24 @@ func (_m *OLAPSinkRepo) UpsertTrackingEvents(ctx context.Context, rows []models.
 	return r0
 }
 
+// UpsertTrips provides a mock function with given fields: ctx, rows
+func (_m *OLAPSinkRepo) UpsertTrips(ctx context.Context, rows []models.CubeTrip) error {
+	ret := _m.Called(ctx, rows)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpsertTrips")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, []models.CubeTrip) error); ok {
+		r0 = rf(ctx, rows)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // UpsertUsers provides a mock function with given fields: ctx, rows
 func (_m *OLAPSinkRepo) UpsertUsers(ctx context.Context, rows []models.DimUser) error {
 	ret := _m.Called(ctx, rows)
