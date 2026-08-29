@@ -108,6 +108,12 @@ A credit commission (10% of `totalPrice - deliveryFee`) is sent via HTTP to the 
 
 `OrderManager` role connections are keyed by `shop_id`; all other roles are keyed by `user_id`.
 
+## Trips & Riders
+
+`internal/trips` owns the `Trip` entity and its customer-driven transitions (`RequestTrip`, `CancelTrip`, via REST). Everything the **rider** drives — `accept_trip` and `advance_trip` (`accepted→arriving→in_progress→completed`, plus fare calculation and `RecordTripEarning`) — is implemented in `internal/riders/app` instead, over the WebSocket connection at `GET /orders/rider`, not in `internal/trips/app`.
+
+This is a deliberate split, not an oversight: rider-driven transitions need the same in-memory rider connection/offer state (`appRidersManager`) that `accept_trip` already uses for the "first to accept wins" CAS pattern, so keeping them together avoids threading that state across a domain boundary. `riders/app` reaches `trips` persistence through a narrow `ridersPorts.TripsStore` port (a subset of `tripsPorts.TripsRepo`: `GetTripByID`, `UpdateTripStatus`, `AssignTripRider`, `CompleteTrip`), not through `tripsPorts.TripsApp` — so `trips/app`'s own business rules (e.g. `IsCancellable`) never see these transitions. Keep this split in mind before adding new `Trip` invariants: a rule added only to `trips/app` will not apply to rider-driven transitions.
+
 ## Testing
 
 - Handler tests use `buildhttptest.SetupControllerCase` from [internal/shared/buildhttptest/](internal/shared/buildhttptest/) to build an Echo context.

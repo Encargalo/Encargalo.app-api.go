@@ -3,6 +3,7 @@ package app_test
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 
 	bcvmodels "Encargalo.app-api.go/internal/bcv/domain/models"
@@ -560,4 +561,51 @@ func TestAdvanceTrip_RejectsTerminalStatus(t *testing.T) {
 	err := svc.AdvanceTrip(context.Background(), riderID, tripID, mocksriders.NewRiderConn(t))
 
 	assert.ErrorIs(t, err, errcustom.ErrInvalidTransition)
+}
+
+// TestAdvanceTrip_ConcurrentCompletionIsSerialized cubre la vulnerabilidad de
+// seguridad #1 (auditoría): sin el guard completingTrips, un spam de
+// advance_trip sobre el mismo trip en in_progress podía disparar varias
+// llamadas reales a Google Maps (tripFare) en paralelo antes de que la
+// primera confirmara en DB. Aquí se verifica que la segunda llamada, mientras
+// la primera sigue "en vuelo" dentro de CompleteTrip, se rechaza de inmediato
+// sin volver a invocar CompleteTrip (el mock .Once() lo garantiza).
+func TestAdvanceTrip_ConcurrentCompletionIsSerialized(t *testing.T) {
+	repo := mocksriders.NewRidersRepo(t)
+	stream := mocksriders.NewRidersStream(t)
+	bcv := mockbcvports.NewBcvApp(t)
+	tripsRepo := mockstrips.NewTripsRepo(t)
+	tripEarnings := mocksriders.NewTripEarningRecorder(t)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+
+	riderID, tripID := uuid.New(), uuid.New()
+	conn := mocksriders.NewRiderConn(t)
+	conn.On("Send", mock.Anything).Return()
+
+	entered := make(chan struct{})
+	proceed := make(chan struct{})
+
+	tripsRepo.On("GetTripByID", mock.Anything, tripID).Return(&tripsModels.Trip{ID: tripID, RiderID: &riderID, Status: tripsModels.TripStatusInProgress}, nil)
+	tripsRepo.On("CompleteTrip", mock.Anything, tripID, deliveryfee.DevPlaceholderFee).Run(func(mock.Arguments) {
+		close(entered)
+		<-proceed
+	}).Return(true, nil).Once()
+	bcv.On("GetRate", mock.Anything).Return(&bcvmodels.ExchangeRate{Rate: 40}, nil)
+	tripEarnings.On("RecordTripEarning", mock.Anything, riderID, tripID, deliveryfee.DevPlaceholderFee, 40.0).Return(nil)
+
+	var wg sync.WaitGroup
+	var firstErr error
+	wg.Go(func() {
+		firstErr = svc.AdvanceTrip(context.Background(), riderID, tripID, conn)
+	})
+
+	<-entered // la primera llamada ya está dentro de CompleteTrip (tripFare ya se calculó)
+
+	secondErr := svc.AdvanceTrip(context.Background(), riderID, tripID, conn)
+	close(proceed)
+	wg.Wait()
+
+	assert.ErrorIs(t, secondErr, errcustom.ErrInvalidTransition)
+	require.NoError(t, firstErr)
+	tripsRepo.AssertExpectations(t) // CompleteTrip solo se llamó una vez (.Once())
 }

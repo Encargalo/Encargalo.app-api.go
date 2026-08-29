@@ -239,7 +239,7 @@ func safeErrorMessage(err error) string {
 		return "no encontrado"
 	}
 	if errors.Is(err, errcustom.ErrInvalidTransition) {
-		return "no está disponible para aceptar"
+		return "esta transición no está disponible"
 	}
 	if errors.Is(err, errcustom.ErrInvalidCoordinates) {
 		return "coordenadas inválidas"

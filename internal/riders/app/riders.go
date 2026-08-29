@@ -46,6 +46,7 @@ type appRidersManager struct {
 	riderMode       map[uuid.UUID]riderModels.RiderMode
 	riderLocation   map[uuid.UUID]riderModels.RiderLocation
 	tripOffers      map[uuid.UUID]map[uuid.UUID]struct{}
+	completingTrips map[uuid.UUID]struct{}
 	repo            ridersPorts.RidersRepo
 	stream          ridersPorts.RidersStream
 	bcv             bcvPorts.BcvApp
@@ -60,6 +61,7 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 		riderMode:       make(map[uuid.UUID]riderModels.RiderMode),
 		riderLocation:   make(map[uuid.UUID]riderModels.RiderLocation),
 		tripOffers:      make(map[uuid.UUID]map[uuid.UUID]struct{}),
+		completingTrips: make(map[uuid.UUID]struct{}),
 		repo:            repo,
 		stream:          stream,
 		bcv:             bcv,
@@ -381,6 +383,25 @@ func (r *appRidersManager) wasOfferedTrip(tripID, riderID uuid.UUID) bool {
 	return ok
 }
 
+// beginCompleting marca el trip como "completándose" si no lo estaba ya,
+// de forma atómica. Devuelve false si otra llamada a completeTrip para el
+// mismo trip ya está en curso (ver completeTrip).
+func (r *appRidersManager) beginCompleting(tripID uuid.UUID) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, inFlight := r.completingTrips[tripID]; inFlight {
+		return false
+	}
+	r.completingTrips[tripID] = struct{}{}
+	return true
+}
+
+func (r *appRidersManager) endCompleting(tripID uuid.UUID) {
+	r.mu.Lock()
+	delete(r.completingTrips, tripID)
+	r.mu.Unlock()
+}
+
 func (r *appRidersManager) nearestTripsRiders(trip tripsModels.Trip) []riderModels.RiderLocationEntry {
 	if trip.PickupH3Cell == nil {
 		return nil
@@ -478,6 +499,8 @@ func (r *appRidersManager) AcceptTrip(ctx context.Context, riderID, tripID uuid.
 // AdvanceTrip mueve el trip asignado al siguiente estado. Solo el rider
 // asignado puede avanzarlo; in_progress→completed se resuelve en
 // completeTrip porque además calcula la tarifa y acredita la ganancia.
+// Vive en riders/app (no en trips/app) a propósito, igual que AcceptTrip:
+// ver "Trips & Riders" en CLAUDE.md para el porqué de este split.
 func (r *appRidersManager) AdvanceTrip(ctx context.Context, riderID, tripID uuid.UUID, conn ridersPorts.RiderConn) error {
 	trip, err := r.tripsRepo.GetTripByID(ctx, tripID)
 	if err != nil {
@@ -516,7 +539,16 @@ func (r *appRidersManager) AdvanceTrip(ctx context.Context, riderID, tripID uuid
 // y acredita la ganancia del rider. Un fallo al acreditar (ej. tasa BCV no
 // disponible) no revierte la finalización del trip: se loguea y el rider
 // puede reclamarlo por soporte, igual que RecordRideEarning en orders.
+//
+// beginCompleting/endCompleting evitan que un spam de advance_trip sobre el
+// mismo trip dispare múltiples llamadas reales a Google Maps (tripFare) en
+// paralelo mientras la primera aún no confirma en DB.
 func (r *appRidersManager) completeTrip(ctx context.Context, trip *tripsModels.Trip, conn ridersPorts.RiderConn) error {
+	if !r.beginCompleting(trip.ID) {
+		return errcustom.ErrInvalidTransition
+	}
+	defer r.endCompleting(trip.ID)
+
 	fare, err := r.tripFare(ctx, trip)
 	if err != nil {
 		return err
