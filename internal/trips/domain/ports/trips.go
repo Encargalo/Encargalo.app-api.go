@@ -19,8 +19,10 @@ type TripsRepo interface {
 	CreateTrip(ctx context.Context, trip *models.Trip) error
 	GetTripByID(ctx context.Context, tripID uuid.UUID) (*models.Trip, error)
 	GetTripHistoryByCustomer(ctx context.Context, customerID uuid.UUID) ([]models.Trip, error)
-	// UpdateTripStatus hace un UPDATE condicional (WHERE status = fromStatus) y
-	// setea el timestamp correspondiente (accepted_at/completed_at/cancelled_at)
-	// según el nuevo estado. RowsAffected == 0 => el estado ya cambió (CAS).
 	UpdateTripStatus(ctx context.Context, tripID uuid.UUID, fromStatus, toStatus models.TripStatus) (bool, error)
+	AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID) (bool, error)
+}
+
+type TripRiderMatcher interface {
+	OfferTrip(ctx context.Context, trip models.Trip)
 }

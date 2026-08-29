@@ -52,12 +52,21 @@ func New(svc ridersPorts.RidersApp) RiderHandler {
 //
 // → Guarda la ubicación en memoria (solo relevante en modo trips).
 //
+// **accept_trip**
+//
+//	{"type":"accept_trip","trip_id":"<uuid>"}
+//
+// → Intenta asignar el viaje al rider. Primer rider que acepta gana.
+//
 // ### Mensajes salientes
 //   - `{"type":"connected"}` — confirmación de conexión
 //   - `{"type":"new_order","order":{...}}` — nueva orden disponible (sin códigos)
 //   - `{"type":"order_accepted","order":{...}}` — asignación exitosa (con pickup_code)
 //   - `{"type":"order_taken","order_id":"<uuid>"}` — otro rider se adelantó
 //   - `{"type":"order_update","order":{...}}` — actualización de orden asignada (con pickup_code)
+//   - `{"type":"trip_offer","trip":{...}}` — viaje ofrecido (modo trips)
+//   - `{"type":"trip_accepted","trip":{...}}` — asignación de viaje exitosa
+//   - `{"type":"trip_taken","trip_id":"<uuid>"}` — otro rider se adelantó
 //   - `{"type":"error","message":"..."}` — error procesando mensaje
 //
 // @Tags         Riders WebSocket
@@ -146,6 +155,30 @@ func (h *riderHandler) HandleWebSocket(c echo.Context) error {
 				client.Send(errMsg)
 			}
 
+		case "accept_trip":
+			var payload struct {
+				Type   string `json:"type"`
+				TripID string `json:"trip_id"`
+			}
+			if err := json.Unmarshal(msg, &payload); err != nil || payload.TripID == "" {
+				errMsg, _ := json.Marshal(map[string]string{"type": "error", "message": "payload inválido"})
+				client.Send(errMsg)
+				continue
+			}
+
+			tripID, err := uuid.Parse(payload.TripID)
+			if err != nil {
+				errMsg, _ := json.Marshal(map[string]string{"type": "error", "message": "trip_id inválido"})
+				client.Send(errMsg)
+				continue
+			}
+
+			if err := h.svc.AcceptTrip(ctx, riderID, tripID, client); err != nil {
+				slog.Error("Error aceptando viaje", "riderID", riderID, "tripID", tripID, "error", err)
+				errMsg, _ := json.Marshal(map[string]string{"type": "error", "message": safeErrorMessage(err)})
+				client.Send(errMsg)
+			}
+
 		case "update_location":
 			var payload struct {
 				Latitude  float64 `json:"latitude"`
@@ -170,10 +203,10 @@ func (h *riderHandler) HandleWebSocket(c echo.Context) error {
 
 func safeErrorMessage(err error) string {
 	if errors.Is(err, errcustom.ErrNotFound) {
-		return "orden no encontrada"
+		return "no encontrado"
 	}
 	if errors.Is(err, errcustom.ErrInvalidTransition) {
-		return "la orden no está disponible para aceptar"
+		return "no está disponible para aceptar"
 	}
 	if errors.Is(err, errcustom.ErrInvalidCoordinates) {
 		return "coordenadas inválidas"
