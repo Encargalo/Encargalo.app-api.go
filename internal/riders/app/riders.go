@@ -46,6 +46,7 @@ type appRidersManager struct {
 	riderMode       map[uuid.UUID]riderModels.RiderMode
 	riderLocation   map[uuid.UUID]riderModels.RiderLocation
 	tripOffers      map[uuid.UUID]map[uuid.UUID]struct{}
+	tripTimers      map[uuid.UUID]*time.Timer
 	completingTrips map[uuid.UUID]struct{}
 	repo            ridersPorts.RidersRepo
 	stream          ridersPorts.RidersStream
@@ -61,6 +62,7 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 		riderMode:       make(map[uuid.UUID]riderModels.RiderMode),
 		riderLocation:   make(map[uuid.UUID]riderModels.RiderLocation),
 		tripOffers:      make(map[uuid.UUID]map[uuid.UUID]struct{}),
+		tripTimers:      make(map[uuid.UUID]*time.Timer),
 		completingTrips: make(map[uuid.UUID]struct{}),
 		repo:            repo,
 		stream:          stream,
@@ -358,10 +360,12 @@ func (r *appRidersManager) OfferTrip(ctx context.Context, trip tripsModels.Trip)
 	}
 	r.mu.RUnlock()
 
-	go func() {
-		time.Sleep(tripAcceptTimeout)
+	timer := time.AfterFunc(tripAcceptTimeout, func() {
 		r.expireTripIfStillSearching(trip.ID)
-	}()
+	})
+	r.mu.Lock()
+	r.tripTimers[trip.ID] = timer
+	r.mu.Unlock()
 }
 
 func (r *appRidersManager) expireTripIfStillSearching(tripID uuid.UUID) {
@@ -373,6 +377,7 @@ func (r *appRidersManager) expireTripIfStillSearching(tripID uuid.UUID) {
 
 	r.mu.Lock()
 	delete(r.tripOffers, tripID)
+	delete(r.tripTimers, tripID)
 	r.mu.Unlock()
 }
 
@@ -484,6 +489,10 @@ func (r *appRidersManager) AcceptTrip(ctx context.Context, riderID, tripID uuid.
 
 	r.mu.Lock()
 	delete(r.tripOffers, tripID)
+	if timer, ok := r.tripTimers[tripID]; ok {
+		timer.Stop()
+		delete(r.tripTimers, tripID)
+	}
 	r.mu.Unlock()
 
 	acceptedAt := time.Now()

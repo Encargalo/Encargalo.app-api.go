@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"log"
+	"time"
 
 	"Encargalo.app-api.go/internal/shared/config"
 
@@ -12,6 +13,18 @@ import (
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/driver/pgdriver"
+)
+
+const (
+	apiServiceName = "encargalo-api"
+	etlServiceName = "encargalo-etl"
+)
+
+const (
+	maxOpenConns    = 30
+	maxIdleConns    = 30
+	connMaxLifetime = 30 * time.Minute
+	connMaxIdleTime = 10 * time.Minute
 )
 
 type pgOptions struct {
@@ -22,12 +35,16 @@ type pgOptions struct {
 	database string
 }
 
-func (p *pgOptions) getDNS() string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", p.user, p.password, p.host, p.port, p.database)
+func (p *pgOptions) getDNS(serviceName string) string {
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable&application_name=%s", p.user, p.password, p.host, p.port, p.database, serviceName)
 }
 
-func connect(opts pgOptions) *bun.DB {
-	sqldb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(opts.getDNS())))
+func connect(opts pgOptions, serviceName string) *bun.DB {
+	sqldb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(opts.getDNS(serviceName))))
+	sqldb.SetMaxOpenConns(maxOpenConns)
+	sqldb.SetMaxIdleConns(maxIdleConns)
+	sqldb.SetConnMaxLifetime(connMaxLifetime)
+	sqldb.SetConnMaxIdleTime(connMaxIdleTime)
 
 	if err := sqldb.Ping(); err != nil {
 		log.Fatalf("Error al hacer ping a la base de datos: %v", err)
@@ -47,7 +64,7 @@ func NewPostgresConnection(config config.Config) *bun.DB {
 		user:     configPostgres.User,
 		password: configPostgres.Password,
 		database: configPostgres.Database,
-	})
+	}, apiServiceName)
 	migrate(db.DB)
 	return db
 }
@@ -61,7 +78,7 @@ func NewOLTPConnection(cfg config.ETLConfig) *bun.DB {
 		user:     p.User,
 		password: p.Password,
 		database: p.Database,
-	})
+	}, etlServiceName)
 }
 
 //go:embed migrations/*.sql
