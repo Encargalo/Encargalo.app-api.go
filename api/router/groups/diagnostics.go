@@ -4,7 +4,8 @@ import (
 	"net/http"
 	"net/http/pprof"
 
-	sharedmw "Encargalo.app-api.go/internal/shared/middleware"
+	"Encargalo.app-api.go/internal/auth/domain/middleware/auth"
+	"Encargalo.app-api.go/internal/auth/domain/models"
 	"github.com/labstack/echo/v4"
 )
 
@@ -13,22 +14,16 @@ type DiagnosticsGroup interface {
 }
 
 type diagnosticsGroup struct {
-	gatewaySecret sharedmw.GatewaySecretAuth
+	middleAuth auth.AuthMiddleware
 }
 
-func NewDiagnosticsGroup(gatewaySecret sharedmw.GatewaySecretAuth) DiagnosticsGroup {
-	return &diagnosticsGroup{gatewaySecret}
+func NewDiagnosticsGroup(middleAuth auth.AuthMiddleware) DiagnosticsGroup {
+	return &diagnosticsGroup{middleAuth}
 }
 
-// Resource expone net/http/pprof (perfiles de CPU, heap, goroutines, etc. del
-// proceso) detrás del mismo secreto compartido que protege
-// /internal/verify-session — no es una ruta de negocio, así que no lleva
-// middleAuth.Auth/Require. Se monta exactamente en "/debug/pprof" porque
-// pprof.Index hace su propio despacho por nombre de perfil (heap, goroutine,
-// allocs, ...) recortando ese prefijo del path a mano; montarlo en otro
-// prefijo rompería ese despacho.
 func (d *diagnosticsGroup) Resource(g *echo.Echo) {
-	group := g.Group("/debug/pprof", d.gatewaySecret.Validate)
+	// Traefik inyecta el gateway secret en toda petición pública, así que por sí solo no autentica a nadie; requiere sesión+Staff igual que una ruta de negocio.
+	group := g.Group("/debug/pprof", d.middleAuth.Auth, d.middleAuth.Require(models.Staff))
 
 	group.GET("", echo.WrapHandler(http.HandlerFunc(pprof.Index)))
 	group.GET("/", echo.WrapHandler(http.HandlerFunc(pprof.Index)))
