@@ -42,6 +42,5 @@ type TripsStore interface {
 	GetTripByID(ctx context.Context, tripID uuid.UUID) (*tripsModels.Trip, error)
 	UpdateTripStatus(ctx context.Context, tripID uuid.UUID, fromStatus, toStatus tripsModels.TripStatus) (bool, error)
 	AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID) (bool, error)
-	AdvanceTripForward(ctx context.Context, tripID, riderID uuid.UUID) (trip *tripsModels.Trip, ok bool, err error)
 	CompleteTrip(ctx context.Context, tripID uuid.UUID, fare float64) (bool, error)
 }

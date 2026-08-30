@@ -21,8 +21,6 @@ type TripsRepo interface {
 	GetTripHistoryByCustomer(ctx context.Context, customerID uuid.UUID) ([]models.Trip, error)
 	UpdateTripStatus(ctx context.Context, tripID uuid.UUID, fromStatus, toStatus models.TripStatus) (bool, error)
 	AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID) (bool, error)
-	// AdvanceTripForward intenta accepted->arriving/arriving->in_progress validando el rider_id en la misma query; ok=false no distingue el motivo.
-	AdvanceTripForward(ctx context.Context, tripID, riderID uuid.UUID) (trip *models.Trip, ok bool, err error)
 	// CompleteTrip hace un UPDATE condicional (WHERE status = in_progress) que
 	// setea status = completed, fare y completed_at en un solo movimiento
 	// atómico. RowsAffected == 0 => el estado ya cambió (CAS).

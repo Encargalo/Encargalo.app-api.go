@@ -16,43 +16,6 @@ type TripsRepo struct {
 	mock.Mock
 }
 
-// AdvanceTripForward provides a mock function with given fields: ctx, tripID, riderID
-func (_m *TripsRepo) AdvanceTripForward(ctx context.Context, tripID uuid.UUID, riderID uuid.UUID) (*models.Trip, bool, error) {
-	ret := _m.Called(ctx, tripID, riderID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for AdvanceTripForward")
-	}
-
-	var r0 *models.Trip
-	var r1 bool
-	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) (*models.Trip, bool, error)); ok {
-		return rf(ctx, tripID, riderID)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) *models.Trip); ok {
-		r0 = rf(ctx, tripID, riderID)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*models.Trip)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) bool); ok {
-		r1 = rf(ctx, tripID, riderID)
-	} else {
-		r1 = ret.Get(1).(bool)
-	}
-
-	if rf, ok := ret.Get(2).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
-		r2 = rf(ctx, tripID, riderID)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
-}
-
 // AssignTripRider provides a mock function with given fields: ctx, tripID, riderID
 func (_m *TripsRepo) AssignTripRider(ctx context.Context, tripID uuid.UUID, riderID uuid.UUID) (bool, error) {
 	ret := _m.Called(ctx, tripID, riderID)

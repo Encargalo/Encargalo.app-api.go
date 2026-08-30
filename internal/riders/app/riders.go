@@ -23,6 +23,14 @@ import (
 	"github.com/google/uuid"
 )
 
+// tripForwardStatus mapea cada estado al siguiente en la máquina lineal
+// accepted→arriving→in_progress; in_progress→completed se maneja aparte en
+// completeTrip porque además calcula la tarifa y acredita la ganancia.
+var tripForwardStatus = map[tripsModels.TripStatus]tripsModels.TripStatus{
+	tripsModels.TripStatusAccepted: tripsModels.TripStatusArriving,
+	tripsModels.TripStatusArriving: tripsModels.TripStatusInProgress,
+}
+
 const orderAcceptTimeout = 10 * time.Minute
 
 const (
@@ -503,28 +511,36 @@ func (r *appRidersManager) AcceptTrip(ctx context.Context, riderID, tripID uuid.
 // Vive en riders/app (no en trips/app) a propósito, igual que AcceptTrip:
 // ver "Trips & Riders" en CLAUDE.md para el porqué de este split.
 func (r *appRidersManager) AdvanceTrip(ctx context.Context, riderID, tripID uuid.UUID, conn ridersPorts.RiderConn) error {
-	trip, ok, err := r.tripsRepo.AdvanceTripForward(ctx, tripID, riderID)
-	if err != nil {
-		return err
-	}
-	if ok {
-		data, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: trip.ToDTO()})
-		conn.Send(data)
-		return nil
-	}
-
-	// No aplicó la transición atómica; leemos para distinguir in_progress (completar) de un caso inválido.
-	trip, err = r.tripsRepo.GetTripByID(ctx, tripID)
+	trip, err := r.tripsRepo.GetTripByID(ctx, tripID)
 	if err != nil {
 		return err
 	}
 	if trip.RiderID == nil || *trip.RiderID != riderID {
 		return errcustom.ErrInvalidTransition
 	}
-	if trip.Status != tripsModels.TripStatusInProgress {
+
+	if trip.Status == tripsModels.TripStatusInProgress {
+		return r.completeTrip(ctx, trip, conn)
+	}
+
+	next, ok := tripForwardStatus[trip.Status]
+	if !ok {
 		return errcustom.ErrInvalidTransition
 	}
-	return r.completeTrip(ctx, trip, conn)
+
+	updated, err := r.tripsRepo.UpdateTripStatus(ctx, tripID, trip.Status, next)
+	if err != nil {
+		return err
+	}
+	if !updated {
+		return errcustom.ErrInvalidTransition
+	}
+
+	trip.Status = next
+	data, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: trip.ToDTO()})
+	conn.Send(data)
+
+	return nil
 }
 
 // completeTrip calcula la tarifa por distancia vial pickup→dropoff, persiste
