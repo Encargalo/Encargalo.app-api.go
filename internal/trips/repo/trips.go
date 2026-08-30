@@ -112,6 +112,34 @@ func (r *tripsRepo) CompleteTrip(ctx context.Context, tripID uuid.UUID, fare flo
 	return rows > 0, nil
 }
 
+func (r *tripsRepo) AdvanceTripForward(ctx context.Context, tripID, riderID uuid.UUID) (*models.Trip, bool, error) {
+	var trip models.Trip
+	res, err := r.db.NewUpdate().
+		Model(&trip).
+		Set("status = CASE status WHEN ? THEN ? WHEN ? THEN ? END",
+			models.TripStatusAccepted, models.TripStatusArriving,
+			models.TripStatusArriving, models.TripStatusInProgress).
+		Set("updated_at = now()").
+		Where("id = ? AND rider_id = ? AND status IN (?, ?)",
+			tripID, riderID, models.TripStatusAccepted, models.TripStatusArriving).
+		Returning("*").
+		Exec(ctx)
+	if err != nil {
+		slog.Error("trips AdvanceTripForward failed", "tripID", tripID, "riderID", riderID, "error", err)
+		return nil, false, errcustom.Unexpected(err)
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		slog.Error("trips AdvanceTripForward: failed to read rows affected", "tripID", tripID, "error", err)
+		return nil, false, errcustom.Unexpected(err)
+	}
+	if rows == 0 {
+		return nil, false, nil
+	}
+	return &trip, true, nil
+}
+
 func (r *tripsRepo) AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID) (bool, error) {
 	res, err := r.db.NewUpdate().
 		TableExpr("trips.trips").

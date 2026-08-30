@@ -479,8 +479,7 @@ func TestAdvanceTrip_AcceptedMovesToArriving(t *testing.T) {
 	conn := mocksriders.NewRiderConn(t)
 	conn.On("Send", mock.Anything).Return()
 
-	tripsRepo.On("GetTripByID", mock.Anything, tripID).Return(&tripsModels.Trip{ID: tripID, RiderID: &riderID, Status: tripsModels.TripStatusAccepted}, nil)
-	tripsRepo.On("UpdateTripStatus", mock.Anything, tripID, tripsModels.TripStatusAccepted, tripsModels.TripStatusArriving).Return(true, nil)
+	tripsRepo.On("AdvanceTripForward", mock.Anything, tripID, riderID).Return(&tripsModels.Trip{ID: tripID, RiderID: &riderID, Status: tripsModels.TripStatusArriving}, true, nil)
 
 	err := svc.AdvanceTrip(context.Background(), riderID, tripID, conn)
 
@@ -499,8 +498,7 @@ func TestAdvanceTrip_ArrivingMovesToInProgress(t *testing.T) {
 	conn := mocksriders.NewRiderConn(t)
 	conn.On("Send", mock.Anything).Return()
 
-	tripsRepo.On("GetTripByID", mock.Anything, tripID).Return(&tripsModels.Trip{ID: tripID, RiderID: &riderID, Status: tripsModels.TripStatusArriving}, nil)
-	tripsRepo.On("UpdateTripStatus", mock.Anything, tripID, tripsModels.TripStatusArriving, tripsModels.TripStatusInProgress).Return(true, nil)
+	tripsRepo.On("AdvanceTripForward", mock.Anything, tripID, riderID).Return(&tripsModels.Trip{ID: tripID, RiderID: &riderID, Status: tripsModels.TripStatusInProgress}, true, nil)
 
 	err := svc.AdvanceTrip(context.Background(), riderID, tripID, conn)
 
@@ -521,6 +519,9 @@ func TestAdvanceTrip_InProgressCompletesAndRecordsEarning(t *testing.T) {
 
 	// Fuera de production, completeTrip usa deliveryfee.DevPlaceholderFee en
 	// vez de llamar a Google Maps (ver deliveryfee.Calculate / config.Get().IsProduction()).
+	// AdvanceTripForward solo cubre accepted/arriving; in_progress cae al
+	// fallback GetTripByID que resuelve completeTrip.
+	tripsRepo.On("AdvanceTripForward", mock.Anything, tripID, riderID).Return(nil, false, nil)
 	tripsRepo.On("GetTripByID", mock.Anything, tripID).Return(&tripsModels.Trip{ID: tripID, RiderID: &riderID, Status: tripsModels.TripStatusInProgress}, nil)
 	tripsRepo.On("CompleteTrip", mock.Anything, tripID, deliveryfee.DevPlaceholderFee).Return(true, nil)
 	bcv.On("GetRate", mock.Anything).Return(&bcvmodels.ExchangeRate{Rate: 40}, nil)
@@ -540,6 +541,7 @@ func TestAdvanceTrip_RejectsWhenRiderNotAssigned(t *testing.T) {
 	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
 
 	assignedRiderID, otherRiderID, tripID := uuid.New(), uuid.New(), uuid.New()
+	tripsRepo.On("AdvanceTripForward", mock.Anything, tripID, otherRiderID).Return(nil, false, nil)
 	tripsRepo.On("GetTripByID", mock.Anything, tripID).Return(&tripsModels.Trip{ID: tripID, RiderID: &assignedRiderID, Status: tripsModels.TripStatusAccepted}, nil)
 
 	err := svc.AdvanceTrip(context.Background(), otherRiderID, tripID, mocksriders.NewRiderConn(t))
@@ -556,6 +558,7 @@ func TestAdvanceTrip_RejectsTerminalStatus(t *testing.T) {
 	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
 
 	riderID, tripID := uuid.New(), uuid.New()
+	tripsRepo.On("AdvanceTripForward", mock.Anything, tripID, riderID).Return(nil, false, nil)
 	tripsRepo.On("GetTripByID", mock.Anything, tripID).Return(&tripsModels.Trip{ID: tripID, RiderID: &riderID, Status: tripsModels.TripStatusCompleted}, nil)
 
 	err := svc.AdvanceTrip(context.Background(), riderID, tripID, mocksriders.NewRiderConn(t))
@@ -585,6 +588,7 @@ func TestAdvanceTrip_ConcurrentCompletionIsSerialized(t *testing.T) {
 	entered := make(chan struct{})
 	proceed := make(chan struct{})
 
+	tripsRepo.On("AdvanceTripForward", mock.Anything, tripID, riderID).Return(nil, false, nil)
 	tripsRepo.On("GetTripByID", mock.Anything, tripID).Return(&tripsModels.Trip{ID: tripID, RiderID: &riderID, Status: tripsModels.TripStatusInProgress}, nil)
 	tripsRepo.On("CompleteTrip", mock.Anything, tripID, deliveryfee.DevPlaceholderFee).Run(func(mock.Arguments) {
 		close(entered)
