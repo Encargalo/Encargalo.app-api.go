@@ -121,6 +121,21 @@ func (r *financeRepo) GetLastWithdrawal(ctx context.Context, entityID uuid.UUID,
 	return &tx.CreatedAt, nil
 }
 
+func (r *financeRepo) ListRecentTransactions(ctx context.Context, entityID uuid.UUID, entityType string, limit int) ([]models.Transaction, error) {
+	var txs []models.Transaction
+	err := r.db.NewSelect().
+		Model(&txs).
+		Where("entity_id = ? AND entity_type = ?", entityID, entityType).
+		OrderExpr("created_at DESC").
+		Limit(limit).
+		Scan(ctx)
+	if err != nil {
+		slog.Error("ListRecentTransactions: failed", "entityID", entityID, "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+	return txs, nil
+}
+
 func (r *financeRepo) ListTransactions(ctx context.Context, entityID uuid.UUID, entityType string, page, limit int) ([]models.Transaction, int, error) {
 	if limit > 50 {
 		limit = 50
