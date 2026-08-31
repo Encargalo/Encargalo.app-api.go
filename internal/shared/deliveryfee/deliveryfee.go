@@ -2,6 +2,7 @@ package deliveryfee
 
 import (
 	"context"
+	"errors"
 	"math"
 	"time"
 
@@ -40,4 +41,28 @@ func Calculate(ctx context.Context, shopLat, shopLon, deliveryLat, deliveryLon f
 		return 0, err
 	}
 	return FromDistance(distMeters), nil
+}
+
+// Estimate agrega la distancia y duración estimadas del trayecto junto con la tarifa calculada.
+type Estimate struct {
+	DistanceMeters float64
+	DurationMin    int64
+	Fee            float64
+}
+
+// CalculateWithDuration es como Calculate, pero además retorna la duración estimada.
+func CalculateWithDuration(originLat, originLon, destLat, destLon float64) (Estimate, error) {
+	results, err := googlemaps.DistanceMatrix(originLat, originLon, [][2]float64{{destLat, destLon}})
+	if err != nil {
+		return Estimate{}, err
+	}
+	if len(results) == 0 {
+		return Estimate{}, errors.New("google maps: no se pudo resolver el destino")
+	}
+	elem := results[0]
+	return Estimate{
+		DistanceMeters: elem.DistanceMeters,
+		DurationMin:    elem.DurationMin,
+		Fee:            FromDistance(elem.DistanceMeters),
+	}, nil
 }

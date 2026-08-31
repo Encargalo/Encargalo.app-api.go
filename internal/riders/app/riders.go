@@ -15,7 +15,6 @@ import (
 	"Encargalo.app-api.go/internal/pkg/geo"
 	riderModels "Encargalo.app-api.go/internal/riders/domain/models"
 	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
-	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/deliveryfee"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	tripsDtos "Encargalo.app-api.go/internal/trips/domain/dtos"
@@ -23,9 +22,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// tripForwardStatus mapea cada estado al siguiente en la máquina lineal
-// accepted→arriving→in_progress; in_progress→completed se maneja aparte en
-// completeTrip porque además calcula la tarifa y acredita la ganancia.
+// tripForwardStatus cubre accepted→arriving→in_progress; in_progress→completed se maneja en completeTrip.
 var tripForwardStatus = map[tripsModels.TripStatus]tripsModels.TripStatus{
 	tripsModels.TripStatusAccepted: tripsModels.TripStatusArriving,
 	tripsModels.TripStatusArriving: tripsModels.TripStatusInProgress,
@@ -507,7 +504,7 @@ func (r *appRidersManager) AcceptTrip(ctx context.Context, riderID, tripID uuid.
 
 // AdvanceTrip mueve el trip asignado al siguiente estado. Solo el rider
 // asignado puede avanzarlo; in_progress→completed se resuelve en
-// completeTrip porque además calcula la tarifa y acredita la ganancia.
+// completeTrip porque además acredita la ganancia del rider.
 // Vive en riders/app (no en trips/app) a propósito, igual que AcceptTrip:
 // ver "Trips & Riders" en CLAUDE.md para el porqué de este split.
 func (r *appRidersManager) AdvanceTrip(ctx context.Context, riderID, tripID uuid.UUID, conn ridersPorts.RiderConn) error {
@@ -543,25 +540,17 @@ func (r *appRidersManager) AdvanceTrip(ctx context.Context, riderID, tripID uuid
 	return nil
 }
 
-// completeTrip calcula la tarifa por distancia vial pickup→dropoff, persiste
-// la transición in_progress→completed junto con esa tarifa de forma atómica,
-// y acredita la ganancia del rider. Un fallo al acreditar (ej. tasa BCV no
-// disponible) no revierte la finalización del trip: se loguea y el rider
-// puede reclamarlo por soporte, igual que RecordRideEarning en orders.
-//
-// beginCompleting/endCompleting evitan que un spam de advance_trip sobre el
-// mismo trip dispare múltiples llamadas reales a Google Maps (tripFare) en
-// paralelo mientras la primera aún no confirma en DB.
+// completeTrip usa el fare que ya quedó fijado en trip.Fare desde RequestTrip, no lo recalcula.
 func (r *appRidersManager) completeTrip(ctx context.Context, trip *tripsModels.Trip, conn ridersPorts.RiderConn) error {
 	if !r.beginCompleting(trip.ID) {
 		return errcustom.ErrInvalidTransition
 	}
 	defer r.endCompleting(trip.ID)
 
-	fare, err := r.tripFare(ctx, trip)
-	if err != nil {
-		return err
+	if trip.Fare == nil {
+		return errcustom.ErrUnexpectedError
 	}
+	fare := *trip.Fare
 
 	updated, err := r.tripsRepo.CompleteTrip(ctx, trip.ID, fare)
 	if err != nil {
@@ -573,8 +562,8 @@ func (r *appRidersManager) completeTrip(ctx context.Context, trip *tripsModels.T
 
 	completedAt := time.Now()
 	trip.Status = tripsModels.TripStatusCompleted
-	trip.Fare = &fare
 	trip.CompletedAt = &completedAt
+	trip.ApplyBsFare(r.bcvRate(ctx))
 	data, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: trip.ToDTO()})
 	conn.Send(data)
 
@@ -583,16 +572,6 @@ func (r *appRidersManager) completeTrip(ctx context.Context, trip *tripsModels.T
 	}
 
 	return nil
-}
-
-// tripFare calcula la tarifa por distancia vial pickup→dropoff. Fuera de
-// producción usa un placeholder fijo para no gastar cuota de Google Maps,
-// mismo patrón que priceOrderDraft en orders/app.
-func (r *appRidersManager) tripFare(ctx context.Context, trip *tripsModels.Trip) (float64, error) {
-	if !config.Get().IsProduction() {
-		return deliveryfee.DevPlaceholderFee, nil
-	}
-	return deliveryfee.Calculate(ctx, trip.PickupLatitude, trip.PickupLongitude, trip.DropoffLatitude, trip.DropoffLongitude)
 }
 
 func (r *appRidersManager) bcvRate(ctx context.Context) float64 {

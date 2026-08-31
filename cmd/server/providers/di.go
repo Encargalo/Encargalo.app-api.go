@@ -134,6 +134,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(handTrips.NewTripsHandler)
 	_ = Container.Provide(appTrips.NewTripsApp)
 	_ = Container.Provide(repoTrips.NewTripsRepo)
+	_ = Container.Provide(repoTrips.NewTripQuotesRepo)
 
 	_ = Container.Provide(requestinfo.NewRequestMiddleware)
 	_ = Container.Provide(sharedmw.NewRateLimiter)

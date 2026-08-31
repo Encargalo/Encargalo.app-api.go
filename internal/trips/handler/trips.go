@@ -17,6 +17,7 @@ type TripsHandler interface {
 	GetTrip(c echo.Context) error
 	GetTripHistory(c echo.Context) error
 	CancelTrip(c echo.Context) error
+	EstimateFare(c echo.Context) error
 }
 
 type tripsHandler struct {
@@ -29,15 +30,16 @@ func NewTripsHandler(svc ports.TripsApp) TripsHandler {
 
 // RequestTrip godoc
 // @Summary      Solicitar un viaje
-// @Description  Crea un viaje en estado "requested" con punto de recogida y destino. El matching con conductores cercanos no está incluido en este endpoint.
+// @Description  Crea un viaje en estado "requested" a partir de una cotización vigente (ver POST /trips/fare-estimate): pickup/dropoff y fare quedan fijados por esa cotización, no se recalculan. El matching con conductores cercanos no está incluido en este endpoint.
 // @Tags         Trips
 // @Accept       json
 // @Produce      json
 // @Security     SessionCookie
-// @Param        body  body  dtos.CreateTripRequest  true  "Datos del viaje"
+// @Param        body  body  dtos.CreateTripRequest  true  "quote_id de una cotización vigente"
 // @Success      201  {object}  dtos.TripResponse
 // @Failure      400  {string}  string  "payload inválido"
 // @Failure      401  {string}  string  "No autorizado"
+// @Failure      404  {string}  string  "Cotización no encontrada, expirada o de otro cliente"
 // @Router       /trips [post]
 func (h *tripsHandler) RequestTrip(c echo.Context) error {
 	ctx := c.Request().Context()
@@ -56,6 +58,39 @@ func (h *tripsHandler) RequestTrip(c echo.Context) error {
 		return errcustom.ToHTTPError(err)
 	}
 	return response.Send(c, http.StatusCreated, resp)
+}
+
+// EstimateFare godoc
+// @Summary      Cotizar tarifa de un viaje
+// @Description  Calcula distancia, tiempo estimado y tarifa (USD/Bs) entre pickup y destino, y la congela por 10 minutos en una cotización. El quote_id devuelto es obligatorio para crear el viaje (POST /trips): el precio mostrado acá es el que queda fijado, no se recalcula.
+// @Tags         Trips
+// @Accept       json
+// @Produce      json
+// @Security     SessionCookie
+// @Param        body  body  dtos.FareEstimateRequest  true  "Direcciones y coordenadas de pickup/destino"
+// @Success      200  {object}  dtos.FareEstimateResponse
+// @Failure      400  {string}  string  "payload inválido"
+// @Failure      401  {string}  string  "No autorizado"
+// @Failure      503  {string}  string  "Tasa BCV no disponible"
+// @Router       /trips/fare-estimate [post]
+func (h *tripsHandler) EstimateFare(c echo.Context) error {
+	ctx := c.Request().Context()
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
+
+	var body dtos.FareEstimateRequest
+	if err := c.Bind(&body); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "payload inválido")
+	}
+	body.CustomerID = session.UserID
+	if err := body.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	resp, err := h.svc.EstimateFare(ctx, body)
+	if err != nil {
+		return errcustom.ToHTTPError(err)
+	}
+	return response.Send(c, http.StatusOK, resp)
 }
 
 // GetTrip godoc

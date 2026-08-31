@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"Encargalo.app-api.go/internal/trips/domain/dtos"
 	"Encargalo.app-api.go/internal/trips/domain/models"
@@ -13,6 +14,8 @@ type TripsApp interface {
 	GetTrip(ctx context.Context, tripID, requesterID uuid.UUID) (dtos.TripResponse, error)
 	GetTripHistory(ctx context.Context, customerID uuid.UUID) (dtos.TripHistoryResponse, error)
 	CancelTrip(ctx context.Context, tripID, requesterID uuid.UUID) (dtos.TripResponse, error)
+	// EstimateFare congela el precio en una TripQuote; RequestTrip la exige en vez de recalcular.
+	EstimateFare(ctx context.Context, req dtos.FareEstimateRequest) (dtos.FareEstimateResponse, error)
 }
 
 type TripsRepo interface {
@@ -29,4 +32,12 @@ type TripsRepo interface {
 
 type TripRiderMatcher interface {
 	OfferTrip(ctx context.Context, trip models.Trip)
+}
+
+// TripQuotesRepo persiste TripQuote en Redis con TTL.
+type TripQuotesRepo interface {
+	Save(ctx context.Context, quote *models.TripQuote, ttl time.Duration) error
+	// GetAndConsume borra la cotización atómicamente al leerla (GETDEL); escopada por
+	// customerID, así un quote_id ajeno nunca matchea (ni se borra) la de otro cliente.
+	GetAndConsume(ctx context.Context, customerID, quoteID uuid.UUID) (*models.TripQuote, error)
 }
