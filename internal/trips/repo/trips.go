@@ -182,6 +182,25 @@ func (r *tripsRepo) ListActiveTripsByCustomer(ctx context.Context, customerID uu
 	return trips, nil
 }
 
+func (r *tripsRepo) ListActiveTripsByRider(ctx context.Context, riderID uuid.UUID) ([]models.Trip, error) {
+	var trips []models.Trip
+	err := r.db.NewSelect().
+		Model(&trips).
+		Where("rider_id = ?", riderID).
+		Where("status IN (?)", bun.In([]models.TripStatus{
+			models.TripStatusAccepted,
+			models.TripStatusArriving,
+			models.TripStatusInProgress,
+		})).
+		OrderExpr("requested_at DESC").
+		Scan(ctx)
+	if err != nil {
+		slog.Error("trips ListActiveTripsByRider failed", "riderID", riderID, "error", err)
+		return nil, errcustom.Unexpected(err)
+	}
+	return trips, nil
+}
+
 func (r *tripsRepo) AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID, pickupCode string) (bool, error) {
 	res, err := r.db.NewUpdate().
 		TableExpr("trips.trips").

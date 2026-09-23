@@ -4,6 +4,7 @@ import (
 	"context"
 
 	riderModels "Encargalo.app-api.go/internal/riders/domain/models"
+	tripsDtos "Encargalo.app-api.go/internal/trips/domain/dtos"
 	tripsModels "Encargalo.app-api.go/internal/trips/domain/models"
 	"github.com/google/uuid"
 )
@@ -32,6 +33,12 @@ type RidersApp interface {
 	// calcula la tarifa (distancia vial pickup→dropoff) y acredita la
 	// ganancia del rider.
 	AdvanceTrip(ctx context.Context, riderID, tripID uuid.UUID, code string, conn RiderConn) error
+	// SendActiveTrips reenvía al rider que se reconecta en modo trips los viajes
+	// que ya tiene asignados (accepted, arriving o in_progress) como trip_status,
+	// y vuelve a enlazar su ubicación con el cliente.
+	SendActiveTrips(ctx context.Context, riderID uuid.UUID, conn RiderConn) error
+	// ActiveTrips devuelve esos mismos viajes por REST, sin códigos de subida/bajada.
+	ActiveTrips(ctx context.Context, riderID uuid.UUID) ([]tripsDtos.TripResponse, error)
 }
 
 type RidersStream interface {
@@ -48,4 +55,5 @@ type TripsStore interface {
 	StartTripWithPickupCode(ctx context.Context, tripID, riderID uuid.UUID, pickupCode, dropoffCode string) (bool, error)
 	ReleaseTripRider(ctx context.Context, tripID, riderID uuid.UUID) (bool, error)
 	CompleteTrip(ctx context.Context, tripID uuid.UUID, fare float64, dropoffCode string) (bool, error)
+	ListActiveTripsByRider(ctx context.Context, riderID uuid.UUID) ([]tripsModels.Trip, error)
 }

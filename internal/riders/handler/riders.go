@@ -4,12 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"net/http"
 
 	authModels "Encargalo.app-api.go/internal/auth/domain/models"
+	"Encargalo.app-api.go/internal/riders/domain/dtos"
 	riderModels "Encargalo.app-api.go/internal/riders/domain/models"
 	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/shared/response"
 	"Encargalo.app-api.go/internal/shared/ws"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -18,6 +21,7 @@ import (
 
 type RiderHandler interface {
 	HandleWebSocket(c echo.Context) error
+	GetActiveTrips(c echo.Context) error
 }
 
 type riderHandler struct {
@@ -50,7 +54,10 @@ func New(svc ridersPorts.RidersApp) RiderHandler {
 //
 //	{"type":"update_location","latitude":10.48,"longitude":-66.90}
 //
-// → Guarda la ubicación en memoria (solo relevante en modo trips).
+// → Guarda la ubicación en memoria (solo relevante en modo trips). En modo trips,
+// la primera ubicación de la conexión (o un cambio de celda H3) reenvía como
+// `trip_offer` los viajes que siguen buscando conductor dentro del radio de su
+// ronda actual, salvo los que el rider canceló.
 //
 // **accept_trip**
 //
@@ -75,7 +82,9 @@ func New(svc ridersPorts.RidersApp) RiderHandler {
 // El rider que canceló no vuelve a recibir esa oferta.
 //
 // ### Mensajes salientes
-//   - `{"type":"connected"}` — confirmación de conexión
+//   - `{"type":"connected"}` — confirmación de conexión. En modo trips le siguen
+//     los viajes que el rider ya tiene asignados (accepted, arriving o in_progress),
+//     como `trip_status` sin códigos.
 //   - `{"type":"new_order","order":{...}}` — nueva orden disponible (sin códigos)
 //   - `{"type":"order_accepted","order":{...}}` — asignación exitosa (con pickup_code)
 //   - `{"type":"order_taken","order_id":"<uuid>"}` — otro rider se adelantó
@@ -127,6 +136,12 @@ func (h *riderHandler) HandleWebSocket(c echo.Context) error {
 	}()
 
 	client.Send([]byte(`{"type":"connected"}`))
+
+	if mode == riderModels.RiderModeTrips {
+		if err := h.svc.SendActiveTrips(ctx, riderID, client); err != nil {
+			slog.Error("Error reenviando viajes activos al rider", "riderID", riderID, "error", err)
+		}
+	}
 
 	for {
 		_, msg, err := conn.ReadMessage()
@@ -265,6 +280,30 @@ func (h *riderHandler) HandleWebSocket(c echo.Context) error {
 			slog.Warn("Tipo de mensaje rider desconocido", "type", base.Type)
 		}
 	}
+}
+
+// GetActiveTrips godoc
+//
+// @Summary      Viajes activos del rider
+// @Description  Devuelve los viajes que el rider ya tiene asignados y siguen en curso (accepted, arriving o in_progress), sin códigos de subida/bajada. Sirve para recuperar el viaje al abrir la app sin depender del WebSocket. Lista vacía si no tiene ninguno.
+// @Tags         Riders
+// @Accept       json
+// @Produce      json
+// @Security     SessionCookie
+// @Success      200  {object}  dtos.ActiveTripsResponse
+// @Failure      401  {string}  string  "Sesión no encontrada o inválida"
+// @Failure      403  {string}  string  "Acceso denegado"
+// @Failure      500  {string}  string  "Error interno del servidor"
+// @Router       /riders/trips/active [get]
+func (h *riderHandler) GetActiveTrips(c echo.Context) error {
+	ctx := c.Request().Context()
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
+
+	trips, err := h.svc.ActiveTrips(ctx, session.UserID)
+	if err != nil {
+		return errcustom.ToHTTPError(err)
+	}
+	return response.Send(c, http.StatusOK, dtos.ActiveTripsResponse{Trips: trips})
 }
 
 func safeErrorMessage(err error) string {
