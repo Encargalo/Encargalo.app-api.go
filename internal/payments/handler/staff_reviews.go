@@ -5,11 +5,11 @@ import (
 	"log/slog"
 
 	"Encargalo.app-api.go/internal/auth/domain/models"
-	modelsOrder "Encargalo.app-api.go/internal/orders/domain/models"
-	portsOrder "Encargalo.app-api.go/internal/orders/domain/ports"
+	paymentsdtos "Encargalo.app-api.go/internal/payments/domain/dtos"
+	paymentsmodels "Encargalo.app-api.go/internal/payments/domain/models"
+	paymentsports "Encargalo.app-api.go/internal/payments/domain/ports"
 	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/ws"
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 )
@@ -19,12 +19,12 @@ type StaffReviews interface {
 }
 
 type staffReviews struct {
-	hub      portsOrder.StaffReviewHub
-	reviews  portsOrder.PaymentReviewsApp
+	hub      paymentsports.StaffReviewHub
+	reviews  paymentsports.PaymentReviewsApp
 	upgrader websocket.Upgrader
 }
 
-func NewStaffReviewsHandler(hub portsOrder.StaffReviewHub, reviews portsOrder.PaymentReviewsApp) StaffReviews {
+func NewStaffReviewsHandler(hub paymentsports.StaffReviewHub, reviews paymentsports.PaymentReviewsApp) StaffReviews {
 	cfg := config.Get()
 	return &staffReviews{
 		hub:      hub,
@@ -33,36 +33,32 @@ func NewStaffReviewsHandler(hub portsOrder.StaffReviewHub, reviews portsOrder.Pa
 	}
 }
 
-type staffWSMessage struct {
-	Type             string    `json:"type"`
-	ReviewID         uuid.UUID `json:"review_id"`
-	ObservedAmountBs *float64  `json:"observed_amount_bs,omitempty"`
-	ReferenceLast4   string    `json:"reference_last4,omitempty"`
-	Reason           string    `json:"reason,omitempty"`
-}
-
 // HandleWebSocket godoc
 //
 // @Summary WebSocket de revisión de comprobantes (Staff CRM)
 // @Description
-// Establece una conexión WebSocket para que el staff valide comprobantes de pago.
-// Al conectar, envía snapshot de reviews pendientes y `{"type":"connected"}`.
+// Establece una conexión WebSocket para que el staff valide comprobantes de pago
+// de órdenes y, más adelante, de viajes. Al conectar, envía el snapshot de reviews
+// pendientes y `{"type":"connected"}`.
 //
 // ### Mensajes entrantes
 // - approve: `{"type":"approve","review_id":"...","reference_last4":"1234"}`
 // - approve_overpay: `{"type":"approve_overpay","review_id":"...","observed_amount_bs":123.45,"reference_last4":"1234"}`
-// - reject_underpaid: `{"type":"reject_underpaid","review_id":"...","observed_amount_bs":100,"reference_last4":"1234"}` — rechaza la orden por pago incompleto y acredita lo pagado (observed_amount_bs) al balance del cliente de inmediato.
+// - reject_underpaid: `{"type":"reject_underpaid","review_id":"...","observed_amount_bs":100,"reference_last4":"1234"}` — rechaza la referencia por pago incompleto y acredita lo pagado (observed_amount_bs) al balance del cliente de inmediato.
 // - reject_invalid: `{"type":"reject_invalid","review_id":"...","reason":"..."}` — no requiere reference_last4 (ej. foto que no es un comprobante).
 //
 // Si `reference_last4` ya existe en otra review consumida (approved/overpaid/rejected_underpaid),
-// el backend auto-rechaza como `rejected_invalid` (comprobante duplicado) y responde
-// `action_ok` con `action:"reject_invalid"` y `duplicate_reject:true`.
+// sin importar el tipo de referencia, el backend auto-rechaza como `rejected_invalid`
+// (comprobante duplicado) y responde `action_ok` con `action:"reject_invalid"` y `duplicate_reject:true`.
 //
-// @Tags         Orders WebSocket
+// `action_ok` incluye `reference_id` y `reference_type`. El estado final de la revisión
+// llega en el broadcast `payment_review_update`.
+//
+// @Tags         Payments
 // @Security     SessionCookie
 // @Failure      401  {string}  string  "Sesión no encontrada o inválida"
 // @Failure      403  {string}  string  "Acceso denegado"
-// @Router       /orders/staff/reviews [get]
+// @Router       /payments/staff/reviews [get]
 func (h *staffReviews) HandleWebSocket(c echo.Context) error {
 	ctx := c.Request().Context()
 
@@ -94,16 +90,13 @@ func (h *staffReviews) HandleWebSocket(c echo.Context) error {
 			break
 		}
 
-		var payload staffWSMessage
+		var payload paymentsdtos.StaffWSMessage
 		if err := json.Unmarshal(msg, &payload); err != nil {
 			client.Send([]byte(`{"type":"error","message":"payload inválido"}`))
 			continue
 		}
 
-		var (
-			result modelsOrder.StaffReviewResult
-			order  modelsOrder.Order
-		)
+		var result paymentsmodels.StaffReviewResult
 
 		switch payload.Type {
 		case "approve":
@@ -112,7 +105,6 @@ func (h *staffReviews) HandleWebSocket(c echo.Context) error {
 				continue
 			}
 			result, err = h.reviews.Approve(ctx, payload.ReviewID, session.UserID, payload.ReferenceLast4)
-			order = result.Order
 		case "approve_overpay":
 			if payload.ObservedAmountBs == nil {
 				client.Send([]byte(`{"type":"error","message":"observed_amount_bs requerido"}`))
@@ -123,7 +115,6 @@ func (h *staffReviews) HandleWebSocket(c echo.Context) error {
 				continue
 			}
 			result, err = h.reviews.ApproveOverpay(ctx, payload.ReviewID, session.UserID, *payload.ObservedAmountBs, payload.ReferenceLast4)
-			order = result.Order
 		case "reject_underpaid":
 			if payload.ObservedAmountBs == nil {
 				client.Send([]byte(`{"type":"error","message":"observed_amount_bs requerido"}`))
@@ -134,10 +125,8 @@ func (h *staffReviews) HandleWebSocket(c echo.Context) error {
 				continue
 			}
 			result, err = h.reviews.RejectUnderpaid(ctx, payload.ReviewID, session.UserID, *payload.ObservedAmountBs, payload.ReferenceLast4)
-			order = result.Order
 		case "reject_invalid":
-			order, err = h.reviews.RejectInvalid(ctx, payload.ReviewID, session.UserID, payload.Reason)
-			result = modelsOrder.StaffReviewResult{Order: order, Action: "reject_invalid"}
+			result, err = h.reviews.RejectInvalid(ctx, payload.ReviewID, session.UserID, payload.Reason)
 		default:
 			client.Send([]byte(`{"type":"error","message":"tipo de mensaje desconocido"}`))
 			continue
@@ -151,11 +140,11 @@ func (h *staffReviews) HandleWebSocket(c echo.Context) error {
 		}
 
 		okPayload := map[string]any{
-			"type":         "action_ok",
-			"action":       result.Action,
-			"review_id":    payload.ReviewID,
-			"order_id":     order.ID,
-			"order_status": order.Status,
+			"type":           "action_ok",
+			"action":         result.Action,
+			"review_id":      result.ReviewID,
+			"reference_id":   result.ReferenceID,
+			"reference_type": result.ReferenceType,
 		}
 		if result.DuplicateReject {
 			okPayload["duplicate_reject"] = true

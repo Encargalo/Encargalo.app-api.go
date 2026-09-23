@@ -7,8 +7,8 @@ import (
 	"log/slog"
 	"time"
 
-	"Encargalo.app-api.go/internal/orders/domain/models"
-	"Encargalo.app-api.go/internal/orders/domain/ports"
+	"Encargalo.app-api.go/internal/payments/domain/models"
+	"Encargalo.app-api.go/internal/payments/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
@@ -115,20 +115,34 @@ func (r *paymentReviewsRepo) ExistsResolvedReferenceLast4(ctx context.Context, l
 	return exists, nil
 }
 
-func (r *paymentReviewsRepo) ListPendingForAlert(ctx context.Context, alertBefore time.Time) ([]models.PaymentReview, error) {
+func (r *paymentReviewsRepo) ListPendingForAlert(ctx context.Context, referenceType string, alertBefore time.Time) ([]models.PaymentReview, error) {
 	var list []models.PaymentReview
-	err := r.db.NewSelect().
+	q := r.db.NewSelect().
 		Model(&list).
 		Where("status = ?", models.ReviewPendingReview).
-		Where("last_alerted_at IS NULL OR last_alerted_at <= ?", alertBefore).
-		OrderExpr("created_at ASC").
-		Limit(100).
-		Scan(ctx)
+		Where("last_alerted_at IS NULL OR last_alerted_at <= ?", alertBefore)
+	if referenceType != "" {
+		q = q.Where("reference_type = ?", referenceType)
+	}
+	err := q.OrderExpr("created_at ASC").Limit(100).Scan(ctx)
 	if err != nil {
 		slog.Error("paymentReviews ListPendingForAlert failed", "error", err)
 		return nil, errcustom.ErrUnexpectedError
 	}
 	return list, nil
+}
+
+func (r *paymentReviewsRepo) UpdateCreditedBs(ctx context.Context, id uuid.UUID, creditedBs float64) error {
+	_, err := r.db.NewUpdate().
+		Model((*models.PaymentReview)(nil)).
+		Set("credited_bs = ?", creditedBs).
+		Where("id = ?", id).
+		Exec(ctx)
+	if err != nil {
+		slog.Error("paymentReviews UpdateCreditedBs failed", "id", id, "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+	return nil
 }
 
 func (r *paymentReviewsRepo) MarkAlerted(ctx context.Context, id uuid.UUID, alertedAt, alertBefore time.Time) (bool, error) {

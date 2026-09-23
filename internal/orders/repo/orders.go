@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -370,8 +371,10 @@ func (o *orders) SearchOrderHistoryByCustomer(ctx context.Context, customerID uu
 }
 
 func (o *orders) UpdateOrderDetails(ctx context.Context, orderID uuid.UUID, details []byte) error {
+	// []byte se enlaza como bytea; jsonb rechaza ese formato. json.RawMessage
+	// se escribe como texto JSON.
 	_, err := o.db.NewUpdate().Model(&models.Order{}).
-		Set("details = ?", details).
+		Set("details = ?", json.RawMessage(details)).
 		Where("id = ?", orderID).
 		Exec(ctx)
 	if err != nil {

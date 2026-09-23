@@ -42,12 +42,13 @@ type Balance struct {
 type Transaction struct {
 	bun.BaseModel `bun:"table:finance.transactions"`
 
-	ID         uuid.UUID  `bun:"id,pk,type:uuid"`
-	EntityID   uuid.UUID  `bun:"entity_id"`
-	EntityType string     `bun:"entity_type"`
-	OrderID    *uuid.UUID `bun:"order_id,nullzero"`
-	Amount     float64    `bun:"amount"`
-	Currency   string     `bun:"currency"`
+	ID            uuid.UUID  `bun:"id,pk,type:uuid"`
+	EntityID      uuid.UUID  `bun:"entity_id"`
+	EntityType    string     `bun:"entity_type"`
+	ReferenceID   *uuid.UUID `bun:"reference_id,nullzero"`
+	ReferenceType *string    `bun:"reference_type,nullzero"`
+	Amount        float64    `bun:"amount"`
+	Currency      string     `bun:"currency"`
 	// BcvRate es la tasa usada para convertir el monto original en USD (precio
 	// del pedido) al Bs registrado en Amount. Nil en movimientos que ya nacen
 	// en Bs y no requieren conversión (ej. RefundBalanceRestore).

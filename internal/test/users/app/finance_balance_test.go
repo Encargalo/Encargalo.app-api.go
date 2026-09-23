@@ -39,6 +39,43 @@ func TestGetBalance_Success(t *testing.T) {
 	assert.Empty(t, resp.Transactions)
 }
 
+func TestGetBalance_PopulatesOrderIDForOrderReference(t *testing.T) {
+	repo := mockports.NewCustomerFinanceRepo(t)
+	hub := mockports.NewStaffRefundHub(t)
+	bcv := mockbcvports.NewBcvApp(t)
+	svc := app.NewCustomerFinanceApp(repo, hub, nil, nil, bcv)
+
+	customerID := uuid.New()
+	orderID := uuid.New()
+	refType := "order"
+	tripID := uuid.New()
+	tripType := "trip"
+	repo.On("GetBalance", mock.Anything, customerID, models.EntityTypeCustomer).
+		Return(models.Balance{EntityID: customerID, Amount: 100, Currency: models.CurrencyVES}, nil)
+	repo.On("ListTransactions", mock.Anything, customerID, models.EntityTypeCustomer, 1, 10).
+		Return([]models.Transaction{
+			{
+				ID: uuid.New(), ReferenceID: &orderID, ReferenceType: &refType,
+				Amount: 10, Currency: models.CurrencyVES,
+				MovementType: string(models.MovementTypePaymentOverage), CreatedAt: time.Now(),
+			},
+			{
+				ID: uuid.New(), ReferenceID: &tripID, ReferenceType: &tripType,
+				Amount: 5, Currency: models.CurrencyVES,
+				MovementType: string(models.MovementTypePaymentOverage), CreatedAt: time.Now(),
+			},
+		}, 0, nil)
+	bcv.On("GetRate", mock.Anything).Return(&bcvmodels.ExchangeRate{Rate: 40}, nil)
+
+	resp, err := svc.GetBalance(context.Background(), customerID)
+
+	require.NoError(t, err)
+	require.Len(t, resp.Transactions, 2)
+	require.NotNil(t, resp.Transactions[0].OrderID)
+	assert.Equal(t, orderID.String(), *resp.Transactions[0].OrderID)
+	assert.Nil(t, resp.Transactions[1].OrderID)
+}
+
 func TestGetBalance_RepoError(t *testing.T) {
 	repo := mockports.NewCustomerFinanceRepo(t)
 	hub := mockports.NewStaffRefundHub(t)
@@ -75,9 +112,9 @@ func TestGetBalancePaymentDebitForOrder_DelegatesToRepo(t *testing.T) {
 
 	customerID := uuid.New()
 	orderID := uuid.New()
-	repo.On("SumBalancePaymentDebit", mock.Anything, customerID, orderID).Return(50.0, nil)
+	repo.On("SumBalancePaymentDebit", mock.Anything, customerID, orderID, "order").Return(50.0, nil)
 
-	got, err := svc.GetBalancePaymentDebitForOrder(context.Background(), customerID, orderID)
+	got, err := svc.GetBalancePaymentDebitForReference(context.Background(), customerID, orderID, "order")
 
 	require.NoError(t, err)
 	assert.Equal(t, 50.0, got)
@@ -93,10 +130,12 @@ func TestCreditPaymentOverage_RecordsRefundableMovement(t *testing.T) {
 	repo.On("RecordMovement", mock.Anything, customerID, models.EntityTypeCustomer, 100.0, 0.0,
 		mock.MatchedBy(func(tx models.Transaction) bool {
 			return tx.MovementType == string(models.MovementTypePaymentOverage) &&
-				tx.RefundablePMBs != nil && *tx.RefundablePMBs == 100.0
+				tx.RefundablePMBs != nil && *tx.RefundablePMBs == 100.0 &&
+				tx.ReferenceID != nil && *tx.ReferenceID == orderID &&
+				tx.ReferenceType != nil && *tx.ReferenceType == "order"
 		})).Return(0.0, nil)
 
-	txID, createdAt, err := svc.CreditPaymentOverage(context.Background(), customerID, orderID, 100.0, 40.0)
+	txID, createdAt, err := svc.CreditPaymentOverage(context.Background(), customerID, orderID, "order", 100.0, 40.0)
 
 	require.NoError(t, err)
 	assert.NotEqual(t, uuid.Nil, txID)
@@ -108,7 +147,7 @@ func TestCreditPaymentOverage_ZeroAmountNoop(t *testing.T) {
 	hub := mockports.NewStaffRefundHub(t)
 	svc := app.NewCustomerFinanceApp(repo, hub, nil, nil, nil)
 
-	txID, createdAt, err := svc.CreditPaymentOverage(context.Background(), uuid.New(), uuid.New(), 0, 40.0)
+	txID, createdAt, err := svc.CreditPaymentOverage(context.Background(), uuid.New(), uuid.New(), "order", 0, 40.0)
 
 	require.NoError(t, err)
 	assert.Equal(t, uuid.Nil, txID)
@@ -127,7 +166,7 @@ func TestCreditPaymentPartial_RecordsRefundableMovement(t *testing.T) {
 			return tx.MovementType == string(models.MovementTypePaymentPartialCredit)
 		})).Return(0.0, nil)
 
-	_, _, err := svc.CreditPaymentPartial(context.Background(), customerID, orderID, 30.0, 40.0)
+	_, _, err := svc.CreditPaymentPartial(context.Background(), customerID, orderID, "order", 30.0, 40.0)
 
 	require.NoError(t, err)
 }
@@ -145,7 +184,7 @@ func TestCreditOrderRejected_UsesGivenRefundablePortion(t *testing.T) {
 				tx.RefundablePMBs != nil && *tx.RefundablePMBs == 80.0
 		})).Return(0.0, nil)
 
-	_, _, err := svc.CreditOrderRejected(context.Background(), customerID, orderID, 200.0, 80.0, 40.0)
+	_, _, err := svc.CreditOrderRejected(context.Background(), customerID, orderID, "order", 200.0, 80.0, 40.0)
 
 	require.NoError(t, err)
 }
@@ -162,7 +201,7 @@ func TestDebitForOrder_RecordsNegativeMovement(t *testing.T) {
 			return tx.MovementType == string(models.MovementTypeBalancePayment)
 		})).Return(0.0, nil)
 
-	err := svc.DebitForOrder(context.Background(), customerID, orderID, 60.0)
+	err := svc.DebitForReference(context.Background(), customerID, orderID, "order", 60.0)
 
 	assert.NoError(t, err)
 }
@@ -172,7 +211,7 @@ func TestDebitForOrder_ZeroAmountNoop(t *testing.T) {
 	hub := mockports.NewStaffRefundHub(t)
 	svc := app.NewCustomerFinanceApp(repo, hub, nil, nil, nil)
 
-	err := svc.DebitForOrder(context.Background(), uuid.New(), uuid.New(), 0)
+	err := svc.DebitForReference(context.Background(), uuid.New(), uuid.New(), "order", 0)
 
 	assert.NoError(t, err)
 }
@@ -189,7 +228,7 @@ func TestRefundBalancePayment_RecordsPositiveMovement(t *testing.T) {
 			return tx.MovementType == string(models.MovementTypeBalancePaymentRefund)
 		})).Return(0.0, nil)
 
-	err := svc.RefundBalancePayment(context.Background(), customerID, orderID, 60.0)
+	err := svc.RefundBalancePayment(context.Background(), customerID, orderID, "order", 60.0)
 
 	assert.NoError(t, err)
 }

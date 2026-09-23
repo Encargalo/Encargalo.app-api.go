@@ -21,8 +21,8 @@ type StreamPublisher interface {
 
 type CustomerFinanceRepo interface {
 	GetBalance(ctx context.Context, entityID uuid.UUID, entityType string) (models.Balance, error)
-	// SumBalancePaymentDebit returns the absolute Bs debited via balance_payment for an order.
-	SumBalancePaymentDebit(ctx context.Context, customerID, orderID uuid.UUID) (float64, error)
+	// SumBalancePaymentDebit returns the absolute Bs debited via balance_payment for a reference.
+	SumBalancePaymentDebit(ctx context.Context, customerID, referenceID uuid.UUID, referenceType string) (float64, error)
 	RecordMovement(ctx context.Context, entityID uuid.UUID, entityType string, delta float64, minBalance float64, movement models.Transaction) (float64, error)
 	ListTransactions(ctx context.Context, entityID uuid.UUID, entityType string, page, limit int) ([]models.Transaction, int, error)
 	GetTransaction(ctx context.Context, id uuid.UUID) (*models.Transaction, error)
@@ -67,20 +67,20 @@ type CustomerNotifier interface {
 type CustomerFinanceApp interface {
 	GetBalance(ctx context.Context, customerID uuid.UUID) (dto.CustomerBalanceResponse, error)
 	GetBalanceBs(ctx context.Context, customerID uuid.UUID) (float64, error)
-	// GetBalancePaymentDebitForOrder returns Bs taken from balance for this order (0 if none).
-	GetBalancePaymentDebitForOrder(ctx context.Context, customerID, orderID uuid.UUID) (float64, error)
+	// GetBalancePaymentDebitForReference returns Bs taken from balance for this reference (0 if none).
+	GetBalancePaymentDebitForReference(ctx context.Context, customerID, referenceID uuid.UUID, referenceType string) (float64, error)
 	// Credit* reciben montos ya en Bs (moneda nativa del ledger) y la tasa
 	// BCV congelada del quote/review para grabarla en el movimiento (umbral
 	// de devolución y proyección USD informativa). El caller resuelve la tasa.
-	CreditPaymentOverage(ctx context.Context, customerID, orderID uuid.UUID, amountBs, bcvRate float64) (txID uuid.UUID, createdAt time.Time, err error)
-	CreditPaymentPartial(ctx context.Context, customerID, orderID uuid.UUID, amountBs, bcvRate float64) (txID uuid.UUID, createdAt time.Time, err error)
+	CreditPaymentOverage(ctx context.Context, customerID, referenceID uuid.UUID, referenceType string, amountBs, bcvRate float64) (txID uuid.UUID, createdAt time.Time, err error)
+	CreditPaymentPartial(ctx context.Context, customerID, referenceID uuid.UUID, referenceType string, amountBs, bcvRate float64) (txID uuid.UUID, createdAt time.Time, err error)
 	// CreditOrderRejected acredita amountBs al balance; refundablePMBs es la
 	// porción cash-refundable (Pago Móvil). bcvRate se congela en el movimiento.
-	CreditOrderRejected(ctx context.Context, customerID, orderID uuid.UUID, amountBs, refundablePMBs, bcvRate float64) (txID uuid.UUID, createdAt time.Time, err error)
-	// DebitForOrder/RefundBalancePayment operan directo en Bs: es lo que el
-	// customer pidió usar de su balance al crear la orden, ya en su moneda nativa.
-	DebitForOrder(ctx context.Context, customerID, orderID uuid.UUID, amountBs float64) error
-	RefundBalancePayment(ctx context.Context, customerID, orderID uuid.UUID, amountBs float64) error
+	CreditOrderRejected(ctx context.Context, customerID, referenceID uuid.UUID, referenceType string, amountBs, refundablePMBs, bcvRate float64) (txID uuid.UUID, createdAt time.Time, err error)
+	// DebitForReference/RefundBalancePayment operan directo en Bs: es lo que el
+	// customer pidió usar de su balance, ya en su moneda nativa.
+	DebitForReference(ctx context.Context, customerID, referenceID uuid.UUID, referenceType string, amountBs float64) error
+	RefundBalancePayment(ctx context.Context, customerID, referenceID uuid.UUID, referenceType string, amountBs float64) error
 
 	GetPagoMovil(ctx context.Context, customerID uuid.UUID) (dto.PagoMovilResponse, error)
 	UpsertPagoMovil(ctx context.Context, customerID uuid.UUID, req dto.UpsertPagoMovilRequest) (dto.PagoMovilResponse, error)
