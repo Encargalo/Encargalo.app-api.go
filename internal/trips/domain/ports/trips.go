@@ -24,6 +24,9 @@ type TripsRepo interface {
 	GetTripHistoryByCustomer(ctx context.Context, customerID uuid.UUID) ([]models.Trip, error)
 	UpdateTripStatus(ctx context.Context, tripID uuid.UUID, fromStatus, toStatus models.TripStatus) (bool, error)
 	AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID) (bool, error)
+	// ReleaseTripRider devuelve el viaje a searching y limpia rider_id solo si
+	// sigue asignado a ese rider en accepted o arriving. RowsAffected == 0 => el estado ya cambió.
+	ReleaseTripRider(ctx context.Context, tripID, riderID uuid.UUID) (bool, error)
 	// CompleteTrip hace un UPDATE condicional (WHERE status = in_progress) que
 	// setea status = completed, fare y completed_at en un solo movimiento
 	// atómico. RowsAffected == 0 => el estado ya cambió (CAS).
