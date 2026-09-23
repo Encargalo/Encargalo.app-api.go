@@ -5,19 +5,24 @@ import (
 	"log/slog"
 	"time"
 
+	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
+	paymentsModels "Encargalo.app-api.go/internal/payments/domain/models"
+	paymentsPorts "Encargalo.app-api.go/internal/payments/domain/ports"
 )
 
 const paymentProofAlertWorkerInterval = 30 * time.Second
 
-// PaymentProofAlertWorker publica payment_proof_pending al crear (lo hace
-// CreateForOrder) y cada 3 minutos mientras el comprobante siga pendiente.
+// PaymentProofAlertWorker republica payment_proof_pending cada 3 minutos
+// mientras el comprobante de una orden siga en pending_review.
 type PaymentProofAlertWorker struct {
-	reviews ports.PaymentReviewsApp
+	reviews paymentsPorts.PaymentReviewsRepo
+	orders  ports.OrdersRepo
+	stream  ports.RedisStream
 }
 
-func NewPaymentProofAlertWorker(reviews ports.PaymentReviewsApp) *PaymentProofAlertWorker {
-	return &PaymentProofAlertWorker{reviews: reviews}
+func NewPaymentProofAlertWorker(reviews paymentsPorts.PaymentReviewsRepo, orders ports.OrdersRepo, stream ports.RedisStream) *PaymentProofAlertWorker {
+	return &PaymentProofAlertWorker{reviews: reviews, orders: orders, stream: stream}
 }
 
 func (w *PaymentProofAlertWorker) Start(ctx context.Context) {
@@ -41,7 +46,42 @@ func (w *PaymentProofAlertWorker) loop(ctx context.Context) {
 }
 
 func (w *PaymentProofAlertWorker) tick(ctx context.Context) {
-	if err := w.reviews.NotifyPendingPaymentProofs(ctx); err != nil {
+	if w.stream == nil || w.reviews == nil {
+		return
+	}
+	now := time.Now()
+	alertBefore := now.Add(-paymentsModels.PaymentProofAlertInterval)
+	list, err := w.reviews.ListPendingForAlert(ctx, paymentsModels.ReferenceTypeOrder, alertBefore)
+	if err != nil {
 		slog.Error("PaymentProofAlertWorker tick failed", "error", err)
+		return
+	}
+	for i := range list {
+		review := list[i]
+		ok, err := w.reviews.MarkAlerted(ctx, review.ID, now, alertBefore)
+		if err != nil {
+			slog.Error("PaymentProofAlertWorker MarkAlerted failed", "reviewID", review.ID, "error", err)
+			continue
+		}
+		if !ok {
+			continue
+		}
+		order, err := w.orders.SearchOrdersByID(ctx, review.ReferenceID)
+		if err != nil || order == nil {
+			slog.Error("PaymentProofAlertWorker order lookup failed", "reviewID", review.ID, "orderID", review.ReferenceID, "error", err)
+			continue
+		}
+		minutes := max(int(now.Sub(review.CreatedAt)/time.Minute), 0)
+		event := models.DataEventPaymentProofPending{}
+		event.BuildFrom(*order, review.ID, review.ExpectedAmountBs, review.ProofURL, minutes)
+		if err := w.stream.PublisherEvent(ctx, event); err != nil {
+			slog.Error("PaymentProofAlertWorker publish failed", "reviewID", review.ID, "error", err)
+			continue
+		}
+		slog.Info("payment_proof_pending published",
+			"reviewID", review.ID,
+			"orderID", review.ReferenceID,
+			"minutesPending", minutes,
+		)
 	}
 }

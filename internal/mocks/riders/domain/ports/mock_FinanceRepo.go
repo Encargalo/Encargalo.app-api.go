@@ -76,6 +76,36 @@ func (_m *FinanceRepo) GetLastWithdrawal(ctx context.Context, entityID uuid.UUID
 	return r0, r1
 }
 
+// ListRecentTransactions provides a mock function with given fields: ctx, entityID, entityType, limit
+func (_m *FinanceRepo) ListRecentTransactions(ctx context.Context, entityID uuid.UUID, entityType string, limit int) ([]models.Transaction, error) {
+	ret := _m.Called(ctx, entityID, entityType, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListRecentTransactions")
+	}
+
+	var r0 []models.Transaction
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, int) ([]models.Transaction, error)); ok {
+		return rf(ctx, entityID, entityType, limit)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, int) []models.Transaction); ok {
+		r0 = rf(ctx, entityID, entityType, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.Transaction)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, string, int) error); ok {
+		r1 = rf(ctx, entityID, entityType, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // ListTransactions provides a mock function with given fields: ctx, entityID, entityType, page, limit
 func (_m *FinanceRepo) ListTransactions(ctx context.Context, entityID uuid.UUID, entityType string, page int, limit int) ([]models.Transaction, int, error) {
 	ret := _m.Called(ctx, entityID, entityType, page, limit)

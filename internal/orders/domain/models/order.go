@@ -36,7 +36,7 @@ type Order struct {
 	DeliveryCodeUsedAt *time.Time      `bun:"delivery_code_used_at" json:"-"`
 	RiderID            *uuid.UUID      `bun:"rider_id,nullzero,type:uuid" json:"rider_id,omitempty"`
 	RiderAcceptedAt    *time.Time      `bun:"rider_accepted_at" json:"rider_accepted_at,omitempty"`
-	CreatedAt          time.Time       `bun:"created_at" json:"created_at"`
+	CreatedAt          time.Time       `bun:"created_at,default:current_timestamp" json:"created_at"`
 	// PendingAt: cuando la orden entró a Pending (reloj del auto-rechazo por no aceptación).
 	PendingAt *time.Time `bun:"pending_at" json:"pending_at,omitempty"`
 	// PendingAlertMinute: último minuto de aviso Discord emitido (4 u 8).

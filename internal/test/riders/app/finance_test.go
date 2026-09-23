@@ -76,7 +76,7 @@ func TestGetBalance_BuildsResponseWithZoneAndTransactions(t *testing.T) {
 
 	riderID := uuid.New()
 	repo.On("GetBalance", mock.Anything, riderID, "rider").Return(models.Balance{Amount: 600, Currency: models.CurrencyVES}, nil)
-	repo.On("ListTransactions", mock.Anything, riderID, "rider", 1, 10).Return([]models.Transaction{{ID: uuid.New(), MovementType: string(models.MovementTypeRideBank), Currency: models.CurrencyVES, CreatedAt: time.Now()}}, 1, nil)
+	repo.On("ListRecentTransactions", mock.Anything, riderID, "rider", 10).Return([]models.Transaction{{ID: uuid.New(), MovementType: string(models.MovementTypeRideBank), Currency: models.CurrencyVES, CreatedAt: time.Now()}}, nil)
 	bcv.On("GetRate", mock.Anything).Return(&bcvmodels.ExchangeRate{Rate: 40}, nil)
 
 	resp, err := svc.GetBalance(context.Background(), riderID)

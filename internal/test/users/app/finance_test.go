@@ -22,6 +22,7 @@ func TestCreateRefundRequest_OnlyPMPortion(t *testing.T) {
 	customerID := uuid.New()
 	txID := uuid.New()
 	orderID := uuid.New()
+	orderRefType := "order"
 	refundableBs := 200.0
 	rate := 40.0
 
@@ -35,7 +36,8 @@ func TestCreateRefundRequest_OnlyPMPortion(t *testing.T) {
 		ID:             txID,
 		EntityID:       customerID,
 		EntityType:     models.EntityTypeCustomer,
-		OrderID:        &orderID,
+		ReferenceID:    &orderID,
+		ReferenceType:  &orderRefType,
 		Amount:         400,
 		MovementType:   string(models.MovementTypeOrderRejectedRefund),
 		RefundablePMBs: &refundableBs,

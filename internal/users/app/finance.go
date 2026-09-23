@@ -11,6 +11,7 @@ import (
 	"time"
 
 	bcvPorts "Encargalo.app-api.go/internal/bcv/domain/ports"
+	paymentsModels "Encargalo.app-api.go/internal/payments/domain/models"
 	"Encargalo.app-api.go/internal/pkg/money"
 	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
 	"Encargalo.app-api.go/internal/shared/errcustom"
@@ -90,9 +91,8 @@ func (f *customerFinanceApp) GetBalance(ctx context.Context, customerID uuid.UUI
 			MovementType: t.MovementType,
 			CreatedAt:    t.CreatedAt.Format(time.RFC3339),
 		}
-		if t.OrderID != nil {
-			s := t.OrderID.String()
-			items[i].OrderID = &s
+		if orderID := orderIDFromReference(t.ReferenceID, t.ReferenceType); orderID != nil {
+			items[i].OrderID = orderID
 		}
 		if t.RefundRequestID != nil {
 			s := t.RefundRequestID.String()
@@ -154,27 +154,29 @@ func (f *customerFinanceApp) GetBalanceBs(ctx context.Context, customerID uuid.U
 	return b.Amount, nil
 }
 
-func (f *customerFinanceApp) GetBalancePaymentDebitForOrder(ctx context.Context, customerID, orderID uuid.UUID) (float64, error) {
-	return f.repo.SumBalancePaymentDebit(ctx, customerID, orderID)
+func (f *customerFinanceApp) GetBalancePaymentDebitForReference(ctx context.Context, customerID, referenceID uuid.UUID, referenceType string) (float64, error) {
+	return f.repo.SumBalancePaymentDebit(ctx, customerID, referenceID, referenceType)
 }
 
 // creditWithRefundable acredita amountBs al ledger (moneda nativa) y congela
 // bcvRate en el movimiento para el umbral de devolución y la proyección USD.
-func (f *customerFinanceApp) creditWithRefundable(ctx context.Context, customerID, orderID uuid.UUID, amountBs, refundablePMBs, bcvRate float64, movementType models.MovementType) (uuid.UUID, time.Time, error) {
+func (f *customerFinanceApp) creditWithRefundable(ctx context.Context, customerID, referenceID uuid.UUID, referenceType string, amountBs, refundablePMBs, bcvRate float64, movementType models.MovementType) (uuid.UUID, time.Time, error) {
 	if amountBs <= 0 || bcvRate <= 0 {
 		return uuid.Nil, time.Time{}, nil
 	}
 	amountBs = money.RoundBs(amountBs)
-	oid := orderID
+	refID := referenceID
+	refType := referenceType
 	createdAt := time.Now()
 	rate := bcvRate
 	tx := models.Transaction{
-		ID:           uuid.New(),
-		OrderID:      &oid,
-		MovementType: string(movementType),
-		Currency:     models.CurrencyVES,
-		BcvRate:      &rate,
-		CreatedAt:    createdAt,
+		ID:            uuid.New(),
+		ReferenceID:   &refID,
+		ReferenceType: &refType,
+		MovementType:  string(movementType),
+		Currency:      models.CurrencyVES,
+		BcvRate:       &rate,
+		CreatedAt:     createdAt,
 	}
 	if refundablePMBs > 0 {
 		r := money.RoundBs(refundablePMBs)
@@ -187,45 +189,49 @@ func (f *customerFinanceApp) creditWithRefundable(ctx context.Context, customerI
 	return tx.ID, createdAt, nil
 }
 
-func (f *customerFinanceApp) CreditPaymentOverage(ctx context.Context, customerID, orderID uuid.UUID, amountBs, bcvRate float64) (uuid.UUID, time.Time, error) {
-	return f.creditWithRefundable(ctx, customerID, orderID, amountBs, amountBs, bcvRate, models.MovementTypePaymentOverage)
+func (f *customerFinanceApp) CreditPaymentOverage(ctx context.Context, customerID, referenceID uuid.UUID, referenceType string, amountBs, bcvRate float64) (uuid.UUID, time.Time, error) {
+	return f.creditWithRefundable(ctx, customerID, referenceID, referenceType, amountBs, amountBs, bcvRate, models.MovementTypePaymentOverage)
 }
 
-func (f *customerFinanceApp) CreditPaymentPartial(ctx context.Context, customerID, orderID uuid.UUID, amountBs, bcvRate float64) (uuid.UUID, time.Time, error) {
-	return f.creditWithRefundable(ctx, customerID, orderID, amountBs, amountBs, bcvRate, models.MovementTypePaymentPartialCredit)
+func (f *customerFinanceApp) CreditPaymentPartial(ctx context.Context, customerID, referenceID uuid.UUID, referenceType string, amountBs, bcvRate float64) (uuid.UUID, time.Time, error) {
+	return f.creditWithRefundable(ctx, customerID, referenceID, referenceType, amountBs, amountBs, bcvRate, models.MovementTypePaymentPartialCredit)
 }
 
-func (f *customerFinanceApp) CreditOrderRejected(ctx context.Context, customerID, orderID uuid.UUID, amountBs, refundablePMBs, bcvRate float64) (uuid.UUID, time.Time, error) {
-	return f.creditWithRefundable(ctx, customerID, orderID, amountBs, refundablePMBs, bcvRate, models.MovementTypeOrderRejectedRefund)
+func (f *customerFinanceApp) CreditOrderRejected(ctx context.Context, customerID, referenceID uuid.UUID, referenceType string, amountBs, refundablePMBs, bcvRate float64) (uuid.UUID, time.Time, error) {
+	return f.creditWithRefundable(ctx, customerID, referenceID, referenceType, amountBs, refundablePMBs, bcvRate, models.MovementTypeOrderRejectedRefund)
 }
 
-// DebitForOrder/RefundBalancePayment operan directo en Bs: amountBs es lo que
-// el customer pidió usar de su balance al crear la orden (o lo que se le
-// devuelve), ya en su moneda nativa — no requiere tasa de conversión.
-func (f *customerFinanceApp) DebitForOrder(ctx context.Context, customerID, orderID uuid.UUID, amountBs float64) error {
+// DebitForReference/RefundBalancePayment operan directo en Bs: amountBs es lo que
+// el customer pidió usar de su balance (o lo que se le devuelve), ya en su
+// moneda nativa — no requiere tasa de conversión.
+func (f *customerFinanceApp) DebitForReference(ctx context.Context, customerID, referenceID uuid.UUID, referenceType string, amountBs float64) error {
 	if amountBs <= 0 {
 		return nil
 	}
-	oid := orderID
+	refID := referenceID
+	refType := referenceType
 	_, err := f.repo.RecordMovement(ctx, customerID, models.EntityTypeCustomer, -amountBs, amountBs, models.Transaction{
-		ID:           uuid.New(),
-		OrderID:      &oid,
-		MovementType: string(models.MovementTypeBalancePayment),
-		Currency:     models.CurrencyVES,
+		ID:            uuid.New(),
+		ReferenceID:   &refID,
+		ReferenceType: &refType,
+		MovementType:  string(models.MovementTypeBalancePayment),
+		Currency:      models.CurrencyVES,
 	})
 	return err
 }
 
-func (f *customerFinanceApp) RefundBalancePayment(ctx context.Context, customerID, orderID uuid.UUID, amountBs float64) error {
+func (f *customerFinanceApp) RefundBalancePayment(ctx context.Context, customerID, referenceID uuid.UUID, referenceType string, amountBs float64) error {
 	if amountBs <= 0 {
 		return nil
 	}
-	oid := orderID
+	refID := referenceID
+	refType := referenceType
 	_, err := f.repo.RecordMovement(ctx, customerID, models.EntityTypeCustomer, amountBs, 0, models.Transaction{
-		ID:           uuid.New(),
-		OrderID:      &oid,
-		MovementType: string(models.MovementTypeBalancePaymentRefund),
-		Currency:     models.CurrencyVES,
+		ID:            uuid.New(),
+		ReferenceID:   &refID,
+		ReferenceType: &refType,
+		MovementType:  string(models.MovementTypeBalancePaymentRefund),
+		Currency:      models.CurrencyVES,
 	})
 	return err
 }
@@ -305,7 +311,8 @@ func (f *customerFinanceApp) CreateRefundRequest(ctx context.Context, customerID
 		ID:            uuid.New(),
 		CustomerID:    customerID,
 		TransactionID: transactionID,
-		OrderID:       tx.OrderID,
+		ReferenceID:   tx.ReferenceID,
+		ReferenceType: tx.ReferenceType,
 		AmountBs:      amountBs,
 		Status:        models.RefundPending,
 		PMPhone:       pm.Phone,
@@ -506,6 +513,14 @@ func (f *customerFinanceApp) publishRefundPendingAlert(ctx context.Context, req 
 	)
 }
 
+func orderIDFromReference(id *uuid.UUID, referenceType *string) *string {
+	if id == nil || referenceType == nil || *referenceType != paymentsModels.ReferenceTypeOrder {
+		return nil
+	}
+	s := id.String()
+	return &s
+}
+
 func toPagoMovilDTO(pm *models.CustomerPagoMovil) dto.PagoMovilResponse {
 	return dto.PagoMovilResponse{
 		Phone:      pm.Phone,
@@ -529,9 +544,8 @@ func toRefundDTO(req models.BalanceRefundRequest) dto.RefundRequestResponse {
 		CreatedAt:       req.CreatedAt.Format(time.RFC3339),
 		ExpiresAt:       req.ExpiresAt.Format(time.RFC3339),
 	}
-	if req.OrderID != nil {
-		s := req.OrderID.String()
-		out.OrderID = &s
+	if orderID := orderIDFromReference(req.ReferenceID, req.ReferenceType); orderID != nil {
+		out.OrderID = orderID
 	}
 	if req.AcceptedAt != nil {
 		s := req.AcceptedAt.Format(time.RFC3339)
@@ -564,9 +578,8 @@ func (f *customerFinanceApp) toBroadcast(ctx context.Context, req models.Balance
 		CreatedAt:       req.CreatedAt.Format(time.RFC3339),
 		ExpiresAt:       req.ExpiresAt.Format(time.RFC3339),
 	}
-	if req.OrderID != nil {
-		s := req.OrderID.String()
-		b.OrderID = &s
+	if orderID := orderIDFromReference(req.ReferenceID, req.ReferenceType); orderID != nil {
+		b.OrderID = orderID
 	}
 	f.applyAmountUSD(ctx, &b, req.AmountBs)
 	return b

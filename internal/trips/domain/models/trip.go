@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	"Encargalo.app-api.go/internal/pkg/money"
 	"Encargalo.app-api.go/internal/trips/domain/dtos"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
@@ -45,19 +46,30 @@ type Trip struct {
 	DropoffLatitude  float64    `bun:"dropoff_latitude,notnull"`
 	DropoffLongitude float64    `bun:"dropoff_longitude,notnull"`
 	// A diferencia de PickupH3Cell (DriverMatchResolution), usan ZoneAnalyticsResolution para el heatmap.
-	PickupH3CellZone  *string    `bun:"pickup_h3_cell_zone"`
-	DropoffH3CellZone *string    `bun:"dropoff_h3_cell_zone"`
-	Fare              *float64   `bun:"fare"`
-	RequestedAt       time.Time  `bun:"requested_at,notnull,default:current_timestamp"`
-	AcceptedAt        *time.Time `bun:"accepted_at,nullzero"`
-	CompletedAt       *time.Time `bun:"completed_at,nullzero"`
-	CancelledAt       *time.Time `bun:"cancelled_at,nullzero"`
-	CreatedAt         time.Time  `bun:"created_at,notnull,default:current_timestamp"`
-	UpdatedAt         time.Time  `bun:"updated_at,notnull,default:current_timestamp"`
+	PickupH3CellZone  *string  `bun:"pickup_h3_cell_zone"`
+	DropoffH3CellZone *string  `bun:"dropoff_h3_cell_zone"`
+	Fare              *float64 `bun:"fare"`
+	// FareBs no se persiste, se recalcula en cada respuesta (patrón Order.DeliveryFeeBs).
+	FareBs      *float64   `bun:"-"`
+	RequestedAt time.Time  `bun:"requested_at,notnull,default:current_timestamp"`
+	AcceptedAt  *time.Time `bun:"accepted_at,nullzero"`
+	CompletedAt *time.Time `bun:"completed_at,nullzero"`
+	CancelledAt *time.Time `bun:"cancelled_at,nullzero"`
+	CreatedAt   time.Time  `bun:"created_at,notnull,default:current_timestamp"`
+	UpdatedAt   time.Time  `bun:"updated_at,notnull,default:current_timestamp"`
 }
 
 func (t *Trip) IsCancellable() bool {
 	return CancellableStatuses[t.Status]
+}
+
+// ApplyBsFare es no-op si todavía no hay Fare o la tasa no es válida.
+func (t *Trip) ApplyBsFare(rate float64) {
+	if t.Fare == nil || rate <= 0 {
+		return
+	}
+	bs := money.RoundBs(*t.Fare * rate)
+	t.FareBs = &bs
 }
 
 func (t *Trip) ToDTO() dtos.TripResponse {
@@ -72,7 +84,8 @@ func (t *Trip) ToDTO() dtos.TripResponse {
 		DropoffAddress:   t.DropoffAddress,
 		DropoffLatitude:  t.DropoffLatitude,
 		DropoffLongitude: t.DropoffLongitude,
-		Fare:             t.Fare,
+		FareUSD:          t.Fare,
+		FareBs:           t.FareBs,
 		RequestedAt:      t.RequestedAt,
 		AcceptedAt:       t.AcceptedAt,
 		CompletedAt:      t.CompletedAt,

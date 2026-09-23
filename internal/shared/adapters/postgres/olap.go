@@ -28,7 +28,7 @@ func NewOLAPConnection(cfg config.ETLConfig) *OLAPDB {
 		user:     olap.User,
 		password: olap.Password,
 		database: olap.Database,
-	})
+	}, etlServiceName)
 	migrateOLAP(db.DB)
 	return &OLAPDB{DB: db}
 }

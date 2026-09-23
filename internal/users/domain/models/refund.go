@@ -48,7 +48,8 @@ type BalanceRefundRequest struct {
 	ID              uuid.UUID           `bun:"id,pk,type:uuid"`
 	CustomerID      uuid.UUID           `bun:"customer_id,type:uuid"`
 	TransactionID   uuid.UUID           `bun:"transaction_id,type:uuid"`
-	OrderID         *uuid.UUID          `bun:"order_id,nullzero,type:uuid"`
+	ReferenceID     *uuid.UUID          `bun:"reference_id,nullzero,type:uuid"`
+	ReferenceType   *string             `bun:"reference_type,nullzero"`
 	AmountBs        float64             `bun:"amount_bs"`
 	Status          RefundRequestStatus `bun:"status"`
 	PMPhone         string              `bun:"pm_phone"`

@@ -86,7 +86,7 @@ func (f *financeApp) GetBalance(ctx context.Context, riderID uuid.UUID) (dtos.Ba
 	balance := balanceRec.Amount
 	currency := balanceRec.Currency
 
-	txs, _, err := f.repo.ListTransactions(ctx, riderID, entityTypeRider, 1, 10)
+	txs, err := f.repo.ListRecentTransactions(ctx, riderID, entityTypeRider, 10)
 	if err != nil {
 		return dtos.BalanceResponse{}, err
 	}

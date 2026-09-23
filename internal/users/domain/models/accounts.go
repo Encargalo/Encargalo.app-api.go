@@ -46,7 +46,9 @@ func (c *Account) BuildCustomerRegisterModel(customer dto.RegisterCustomer) {
 	c.Name = customer.Name
 	c.SurName = &customer.SurName
 	c.Phone = &customer.Phone
-	c.Email = &customer.Email
+	if customer.Email != "" {
+		c.Email = &customer.Email
+	}
 	c.Password = customer.Password
 }
 

@@ -38,8 +38,14 @@ import (
 	repoCustomer "Encargalo.app-api.go/internal/users/repo"
 
 	appOrders "Encargalo.app-api.go/internal/orders/app"
+	ordersPorts "Encargalo.app-api.go/internal/orders/domain/ports"
 	handOrders "Encargalo.app-api.go/internal/orders/handler"
 	repoOrders "Encargalo.app-api.go/internal/orders/repo"
+
+	appPayments "Encargalo.app-api.go/internal/payments/app"
+	paymentsPorts "Encargalo.app-api.go/internal/payments/domain/ports"
+	handPayments "Encargalo.app-api.go/internal/payments/handler"
+	repoPayments "Encargalo.app-api.go/internal/payments/repo"
 
 	appRiders "Encargalo.app-api.go/internal/riders/app"
 	handRiders "Encargalo.app-api.go/internal/riders/handler"
@@ -48,7 +54,6 @@ import (
 	appFinance "Encargalo.app-api.go/internal/finance/app"
 	repoFinance "Encargalo.app-api.go/internal/finance/repo"
 
-	ordersPorts "Encargalo.app-api.go/internal/orders/domain/ports"
 	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
 	usersPorts "Encargalo.app-api.go/internal/users/domain/ports"
 
@@ -121,6 +126,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(groups.NewProductsGroup)
 	_ = Container.Provide(groups.NewUsersGroup)
 	_ = Container.Provide(groups.NewOrdersGroup)
+	_ = Container.Provide(groups.NewPaymentsGroup)
 	_ = Container.Provide(groups.NewRidersGroup)
 	_ = Container.Provide(groups.NewPaymentMethodsGroup)
 	_ = Container.Provide(groups.NewBcvGroup)
@@ -134,6 +140,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(handTrips.NewTripsHandler)
 	_ = Container.Provide(appTrips.NewTripsApp)
 	_ = Container.Provide(repoTrips.NewTripsRepo)
+	_ = Container.Provide(repoTrips.NewTripQuotesRepo)
 
 	_ = Container.Provide(requestinfo.NewRequestMiddleware)
 	_ = Container.Provide(sharedmw.NewRateLimiter)
@@ -226,17 +233,23 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(appShops.NewBatchCloseWorker)
 	_ = Container.Provide(appProducts.NewProductsApp)
 	_ = Container.Provide(appCustomer.NewUsersAddressApp)
-	_ = Container.Provide(appOrders.NewStaffReviewHub)
-	_ = Container.Provide(func(h *appOrders.StaffReviewHubImpl) ordersPorts.StaffReviewHub {
+	_ = Container.Provide(appPayments.NewSubjectRegistry)
+	_ = Container.Provide(func(r *appPayments.SubjectRegistry) paymentsPorts.PaymentSubjectRegistry {
+		return r
+	})
+	_ = Container.Provide(repoPayments.NewPaymentReviewsRepo)
+	_ = Container.Provide(appPayments.NewStaffReviewHub)
+	_ = Container.Provide(func(h *appPayments.StaffReviewHubImpl) paymentsPorts.StaffReviewHub {
 		return h
 	})
-	_ = Container.Provide(repoOrders.NewPaymentReviewsRepo)
-	_ = Container.Provide(func(fa usersPorts.CustomerFinanceApp) ordersPorts.CustomerBalanceCreditor {
+	_ = Container.Provide(func(fa usersPorts.CustomerFinanceApp) paymentsPorts.CustomerBalanceCreditor {
 		return fa
 	})
-	_ = Container.Provide(appOrders.NewPaymentReviewsApp)
+	_ = Container.Provide(appPayments.NewPaymentReviewsApp)
+	_ = Container.Provide(handPayments.NewStaffReviewsHandler)
+	_ = Container.Provide(appOrders.NewOrderPaymentSubject)
+	_ = Container.Provide(appOrders.NewOrderStaffSnapshot)
 	_ = Container.Provide(appOrders.NewPaymentProofAlertWorker)
-	_ = Container.Provide(handOrders.NewStaffReviewsHandler)
 	_ = Container.Provide(appOrders.NewOrderApp)
 	_ = Container.Provide(appOrders.NewManagerOrderApp)
 	_ = Container.Provide(appOrders.NewPendingAcceptWorker)

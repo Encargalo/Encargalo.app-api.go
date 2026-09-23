@@ -373,7 +373,7 @@ Errores útiles del complete:
 - [ ] Listado / detalle HTTP; en historial, `hold` / `processing` / `payout` / `restore` → abrir por `refund_request_id`
 
 ### CRM staff
-- [x] WS `/users/staff/refund-requests` (distinto de `/orders/staff/reviews`)
+- [x] WS `/users/staff/refund-requests` (distinto de `/payments/staff/reviews`)
 - [x] Cola pending + accepted
 - [x] Accept / reject por WS
 - [x] Complete por HTTP: imagen + monto (verde/rojo)

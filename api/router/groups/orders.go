@@ -29,7 +29,6 @@ type ordersGroup struct {
 	middle               auth.AuthMiddleware
 	handlerOrders        handler.OrderHandler
 	hanlderManagerOrders handler.ManagerOrder
-	handlerStaffReviews  handler.StaffReviews
 	rateLimiter          sharedmw.RateLimiter
 }
 
@@ -37,10 +36,9 @@ func NewOrdersGroup(
 	middle auth.AuthMiddleware,
 	handlerOrders handler.OrderHandler,
 	hanlderManagerOrders handler.ManagerOrder,
-	handlerStaffReviews handler.StaffReviews,
 	rateLimiter sharedmw.RateLimiter,
 ) OrdersGroup {
-	return &ordersGroup{middle, handlerOrders, hanlderManagerOrders, handlerStaffReviews, rateLimiter}
+	return &ordersGroup{middle, handlerOrders, hanlderManagerOrders, rateLimiter}
 }
 
 func (o *ordersGroup) Resource(g *echo.Echo) {
@@ -54,7 +52,6 @@ func (o *ordersGroup) Resource(g *echo.Echo) {
 	group.POST("/quote", o.handlerOrders.CreateQuote, o.middle.Auth, o.middle.Require(models.Customer))
 	group.GET("/history", o.handlerOrders.GetOrderHistory, o.middle.Auth, o.middle.Require(models.Customer))
 	group.GET("/manager", o.hanlderManagerOrders.HandleWebSocket, o.middle.Auth, o.middle.Require(models.Customer, models.OrderManager, models.Owner))
-	group.GET("/staff/reviews", o.handlerStaffReviews.HandleWebSocket, o.middle.Auth, o.middle.Require(models.Staff))
 	group.POST("/:id/confirm-pickup", o.handlerOrders.ConfirmPickup, o.middle.Auth, o.middle.Require(models.OrderManager, models.Owner), confirmRateLimit("confirm-pickup"))
 	group.POST("/:id/confirm-delivery", o.handlerOrders.ConfirmDelivery, o.middle.Auth, o.middle.Require(models.Rider), confirmRateLimit("confirm-delivery"))
 }

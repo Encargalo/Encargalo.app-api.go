@@ -47,20 +47,9 @@ func withSession(tc buildhttptest.ControllerCase, session authModels.ActiveSessi
 	return tc
 }
 
-func sampleCreateTripRequest() dtos.CreateTripRequest {
-	return dtos.CreateTripRequest{
-		PickupAddress:    "Av. Libertador, Caracas",
-		PickupLatitude:   10.4806,
-		PickupLongitude:  -66.9036,
-		DropoffAddress:   "CC Sambil, Caracas",
-		DropoffLatitude:  10.4956,
-		DropoffLongitude: -66.8517,
-	}
-}
-
 func TestRequestTrip_InvalidPayload(t *testing.T) {
 	h, _ := newTripsHandler(t)
-	tc := buildhttptest.SetupControllerCase("/trips", http.MethodPost, buildBody(t, map[string]string{"pickup_address": ""}))
+	tc := buildhttptest.SetupControllerCase("/trips", http.MethodPost, buildBody(t, map[string]string{}))
 	tc = withSession(tc, authModels.ActiveSession{UserID: uuid.New()})
 
 	err := h.RequestTrip(tc.Ctx)
@@ -71,7 +60,7 @@ func TestRequestTrip_InvalidPayload(t *testing.T) {
 func TestRequestTrip_Success(t *testing.T) {
 	h, svc := newTripsHandler(t)
 	customerID := uuid.New()
-	req := sampleCreateTripRequest()
+	req := dtos.CreateTripRequest{QuoteID: uuid.New()}
 	tc := buildhttptest.SetupControllerCase("/trips", http.MethodPost, buildBody(t, req))
 	tc = withSession(tc, authModels.ActiveSession{UserID: customerID})
 
@@ -83,6 +72,47 @@ func TestRequestTrip_Success(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusCreated, tc.Res.Code)
+}
+
+func sampleFareEstimateRequest() dtos.FareEstimateRequest {
+	return dtos.FareEstimateRequest{
+		PickupAddress:    "Av. Libertador, Caracas",
+		PickupLatitude:   10.4806,
+		PickupLongitude:  -66.9036,
+		DropoffAddress:   "CC Sambil, Caracas",
+		DropoffLatitude:  10.4956,
+		DropoffLongitude: -66.8517,
+	}
+}
+
+func TestEstimateFare_InvalidPayload(t *testing.T) {
+	h, _ := newTripsHandler(t)
+	tc := buildhttptest.SetupControllerCase("/trips/fare-estimate", http.MethodPost, buildBody(t, map[string]string{}))
+	tc = withSession(tc, authModels.ActiveSession{UserID: uuid.New()})
+
+	err := h.EstimateFare(tc.Ctx)
+
+	assert.Equal(t, http.StatusBadRequest, httpCode(err))
+}
+
+func TestEstimateFare_Success(t *testing.T) {
+	h, svc := newTripsHandler(t)
+	customerID := uuid.New()
+	body := sampleFareEstimateRequest()
+	tc := buildhttptest.SetupControllerCase("/trips/fare-estimate", http.MethodPost, buildBody(t, body))
+	tc = withSession(tc, authModels.ActiveSession{UserID: customerID})
+
+	// El handler completa CustomerID desde la sesión después del bind.
+	expectedReq := body
+	expectedReq.CustomerID = customerID
+	svc.On("EstimateFare", tc.Req.Context(), expectedReq).Return(dtos.FareEstimateResponse{
+		QuoteID: uuid.New(), DistanceMeters: 1500, DurationMin: 6, FareUSD: 0.8, FareBs: 32,
+	}, nil)
+
+	err := h.EstimateFare(tc.Ctx)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, tc.Res.Code)
 }
 
 func TestGetTrip_InvalidID(t *testing.T) {

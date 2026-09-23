@@ -44,6 +44,34 @@ func (_m *TripsApp) CancelTrip(ctx context.Context, tripID uuid.UUID, requesterI
 	return r0, r1
 }
 
+// EstimateFare provides a mock function with given fields: ctx, req
+func (_m *TripsApp) EstimateFare(ctx context.Context, req dtos.FareEstimateRequest) (dtos.FareEstimateResponse, error) {
+	ret := _m.Called(ctx, req)
+
+	if len(ret) == 0 {
+		panic("no return value specified for EstimateFare")
+	}
+
+	var r0 dtos.FareEstimateResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, dtos.FareEstimateRequest) (dtos.FareEstimateResponse, error)); ok {
+		return rf(ctx, req)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, dtos.FareEstimateRequest) dtos.FareEstimateResponse); ok {
+		r0 = rf(ctx, req)
+	} else {
+		r0 = ret.Get(0).(dtos.FareEstimateResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, dtos.FareEstimateRequest) error); ok {
+		r1 = rf(ctx, req)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetTrip provides a mock function with given fields: ctx, tripID, requesterID
 func (_m *TripsApp) GetTrip(ctx context.Context, tripID uuid.UUID, requesterID uuid.UUID) (dtos.TripResponse, error) {
 	ret := _m.Called(ctx, tripID, requesterID)

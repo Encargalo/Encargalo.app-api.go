@@ -519,9 +519,9 @@ func TestAdvanceTrip_InProgressCompletesAndRecordsEarning(t *testing.T) {
 	conn := mocksriders.NewRiderConn(t)
 	conn.On("Send", mock.Anything).Return()
 
-	// Fuera de production, completeTrip usa deliveryfee.DevPlaceholderFee en
-	// vez de llamar a Google Maps (ver deliveryfee.Calculate / config.Get().IsProduction()).
-	tripsRepo.On("GetTripByID", mock.Anything, tripID).Return(&tripsModels.Trip{ID: tripID, RiderID: &riderID, Status: tripsModels.TripStatusInProgress}, nil)
+	// completeTrip usa el fare ya fijado en trip.Fare, no lo recalcula.
+	fare := deliveryfee.DevPlaceholderFee
+	tripsRepo.On("GetTripByID", mock.Anything, tripID).Return(&tripsModels.Trip{ID: tripID, RiderID: &riderID, Status: tripsModels.TripStatusInProgress, Fare: &fare}, nil)
 	tripsRepo.On("CompleteTrip", mock.Anything, tripID, deliveryfee.DevPlaceholderFee).Return(true, nil)
 	bcv.On("GetRate", mock.Anything).Return(&bcvmodels.ExchangeRate{Rate: 40}, nil)
 	tripEarnings.On("RecordTripEarning", mock.Anything, riderID, tripID, deliveryfee.DevPlaceholderFee, 40.0).Return(nil)
@@ -566,7 +566,7 @@ func TestAdvanceTrip_RejectsTerminalStatus(t *testing.T) {
 // TestAdvanceTrip_ConcurrentCompletionIsSerialized cubre la vulnerabilidad de
 // seguridad #1 (auditoría): sin el guard completingTrips, un spam de
 // advance_trip sobre el mismo trip en in_progress podía disparar varias
-// llamadas reales a Google Maps (tripFare) en paralelo antes de que la
+// llamadas en paralelo a CompleteTrip/RecordTripEarning antes de que la
 // primera confirmara en DB. Aquí se verifica que la segunda llamada, mientras
 // la primera sigue "en vuelo" dentro de CompleteTrip, se rechaza de inmediato
 // sin volver a invocar CompleteTrip (el mock .Once() lo garantiza).
@@ -585,7 +585,8 @@ func TestAdvanceTrip_ConcurrentCompletionIsSerialized(t *testing.T) {
 	entered := make(chan struct{})
 	proceed := make(chan struct{})
 
-	tripsRepo.On("GetTripByID", mock.Anything, tripID).Return(&tripsModels.Trip{ID: tripID, RiderID: &riderID, Status: tripsModels.TripStatusInProgress}, nil)
+	fare := deliveryfee.DevPlaceholderFee
+	tripsRepo.On("GetTripByID", mock.Anything, tripID).Return(&tripsModels.Trip{ID: tripID, RiderID: &riderID, Status: tripsModels.TripStatusInProgress, Fare: &fare}, nil)
 	tripsRepo.On("CompleteTrip", mock.Anything, tripID, deliveryfee.DevPlaceholderFee).Run(func(mock.Arguments) {
 		close(entered)
 		<-proceed
@@ -599,7 +600,7 @@ func TestAdvanceTrip_ConcurrentCompletionIsSerialized(t *testing.T) {
 		firstErr = svc.AdvanceTrip(context.Background(), riderID, tripID, conn)
 	})
 
-	<-entered // la primera llamada ya está dentro de CompleteTrip (tripFare ya se calculó)
+	<-entered // la primera llamada ya está dentro de CompleteTrip
 
 	secondErr := svc.AdvanceTrip(context.Background(), riderID, tripID, conn)
 	close(proceed)

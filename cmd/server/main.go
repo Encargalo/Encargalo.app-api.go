@@ -13,6 +13,9 @@ import (
 	bcvPorts "Encargalo.app-api.go/internal/bcv/domain/ports"
 	appOrders "Encargalo.app-api.go/internal/orders/app"
 	ordersPorts "Encargalo.app-api.go/internal/orders/domain/ports"
+	appPayments "Encargalo.app-api.go/internal/payments/app"
+	paymentsModels "Encargalo.app-api.go/internal/payments/domain/models"
+	paymentsPorts "Encargalo.app-api.go/internal/payments/domain/ports"
 	"Encargalo.app-api.go/internal/shared/adapters/redis"
 	"Encargalo.app-api.go/internal/shared/applog"
 	"Encargalo.app-api.go/internal/shared/config"
@@ -63,8 +66,11 @@ func run() error {
 		router *router.Router,
 		cfg config.Config,
 		bcv bcvPorts.BcvApp,
-		hub *appOrders.StaffReviewHubImpl,
-		reviews ordersPorts.PaymentReviewsApp,
+		hub *appPayments.StaffReviewHubImpl,
+		reviews paymentsPorts.PaymentReviewsApp,
+		registry *appPayments.SubjectRegistry,
+		orderSubject paymentsPorts.PaymentSubject,
+		staffSnapshot appOrders.OrderStaffSnapshot,
 		pendingWorker *appOrders.PendingAcceptWorker,
 		paymentProofAlertWorker *appOrders.PaymentProofAlertWorker,
 		batchCloseWorker *appShops.BatchCloseWorker,
@@ -75,7 +81,9 @@ func run() error {
 		orderMgr ordersPorts.AppManagerOrder,
 		streamTrimWorker *redis.StreamTrimWorker,
 	) error {
-		hub.SetReviewsApp(reviews)
+		registry.Register(paymentsModels.ReferenceTypeOrder, orderSubject)
+		reviews.SetSnapshotProvider(staffSnapshot)
+		hub.SetSnapshotProvider(reviews.ListActiveForStaff)
 		refundHub.SetFinanceApp(finance)
 		finance.SetCustomerNotifier(orderMgr)
 

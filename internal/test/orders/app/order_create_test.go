@@ -193,7 +193,7 @@ func TestCreateOrder_WithQuote_BalanceCoversFull(t *testing.T) {
 	m.customerBalance.On("GetBalanceBs", mock.Anything, customerID).Return(880.0, nil)
 	m.quotes.On("TryConsume", mock.Anything, quoteID, mock.Anything).Return(true, nil)
 	m.quotes.On("ClearActiveID", mock.Anything, customerID).Return(nil)
-	m.customerBalance.On("DebitForOrder", mock.Anything, customerID, orderID, 880.0).Return(nil)
+	m.customerBalance.On("DebitForReference", mock.Anything, customerID, orderID, "order", 880.0).Return(nil)
 	m.repo.On("CreateOrder", mock.Anything, mock.Anything).Return(&ordermodels.Order{
 		ID: orderID, ShopID: shopID, CustomerID: customerID, TotalPrice: 22, DeliveryFee: 2,
 		MethodPayment: "PagoMovil", Status: string(ordermodels.StatusPending),
@@ -359,7 +359,7 @@ func TestCreateOrder_ComputesH3CellFromAddress(t *testing.T) {
 	m.customerBalance.On("GetBalanceBs", mock.Anything, customerID).Return(880.0, nil)
 	m.quotes.On("TryConsume", mock.Anything, quoteID, mock.Anything).Return(true, nil)
 	m.quotes.On("ClearActiveID", mock.Anything, customerID).Return(nil)
-	m.customerBalance.On("DebitForOrder", mock.Anything, customerID, orderID, 880.0).Return(nil)
+	m.customerBalance.On("DebitForReference", mock.Anything, customerID, orderID, "order", 880.0).Return(nil)
 	m.repo.On("CreateOrder", mock.Anything, mock.MatchedBy(func(o *ordermodels.Order) bool {
 		return o.H3Cell == wantCell
 	})).Return(&ordermodels.Order{
