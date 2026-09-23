@@ -34,6 +34,12 @@ type TripRiderMatcher interface {
 	OfferTrip(ctx context.Context, trip models.Trip)
 }
 
+// RiderPublicInfoLookup resuelve los datos públicos del rider asignado.
+// Lo implementa riders a partir de su perfil y de la cuenta, sin documentos KYC.
+type RiderPublicInfoLookup interface {
+	GetByRiderID(ctx context.Context, riderID uuid.UUID) (dtos.RiderPublicInfo, error)
+}
+
 // TripQuotesRepo persiste TripQuote en Redis con TTL.
 type TripQuotesRepo interface {
 	Save(ctx context.Context, quote *models.TripQuote, ttl time.Duration) error
