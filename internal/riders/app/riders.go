@@ -34,40 +34,46 @@ const (
 	tripOfferCandidateCount = 3
 	tripSearchMaxRings      = 3
 	tripAcceptTimeout       = 2 * time.Minute
+	// tripOfferMaxRounds es el tope de rondas (2 min cada una) antes de no_driver.
+	tripOfferMaxRounds = 4
 )
 
 type appRidersManager struct {
-	mu              sync.RWMutex
-	availableRiders map[uuid.UUID]ridersPorts.RiderConn
-	assignedOrders  map[uuid.UUID][]uuid.UUID // riderID → []orderID
-	riderMode       map[uuid.UUID]riderModels.RiderMode
-	riderLocation   map[uuid.UUID]riderModels.RiderLocation
-	tripOffers      map[uuid.UUID]map[uuid.UUID]struct{}
-	tripExcluded    map[uuid.UUID]map[uuid.UUID]struct{}
-	tripTimers      map[uuid.UUID]*time.Timer
-	completingTrips map[uuid.UUID]struct{}
-	repo            ridersPorts.RidersRepo
-	stream          ridersPorts.RidersStream
-	bcv             bcvPorts.BcvApp
-	tripsRepo       ridersPorts.TripsStore
-	tripEarnings    ridersPorts.TripEarningRecorder
+	mu                 sync.RWMutex
+	availableRiders    map[uuid.UUID]ridersPorts.RiderConn
+	assignedOrders     map[uuid.UUID][]uuid.UUID // riderID → []orderID
+	riderMode          map[uuid.UUID]riderModels.RiderMode
+	riderLocation      map[uuid.UUID]riderModels.RiderLocation
+	tripOffers         map[uuid.UUID]map[uuid.UUID]struct{}
+	tripAlreadyOffered map[uuid.UUID]map[uuid.UUID]struct{}
+	tripOfferRounds    map[uuid.UUID]int
+	tripExcluded       map[uuid.UUID]map[uuid.UUID]struct{}
+	tripTimers         map[uuid.UUID]*time.Timer
+	completingTrips    map[uuid.UUID]struct{}
+	repo               ridersPorts.RidersRepo
+	stream             ridersPorts.RidersStream
+	bcv                bcvPorts.BcvApp
+	tripsRepo          ridersPorts.TripsStore
+	tripEarnings       ridersPorts.TripEarningRecorder
 }
 
 func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPorts.BcvApp, tripsRepo ridersPorts.TripsStore, tripEarnings ridersPorts.TripEarningRecorder) ridersPorts.RidersApp {
 	return &appRidersManager{
-		availableRiders: make(map[uuid.UUID]ridersPorts.RiderConn),
-		assignedOrders:  make(map[uuid.UUID][]uuid.UUID),
-		riderMode:       make(map[uuid.UUID]riderModels.RiderMode),
-		riderLocation:   make(map[uuid.UUID]riderModels.RiderLocation),
-		tripOffers:      make(map[uuid.UUID]map[uuid.UUID]struct{}),
-		tripExcluded:    make(map[uuid.UUID]map[uuid.UUID]struct{}),
-		tripTimers:      make(map[uuid.UUID]*time.Timer),
-		completingTrips: make(map[uuid.UUID]struct{}),
-		repo:            repo,
-		stream:          stream,
-		bcv:             bcv,
-		tripsRepo:       tripsRepo,
-		tripEarnings:    tripEarnings,
+		availableRiders:    make(map[uuid.UUID]ridersPorts.RiderConn),
+		assignedOrders:     make(map[uuid.UUID][]uuid.UUID),
+		riderMode:          make(map[uuid.UUID]riderModels.RiderMode),
+		riderLocation:      make(map[uuid.UUID]riderModels.RiderLocation),
+		tripOffers:         make(map[uuid.UUID]map[uuid.UUID]struct{}),
+		tripAlreadyOffered: make(map[uuid.UUID]map[uuid.UUID]struct{}),
+		tripOfferRounds:    make(map[uuid.UUID]int),
+		tripExcluded:       make(map[uuid.UUID]map[uuid.UUID]struct{}),
+		tripTimers:         make(map[uuid.UUID]*time.Timer),
+		completingTrips:    make(map[uuid.UUID]struct{}),
+		repo:               repo,
+		stream:             stream,
+		bcv:                bcv,
+		tripsRepo:          tripsRepo,
+		tripEarnings:       tripEarnings,
 	}
 }
 
@@ -331,7 +337,12 @@ type riderBroadcast struct {
 }
 
 func (r *appRidersManager) OfferTrip(ctx context.Context, trip tripsModels.Trip) {
-	candidates := r.nearestTripsRiders(trip, r.excludedRiderIDs(trip.ID))
+	r.offerTripRound(ctx, trip, 1)
+}
+
+func (r *appRidersManager) offerTripRound(ctx context.Context, trip tripsModels.Trip, round int) {
+	maxRings := tripSearchMaxRings + round - 1
+	candidates := r.nearestTripsRiders(trip, r.offerExclusions(trip.ID), maxRings)
 	if len(candidates) == 0 {
 		r.expireTripIfStillSearching(trip.ID)
 		return
@@ -343,12 +354,17 @@ func (r *appRidersManager) OfferTrip(ctx context.Context, trip tripsModels.Trip)
 		return
 	}
 
+	r.mu.Lock()
 	offered := make(map[uuid.UUID]struct{}, len(candidates))
+	if r.tripAlreadyOffered[trip.ID] == nil {
+		r.tripAlreadyOffered[trip.ID] = make(map[uuid.UUID]struct{})
+	}
 	for _, c := range candidates {
 		offered[c.RiderID] = struct{}{}
+		r.tripAlreadyOffered[trip.ID][c.RiderID] = struct{}{}
 	}
-	r.mu.Lock()
 	r.tripOffers[trip.ID] = offered
+	r.tripOfferRounds[trip.ID] = round
 	r.mu.Unlock()
 
 	r.mu.RLock()
@@ -359,12 +375,61 @@ func (r *appRidersManager) OfferTrip(ctx context.Context, trip tripsModels.Trip)
 	}
 	r.mu.RUnlock()
 
+	r.scheduleOfferTimeout(trip)
+}
+
+func (r *appRidersManager) scheduleOfferTimeout(trip tripsModels.Trip) {
 	timer := time.AfterFunc(tripAcceptTimeout, func() {
-		r.expireTripIfStillSearching(trip.ID)
+		r.onTripOfferTimeout(trip)
 	})
 	r.mu.Lock()
+	if prev, ok := r.tripTimers[trip.ID]; ok {
+		prev.Stop()
+	}
 	r.tripTimers[trip.ID] = timer
 	r.mu.Unlock()
+}
+
+func (r *appRidersManager) onTripOfferTimeout(offered tripsModels.Trip) {
+	ctx := context.Background()
+	current, err := r.tripsRepo.GetTripByID(ctx, offered.ID)
+	if err != nil {
+		slog.Error("error reading trip on offer timeout", "tripID", offered.ID, "error", err)
+		return
+	}
+	if current.Status != tripsModels.TripStatusSearching {
+		r.clearTripOfferState(current.ID)
+		return
+	}
+	if current.PickupH3Cell == nil {
+		current.PickupH3Cell = offered.PickupH3Cell
+		current.PickupLatitude = offered.PickupLatitude
+		current.PickupLongitude = offered.PickupLongitude
+	}
+	if r.offerRound(current.ID) >= tripOfferMaxRounds {
+		r.expireTripIfStillSearching(current.ID)
+		return
+	}
+	r.offerTripRound(ctx, *current, r.offerRound(current.ID)+1)
+}
+
+func (r *appRidersManager) offerRound(tripID uuid.UUID) int {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.tripOfferRounds[tripID]
+}
+
+func (r *appRidersManager) offerExclusions(tripID uuid.UUID) map[uuid.UUID]struct{} {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make(map[uuid.UUID]struct{})
+	for id := range r.tripExcluded[tripID] {
+		out[id] = struct{}{}
+	}
+	for id := range r.tripAlreadyOffered[tripID] {
+		out[id] = struct{}{}
+	}
+	return out
 }
 
 func (r *appRidersManager) expireTripIfStillSearching(tripID uuid.UUID) {
@@ -374,11 +439,20 @@ func (r *appRidersManager) expireTripIfStillSearching(tripID uuid.UUID) {
 		slog.Error("error expiring trip to no_driver", "tripID", tripID, "error", err)
 	}
 
+	r.clearTripOfferState(tripID)
+}
+
+func (r *appRidersManager) clearTripOfferState(tripID uuid.UUID) {
 	r.mu.Lock()
+	defer r.mu.Unlock()
 	delete(r.tripOffers, tripID)
+	delete(r.tripAlreadyOffered, tripID)
+	delete(r.tripOfferRounds, tripID)
 	delete(r.tripExcluded, tripID)
-	delete(r.tripTimers, tripID)
-	r.mu.Unlock()
+	if timer, ok := r.tripTimers[tripID]; ok {
+		timer.Stop()
+		delete(r.tripTimers, tripID)
+	}
 }
 
 func (r *appRidersManager) wasOfferedTrip(tripID, riderID uuid.UUID) bool {
@@ -407,7 +481,7 @@ func (r *appRidersManager) endCompleting(tripID uuid.UUID) {
 	r.mu.Unlock()
 }
 
-func (r *appRidersManager) nearestTripsRiders(trip tripsModels.Trip, exclude map[uuid.UUID]struct{}) []riderModels.RiderLocationEntry {
+func (r *appRidersManager) nearestTripsRiders(trip tripsModels.Trip, exclude map[uuid.UUID]struct{}, maxRings int) []riderModels.RiderLocationEntry {
 	if trip.PickupH3Cell == nil {
 		return nil
 	}
@@ -420,7 +494,7 @@ func (r *appRidersManager) nearestTripsRiders(trip tripsModels.Trip, exclude map
 		byCell[e.Location.H3Cell] = append(byCell[e.Location.H3Cell], e)
 	}
 
-	for k := 0; k <= tripSearchMaxRings; k++ {
+	for k := 0; k <= maxRings; k++ {
 		cells, err := geo.GridDisk(*trip.PickupH3Cell, k)
 		if err != nil {
 			slog.Error("error expanding H3 rings for trip matching", "tripID", trip.ID, "error", err)
@@ -432,7 +506,7 @@ func (r *appRidersManager) nearestTripsRiders(trip tripsModels.Trip, exclude map
 			matched = append(matched, byCell[cell]...)
 		}
 
-		if len(matched) < tripOfferCandidateCount && k < tripSearchMaxRings {
+		if len(matched) < tripOfferCandidateCount && k < maxRings {
 			continue
 		}
 
@@ -490,13 +564,7 @@ func (r *appRidersManager) AcceptTrip(ctx context.Context, riderID, tripID uuid.
 		return nil
 	}
 
-	r.mu.Lock()
-	delete(r.tripOffers, tripID)
-	if timer, ok := r.tripTimers[tripID]; ok {
-		timer.Stop()
-		delete(r.tripTimers, tripID)
-	}
-	r.mu.Unlock()
+	r.clearTripOfferState(tripID)
 
 	acceptedAt := time.Now()
 	trip.RiderID = &riderID
@@ -553,17 +621,6 @@ func (r *appRidersManager) excludeRider(tripID, riderID uuid.UUID) {
 		r.tripExcluded[tripID] = set
 	}
 	set[riderID] = struct{}{}
-}
-
-func (r *appRidersManager) excludedRiderIDs(tripID uuid.UUID) map[uuid.UUID]struct{} {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	src := r.tripExcluded[tripID]
-	out := make(map[uuid.UUID]struct{}, len(src))
-	for id := range src {
-		out[id] = struct{}{}
-	}
-	return out
 }
 
 // AdvanceTrip mueve el trip asignado al siguiente estado. Solo el rider
@@ -649,4 +706,29 @@ func (r *appRidersManager) bcvRate(ctx context.Context) float64 {
 type tripBroadcast struct {
 	Type string                 `json:"type"`
 	Trip tripsDtos.TripResponse `json:"trip"`
+}
+
+// AdvanceTripOfferTimeout corre el mismo camino que el timer de 2 minutos.
+// Los tests lo usan para pasar de ronda sin esperar el timeout real.
+func AdvanceTripOfferTimeout(svc ridersPorts.RidersApp, trip tripsModels.Trip) {
+	mgr := svc.(*appRidersManager)
+	mgr.mu.Lock()
+	if timer, ok := mgr.tripTimers[trip.ID]; ok {
+		timer.Stop()
+		delete(mgr.tripTimers, trip.ID)
+	}
+	mgr.mu.Unlock()
+	mgr.onTripOfferTimeout(trip)
+}
+
+// StopTripOfferTimerForTest detiene el timer de oferta para que no dispare
+// después de que el test ya terminó.
+func StopTripOfferTimerForTest(svc ridersPorts.RidersApp, tripID uuid.UUID) {
+	mgr := svc.(*appRidersManager)
+	mgr.mu.Lock()
+	defer mgr.mu.Unlock()
+	if timer, ok := mgr.tripTimers[tripID]; ok {
+		timer.Stop()
+		delete(mgr.tripTimers, tripID)
+	}
 }
