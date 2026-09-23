@@ -8,7 +8,11 @@ import (
 	sharedmw "Encargalo.app-api.go/internal/shared/middleware"
 	"Encargalo.app-api.go/internal/trips/handler"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
+
+// createTripBodyLimit da margen sobre el comprobante en base64 (~6.99MB) más el resto del JSON.
+const createTripBodyLimit = "8M"
 
 // fareEstimateIPRateLimitCount/Window y fareEstimateDailyLimitPerUser mismo
 // criterio que mapsIPRateLimitCount/mapsDailyLimitPerUser (api/router/groups/maps.go):
@@ -38,7 +42,7 @@ func NewTripsGroup(middle auth.AuthMiddleware, handlerTrips handler.TripsHandler
 func (t *tripsGroup) Resource(g *echo.Echo) {
 	group := g.Group("/trips")
 
-	group.POST("", t.handlerTrips.RequestTrip, t.middle.Auth, t.middle.Require(models.Customer))
+	group.POST("", t.handlerTrips.RequestTrip, middleware.BodyLimit(createTripBodyLimit), t.middle.Auth, t.middle.Require(models.Customer))
 	group.POST("/fare-estimate", t.handlerTrips.EstimateFare, t.middle.Auth, t.middle.Require(models.Customer),
 		t.rateLimiter.LimitByIP("trips:fare-estimate", fareEstimateIPRateLimitCount, fareEstimateIPRateLimitWindow),
 		t.rateLimiter.LimitByKey(sessionUserIDKey, "trips:fare-estimate:daily", fareEstimateDailyLimitPerUser, fareEstimateDailyLimitWindow),

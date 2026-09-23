@@ -139,6 +139,8 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(repoPayment.NewPaymentMethodsRepo)
 	_ = Container.Provide(handTrips.NewTripsHandler)
 	_ = Container.Provide(appTrips.NewTripsApp)
+	_ = Container.Provide(appTrips.NewTripPaymentSubject)
+	_ = Container.Provide(appTrips.NewTripStaffSnapshot)
 	_ = Container.Provide(repoTrips.NewTripsRepo)
 	_ = Container.Provide(repoTrips.NewTripQuotesRepo)
 

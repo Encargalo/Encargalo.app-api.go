@@ -60,7 +60,11 @@ func TestRequestTrip_InvalidPayload(t *testing.T) {
 func TestRequestTrip_Success(t *testing.T) {
 	h, svc := newTripsHandler(t)
 	customerID := uuid.New()
-	req := dtos.CreateTripRequest{QuoteID: uuid.New()}
+	req := dtos.CreateTripRequest{
+		QuoteID:           uuid.New(),
+		MethodPayment:     "PagoMovil",
+		PaymentProofImage: "proof-b64",
+	}
 	tc := buildhttptest.SetupControllerCase("/trips", http.MethodPost, buildBody(t, req))
 	tc = withSession(tc, authModels.ActiveSession{UserID: customerID})
 
