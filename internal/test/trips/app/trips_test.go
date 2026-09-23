@@ -35,6 +35,7 @@ type tripsDeps struct {
 	reviews *mockpayments.PaymentReviewsApp
 	upload  *mockupload.UploadImage
 	hub     *mockpayments.StaffReviewHub
+	riders  *mockstrips.RiderPublicInfoLookup
 }
 
 func newTripsDeps(t *testing.T) tripsDeps {
@@ -46,8 +47,9 @@ func newTripsDeps(t *testing.T) tripsDeps {
 	reviews := mockpayments.NewPaymentReviewsApp(t)
 	upload := mockupload.NewUploadImage(t)
 	hub := mockpayments.NewStaffReviewHub(t)
+	riders := mockstrips.NewRiderPublicInfoLookup(t)
 	return tripsDeps{
-		svc:     app.NewTripsApp(repo, matcher, bcv, quotes, upload, reviews, hub),
+		svc:     app.NewTripsApp(repo, matcher, bcv, quotes, upload, reviews, hub, riders),
 		repo:    repo,
 		matcher: matcher,
 		bcv:     bcv,
@@ -55,6 +57,7 @@ func newTripsDeps(t *testing.T) tripsDeps {
 		reviews: reviews,
 		upload:  upload,
 		hub:     hub,
+		riders:  riders,
 	}
 }
 
@@ -281,6 +284,59 @@ func TestGetTrip_NotFound(t *testing.T) {
 	_, err := svc.GetTrip(context.Background(), tripID, requesterID)
 
 	require.ErrorIs(t, err, errcustom.ErrNotFound)
+}
+
+func TestGetTrip_OmitsRiderWhenUnassigned(t *testing.T) {
+	d := newTripsDeps(t)
+	tripID, customerID := uuid.New(), uuid.New()
+	d.repo.On("GetTripByID", mock.Anything, tripID).Return(&models.Trip{
+		ID: tripID, CustomerID: customerID, Status: models.TripStatusSearching,
+	}, nil)
+	mockBcvRate(d.bcv, 40)
+
+	resp, err := d.svc.GetTrip(context.Background(), tripID, customerID)
+
+	require.NoError(t, err)
+	require.Nil(t, resp.Rider)
+	d.riders.AssertNotCalled(t, "GetByRiderID", mock.Anything, mock.Anything)
+}
+
+func TestGetTrip_AttachesPublicRider(t *testing.T) {
+	d := newTripsDeps(t)
+	tripID, customerID, riderID := uuid.New(), uuid.New(), uuid.New()
+	plate := "AB123CD"
+	d.repo.On("GetTripByID", mock.Anything, tripID).Return(&models.Trip{
+		ID: tripID, CustomerID: customerID, RiderID: &riderID, Status: models.TripStatusAccepted,
+	}, nil)
+	mockBcvRate(d.bcv, 40)
+	d.riders.On("GetByRiderID", mock.Anything, riderID).Return(dtos.RiderPublicInfo{
+		Name: "Ada", SurName: "Lovelace", Phone: "04120000000", VehiclePlate: &plate,
+	}, nil)
+
+	resp, err := d.svc.GetTrip(context.Background(), tripID, customerID)
+
+	require.NoError(t, err)
+	require.NotNil(t, resp.Rider)
+	require.Equal(t, "Ada", resp.Rider.Name)
+	require.Equal(t, &plate, resp.Rider.VehiclePlate)
+}
+
+func TestGetTripHistory_AttachesRiderOnlyWhenAssigned(t *testing.T) {
+	d := newTripsDeps(t)
+	customerID, riderID := uuid.New(), uuid.New()
+	assigned := uuid.New()
+	d.repo.On("GetTripHistoryByCustomer", mock.Anything, customerID).Return([]models.Trip{
+		{ID: uuid.New(), CustomerID: customerID, Status: models.TripStatusCompleted},
+		{ID: assigned, CustomerID: customerID, RiderID: &riderID, Status: models.TripStatusCompleted},
+	}, nil)
+	mockBcvRate(d.bcv, 40)
+	d.riders.On("GetByRiderID", mock.Anything, riderID).Return(dtos.RiderPublicInfo{Name: "Ada"}, nil)
+
+	resp, err := d.svc.GetTripHistory(context.Background(), customerID)
+
+	require.NoError(t, err)
+	require.Nil(t, resp.Trips[0].Rider)
+	require.Equal(t, "Ada", resp.Trips[1].Rider.Name)
 }
 
 func TestGetTripHistory_MapsAllTrips(t *testing.T) {

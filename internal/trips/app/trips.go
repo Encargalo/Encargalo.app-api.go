@@ -29,6 +29,7 @@ type tripsApp struct {
 	upload  uploadimage.UploadImage
 	reviews paymentsPorts.PaymentReviewsApp
 	hub     paymentsPorts.StaffReviewHub
+	riders  ports.RiderPublicInfoLookup
 }
 
 func NewTripsApp(
@@ -39,6 +40,7 @@ func NewTripsApp(
 	upload uploadimage.UploadImage,
 	reviews paymentsPorts.PaymentReviewsApp,
 	hub paymentsPorts.StaffReviewHub,
+	riders ports.RiderPublicInfoLookup,
 ) ports.TripsApp {
 	return &tripsApp{
 		repo:    repo,
@@ -48,6 +50,7 @@ func NewTripsApp(
 		upload:  upload,
 		reviews: reviews,
 		hub:     hub,
+		riders:  riders,
 	}
 }
 
@@ -126,8 +129,7 @@ func (a *tripsApp) GetTrip(ctx context.Context, tripID, requesterID uuid.UUID) (
 	if trip.CustomerID != requesterID {
 		return dtos.TripResponse{}, errcustom.ErrTripForbidden
 	}
-	trip.ApplyBsFare(a.bcvRate(ctx))
-	return trip.ToDTO(), nil
+	return a.toResponse(ctx, trip, a.bcvRate(ctx))
 }
 
 func (a *tripsApp) GetTripHistory(ctx context.Context, customerID uuid.UUID) (dtos.TripHistoryResponse, error) {
@@ -138,8 +140,11 @@ func (a *tripsApp) GetTripHistory(ctx context.Context, customerID uuid.UUID) (dt
 	rate := a.bcvRate(ctx)
 	out := make([]dtos.TripResponse, len(trips))
 	for i := range trips {
-		trips[i].ApplyBsFare(rate)
-		out[i] = trips[i].ToDTO()
+		resp, err := a.toResponse(ctx, &trips[i], rate)
+		if err != nil {
+			return dtos.TripHistoryResponse{}, err
+		}
+		out[i] = resp
 	}
 	return dtos.TripHistoryResponse{Trips: out}, nil
 }
@@ -165,8 +170,21 @@ func (a *tripsApp) CancelTrip(ctx context.Context, tripID, requesterID uuid.UUID
 	}
 
 	trip.Status = models.TripStatusCancelled
-	trip.ApplyBsFare(a.bcvRate(ctx))
-	return trip.ToDTO(), nil
+	return a.toResponse(ctx, trip, a.bcvRate(ctx))
+}
+
+func (a *tripsApp) toResponse(ctx context.Context, trip *models.Trip, rate float64) (dtos.TripResponse, error) {
+	trip.ApplyBsFare(rate)
+	resp := trip.ToDTO()
+	if trip.RiderID == nil || a.riders == nil {
+		return resp, nil
+	}
+	info, err := a.riders.GetByRiderID(ctx, *trip.RiderID)
+	if err != nil {
+		return dtos.TripResponse{}, err
+	}
+	resp.Rider = &info
+	return resp, nil
 }
 
 // EstimateFare calcula el fare una sola vez y lo congela en una TripQuote.

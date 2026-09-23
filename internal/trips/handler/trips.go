@@ -96,6 +96,7 @@ func (h *tripsHandler) EstimateFare(c echo.Context) error {
 
 // GetTrip godoc
 // @Summary      Detalle de un viaje
+// @Description  Si el viaje ya tiene rider asignado, `rider` trae nombre, teléfono, foto y vehículo. No incluye documentos KYC. Sin rider, el campo no viene.
 // @Tags         Trips
 // @Produce      json
 // @Security     SessionCookie
@@ -124,6 +125,7 @@ func (h *tripsHandler) GetTrip(c echo.Context) error {
 
 // GetTripHistory godoc
 // @Summary      Historial de viajes del cliente
+// @Description  Cada viaje con rider asignado incluye `rider` (nombre, teléfono, foto y vehículo). No incluye documentos KYC.
 // @Tags         Trips
 // @Produce      json
 // @Security     SessionCookie

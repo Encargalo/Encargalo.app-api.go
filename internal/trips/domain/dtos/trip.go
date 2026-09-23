@@ -22,23 +22,38 @@ func (r *CreateTripRequest) Validate() error {
 	return tripValidate.StructCtx(context.Background(), r)
 }
 
+// RiderPublicInfo es lo que el cliente puede ver del rider asignado.
+// No incluye documentos KYC (cédula, carnet, licencia, carnet de circulación).
+type RiderPublicInfo struct {
+	Name            string  `json:"name"`
+	SurName         string  `json:"sur_name,omitempty"`
+	Phone           string  `json:"phone,omitempty"`
+	ProfilePhotoURL *string `json:"profile_photo_url,omitempty"`
+	VehicleType     *string `json:"vehicle_type,omitempty"`
+	VehiclePlate    *string `json:"vehicle_plate,omitempty"`
+	VehicleBrand    *string `json:"vehicle_brand,omitempty"`
+	VehicleModel    *string `json:"vehicle_model,omitempty"`
+	VehicleColor    *string `json:"vehicle_color,omitempty"`
+}
+
 type TripResponse struct {
-	ID               uuid.UUID  `json:"id"`
-	CustomerID       uuid.UUID  `json:"customer_id"`
-	RiderID          *uuid.UUID `json:"rider_id,omitempty"`
-	Status           string     `json:"status"`
-	PickupAddress    string     `json:"pickup_address"`
-	PickupLatitude   float64    `json:"pickup_latitude"`
-	PickupLongitude  float64    `json:"pickup_longitude"`
-	DropoffAddress   string     `json:"dropoff_address"`
-	DropoffLatitude  float64    `json:"dropoff_latitude"`
-	DropoffLongitude float64    `json:"dropoff_longitude"`
-	FareUSD          *float64   `json:"fare_usd,omitempty"`
-	FareBs           *float64   `json:"fare_bs,omitempty"`
-	RequestedAt      time.Time  `json:"requested_at"`
-	AcceptedAt       *time.Time `json:"accepted_at,omitempty"`
-	CompletedAt      *time.Time `json:"completed_at,omitempty"`
-	CancelledAt      *time.Time `json:"cancelled_at,omitempty"`
+	ID               uuid.UUID        `json:"id"`
+	CustomerID       uuid.UUID        `json:"customer_id"`
+	RiderID          *uuid.UUID       `json:"rider_id,omitempty"`
+	Rider            *RiderPublicInfo `json:"rider,omitempty"`
+	Status           string           `json:"status"`
+	PickupAddress    string           `json:"pickup_address"`
+	PickupLatitude   float64          `json:"pickup_latitude"`
+	PickupLongitude  float64          `json:"pickup_longitude"`
+	DropoffAddress   string           `json:"dropoff_address"`
+	DropoffLatitude  float64          `json:"dropoff_latitude"`
+	DropoffLongitude float64          `json:"dropoff_longitude"`
+	FareUSD          *float64         `json:"fare_usd,omitempty"`
+	FareBs           *float64         `json:"fare_bs,omitempty"`
+	RequestedAt      time.Time        `json:"requested_at"`
+	AcceptedAt       *time.Time       `json:"accepted_at,omitempty"`
+	CompletedAt      *time.Time       `json:"completed_at,omitempty"`
+	CancelledAt      *time.Time       `json:"cancelled_at,omitempty"`
 }
 
 type TripHistoryResponse struct {
