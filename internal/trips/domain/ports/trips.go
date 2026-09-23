@@ -28,6 +28,9 @@ type TripsRepo interface {
 	// y guarda el código de bajada que el cliente mostrará al llegar.
 	StartTripWithPickupCode(ctx context.Context, tripID, riderID uuid.UUID, pickupCode, dropoffCode string) (bool, error)
 	ListActiveTripsByCustomer(ctx context.Context, customerID uuid.UUID) ([]models.Trip, error)
+	// ListActiveTripsByRider devuelve los viajes asignados al rider que siguen
+	// en curso (accepted, arriving o in_progress), el más reciente primero.
+	ListActiveTripsByRider(ctx context.Context, riderID uuid.UUID) ([]models.Trip, error)
 	// ReleaseTripRider devuelve el viaje a searching y limpia rider_id solo si
 	// sigue asignado a ese rider en accepted o arriving. RowsAffected == 0 => el estado ya cambió.
 	ReleaseTripRider(ctx context.Context, tripID, riderID uuid.UUID) (bool, error)
