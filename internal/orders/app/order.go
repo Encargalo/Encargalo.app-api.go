@@ -16,6 +16,7 @@ import (
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
+	paymentsModels "Encargalo.app-api.go/internal/payments/domain/models"
 	"Encargalo.app-api.go/internal/pkg/geo"
 	"Encargalo.app-api.go/internal/pkg/money"
 	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
@@ -556,7 +557,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 	}
 
 	if balanceUsedBs > 0 {
-		if err := o.customerBalance.DebitForOrder(ctx, order.CustomerID, orderModel.ID, balanceUsedBs); err != nil {
+		if err := o.customerBalance.DebitForReference(ctx, order.CustomerID, orderModel.ID, paymentsModels.ReferenceTypeOrder, balanceUsedBs); err != nil {
 			o.releaseQuoteConsume(ctx, quote)
 			return &models.Order{}, err
 		}
@@ -589,13 +590,14 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 	if proofURL != "" {
 		expectedBs := pagoMovilBs
 		nowReview := time.Now()
-		review := &models.PaymentReview{
+		review := &paymentsModels.PaymentReview{
 			ID:               uuid.New(),
-			OrderID:          orderDB.ID,
+			ReferenceID:      orderDB.ID,
+			ReferenceType:    paymentsModels.ReferenceTypeOrder,
 			ProofURL:         proofURL,
 			ExpectedAmountBs: expectedBs,
 			BcvRate:          rate,
-			Status:           models.ReviewPendingReview,
+			Status:           paymentsModels.ReviewPendingReview,
 			CreatedAt:        nowReview,
 			LastAlertedAt:    &nowReview,
 		}
@@ -605,15 +607,16 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 			return &models.Order{}, err
 		}
 		event := models.DataEventPaymentProofPending{}
-		event.BuildFrom(*orderDB, *review, 0)
+		event.BuildFrom(*orderDB, review.ID, review.ExpectedAmountBs, review.ProofURL, 0)
 		if err := o.stream.PublisherEvent(ctx, event); err != nil {
 			slog.Error("error producing payment_proof_pending", "error", err)
 		}
 		if o.staffHub != nil {
-			b := models.PaymentReviewBroadcast{
+			b := paymentsModels.PaymentReviewBroadcast{
 				Type:              "payment_review_update",
 				ReviewID:          review.ID,
-				OrderID:           orderDB.ID,
+				ReferenceID:       orderDB.ID,
+				ReferenceType:     paymentsModels.ReferenceTypeOrder,
 				ShopID:            orderDB.ShopID,
 				CustomerID:        orderDB.CustomerID,
 				ProofURL:          review.ProofURL,
@@ -652,7 +655,7 @@ func (o *orderApp) refundBalanceDebit(ctx context.Context, customerID, orderID u
 	if amount <= 0 || o.customerBalance == nil {
 		return
 	}
-	if err := o.customerBalance.RefundBalancePayment(ctx, customerID, orderID, amount); err != nil {
+	if err := o.customerBalance.RefundBalancePayment(ctx, customerID, orderID, paymentsModels.ReferenceTypeOrder, amount); err != nil {
 		slog.Error("refundBalanceDebit failed", "orderID", orderID, "amount", amount, "error", err)
 	}
 }
@@ -755,12 +758,12 @@ func (o *orderApp) refundCustomerOnShopRejectWithReason(ctx context.Context, ord
 
 	balanceUsedBs, pmFromDetails, hasPD := paymentSplitFromDetails(order, rate)
 	// Fuente de verdad del ledger si details no trae el split (o lo trae mal).
-	if debited, err := o.customerBalance.GetBalancePaymentDebitForOrder(ctx, order.CustomerID, order.ID); err == nil && debited > balanceUsedBs {
+	if debited, err := o.customerBalance.GetBalancePaymentDebitForReference(ctx, order.CustomerID, order.ID, paymentsModels.ReferenceTypeOrder); err == nil && debited > balanceUsedBs {
 		balanceUsedBs = debited
 	}
 	totalBs := money.RoundBs(order.TotalPrice * rate)
 	refundablePMBs := cashRefundablePMBs(totalBs, balanceUsedBs, pmFromDetails, hasPD)
-	txID, createdAt, err := o.customerBalance.CreditOrderRejected(ctx, order.CustomerID, order.ID, totalBs, refundablePMBs, rate)
+	txID, createdAt, err := o.customerBalance.CreditOrderRejected(ctx, order.CustomerID, order.ID, paymentsModels.ReferenceTypeOrder, totalBs, refundablePMBs, rate)
 	if err != nil {
 		slog.Error("refundCustomerOnShopReject credit failed", "orderID", order.ID, "error", err)
 		return

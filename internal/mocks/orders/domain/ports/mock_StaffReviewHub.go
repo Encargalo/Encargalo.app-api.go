@@ -5,10 +5,10 @@ package mocks
 import (
 	context "context"
 
-	models "Encargalo.app-api.go/internal/orders/domain/models"
+	models "Encargalo.app-api.go/internal/payments/domain/models"
 	mock "github.com/stretchr/testify/mock"
 
-	ports "Encargalo.app-api.go/internal/orders/domain/ports"
+	ports "Encargalo.app-api.go/internal/payments/domain/ports"
 
 	uuid "github.com/google/uuid"
 )
@@ -52,6 +52,11 @@ func (_m *StaffReviewHub) Register(ctx context.Context, staffID uuid.UUID, conn 
 	}
 
 	return r0
+}
+
+// SetSnapshotProvider provides a mock function with given fields: fn
+func (_m *StaffReviewHub) SetSnapshotProvider(fn func(context.Context) ([]models.PaymentReviewBroadcast, error)) {
+	_m.Called(fn)
 }
 
 // Unregister provides a mock function with given fields: staffID, conn

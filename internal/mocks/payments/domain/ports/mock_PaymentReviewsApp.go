@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	models "Encargalo.app-api.go/internal/orders/domain/models"
+	models "Encargalo.app-api.go/internal/payments/domain/models"
 	mock "github.com/stretchr/testify/mock"
 
 	uuid "github.com/google/uuid"
@@ -72,47 +72,29 @@ func (_m *PaymentReviewsApp) ApproveOverpay(ctx context.Context, reviewID uuid.U
 	return r0, r1
 }
 
-// BuildBroadcast provides a mock function with given fields: ctx, review, order
-func (_m *PaymentReviewsApp) BuildBroadcast(ctx context.Context, review *models.PaymentReview, order *models.Order) models.PaymentReviewBroadcast {
-	ret := _m.Called(ctx, review, order)
+// CreateReview provides a mock function with given fields: ctx, referenceType, referenceID, proofURL, expectedBs, bcvRate
+func (_m *PaymentReviewsApp) CreateReview(ctx context.Context, referenceType string, referenceID uuid.UUID, proofURL string, expectedBs float64, bcvRate float64) (*models.PaymentReview, error) {
+	ret := _m.Called(ctx, referenceType, referenceID, proofURL, expectedBs, bcvRate)
 
 	if len(ret) == 0 {
-		panic("no return value specified for BuildBroadcast")
-	}
-
-	var r0 models.PaymentReviewBroadcast
-	if rf, ok := ret.Get(0).(func(context.Context, *models.PaymentReview, *models.Order) models.PaymentReviewBroadcast); ok {
-		r0 = rf(ctx, review, order)
-	} else {
-		r0 = ret.Get(0).(models.PaymentReviewBroadcast)
-	}
-
-	return r0
-}
-
-// CreateForOrder provides a mock function with given fields: ctx, order, proofURL, expectedBs, bcvRate
-func (_m *PaymentReviewsApp) CreateForOrder(ctx context.Context, order *models.Order, proofURL string, expectedBs float64, bcvRate float64) (*models.PaymentReview, error) {
-	ret := _m.Called(ctx, order, proofURL, expectedBs, bcvRate)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CreateForOrder")
+		panic("no return value specified for CreateReview")
 	}
 
 	var r0 *models.PaymentReview
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *models.Order, string, float64, float64) (*models.PaymentReview, error)); ok {
-		return rf(ctx, order, proofURL, expectedBs, bcvRate)
+	if rf, ok := ret.Get(0).(func(context.Context, string, uuid.UUID, string, float64, float64) (*models.PaymentReview, error)); ok {
+		return rf(ctx, referenceType, referenceID, proofURL, expectedBs, bcvRate)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *models.Order, string, float64, float64) *models.PaymentReview); ok {
-		r0 = rf(ctx, order, proofURL, expectedBs, bcvRate)
+	if rf, ok := ret.Get(0).(func(context.Context, string, uuid.UUID, string, float64, float64) *models.PaymentReview); ok {
+		r0 = rf(ctx, referenceType, referenceID, proofURL, expectedBs, bcvRate)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*models.PaymentReview)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *models.Order, string, float64, float64) error); ok {
-		r1 = rf(ctx, order, proofURL, expectedBs, bcvRate)
+	if rf, ok := ret.Get(1).(func(context.Context, string, uuid.UUID, string, float64, float64) error); ok {
+		r1 = rf(ctx, referenceType, referenceID, proofURL, expectedBs, bcvRate)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -150,41 +132,23 @@ func (_m *PaymentReviewsApp) ListActiveForStaff(ctx context.Context) ([]models.P
 	return r0, r1
 }
 
-// NotifyPendingPaymentProofs provides a mock function with given fields: ctx
-func (_m *PaymentReviewsApp) NotifyPendingPaymentProofs(ctx context.Context) error {
-	ret := _m.Called(ctx)
-
-	if len(ret) == 0 {
-		panic("no return value specified for NotifyPendingPaymentProofs")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
-		r0 = rf(ctx)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
 // RejectInvalid provides a mock function with given fields: ctx, reviewID, staffID, reason
-func (_m *PaymentReviewsApp) RejectInvalid(ctx context.Context, reviewID uuid.UUID, staffID uuid.UUID, reason string) (models.Order, error) {
+func (_m *PaymentReviewsApp) RejectInvalid(ctx context.Context, reviewID uuid.UUID, staffID uuid.UUID, reason string) (models.StaffReviewResult, error) {
 	ret := _m.Called(ctx, reviewID, staffID, reason)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RejectInvalid")
 	}
 
-	var r0 models.Order
+	var r0 models.StaffReviewResult
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string) (models.Order, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string) (models.StaffReviewResult, error)); ok {
 		return rf(ctx, reviewID, staffID, reason)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string) models.Order); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string) models.StaffReviewResult); ok {
 		r0 = rf(ctx, reviewID, staffID, reason)
 	} else {
-		r0 = ret.Get(0).(models.Order)
+		r0 = ret.Get(0).(models.StaffReviewResult)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, string) error); ok {
@@ -222,6 +186,11 @@ func (_m *PaymentReviewsApp) RejectUnderpaid(ctx context.Context, reviewID uuid.
 	}
 
 	return r0, r1
+}
+
+// SetSnapshotProvider provides a mock function with given fields: fn
+func (_m *PaymentReviewsApp) SetSnapshotProvider(fn func(context.Context) ([]models.PaymentReviewBroadcast, error)) {
+	_m.Called(fn)
 }
 
 // NewPaymentReviewsApp creates a new instance of PaymentReviewsApp. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

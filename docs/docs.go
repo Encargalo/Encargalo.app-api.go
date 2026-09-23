@@ -2422,33 +2422,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/orders/staff/reviews": {
-            "get": {
-                "security": [
-                    {
-                        "SessionCookie": []
-                    }
-                ],
-                "tags": [
-                    "Orders WebSocket"
-                ],
-                "summary": "WebSocket de revisión de comprobantes (Staff CRM)",
-                "responses": {
-                    "401": {
-                        "description": "Sesión no encontrada o inválida",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "403": {
-                        "description": "Acceso denegado",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "/orders/{id}/confirm-delivery": {
             "post": {
                 "security": [
@@ -2652,6 +2625,33 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/payments/staff/reviews": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "WebSocket de revisión de comprobantes (Staff CRM)",
+                "responses": {
+                    "401": {
+                        "description": "Sesión no encontrada o inválida",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado",
                         "schema": {
                             "type": "string"
                         }
@@ -5571,7 +5571,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Crea un viaje en estado \"requested\" con punto de recogida y destino. El matching con conductores cercanos no está incluido en este endpoint.",
+                "description": "Crea un viaje en estado \"requested\" a partir de una cotización vigente (ver POST /trips/fare-estimate): pickup/dropoff y fare quedan fijados por esa cotización, no se recalculan. El matching con conductores cercanos no está incluido en este endpoint.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5584,7 +5584,7 @@ const docTemplate = `{
                 "summary": "Solicitar un viaje",
                 "parameters": [
                     {
-                        "description": "Datos del viaje",
+                        "description": "quote_id de una cotización vigente",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -5608,6 +5608,69 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Cotización no encontrada, expirada o de otro cliente",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/trips/fare-estimate": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Calcula distancia, tiempo estimado y tarifa (USD/Bs) entre pickup y destino, y la congela por 10 minutos en una cotización. El quote_id devuelto es obligatorio para crear el viaje (POST /trips): el precio mostrado acá es el que queda fijado, no se recalcula.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Trips"
+                ],
+                "summary": "Cotizar tarifa de un viaje",
+                "parameters": [
+                    {
+                        "description": "Direcciones y coordenadas de pickup/destino",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.FareEstimateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.FareEstimateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "payload inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "503": {
+                        "description": "Tasa BCV no disponible",
                         "schema": {
                             "type": "string"
                         }
@@ -9311,6 +9374,17 @@ const docTemplate = `{
         "Encargalo_app-api_go_internal_trips_domain_dtos.CreateTripRequest": {
             "type": "object",
             "required": [
+                "quote_id"
+            ],
+            "properties": {
+                "quote_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_trips_domain_dtos.FareEstimateRequest": {
+            "type": "object",
+            "required": [
                 "dropoff_address",
                 "dropoff_latitude",
                 "dropoff_longitude",
@@ -9342,6 +9416,29 @@ const docTemplate = `{
                 "pickup_longitude": {
                     "type": "number",
                     "example": -66.9036
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_trips_domain_dtos.FareEstimateResponse": {
+            "type": "object",
+            "properties": {
+                "distance_meters": {
+                    "type": "number"
+                },
+                "duration_min": {
+                    "type": "integer"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "fare_bs": {
+                    "type": "number"
+                },
+                "fare_usd": {
+                    "type": "number"
+                },
+                "quote_id": {
+                    "type": "string"
                 }
             }
         },
@@ -9380,7 +9477,10 @@ const docTemplate = `{
                 "dropoff_longitude": {
                     "type": "number"
                 },
-                "fare": {
+                "fare_bs": {
+                    "type": "number"
+                },
+                "fare_usd": {
                     "type": "number"
                 },
                 "id": {

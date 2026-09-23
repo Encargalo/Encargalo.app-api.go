@@ -1,5 +1,7 @@
 package models
 
+import "github.com/google/uuid"
+
 type DataEventPaymentProofPending struct {
 	MessageType      string  `json:"type"`
 	OrderID          string  `json:"order_id"`
@@ -12,14 +14,14 @@ type DataEventPaymentProofPending struct {
 	MinutesPending   int     `json:"minutes_pending"`
 }
 
-func (d *DataEventPaymentProofPending) BuildFrom(order Order, review PaymentReview, minutesPending int) {
+func (d *DataEventPaymentProofPending) BuildFrom(order Order, reviewID uuid.UUID, expectedAmountBs float64, proofURL string, minutesPending int) {
 	d.MessageType = "payment_proof_pending"
 	d.OrderID = order.ID.String()
-	d.ReviewID = review.ID.String()
+	d.ReviewID = reviewID.String()
 	d.ShopID = order.ShopID.String()
 	d.CustomerID = order.CustomerID.String()
-	d.ExpectedAmountBs = review.ExpectedAmountBs
-	d.ProofURL = review.ProofURL
+	d.ExpectedAmountBs = expectedAmountBs
+	d.ProofURL = proofURL
 	d.TotalUSD = order.TotalPrice
 	d.MinutesPending = minutesPending
 }

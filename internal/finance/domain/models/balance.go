@@ -36,7 +36,8 @@ type Transaction struct {
 	ID            uuid.UUID  `bun:"id,pk,type:uuid"`
 	EntityID      uuid.UUID  `bun:"entity_id"`
 	EntityType    string     `bun:"entity_type"`
-	OrderID       *uuid.UUID `bun:"order_id,nullzero"`
+	ReferenceID   *uuid.UUID `bun:"reference_id,nullzero"`
+	ReferenceType *string    `bun:"reference_type,nullzero"`
 	Amount        float64    `bun:"amount"`
 	Currency      string     `bun:"currency"`
 	BcvRate       *float64   `bun:"bcv_rate,nullzero"`

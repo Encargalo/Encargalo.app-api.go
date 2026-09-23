@@ -240,9 +240,17 @@ Staff valida en CRM (monto del resto PM + últimos 4 dígitos del comprobante)
 └───────────────────┴────────────────────┴──────────────────────┴─────────────────────┘
 ```
 
+### Staff CRM — WebSocket
+
+- **URL:** `ws(s)://<API>/payments/staff/reviews` (reemplaza a `/orders/staff/reviews`)
+- **Auth:** sesión de staff
+- **Al conectar:** snapshot de reviews pendientes + `{"type":"connected"}`
+- Cada ítem del snapshot y cada `payment_review_update` trae `reference_id` y `reference_type` (`"order"` hoy; `"trip"` cuando exista).
+- `action_ok` responde `review_id`, `reference_id` y `reference_type`. Ya no incluye `order_id` ni `order_status`; el estado final va en el `payment_review_update`.
+
 ### Staff CRM — `reference_last4`
 
-En `approve` / `approve_overpay` / `reject_underpaid` el staff **debe** enviar los últimos 4 dígitos del comprobante (`reference_last4`, exactamente `[0-9]{4}`).
+En `approve` / `approve_overpay` / `reject_underpaid` el staff **debe** enviar los últimos 4 dígitos del comprobante (`reference_last4`, exactamente `[0-9]{4}`). La unicidad es global: un comprobante usado en una orden no se puede reutilizar en un viaje, y al revés.
 
 - Si esos dígitos **ya existen** en otra review consumida (`approved` | `overpaid` | `rejected_underpaid`), el backend **auto-rechaza** la orden como `rejected_invalid` (motivo: `comprobante duplicado (referencia XXXX)`), sin acreditar el Pago Móvil.
 - En `reject_invalid` (foto que no es un pago) **no** se piden los 4 dígitos.

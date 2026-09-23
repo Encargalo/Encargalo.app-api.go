@@ -485,9 +485,9 @@ func (_m *CustomerFinanceRepo) SetTransactionRefundRequestID(ctx context.Context
 	return r0
 }
 
-// SumBalancePaymentDebit provides a mock function with given fields: ctx, customerID, orderID
-func (_m *CustomerFinanceRepo) SumBalancePaymentDebit(ctx context.Context, customerID uuid.UUID, orderID uuid.UUID) (float64, error) {
-	ret := _m.Called(ctx, customerID, orderID)
+// SumBalancePaymentDebit provides a mock function with given fields: ctx, customerID, referenceID, referenceType
+func (_m *CustomerFinanceRepo) SumBalancePaymentDebit(ctx context.Context, customerID uuid.UUID, referenceID uuid.UUID, referenceType string) (float64, error) {
+	ret := _m.Called(ctx, customerID, referenceID, referenceType)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SumBalancePaymentDebit")
@@ -495,17 +495,17 @@ func (_m *CustomerFinanceRepo) SumBalancePaymentDebit(ctx context.Context, custo
 
 	var r0 float64
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) (float64, error)); ok {
-		return rf(ctx, customerID, orderID)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string) (float64, error)); ok {
+		return rf(ctx, customerID, referenceID, referenceType)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) float64); ok {
-		r0 = rf(ctx, customerID, orderID)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string) float64); ok {
+		r0 = rf(ctx, customerID, referenceID, referenceType)
 	} else {
 		r0 = ret.Get(0).(float64)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
-		r1 = rf(ctx, customerID, orderID)
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, string) error); ok {
+		r1 = rf(ctx, customerID, referenceID, referenceType)
 	} else {
 		r1 = ret.Error(1)
 	}

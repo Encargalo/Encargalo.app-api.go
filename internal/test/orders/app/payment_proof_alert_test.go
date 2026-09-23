@@ -1,35 +1,35 @@
 package app_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
 	mockports "Encargalo.app-api.go/internal/mocks/orders/domain/ports"
 	"Encargalo.app-api.go/internal/orders/app"
 	"Encargalo.app-api.go/internal/orders/domain/models"
+	paymentsModels "Encargalo.app-api.go/internal/payments/domain/models"
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
-func TestNotifyPendingPaymentProofs_Publishes(t *testing.T) {
+func TestPaymentProofAlertWorker_Publishes(t *testing.T) {
 	repo := mockports.NewPaymentReviewsRepo(t)
 	orders := mockports.NewOrdersRepo(t)
 	stream := mockports.NewRedisStream(t)
-	svc := app.NewPaymentReviewsApp(repo, orders, nil, stream, nil, nil)
+	worker := app.NewPaymentProofAlertWorker(repo, orders, stream)
 
 	reviewID := uuid.New()
 	orderID := uuid.New()
 	now := time.Now()
-	review := models.PaymentReview{
+	review := paymentsModels.PaymentReview{
 		ID:               reviewID,
-		OrderID:          orderID,
+		ReferenceID:      orderID,
+		ReferenceType:    paymentsModels.ReferenceTypeOrder,
 		ProofURL:         "https://example.com/proof.jpg",
 		ExpectedAmountBs: 1680,
 		BcvRate:          40,
-		Status:           models.ReviewPendingReview,
+		Status:           paymentsModels.ReviewPendingReview,
 		CreatedAt:        now.Add(-4 * time.Minute),
 	}
 	order := &models.Order{
@@ -42,7 +42,8 @@ func TestNotifyPendingPaymentProofs_Publishes(t *testing.T) {
 	alertBeforeMatcher := mock.MatchedBy(func(t time.Time) bool {
 		return !t.IsZero()
 	})
-	repo.On("ListPendingForAlert", mock.Anything, alertBeforeMatcher).Return([]models.PaymentReview{review}, nil)
+	repo.On("ListPendingForAlert", mock.Anything, paymentsModels.ReferenceTypeOrder, alertBeforeMatcher).
+		Return([]paymentsModels.PaymentReview{review}, nil)
 	repo.On("MarkAlerted", mock.Anything, reviewID, mock.Anything, alertBeforeMatcher).Return(true, nil)
 	orders.On("SearchOrdersByID", mock.Anything, orderID).Return(order, nil)
 	stream.On("PublisherEvent", mock.Anything, mock.MatchedBy(func(data any) bool {
@@ -50,8 +51,8 @@ func TestNotifyPendingPaymentProofs_Publishes(t *testing.T) {
 		return ok && ev.MessageType == "payment_proof_pending" && ev.ReviewID == reviewID.String()
 	})).Return(nil)
 
-	err := svc.NotifyPendingPaymentProofs(context.Background())
-
-	require.NoError(t, err)
-	assert.True(t, stream.AssertCalled(t, "PublisherEvent", mock.Anything, mock.Anything))
+	ctx := t.Context()
+	worker.Start(ctx)
+	time.Sleep(200 * time.Millisecond)
+	require.True(t, stream.AssertCalled(t, "PublisherEvent", mock.Anything, mock.Anything))
 }

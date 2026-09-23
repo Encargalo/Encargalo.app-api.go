@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	models "Encargalo.app-api.go/internal/orders/domain/models"
+	models "Encargalo.app-api.go/internal/payments/domain/models"
 	mock "github.com/stretchr/testify/mock"
 
 	time "time"
@@ -124,9 +124,9 @@ func (_m *PaymentReviewsRepo) ListActiveForStaff(ctx context.Context) ([]models.
 	return r0, r1
 }
 
-// ListPendingForAlert provides a mock function with given fields: ctx, alertBefore
-func (_m *PaymentReviewsRepo) ListPendingForAlert(ctx context.Context, alertBefore time.Time) ([]models.PaymentReview, error) {
-	ret := _m.Called(ctx, alertBefore)
+// ListPendingForAlert provides a mock function with given fields: ctx, referenceType, alertBefore
+func (_m *PaymentReviewsRepo) ListPendingForAlert(ctx context.Context, referenceType string, alertBefore time.Time) ([]models.PaymentReview, error) {
+	ret := _m.Called(ctx, referenceType, alertBefore)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListPendingForAlert")
@@ -134,19 +134,19 @@ func (_m *PaymentReviewsRepo) ListPendingForAlert(ctx context.Context, alertBefo
 
 	var r0 []models.PaymentReview
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, time.Time) ([]models.PaymentReview, error)); ok {
-		return rf(ctx, alertBefore)
+	if rf, ok := ret.Get(0).(func(context.Context, string, time.Time) ([]models.PaymentReview, error)); ok {
+		return rf(ctx, referenceType, alertBefore)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, time.Time) []models.PaymentReview); ok {
-		r0 = rf(ctx, alertBefore)
+	if rf, ok := ret.Get(0).(func(context.Context, string, time.Time) []models.PaymentReview); ok {
+		r0 = rf(ctx, referenceType, alertBefore)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]models.PaymentReview)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, time.Time) error); ok {
-		r1 = rf(ctx, alertBefore)
+	if rf, ok := ret.Get(1).(func(context.Context, string, time.Time) error); ok {
+		r1 = rf(ctx, referenceType, alertBefore)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -208,6 +208,24 @@ func (_m *PaymentReviewsRepo) ResolvePending(ctx context.Context, id uuid.UUID, 
 	}
 
 	return r0, r1
+}
+
+// UpdateCreditedBs provides a mock function with given fields: ctx, id, creditedBs
+func (_m *PaymentReviewsRepo) UpdateCreditedBs(ctx context.Context, id uuid.UUID, creditedBs float64) error {
+	ret := _m.Called(ctx, id, creditedBs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateCreditedBs")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, float64) error); ok {
+		r0 = rf(ctx, id, creditedBs)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // NewPaymentReviewsRepo creates a new instance of PaymentReviewsRepo. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

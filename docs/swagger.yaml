@@ -1602,6 +1602,13 @@ definitions:
     type: object
   Encargalo_app-api_go_internal_trips_domain_dtos.CreateTripRequest:
     properties:
+      quote_id:
+        type: string
+    required:
+    - quote_id
+    type: object
+  Encargalo_app-api_go_internal_trips_domain_dtos.FareEstimateRequest:
+    properties:
       dropoff_address:
         example: CC Sambil, Caracas
         type: string
@@ -1628,6 +1635,21 @@ definitions:
     - pickup_latitude
     - pickup_longitude
     type: object
+  Encargalo_app-api_go_internal_trips_domain_dtos.FareEstimateResponse:
+    properties:
+      distance_meters:
+        type: number
+      duration_min:
+        type: integer
+      expires_at:
+        type: string
+      fare_bs:
+        type: number
+      fare_usd:
+        type: number
+      quote_id:
+        type: string
+    type: object
   Encargalo_app-api_go_internal_trips_domain_dtos.TripHistoryResponse:
     properties:
       trips:
@@ -1651,7 +1673,9 @@ definitions:
         type: number
       dropoff_longitude:
         type: number
-      fare:
+      fare_bs:
+        type: number
+      fare_usd:
         type: number
       id:
         type: string
@@ -3805,22 +3829,6 @@ paths:
       summary: WebSocket de gestión de órdenes para riders
       tags:
       - Riders WebSocket
-  /orders/staff/reviews:
-    get:
-      responses:
-        "401":
-          description: Sesión no encontrada o inválida
-          schema:
-            type: string
-        "403":
-          description: Acceso denegado
-          schema:
-            type: string
-      security:
-      - SessionCookie: []
-      summary: WebSocket de revisión de comprobantes (Staff CRM)
-      tags:
-      - Orders WebSocket
   /payment-methods:
     get:
       description: Retorna la lista de métodos de pago activos. Para PagoMovil se
@@ -3847,6 +3855,22 @@ paths:
       summary: Obtener métodos de pago disponibles
       tags:
       - Payment Methods
+  /payments/staff/reviews:
+    get:
+      responses:
+        "401":
+          description: Sesión no encontrada o inválida
+          schema:
+            type: string
+        "403":
+          description: Acceso denegado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: WebSocket de revisión de comprobantes (Staff CRM)
+      tags:
+      - Payments
   /products:
     get:
       description: 'Retorna productos agrupados por categoría para clientes. Excluye
@@ -5749,10 +5773,12 @@ paths:
     post:
       consumes:
       - application/json
-      description: Crea un viaje en estado "requested" con punto de recogida y destino.
-        El matching con conductores cercanos no está incluido en este endpoint.
+      description: 'Crea un viaje en estado "requested" a partir de una cotización
+        vigente (ver POST /trips/fare-estimate): pickup/dropoff y fare quedan fijados
+        por esa cotización, no se recalculan. El matching con conductores cercanos
+        no está incluido en este endpoint.'
       parameters:
-      - description: Datos del viaje
+      - description: quote_id de una cotización vigente
         in: body
         name: body
         required: true
@@ -5771,6 +5797,10 @@ paths:
             type: string
         "401":
           description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: Cotización no encontrada, expirada o de otro cliente
           schema:
             type: string
       security:
@@ -5853,6 +5883,45 @@ paths:
       security:
       - SessionCookie: []
       summary: Cancelar un viaje
+      tags:
+      - Trips
+  /trips/fare-estimate:
+    post:
+      consumes:
+      - application/json
+      description: 'Calcula distancia, tiempo estimado y tarifa (USD/Bs) entre pickup
+        y destino, y la congela por 10 minutos en una cotización. El quote_id devuelto
+        es obligatorio para crear el viaje (POST /trips): el precio mostrado acá es
+        el que queda fijado, no se recalcula.'
+      parameters:
+      - description: Direcciones y coordenadas de pickup/destino
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.FareEstimateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.FareEstimateResponse'
+        "400":
+          description: payload inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "503":
+          description: Tasa BCV no disponible
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Cotizar tarifa de un viaje
       tags:
       - Trips
   /trips/history:

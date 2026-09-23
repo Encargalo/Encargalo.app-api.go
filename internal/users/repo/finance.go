@@ -41,18 +41,19 @@ func (r *customerFinanceRepo) GetBalance(ctx context.Context, entityID uuid.UUID
 	return b, nil
 }
 
-func (r *customerFinanceRepo) SumBalancePaymentDebit(ctx context.Context, customerID, orderID uuid.UUID) (float64, error) {
+func (r *customerFinanceRepo) SumBalancePaymentDebit(ctx context.Context, customerID, referenceID uuid.UUID, referenceType string) (float64, error) {
 	var sum float64
 	err := r.db.NewSelect().
 		Model((*models.Transaction)(nil)).
 		ColumnExpr("COALESCE(SUM(ABS(amount)), 0)").
 		Where("entity_id = ? AND entity_type = ?", customerID, models.EntityTypeCustomer).
-		Where("order_id = ?", orderID).
+		Where("reference_id = ?", referenceID).
+		Where("reference_type = ?", referenceType).
 		Where("movement_type = ?", models.MovementTypeBalancePayment).
 		Where("amount < 0").
 		Scan(ctx, &sum)
 	if err != nil {
-		slog.Error("SumBalancePaymentDebit failed", "customerID", customerID, "orderID", orderID, "error", err)
+		slog.Error("SumBalancePaymentDebit failed", "customerID", customerID, "referenceID", referenceID, "error", err)
 		return 0, errcustom.ErrUnexpectedError
 	}
 	return sum, nil
@@ -280,7 +281,8 @@ func (r *customerFinanceRepo) CreateRefundRequestWithDebit(ctx context.Context, 
 			ID:              uuid.New(),
 			EntityID:        req.CustomerID,
 			EntityType:      models.EntityTypeCustomer,
-			OrderID:         req.OrderID,
+			ReferenceID:     req.ReferenceID,
+			ReferenceType:   req.ReferenceType,
 			Amount:          -req.AmountBs,
 			Currency:        models.CurrencyVES,
 			MovementType:    string(models.MovementTypeBalanceRefundHold),
@@ -466,7 +468,8 @@ func (r *customerFinanceRepo) RejectPendingWithRestore(ctx context.Context, id, 
 			ID:              uuid.New(),
 			EntityID:        req.CustomerID,
 			EntityType:      models.EntityTypeCustomer,
-			OrderID:         req.OrderID,
+			ReferenceID:     req.ReferenceID,
+			ReferenceType:   req.ReferenceType,
 			Amount:          req.AmountBs,
 			Currency:        models.CurrencyVES,
 			MovementType:    string(models.MovementTypeBalanceRefundRestore),

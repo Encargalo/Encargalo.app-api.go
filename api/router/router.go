@@ -26,6 +26,7 @@ type Router struct {
 	productsGroup       groups.ProductsGroup
 	userGroup           groups.UsersGroup
 	ordersGroup         groups.OrdersGroup
+	paymentsGroup       groups.PaymentsGroup
 	ridersGroup         groups.RidersGroup
 	paymentMethodsGroup groups.PaymentMethodsGroup
 	bcvGroup            groups.BcvGroup
@@ -43,6 +44,7 @@ func New(
 	productsGroup groups.ProductsGroup,
 	userGroup groups.UsersGroup,
 	ordersGroup groups.OrdersGroup,
+	paymentsGroup groups.PaymentsGroup,
 	ridersGroup groups.RidersGroup,
 	paymentMethodsGroup groups.PaymentMethodsGroup,
 	bcvGroup groups.BcvGroup,
@@ -60,6 +62,7 @@ func New(
 		productsGroup,
 		userGroup,
 		ordersGroup,
+		paymentsGroup,
 		ridersGroup,
 		paymentMethodsGroup,
 		bcvGroup,
@@ -93,6 +96,7 @@ func (r *Router) Init() {
 	r.productsGroup.Resource(r.server)
 	r.userGroup.Resource(r.server)
 	r.ordersGroup.Resource(r.server)
+	r.paymentsGroup.Resource(r.server)
 	r.ridersGroup.Resource(r.server)
 	r.paymentMethodsGroup.Resource(r.server)
 	r.bcvGroup.Resource(r.server)

@@ -43,6 +43,10 @@ packages:
     config:
       dir: "internal/mocks/orders/domain/ports"
 
+  Encargalo.app-api.go/internal/payments/domain/ports:
+    config:
+      dir: "internal/mocks/payments/domain/ports"
+
   Encargalo.app-api.go/internal/payment_methods/domain/ports:
     config:
       dir: "internal/mocks/payment_methods/domain/ports"
