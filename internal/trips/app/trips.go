@@ -2,11 +2,16 @@ package app
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
+	"strings"
 	"time"
 
 	bcvPorts "Encargalo.app-api.go/internal/bcv/domain/ports"
+	paymentsPorts "Encargalo.app-api.go/internal/payments/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/geo"
 	"Encargalo.app-api.go/internal/pkg/money"
+	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
 	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/deliveryfee"
 	"Encargalo.app-api.go/internal/shared/errcustom"
@@ -21,23 +26,58 @@ type tripsApp struct {
 	matcher ports.TripRiderMatcher
 	bcv     bcvPorts.BcvApp
 	quotes  ports.TripQuotesRepo
+	upload  uploadimage.UploadImage
+	reviews paymentsPorts.PaymentReviewsApp
+	hub     paymentsPorts.StaffReviewHub
 }
 
-func NewTripsApp(repo ports.TripsRepo, matcher ports.TripRiderMatcher, bcv bcvPorts.BcvApp, quotes ports.TripQuotesRepo) ports.TripsApp {
-	return &tripsApp{repo: repo, matcher: matcher, bcv: bcv, quotes: quotes}
+func NewTripsApp(
+	repo ports.TripsRepo,
+	matcher ports.TripRiderMatcher,
+	bcv bcvPorts.BcvApp,
+	quotes ports.TripQuotesRepo,
+	upload uploadimage.UploadImage,
+	reviews paymentsPorts.PaymentReviewsApp,
+	hub paymentsPorts.StaffReviewHub,
+) ports.TripsApp {
+	return &tripsApp{
+		repo:    repo,
+		matcher: matcher,
+		bcv:     bcv,
+		quotes:  quotes,
+		upload:  upload,
+		reviews: reviews,
+		hub:     hub,
+	}
 }
 
 // RequestTrip nunca calcula el fare: usa el que EstimateFare ya congeló en la quote.
+// El viaje nace en payment_review y no se oferta a riders hasta que el staff apruebe el comprobante.
 func (a *tripsApp) RequestTrip(ctx context.Context, customerID uuid.UUID, req dtos.CreateTripRequest) (dtos.TripResponse, error) {
+	if req.MethodPayment != models.MethodPagoMovil || strings.TrimSpace(req.PaymentProofImage) == "" {
+		return dtos.TripResponse{}, fmt.Errorf("%w: method_payment y payment_proof_image son requeridos", errcustom.ErrInvalidStatus)
+	}
+
+	proofUpload, err := a.upload.UploadImage(ctx, req.PaymentProofImage)
+	if err != nil || proofUpload == nil || proofUpload.SecureURL == "" {
+		return dtos.TripResponse{}, errcustom.ErrUploadingImage
+	}
+	proofURL := proofUpload.SecureURL
+
 	quote, err := a.quotes.GetAndConsume(ctx, customerID, req.QuoteID)
 	if err != nil {
 		return dtos.TripResponse{}, err
 	}
+	expectedBs, ok := expectedAmountBs(&models.Trip{Fare: &quote.FareUSD, BcvRate: &quote.BcvRate})
+	if !ok {
+		return dtos.TripResponse{}, errcustom.ErrUnexpectedError
+	}
 
 	fare := quote.FareUSD
+	rate := quote.BcvRate
 	trip := &models.Trip{
 		CustomerID:       customerID,
-		Status:           models.TripStatusRequested,
+		Status:           models.TripStatusPaymentReview,
 		PickupAddress:    quote.PickupAddress,
 		PickupLatitude:   quote.PickupLatitude,
 		PickupLongitude:  quote.PickupLongitude,
@@ -45,6 +85,7 @@ func (a *tripsApp) RequestTrip(ctx context.Context, customerID uuid.UUID, req dt
 		DropoffLatitude:  quote.DropoffLatitude,
 		DropoffLongitude: quote.DropoffLongitude,
 		Fare:             &fare,
+		BcvRate:          &rate,
 	}
 
 	if cell, err := geo.LatLngToCell(quote.PickupLatitude, quote.PickupLongitude, geo.DriverMatchResolution); err == nil {
@@ -61,16 +102,16 @@ func (a *tripsApp) RequestTrip(ctx context.Context, customerID uuid.UUID, req dt
 		return dtos.TripResponse{}, err
 	}
 
-	ok, err := a.repo.UpdateTripStatus(ctx, trip.ID, models.TripStatusRequested, models.TripStatusSearching)
+	review, err := a.reviews.CreateReview(ctx, models.ReferenceTypeTrip, trip.ID, proofURL, expectedBs, quote.BcvRate)
 	if err != nil {
+		if _, cancelErr := a.repo.UpdateTripStatus(ctx, trip.ID, models.TripStatusPaymentReview, models.TripStatusCancelled); cancelErr != nil {
+			slog.Error("RequestTrip cancel after review failure", "tripID", trip.ID, "error", cancelErr)
+		}
 		return dtos.TripResponse{}, err
 	}
-	if !ok {
-		return dtos.TripResponse{}, errcustom.ErrUnexpectedError
+	if a.hub != nil && review != nil {
+		_ = a.hub.BroadcastReview(broadcastFromTrip(review, trip))
 	}
-
-	trip.Status = models.TripStatusSearching
-	a.matcher.OfferTrip(ctx, *trip)
 
 	// Tasa de la quote, no la vigente: FareBs debe coincidir con lo ya mostrado.
 	trip.ApplyBsFare(quote.BcvRate)

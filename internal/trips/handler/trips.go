@@ -30,16 +30,17 @@ func NewTripsHandler(svc ports.TripsApp) TripsHandler {
 
 // RequestTrip godoc
 // @Summary      Solicitar un viaje
-// @Description  Crea un viaje en estado "requested" a partir de una cotización vigente (ver POST /trips/fare-estimate): pickup/dropoff y fare quedan fijados por esa cotización, no se recalculan. El matching con conductores cercanos no está incluido en este endpoint.
+// @Description  Crea un viaje en estado "payment_review" a partir de una cotización vigente (ver POST /trips/fare-estimate) y un comprobante de Pago Móvil. Pickup/dropoff y fare quedan fijados por esa cotización. El viaje no se oferta a conductores hasta que el staff apruebe el comprobante en la cola unificada de pagos.
 // @Tags         Trips
 // @Accept       json
 // @Produce      json
 // @Security     SessionCookie
-// @Param        body  body  dtos.CreateTripRequest  true  "quote_id de una cotización vigente"
+// @Param        body  body  dtos.CreateTripRequest  true  "quote_id, method_payment y comprobante"
 // @Success      201  {object}  dtos.TripResponse
 // @Failure      400  {string}  string  "payload inválido"
 // @Failure      401  {string}  string  "No autorizado"
 // @Failure      404  {string}  string  "Cotización no encontrada, expirada o de otro cliente"
+// @Failure      422  {string}  string  "No se pudo subir el comprobante"
 // @Router       /trips [post]
 func (h *tripsHandler) RequestTrip(c echo.Context) error {
 	ctx := c.Request().Context()

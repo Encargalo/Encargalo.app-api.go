@@ -12,23 +12,30 @@ import (
 type TripStatus string
 
 const (
-	TripStatusRequested  TripStatus = "requested"
-	TripStatusSearching  TripStatus = "searching"
-	TripStatusAccepted   TripStatus = "accepted"
-	TripStatusArriving   TripStatus = "arriving"
-	TripStatusInProgress TripStatus = "in_progress"
-	TripStatusCompleted  TripStatus = "completed"
-	TripStatusCancelled  TripStatus = "cancelled"
-	TripStatusNoDriver   TripStatus = "no_driver"
+	TripStatusRequested     TripStatus = "requested"
+	TripStatusPaymentReview TripStatus = "payment_review"
+	TripStatusSearching     TripStatus = "searching"
+	TripStatusAccepted      TripStatus = "accepted"
+	TripStatusArriving      TripStatus = "arriving"
+	TripStatusInProgress    TripStatus = "in_progress"
+	TripStatusCompleted     TripStatus = "completed"
+	TripStatusCancelled     TripStatus = "cancelled"
+	TripStatusNoDriver      TripStatus = "no_driver"
 )
+
+// ReferenceTypeTrip identifica un viaje dentro del módulo de pagos unificado.
+const ReferenceTypeTrip = "trip"
+
+const MethodPagoMovil = "PagoMovil"
 
 // CancellableStatuses son los estados desde los que un customer puede cancelar
 // un trip; una vez in_progress/completed/cancelled/no_driver ya no aplica.
 var CancellableStatuses = map[TripStatus]bool{
-	TripStatusRequested: true,
-	TripStatusSearching: true,
-	TripStatusAccepted:  true,
-	TripStatusArriving:  true,
+	TripStatusRequested:     true,
+	TripStatusPaymentReview: true,
+	TripStatusSearching:     true,
+	TripStatusAccepted:      true,
+	TripStatusArriving:      true,
 }
 
 type Trip struct {
@@ -49,6 +56,8 @@ type Trip struct {
 	PickupH3CellZone  *string  `bun:"pickup_h3_cell_zone"`
 	DropoffH3CellZone *string  `bun:"dropoff_h3_cell_zone"`
 	Fare              *float64 `bun:"fare"`
+	// BcvRate es la tasa congelada en la cotización. ExpectedAmountBs = fare * bcv_rate.
+	BcvRate *float64 `bun:"bcv_rate"`
 	// FareBs no se persiste, se recalcula en cada respuesta (patrón Order.DeliveryFeeBs).
 	FareBs      *float64   `bun:"-"`
 	RequestedAt time.Time  `bun:"requested_at,notnull,default:current_timestamp"`

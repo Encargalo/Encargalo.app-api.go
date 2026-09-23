@@ -10,9 +10,12 @@ import (
 
 var tripValidate = validator.New()
 
-// CreateTripRequest solo lleva el QuoteID: pickup/dropoff y fare vienen de la cotización.
+// CreateTripRequest exige la cotización vigente y el comprobante de Pago Móvil.
+// Pickup, dropoff y fare salen de la cotización; no se recalculan.
 type CreateTripRequest struct {
-	QuoteID uuid.UUID `json:"quote_id" validate:"required,uuid4"`
+	QuoteID           uuid.UUID `json:"quote_id" validate:"required,uuid4"`
+	MethodPayment     string    `json:"method_payment" validate:"required,oneof=PagoMovil" example:"PagoMovil"`
+	PaymentProofImage string    `json:"payment_proof_image" validate:"required,max=7000000" example:"data:image/jpeg;base64,/9j/4AAQ..."`
 }
 
 func (r *CreateTripRequest) Validate() error {

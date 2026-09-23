@@ -22,6 +22,8 @@ import (
 	"Encargalo.app-api.go/internal/shared/otelsetup"
 	"Encargalo.app-api.go/internal/shared/reqctx"
 	appShops "Encargalo.app-api.go/internal/shops/app"
+	appTrips "Encargalo.app-api.go/internal/trips/app"
+	tripsModels "Encargalo.app-api.go/internal/trips/domain/models"
 	appCustomer "Encargalo.app-api.go/internal/users/app"
 	usersPorts "Encargalo.app-api.go/internal/users/domain/ports"
 	"github.com/labstack/echo/v4"
@@ -70,6 +72,8 @@ func run() error {
 		reviews paymentsPorts.PaymentReviewsApp,
 		registry *appPayments.SubjectRegistry,
 		orderSubject paymentsPorts.PaymentSubject,
+		tripSubject *appTrips.TripPaymentSubject,
+		tripSnapshot appTrips.TripStaffSnapshot,
 		staffSnapshot appOrders.OrderStaffSnapshot,
 		pendingWorker *appOrders.PendingAcceptWorker,
 		paymentProofAlertWorker *appOrders.PaymentProofAlertWorker,
@@ -82,8 +86,10 @@ func run() error {
 		streamTrimWorker *redis.StreamTrimWorker,
 	) error {
 		registry.Register(paymentsModels.ReferenceTypeOrder, orderSubject)
+		registry.Register(tripsModels.ReferenceTypeTrip, tripSubject)
 		reviews.SetSnapshotProvider(staffSnapshot)
 		hub.SetSnapshotProvider(reviews.ListActiveForStaff)
+		hub.SetSnapshotProvider(tripSnapshot)
 		refundHub.SetFinanceApp(finance)
 		finance.SetCustomerNotifier(orderMgr)
 

@@ -8,26 +8,68 @@ import (
 
 	bcvmodels "Encargalo.app-api.go/internal/bcv/domain/models"
 	mockbcvports "Encargalo.app-api.go/internal/mocks/bcv/domain/ports"
+	mockpayments "Encargalo.app-api.go/internal/mocks/payments/domain/ports"
+	mockupload "Encargalo.app-api.go/internal/mocks/pkg/uploadImage"
 	mockstrips "Encargalo.app-api.go/internal/mocks/trips/domain/ports"
+	paymentsModels "Encargalo.app-api.go/internal/payments/domain/models"
 	"Encargalo.app-api.go/internal/pkg/geo"
+	"Encargalo.app-api.go/internal/pkg/money"
 	"Encargalo.app-api.go/internal/shared/deliveryfee"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/trips/app"
 	"Encargalo.app-api.go/internal/trips/domain/dtos"
 	"Encargalo.app-api.go/internal/trips/domain/models"
 	"Encargalo.app-api.go/internal/trips/domain/ports"
+	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
-func newTripsApp(t *testing.T) (ports.TripsApp, *mockstrips.TripsRepo, *mockstrips.TripRiderMatcher, *mockbcvports.BcvApp, *mockstrips.TripQuotesRepo) {
+type tripsDeps struct {
+	svc     ports.TripsApp
+	repo    *mockstrips.TripsRepo
+	matcher *mockstrips.TripRiderMatcher
+	bcv     *mockbcvports.BcvApp
+	quotes  *mockstrips.TripQuotesRepo
+	reviews *mockpayments.PaymentReviewsApp
+	upload  *mockupload.UploadImage
+	hub     *mockpayments.StaffReviewHub
+}
+
+func newTripsDeps(t *testing.T) tripsDeps {
 	t.Helper()
 	repo := mockstrips.NewTripsRepo(t)
 	matcher := mockstrips.NewTripRiderMatcher(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	quotes := mockstrips.NewTripQuotesRepo(t)
-	return app.NewTripsApp(repo, matcher, bcv, quotes), repo, matcher, bcv, quotes
+	reviews := mockpayments.NewPaymentReviewsApp(t)
+	upload := mockupload.NewUploadImage(t)
+	hub := mockpayments.NewStaffReviewHub(t)
+	return tripsDeps{
+		svc:     app.NewTripsApp(repo, matcher, bcv, quotes, upload, reviews, hub),
+		repo:    repo,
+		matcher: matcher,
+		bcv:     bcv,
+		quotes:  quotes,
+		reviews: reviews,
+		upload:  upload,
+		hub:     hub,
+	}
+}
+
+func newTripsApp(t *testing.T) (ports.TripsApp, *mockstrips.TripsRepo, *mockstrips.TripRiderMatcher, *mockbcvports.BcvApp, *mockstrips.TripQuotesRepo) {
+	t.Helper()
+	d := newTripsDeps(t)
+	return d.svc, d.repo, d.matcher, d.bcv, d.quotes
+}
+
+func paidTripRequest(quoteID uuid.UUID) dtos.CreateTripRequest {
+	return dtos.CreateTripRequest{
+		QuoteID:           quoteID,
+		MethodPayment:     models.MethodPagoMovil,
+		PaymentProofImage: "proof-b64",
+	}
 }
 
 func mockBcvRate(bcv *mockbcvports.BcvApp, rate float64) {
@@ -106,49 +148,74 @@ func TestEstimateFare_FailsWhenBcvRateUnavailable(t *testing.T) {
 	quotes.AssertNotCalled(t, "Save", mock.Anything, mock.Anything, mock.Anything)
 }
 
-func TestRequestTrip_UsesQuoteFareAndCoordinatesWithoutRefetchingBcvRate(t *testing.T) {
-	svc, repo, matcher, _, quotes := newTripsApp(t)
+func TestRequestTrip_UsesQuoteFareAndDoesNotStartMatching(t *testing.T) {
+	d := newTripsDeps(t)
 	customerID := uuid.New()
 	quote := sampleTripQuote(customerID)
-	req := dtos.CreateTripRequest{QuoteID: quote.QuoteID}
+	req := paidTripRequest(quote.QuoteID)
+	expectedBs := money.RoundBs(quote.FareUSD * quote.BcvRate)
 
-	quotes.On("GetAndConsume", mock.Anything, customerID, quote.QuoteID).Return(quote, nil)
-	repo.On("CreateTrip", mock.Anything, mock.MatchedBy(func(trip *models.Trip) bool {
+	d.upload.On("UploadImage", mock.Anything, req.PaymentProofImage).
+		Return(&uploader.UploadResult{SecureURL: "https://cdn/proof.jpg"}, nil)
+	d.quotes.On("GetAndConsume", mock.Anything, customerID, quote.QuoteID).Return(quote, nil)
+	d.repo.On("CreateTrip", mock.Anything, mock.MatchedBy(func(trip *models.Trip) bool {
 		return trip.CustomerID == customerID &&
+			trip.Status == models.TripStatusPaymentReview &&
 			trip.PickupAddress == quote.PickupAddress &&
-			trip.PickupLatitude == quote.PickupLatitude &&
-			trip.DropoffLatitude == quote.DropoffLatitude &&
-			trip.Fare != nil && *trip.Fare == quote.FareUSD
+			trip.Fare != nil && *trip.Fare == quote.FareUSD &&
+			trip.BcvRate != nil && *trip.BcvRate == quote.BcvRate
 	})).Run(func(args mock.Arguments) {
 		trip := args.Get(1).(*models.Trip)
 		trip.ID = uuid.New()
 	}).Return(nil)
-	repo.On("UpdateTripStatus", mock.Anything, mock.AnythingOfType("uuid.UUID"), models.TripStatusRequested, models.TripStatusSearching).Return(true, nil)
-	matcher.On("OfferTrip", mock.Anything, mock.Anything).Return()
+	d.reviews.On("CreateReview", mock.Anything, models.ReferenceTypeTrip, mock.AnythingOfType("uuid.UUID"), "https://cdn/proof.jpg", expectedBs, quote.BcvRate).
+		Return(&paymentsModels.PaymentReview{
+			ID:               uuid.New(),
+			ReferenceType:    models.ReferenceTypeTrip,
+			ProofURL:         "https://cdn/proof.jpg",
+			ExpectedAmountBs: expectedBs,
+			Status:           paymentsModels.ReviewPendingReview,
+		}, nil)
+	d.hub.On("BroadcastReview", mock.Anything).Return(nil)
 	// A propósito no se mockea bcv.GetRate: si RequestTrip la llamara, haría panic.
 
-	resp, err := svc.RequestTrip(context.Background(), customerID, req)
+	resp, err := d.svc.RequestTrip(context.Background(), customerID, req)
 
 	require.NoError(t, err)
+	require.Equal(t, string(models.TripStatusPaymentReview), resp.Status)
 	require.NotNil(t, resp.FareUSD)
 	require.Equal(t, quote.FareUSD, *resp.FareUSD)
 	require.NotNil(t, resp.FareBs)
-	require.Equal(t, quote.FareUSD*quote.BcvRate, *resp.FareBs)
-	repo.AssertExpectations(t)
-	matcher.AssertExpectations(t)
-	quotes.AssertExpectations(t)
+	require.Equal(t, expectedBs, *resp.FareBs)
+	d.matcher.AssertNotCalled(t, "OfferTrip", mock.Anything, mock.Anything)
 }
 
 func TestRequestTrip_QuoteNotFound(t *testing.T) {
-	svc, repo, _, _, quotes := newTripsApp(t)
+	d := newTripsDeps(t)
 	customerID, quoteID := uuid.New(), uuid.New()
+	req := paidTripRequest(quoteID)
 
-	quotes.On("GetAndConsume", mock.Anything, customerID, quoteID).Return(nil, errcustom.ErrQuoteNotFound)
+	d.upload.On("UploadImage", mock.Anything, req.PaymentProofImage).
+		Return(&uploader.UploadResult{SecureURL: "https://cdn/proof.jpg"}, nil)
+	d.quotes.On("GetAndConsume", mock.Anything, customerID, quoteID).Return(nil, errcustom.ErrQuoteNotFound)
 
-	_, err := svc.RequestTrip(context.Background(), customerID, dtos.CreateTripRequest{QuoteID: quoteID})
+	_, err := d.svc.RequestTrip(context.Background(), customerID, req)
 
 	require.ErrorIs(t, err, errcustom.ErrQuoteNotFound)
-	repo.AssertNotCalled(t, "CreateTrip", mock.Anything, mock.Anything)
+	d.repo.AssertNotCalled(t, "CreateTrip", mock.Anything, mock.Anything)
+}
+
+func TestRequestTrip_UploadFailureDoesNotConsumeQuote(t *testing.T) {
+	d := newTripsDeps(t)
+	customerID := uuid.New()
+	req := paidTripRequest(uuid.New())
+
+	d.upload.On("UploadImage", mock.Anything, req.PaymentProofImage).Return(nil, errcustom.ErrUploadingImage)
+
+	_, err := d.svc.RequestTrip(context.Background(), customerID, req)
+
+	require.ErrorIs(t, err, errcustom.ErrUploadingImage)
+	d.quotes.AssertNotCalled(t, "GetAndConsume", mock.Anything, mock.Anything, mock.Anything)
 }
 
 // TestRequestTrip_QuoteScopedToRequester: la key de Redis incluye customerID,
@@ -156,33 +223,42 @@ func TestRequestTrip_QuoteNotFound(t *testing.T) {
 // de que el repo devuelva la quote de otro cliente); el repo simplemente no
 // la encuentra, igual que si nunca hubiera existido.
 func TestRequestTrip_QuoteScopedToRequester(t *testing.T) {
-	svc, repo, _, _, quotes := newTripsApp(t)
 	requesterID, someQuoteID := uuid.New(), uuid.New()
 
-	quotes.On("GetAndConsume", mock.Anything, requesterID, someQuoteID).Return(nil, errcustom.ErrQuoteNotFound)
+	req := paidTripRequest(someQuoteID)
+	d := newTripsDeps(t)
+	d.upload.On("UploadImage", mock.Anything, req.PaymentProofImage).
+		Return(&uploader.UploadResult{SecureURL: "https://cdn/proof.jpg"}, nil)
+	d.quotes.On("GetAndConsume", mock.Anything, requesterID, someQuoteID).Return(nil, errcustom.ErrQuoteNotFound)
 
-	_, err := svc.RequestTrip(context.Background(), requesterID, dtos.CreateTripRequest{QuoteID: someQuoteID})
+	_, err := d.svc.RequestTrip(context.Background(), requesterID, req)
 
 	require.ErrorIs(t, err, errcustom.ErrQuoteNotFound)
-	repo.AssertNotCalled(t, "CreateTrip", mock.Anything, mock.Anything)
+	d.repo.AssertNotCalled(t, "CreateTrip", mock.Anything, mock.Anything)
 }
 
-func TestRequestTrip_SkipsMatcherWhenSearchingTransitionFails(t *testing.T) {
-	svc, repo, matcher, _, quotes := newTripsApp(t)
+func TestRequestTrip_ReviewFailureCancelsTrip(t *testing.T) {
+	d := newTripsDeps(t)
 	customerID := uuid.New()
 	quote := sampleTripQuote(customerID)
+	req := paidTripRequest(quote.QuoteID)
+	tripID := uuid.New()
 
-	quotes.On("GetAndConsume", mock.Anything, customerID, quote.QuoteID).Return(quote, nil)
-	repo.On("CreateTrip", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+	d.upload.On("UploadImage", mock.Anything, req.PaymentProofImage).
+		Return(&uploader.UploadResult{SecureURL: "https://cdn/proof.jpg"}, nil)
+	d.quotes.On("GetAndConsume", mock.Anything, customerID, quote.QuoteID).Return(quote, nil)
+	d.repo.On("CreateTrip", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		trip := args.Get(1).(*models.Trip)
-		trip.ID = uuid.New()
+		trip.ID = tripID
 	}).Return(nil)
-	repo.On("UpdateTripStatus", mock.Anything, mock.AnythingOfType("uuid.UUID"), models.TripStatusRequested, models.TripStatusSearching).Return(false, nil)
+	d.reviews.On("CreateReview", mock.Anything, models.ReferenceTypeTrip, tripID, "https://cdn/proof.jpg", mock.AnythingOfType("float64"), quote.BcvRate).
+		Return(nil, errcustom.ErrUnexpectedError)
+	d.repo.On("UpdateTripStatus", mock.Anything, tripID, models.TripStatusPaymentReview, models.TripStatusCancelled).Return(true, nil)
 
-	_, err := svc.RequestTrip(context.Background(), customerID, dtos.CreateTripRequest{QuoteID: quote.QuoteID})
+	_, err := d.svc.RequestTrip(context.Background(), customerID, req)
 
 	require.ErrorIs(t, err, errcustom.ErrUnexpectedError)
-	matcher.AssertNotCalled(t, "OfferTrip", mock.Anything, mock.Anything)
+	d.matcher.AssertNotCalled(t, "OfferTrip", mock.Anything, mock.Anything)
 }
 
 func TestGetTrip_ForbiddenWhenNotOwner(t *testing.T) {
@@ -275,35 +351,41 @@ func TestCancelTrip_Success(t *testing.T) {
 
 // TestQuoteFlow_EndToEndFareNeverDrifts: lo que EstimateFare congela es lo que RequestTrip usa después.
 func TestQuoteFlow_EndToEndFareNeverDrifts(t *testing.T) {
-	svc, repo, matcher, bcv, quotes := newTripsApp(t)
+	d := newTripsDeps(t)
 	customerID := uuid.New()
 	estimateReq := sampleFareEstimateRequest(customerID)
-	mockBcvRate(bcv, 40)
+	mockBcvRate(d.bcv, 40)
 
 	var saved *models.TripQuote
-	quotes.On("Save", mock.Anything, mock.Anything, models.TripQuoteTTL).Run(func(args mock.Arguments) {
+	d.quotes.On("Save", mock.Anything, mock.Anything, models.TripQuoteTTL).Run(func(args mock.Arguments) {
 		saved = args.Get(1).(*models.TripQuote)
 	}).Return(nil)
 
-	estimate, err := svc.EstimateFare(context.Background(), estimateReq)
+	estimate, err := d.svc.EstimateFare(context.Background(), estimateReq)
 	require.NoError(t, err)
 	require.NotNil(t, saved)
 
-	quotes.On("GetAndConsume", mock.Anything, customerID, estimate.QuoteID).Return(saved, nil)
-	repo.On("CreateTrip", mock.Anything, mock.MatchedBy(func(trip *models.Trip) bool {
-		return trip.Fare != nil && *trip.Fare == estimate.FareUSD
+	req := paidTripRequest(estimate.QuoteID)
+	d.upload.On("UploadImage", mock.Anything, req.PaymentProofImage).
+		Return(&uploader.UploadResult{SecureURL: "https://cdn/proof.jpg"}, nil)
+	d.quotes.On("GetAndConsume", mock.Anything, customerID, estimate.QuoteID).Return(saved, nil)
+	d.repo.On("CreateTrip", mock.Anything, mock.MatchedBy(func(trip *models.Trip) bool {
+		return trip.Status == models.TripStatusPaymentReview && trip.Fare != nil && *trip.Fare == estimate.FareUSD
 	})).Run(func(args mock.Arguments) {
 		trip := args.Get(1).(*models.Trip)
 		trip.ID = uuid.New()
 	}).Return(nil)
-	repo.On("UpdateTripStatus", mock.Anything, mock.AnythingOfType("uuid.UUID"), models.TripStatusRequested, models.TripStatusSearching).Return(true, nil)
-	matcher.On("OfferTrip", mock.Anything, mock.Anything).Return()
+	d.reviews.On("CreateReview", mock.Anything, models.ReferenceTypeTrip, mock.AnythingOfType("uuid.UUID"), "https://cdn/proof.jpg", estimate.FareBs, saved.BcvRate).
+		Return(&paymentsModels.PaymentReview{ID: uuid.New(), ExpectedAmountBs: estimate.FareBs, ProofURL: "https://cdn/proof.jpg"}, nil)
+	d.hub.On("BroadcastReview", mock.Anything).Return(nil)
 
-	resp, err := svc.RequestTrip(context.Background(), customerID, dtos.CreateTripRequest{QuoteID: estimate.QuoteID})
+	resp, err := d.svc.RequestTrip(context.Background(), customerID, req)
 
 	require.NoError(t, err)
+	require.Equal(t, string(models.TripStatusPaymentReview), resp.Status)
 	require.NotNil(t, resp.FareUSD)
 	require.Equal(t, estimate.FareUSD, *resp.FareUSD)
 	require.NotNil(t, resp.FareBs)
 	require.Equal(t, estimate.FareBs, *resp.FareBs)
+	d.matcher.AssertNotCalled(t, "OfferTrip", mock.Anything, mock.Anything)
 }
