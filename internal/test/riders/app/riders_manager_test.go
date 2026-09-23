@@ -745,3 +745,164 @@ func messageType(t *testing.T, raw []byte) string {
 	require.NoError(t, json.Unmarshal(raw, &msg))
 	return msg.Type
 }
+
+func newTripOfferSvc(t *testing.T) (ridersPorts.RidersApp, *mockstrips.TripsRepo, *mocksriders.RidersRepo) {
+	t.Helper()
+	repo := mocksriders.NewRidersRepo(t)
+	stream := mocksriders.NewRidersStream(t)
+	bcv := mockbcvports.NewBcvApp(t)
+	tripsRepo := mockstrips.NewTripsRepo(t)
+	tripEarnings := mocksriders.NewTripEarningRecorder(t)
+	return app.New(repo, stream, bcv, tripsRepo, tripEarnings), tripsRepo, repo
+}
+
+func countTripOffers(t *testing.T) (map[uuid.UUID]int, func(uuid.UUID, *mocksriders.RiderConn)) {
+	t.Helper()
+	offers := map[uuid.UUID]int{}
+	var mu sync.Mutex
+	watch := func(id uuid.UUID, conn *mocksriders.RiderConn) {
+		conn.On("Send", mock.Anything).Run(func(args mock.Arguments) {
+			if messageType(t, args.Get(0).([]byte)) != "trip_offer" {
+				return
+			}
+			mu.Lock()
+			offers[id]++
+			mu.Unlock()
+		}).Return().Maybe()
+	}
+	return offers, watch
+}
+
+func latLngAtRing(t *testing.T, origin string, ring int) (float64, float64) {
+	t.Helper()
+	outer, err := geo.GridDisk(origin, ring)
+	require.NoError(t, err)
+	inner, err := geo.GridDisk(origin, ring-1)
+	require.NoError(t, err)
+	seen := make(map[string]struct{}, len(inner))
+	for _, cell := range inner {
+		seen[cell] = struct{}{}
+	}
+	for _, cell := range outer {
+		if _, ok := seen[cell]; ok {
+			continue
+		}
+		lat, lng, err := geo.CellToLatLng(cell)
+		require.NoError(t, err)
+		return lat, lng
+	}
+	t.Fatalf("no hay celda en el anillo %d", ring)
+	return 0, 0
+}
+
+func TestOfferTrip_SecondRoundExcludesFirstCandidatesAndExpandsRing(t *testing.T) {
+	svc, tripsRepo, repo := newTripOfferSvc(t)
+	trip := samplePickupTrip(t)
+	t.Cleanup(func() { app.StopTripOfferTimerForTest(svc, trip.ID) })
+	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
+	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound)
+
+	offers, watch := countTripOffers(t)
+	near := make([]uuid.UUID, 3)
+	for i := range near {
+		near[i] = uuid.New()
+		conn := mocksriders.NewRiderConn(t)
+		watch(near[i], conn)
+		require.NoError(t, svc.Register(context.Background(), near[i], conn, riderModels.RiderModeTrips))
+		require.NoError(t, svc.UpdateLocation(context.Background(), near[i], 10.4806+float64(i)*0.0001, -66.9036))
+	}
+	farID := uuid.New()
+	farLat, farLng := latLngAtRing(t, *trip.PickupH3Cell, 4)
+	farConn := mocksriders.NewRiderConn(t)
+	watch(farID, farConn)
+	require.NoError(t, svc.Register(context.Background(), farID, farConn, riderModels.RiderModeTrips))
+	require.NoError(t, svc.UpdateLocation(context.Background(), farID, farLat, farLng))
+
+	searching := trip
+	searching.Status = tripsModels.TripStatusSearching
+	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&searching, nil)
+
+	asMatcher(t, svc).OfferTrip(context.Background(), trip)
+	for _, id := range near {
+		require.Equal(t, 1, offers[id])
+	}
+	require.Zero(t, offers[farID])
+
+	app.AdvanceTripOfferTimeout(svc, trip)
+	for _, id := range near {
+		require.Equal(t, 1, offers[id])
+	}
+	require.Equal(t, 1, offers[farID])
+	tripsRepo.AssertNotCalled(t, "UpdateTripStatus", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestOfferTrip_ExpiresWhenNextRoundHasNoCandidates(t *testing.T) {
+	svc, tripsRepo, repo := newTripOfferSvc(t)
+	trip := samplePickupTrip(t)
+	t.Cleanup(func() { app.StopTripOfferTimerForTest(svc, trip.ID) })
+	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
+	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound)
+
+	offers, watch := countTripOffers(t)
+	ids := make([]uuid.UUID, 3)
+	for i := range ids {
+		ids[i] = uuid.New()
+		conn := mocksriders.NewRiderConn(t)
+		watch(ids[i], conn)
+		require.NoError(t, svc.Register(context.Background(), ids[i], conn, riderModels.RiderModeTrips))
+		require.NoError(t, svc.UpdateLocation(context.Background(), ids[i], 10.4806+float64(i)*0.0001, -66.9036))
+	}
+
+	searching := trip
+	searching.Status = tripsModels.TripStatusSearching
+	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&searching, nil)
+	tripsRepo.On("UpdateTripStatus", mock.Anything, trip.ID, tripsModels.TripStatusSearching, tripsModels.TripStatusNoDriver).Return(true, nil)
+
+	asMatcher(t, svc).OfferTrip(context.Background(), trip)
+	app.AdvanceTripOfferTimeout(svc, trip)
+
+	for _, id := range ids {
+		require.Equal(t, 1, offers[id])
+	}
+}
+
+func TestOfferTrip_ExpiresAtRoundCapEvenIfCandidatesRemain(t *testing.T) {
+	svc, tripsRepo, repo := newTripOfferSvc(t)
+	trip := samplePickupTrip(t)
+	t.Cleanup(func() { app.StopTripOfferTimerForTest(svc, trip.ID) })
+	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
+	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound)
+
+	offers, watch := countTripOffers(t)
+	ids := make([]uuid.UUID, 13)
+	for i := range ids {
+		ids[i] = uuid.New()
+		conn := mocksriders.NewRiderConn(t)
+		watch(ids[i], conn)
+		require.NoError(t, svc.Register(context.Background(), ids[i], conn, riderModels.RiderModeTrips))
+		require.NoError(t, svc.UpdateLocation(context.Background(), ids[i], 10.4806+float64(i)*0.00005, -66.9036))
+	}
+
+	searching := trip
+	searching.Status = tripsModels.TripStatusSearching
+	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&searching, nil)
+	tripsRepo.On("UpdateTripStatus", mock.Anything, trip.ID, tripsModels.TripStatusSearching, tripsModels.TripStatusNoDriver).Return(true, nil).Once()
+
+	asMatcher(t, svc).OfferTrip(context.Background(), trip)
+	for range 3 {
+		app.AdvanceTripOfferTimeout(svc, trip)
+	}
+	offered := 0
+	for _, id := range ids {
+		offered += offers[id]
+	}
+	require.Equal(t, 12, offered)
+
+	app.AdvanceTripOfferTimeout(svc, trip)
+	offered = 0
+	for _, id := range ids {
+		offered += offers[id]
+		require.LessOrEqual(t, offers[id], 1)
+	}
+	require.Equal(t, 12, offered)
+}
