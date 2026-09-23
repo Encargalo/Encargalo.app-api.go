@@ -80,7 +80,7 @@ func New(svc ridersPorts.RidersApp) RiderHandler {
 //   - `{"type":"order_accepted","order":{...}}` — asignación exitosa (con pickup_code)
 //   - `{"type":"order_taken","order_id":"<uuid>"}` — otro rider se adelantó
 //   - `{"type":"order_update","order":{...}}` — actualización de orden asignada (con pickup_code)
-//   - `{"type":"trip_offer","trip":{...}}` — viaje ofrecido a hasta 3 riders cercanos. Si nadie acepta en 2 min, otra ronda ofrece a otros 3 con un anillo H3 más de radio, hasta 4 rondas o hasta agotar candidatos. Después el viaje pasa a no_driver.
+//   - `{"type":"trip_offer","trip":{...}}` — viaje ofrecido a hasta 3 riders cercanos. Si nadie acepta en 15 min, otra ronda ofrece a otros 3 con un anillo H3 más de radio, hasta 4 rondas. Una ronda sin riders elegibles también espera 15 min y cuenta como ronda. Al terminar la ronda 4 el viaje pasa a no_driver.
 //   - `{"type":"trip_accepted","trip":{...}}` — asignación de viaje exitosa
 //   - `{"type":"trip_taken","trip_id":"<uuid>"}` — otro rider se adelantó
 //   - `{"type":"trip_status","trip":{...}}` — trip avanzó de estado (respuesta a advance_trip) o quedó liberado (respuesta a cancel_trip)

@@ -36,8 +36,9 @@ const orderAcceptTimeout = 10 * time.Minute
 const (
 	tripOfferCandidateCount = 3
 	tripSearchMaxRings      = 3
-	tripAcceptTimeout       = 2 * time.Minute
-	// tripOfferMaxRounds es el tope de rondas (2 min cada una) antes de no_driver.
+	tripAcceptTimeout       = 15 * time.Minute
+	// tripOfferMaxRounds es el tope de rondas (15 min cada una, haya o no
+	// candidatos elegibles) antes de no_driver.
 	tripOfferMaxRounds = 4
 )
 
@@ -362,7 +363,19 @@ func (r *appRidersManager) offerTripRound(ctx context.Context, trip tripsModels.
 	maxRings := tripSearchMaxRings + round - 1
 	candidates := r.nearestTripsRiders(trip, r.offerExclusions(trip.ID), maxRings)
 	if len(candidates) == 0 {
-		r.expireTripIfStillSearching(trip.ID)
+		// Sin celda H3 el viaje nunca va a matchear: no tiene sentido esperar.
+		if trip.PickupH3Cell == nil {
+			r.expireTripIfStillSearching(trip.ID)
+			return
+		}
+		// Ronda vacía: igual espera tripAcceptTimeout (puede conectarse un rider
+		// elegible) y cuenta como ronda; los ofertados de la ronda anterior ya
+		// no pueden aceptar.
+		r.mu.Lock()
+		r.tripOffers[trip.ID] = make(map[uuid.UUID]struct{})
+		r.tripOfferRounds[trip.ID] = round
+		r.mu.Unlock()
+		r.scheduleOfferTimeout(trip)
 		return
 	}
 
@@ -807,7 +820,7 @@ type tripBroadcast struct {
 	Trip tripsDtos.TripResponse `json:"trip"`
 }
 
-// AdvanceTripOfferTimeout corre el mismo camino que el timer de 2 minutos.
+// AdvanceTripOfferTimeout corre el mismo camino que el timer de oferta (tripAcceptTimeout).
 // Los tests lo usan para pasar de ronda sin esperar el timeout real.
 func AdvanceTripOfferTimeout(svc ridersPorts.RidersApp, trip tripsModels.Trip) {
 	mgr := svc.(*appRidersManager)

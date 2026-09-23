@@ -379,7 +379,7 @@ func TestOfferTrip_OffersNearestCandidatesSortedByDistance(t *testing.T) {
 	candidates[3].conn.AssertNotCalled(t, "Send", mock.Anything)
 }
 
-func TestOfferTrip_NoCandidatesExpiresTripToNoDriver(t *testing.T) {
+func TestOfferTrip_NoCandidatesWaitsFullRoundsBeforeNoDriver(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
 	stream := mocksriders.NewRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
@@ -389,6 +389,36 @@ func TestOfferTrip_NoCandidatesExpiresTripToNoDriver(t *testing.T) {
 	matcher := asMatcher(t, svc)
 
 	trip := samplePickupTrip(t)
+	t.Cleanup(func() { app.StopTripOfferTimerForTest(svc, trip.ID) })
+	searching := trip
+	searching.Status = tripsModels.TripStatusSearching
+	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&searching, nil)
+	tripsRepo.On("UpdateTripStatus", mock.Anything, trip.ID, tripsModels.TripStatusSearching, tripsModels.TripStatusNoDriver).Return(true, nil).Once()
+
+	matcher.OfferTrip(context.Background(), trip)
+	tripsRepo.AssertNotCalled(t, "UpdateTripStatus", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+
+	// Rondas 2, 3 y 4 también vacías: cada una espera su timeout completo.
+	for range 3 {
+		app.AdvanceTripOfferTimeout(svc, trip)
+		tripsRepo.AssertNotCalled(t, "UpdateTripStatus", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	}
+
+	app.AdvanceTripOfferTimeout(svc, trip)
+	tripsRepo.AssertExpectations(t)
+}
+
+func TestOfferTrip_NoPickupCellExpiresImmediately(t *testing.T) {
+	repo := mocksriders.NewRidersRepo(t)
+	stream := mocksriders.NewRidersStream(t)
+	bcv := mockbcvports.NewBcvApp(t)
+	tripsRepo := mockstrips.NewTripsRepo(t)
+	tripEarnings := mocksriders.NewTripEarningRecorder(t)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
+	matcher := asMatcher(t, svc)
+
+	trip := samplePickupTrip(t)
+	trip.PickupH3Cell = nil
 	tripsRepo.On("UpdateTripStatus", mock.Anything, trip.ID, tripsModels.TripStatusSearching, tripsModels.TripStatusNoDriver).Return(true, nil)
 
 	matcher.OfferTrip(context.Background(), trip)
@@ -665,7 +695,7 @@ func TestCancelAcceptedTrip_ReoffersExcludingCancellingRider(t *testing.T) {
 	}
 }
 
-func TestCancelAcceptedTrip_NoOtherRidersExpiresToNoDriver(t *testing.T) {
+func TestCancelAcceptedTrip_NoOtherRidersKeepsSearching(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
 	stream := mocksriders.NewRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
@@ -682,16 +712,17 @@ func TestCancelAcceptedTrip_NoOtherRidersExpiresToNoDriver(t *testing.T) {
 	require.NoError(t, svc.UpdateLocation(context.Background(), riderA, 10.4807, -66.9036))
 
 	trip := samplePickupTrip(t)
+	t.Cleanup(func() { app.StopTripOfferTimerForTest(svc, trip.ID) })
 	trip.RiderID = &riderA
 	trip.Status = tripsModels.TripStatusAccepted
 	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&trip, nil)
 	tripsRepo.On("ReleaseTripRider", mock.Anything, trip.ID, riderA).Return(true, nil)
-	tripsRepo.On("UpdateTripStatus", mock.Anything, trip.ID, tripsModels.TripStatusSearching, tripsModels.TripStatusNoDriver).Return(true, nil)
 	connA.On("Send", mock.Anything).Return()
 
 	err := svc.CancelAcceptedTrip(context.Background(), riderA, trip.ID, connA)
 
 	require.NoError(t, err)
+	tripsRepo.AssertNotCalled(t, "UpdateTripStatus", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestCancelAcceptedTrip_RejectsWhenNotAssigned(t *testing.T) {
@@ -837,7 +868,7 @@ func TestOfferTrip_SecondRoundExcludesFirstCandidatesAndExpandsRing(t *testing.T
 	tripsRepo.AssertNotCalled(t, "UpdateTripStatus", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }
 
-func TestOfferTrip_ExpiresWhenNextRoundHasNoCandidates(t *testing.T) {
+func TestOfferTrip_EmptyNextRoundWaitsThenExpiresAtRoundCap(t *testing.T) {
 	svc, tripsRepo, repo := newTripOfferSvc(t)
 	trip := samplePickupTrip(t)
 	t.Cleanup(func() { app.StopTripOfferTimerForTest(svc, trip.ID) })
@@ -857,10 +888,18 @@ func TestOfferTrip_ExpiresWhenNextRoundHasNoCandidates(t *testing.T) {
 	searching := trip
 	searching.Status = tripsModels.TripStatusSearching
 	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&searching, nil)
-	tripsRepo.On("UpdateTripStatus", mock.Anything, trip.ID, tripsModels.TripStatusSearching, tripsModels.TripStatusNoDriver).Return(true, nil)
+	tripsRepo.On("UpdateTripStatus", mock.Anything, trip.ID, tripsModels.TripStatusSearching, tripsModels.TripStatusNoDriver).Return(true, nil).Once()
 
 	asMatcher(t, svc).OfferTrip(context.Background(), trip)
+
+	// Ronda 2 sin candidatos nuevos: espera, no expira; 3 y 4 igual.
+	for range 3 {
+		app.AdvanceTripOfferTimeout(svc, trip)
+		tripsRepo.AssertNotCalled(t, "UpdateTripStatus", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	}
+
 	app.AdvanceTripOfferTimeout(svc, trip)
+	tripsRepo.AssertNumberOfCalls(t, "UpdateTripStatus", 1)
 
 	for _, id := range ids {
 		require.Equal(t, 1, offers[id])
