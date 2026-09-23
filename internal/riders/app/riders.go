@@ -36,9 +36,12 @@ const orderAcceptTimeout = 10 * time.Minute
 const (
 	tripOfferCandidateCount = 3
 	tripSearchMaxRings      = 3
-	tripAcceptTimeout       = 15 * time.Minute
-	// tripOfferMaxRounds es el tope de rondas (15 min cada una, haya o no
-	// candidatos elegibles) antes de no_driver.
+	// tripAcceptTimeout es lo que dura una ronda con candidatos ofertados.
+	tripAcceptTimeout = 10 * time.Minute
+	// tripEmptyRoundTimeout es lo que dura una ronda sin riders elegibles, antes
+	// de pasar a la siguiente (puede conectarse alguien mientras tanto).
+	tripEmptyRoundTimeout = 5 * time.Minute
+	// tripOfferMaxRounds es el tope de rondas, con o sin candidatos, antes de no_driver.
 	tripOfferMaxRounds = 4
 )
 
@@ -494,7 +497,7 @@ func (r *appRidersManager) offerTripRound(ctx context.Context, trip tripsModels.
 			r.expireTripIfStillSearching(trip.ID)
 			return
 		}
-		// Ronda vacía: igual espera tripAcceptTimeout (puede conectarse un rider
+		// Ronda vacía: igual espera tripEmptyRoundTimeout (puede conectarse un rider
 		// elegible) y cuenta como ronda; los ofertados de la ronda anterior ya
 		// no pueden aceptar.
 		r.mu.Lock()
@@ -502,7 +505,7 @@ func (r *appRidersManager) offerTripRound(ctx context.Context, trip tripsModels.
 		r.tripOfferRounds[trip.ID] = round
 		r.tripOfferTrip[trip.ID] = trip
 		r.mu.Unlock()
-		r.scheduleOfferTimeout(trip)
+		r.scheduleOfferTimeout(trip, tripEmptyRoundTimeout)
 		return
 	}
 
@@ -534,11 +537,11 @@ func (r *appRidersManager) offerTripRound(ctx context.Context, trip tripsModels.
 	}
 	r.mu.RUnlock()
 
-	r.scheduleOfferTimeout(trip)
+	r.scheduleOfferTimeout(trip, tripAcceptTimeout)
 }
 
-func (r *appRidersManager) scheduleOfferTimeout(trip tripsModels.Trip) {
-	timer := time.AfterFunc(tripAcceptTimeout, func() {
+func (r *appRidersManager) scheduleOfferTimeout(trip tripsModels.Trip, timeout time.Duration) {
+	timer := time.AfterFunc(timeout, func() {
 		r.onTripOfferTimeout(trip)
 	})
 	r.mu.Lock()
@@ -949,7 +952,7 @@ type tripBroadcast struct {
 	Trip tripsDtos.TripResponse `json:"trip"`
 }
 
-// AdvanceTripOfferTimeout corre el mismo camino que el timer de oferta (tripAcceptTimeout).
+// AdvanceTripOfferTimeout corre el mismo camino que el timer de oferta (tripAcceptTimeout o tripEmptyRoundTimeout).
 // Los tests lo usan para pasar de ronda sin esperar el timeout real.
 func AdvanceTripOfferTimeout(svc ridersPorts.RidersApp, trip tripsModels.Trip) {
 	mgr := svc.(*appRidersManager)
