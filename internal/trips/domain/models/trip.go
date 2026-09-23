@@ -12,23 +12,31 @@ import (
 type TripStatus string
 
 const (
-	TripStatusRequested  TripStatus = "requested"
-	TripStatusSearching  TripStatus = "searching"
-	TripStatusAccepted   TripStatus = "accepted"
-	TripStatusArriving   TripStatus = "arriving"
-	TripStatusInProgress TripStatus = "in_progress"
-	TripStatusCompleted  TripStatus = "completed"
-	TripStatusCancelled  TripStatus = "cancelled"
-	TripStatusNoDriver   TripStatus = "no_driver"
+	TripStatusRequested     TripStatus = "requested"
+	TripStatusPaymentReview TripStatus = "payment_review"
+	TripStatusSearching     TripStatus = "searching"
+	TripStatusAccepted      TripStatus = "accepted"
+	TripStatusArriving      TripStatus = "arriving"
+	TripStatusInProgress    TripStatus = "in_progress"
+	TripStatusCompleted     TripStatus = "completed"
+	TripStatusCancelled     TripStatus = "cancelled"
+	TripStatusNoDriver      TripStatus = "no_driver"
 )
+
+// ReferenceTypeTrip identifica un viaje dentro del módulo de pagos unificado.
+const ReferenceTypeTrip = "trip"
+
+const MethodPagoMovil = "PagoMovil"
+const MethodBalance = "Balance"
 
 // CancellableStatuses son los estados desde los que un customer puede cancelar
 // un trip; una vez in_progress/completed/cancelled/no_driver ya no aplica.
 var CancellableStatuses = map[TripStatus]bool{
-	TripStatusRequested: true,
-	TripStatusSearching: true,
-	TripStatusAccepted:  true,
-	TripStatusArriving:  true,
+	TripStatusRequested:     true,
+	TripStatusPaymentReview: true,
+	TripStatusSearching:     true,
+	TripStatusAccepted:      true,
+	TripStatusArriving:      true,
 }
 
 type Trip struct {
@@ -49,6 +57,14 @@ type Trip struct {
 	PickupH3CellZone  *string  `bun:"pickup_h3_cell_zone"`
 	DropoffH3CellZone *string  `bun:"dropoff_h3_cell_zone"`
 	Fare              *float64 `bun:"fare"`
+	// BcvRate es la tasa congelada en la cotización. ExpectedAmountBs = fare * bcv_rate.
+	BcvRate *float64 `bun:"bcv_rate"`
+	// BalancePaidBs es el débito al saldo cuando method_payment es Balance.
+	BalancePaidBs     *float64   `bun:"balance_paid_bs"`
+	PickupCode        *string    `bun:"pickup_code"`
+	DropoffCode       *string    `bun:"dropoff_code"`
+	PickupCodeUsedAt  *time.Time `bun:"pickup_code_used_at"`
+	DropoffCodeUsedAt *time.Time `bun:"dropoff_code_used_at"`
 	// FareBs no se persiste, se recalcula en cada respuesta (patrón Order.DeliveryFeeBs).
 	FareBs      *float64   `bun:"-"`
 	RequestedAt time.Time  `bun:"requested_at,notnull,default:current_timestamp"`
@@ -91,4 +107,17 @@ func (t *Trip) ToDTO() dtos.TripResponse {
 		CompletedAt:      t.CompletedAt,
 		CancelledAt:      t.CancelledAt,
 	}
+}
+
+// ToCustomerDTO incluye el código que el cliente debe mostrar. El rider no lo
+// recibe: ToDTO, que alimenta su WebSocket, no copia estos campos.
+func (t *Trip) ToCustomerDTO() dtos.TripResponse {
+	resp := t.ToDTO()
+	if t.PickupCodeUsedAt == nil {
+		resp.PickupCode = t.PickupCode
+	}
+	if t.Status == TripStatusInProgress && t.DropoffCodeUsedAt == nil {
+		resp.DropoffCode = t.DropoffCode
+	}
+	return resp
 }

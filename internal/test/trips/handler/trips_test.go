@@ -28,7 +28,7 @@ func httpCode(err error) int {
 func newTripsHandler(t *testing.T) (tripshandler.TripsHandler, *mockstrips.TripsApp) {
 	t.Helper()
 	svc := mockstrips.NewTripsApp(t)
-	return tripshandler.NewTripsHandler(svc), svc
+	return tripshandler.NewTripsHandler(svc, nil), svc
 }
 
 func buildBody(t *testing.T, v any) *bytes.Buffer {
@@ -60,7 +60,11 @@ func TestRequestTrip_InvalidPayload(t *testing.T) {
 func TestRequestTrip_Success(t *testing.T) {
 	h, svc := newTripsHandler(t)
 	customerID := uuid.New()
-	req := dtos.CreateTripRequest{QuoteID: uuid.New()}
+	req := dtos.CreateTripRequest{
+		QuoteID:           uuid.New(),
+		MethodPayment:     "PagoMovil",
+		PaymentProofImage: "proof-b64",
+	}
 	tc := buildhttptest.SetupControllerCase("/trips", http.MethodPost, buildBody(t, req))
 	tc = withSession(tc, authModels.ActiveSession{UserID: customerID})
 
@@ -125,6 +129,35 @@ func TestGetTrip_InvalidID(t *testing.T) {
 	err := h.GetTrip(tc.Ctx)
 
 	assert.Equal(t, http.StatusBadRequest, httpCode(err))
+}
+
+func TestGetTrip_SerializesPublicRider(t *testing.T) {
+	h, svc := newTripsHandler(t)
+	tripID, customerID := uuid.New(), uuid.New()
+	plate := "AB123CD"
+	tc := buildhttptest.SetupControllerCase("/trips/"+tripID.String(), http.MethodGet, nil)
+	tc = withSession(tc, authModels.ActiveSession{UserID: customerID})
+	tc.Ctx.SetParamNames("id")
+	tc.Ctx.SetParamValues(tripID.String())
+
+	svc.On("GetTrip", tc.Req.Context(), tripID, customerID).Return(dtos.TripResponse{
+		ID: tripID, CustomerID: customerID,
+		Rider: &dtos.RiderPublicInfo{Name: "Ada", VehiclePlate: &plate},
+	}, nil)
+
+	err := h.GetTrip(tc.Ctx)
+
+	assert.NoError(t, err)
+	var body map[string]any
+	assert.NoError(t, json.Unmarshal(tc.Res.Body.Bytes(), &body))
+	rider, ok := body["rider"].(map[string]any)
+	assert.True(t, ok)
+	assert.Equal(t, "Ada", rider["name"])
+	assert.Equal(t, "AB123CD", rider["vehicle_plate"])
+	_, hasKYC := rider["id_photo_url"]
+	assert.False(t, hasKYC)
+	_, hasLicense := rider["license_photo_url"]
+	assert.False(t, hasLicense)
 }
 
 func TestGetTrip_ForbiddenMapsTo403(t *testing.T) {

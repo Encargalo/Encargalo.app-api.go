@@ -24,11 +24,14 @@ type RidersApp interface {
 	UpdateLocation(ctx context.Context, riderID uuid.UUID, lat, lng float64) error
 	SnapshotTripsRiders() []riderModels.RiderLocationEntry
 	AcceptTrip(ctx context.Context, riderID, tripID uuid.UUID, conn RiderConn) error
+	// CancelAcceptedTrip libera un viaje accepted o arriving y lo vuelve a ofertar,
+	// excluyendo al rider que canceló. in_progress y completed no se pueden cancelar aquí.
+	CancelAcceptedTrip(ctx context.Context, riderID, tripID uuid.UUID, conn RiderConn) error
 	// AdvanceTrip mueve el trip asignado al siguiente estado de la máquina
 	// lineal accepted→arriving→in_progress→completed. Al llegar a completed
 	// calcula la tarifa (distancia vial pickup→dropoff) y acredita la
 	// ganancia del rider.
-	AdvanceTrip(ctx context.Context, riderID, tripID uuid.UUID, conn RiderConn) error
+	AdvanceTrip(ctx context.Context, riderID, tripID uuid.UUID, code string, conn RiderConn) error
 }
 
 type RidersStream interface {
@@ -41,6 +44,8 @@ type RidersStream interface {
 type TripsStore interface {
 	GetTripByID(ctx context.Context, tripID uuid.UUID) (*tripsModels.Trip, error)
 	UpdateTripStatus(ctx context.Context, tripID uuid.UUID, fromStatus, toStatus tripsModels.TripStatus) (bool, error)
-	AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID) (bool, error)
-	CompleteTrip(ctx context.Context, tripID uuid.UUID, fare float64) (bool, error)
+	AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID, pickupCode string) (bool, error)
+	StartTripWithPickupCode(ctx context.Context, tripID, riderID uuid.UUID, pickupCode, dropoffCode string) (bool, error)
+	ReleaseTripRider(ctx context.Context, tripID, riderID uuid.UUID) (bool, error)
+	CompleteTrip(ctx context.Context, tripID uuid.UUID, fare float64, dropoffCode string) (bool, error)
 }

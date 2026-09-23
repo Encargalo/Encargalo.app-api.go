@@ -18,28 +18,31 @@ type TripsHandler interface {
 	GetTripHistory(c echo.Context) error
 	CancelTrip(c echo.Context) error
 	EstimateFare(c echo.Context) error
+	Live(c echo.Context) error
 }
 
 type tripsHandler struct {
-	svc ports.TripsApp
+	svc  ports.TripsApp
+	live ports.CustomerTripLive
 }
 
-func NewTripsHandler(svc ports.TripsApp) TripsHandler {
-	return &tripsHandler{svc: svc}
+func NewTripsHandler(svc ports.TripsApp, live ports.CustomerTripLive) TripsHandler {
+	return &tripsHandler{svc: svc, live: live}
 }
 
 // RequestTrip godoc
 // @Summary      Solicitar un viaje
-// @Description  Crea un viaje en estado "requested" a partir de una cotización vigente (ver POST /trips/fare-estimate): pickup/dropoff y fare quedan fijados por esa cotización, no se recalculan. El matching con conductores cercanos no está incluido en este endpoint.
+// @Description  Crea un viaje a partir de una cotización vigente (POST /trips/fare-estimate). Con method_payment=PagoMovil el comprobante es obligatorio y el viaje queda en payment_review hasta que el staff lo apruebe. Con method_payment=Balance se debita la tarifa completa en Bs y el viaje pasa directo a searching. Pickup/dropoff y fare quedan fijados por la cotización.
 // @Tags         Trips
 // @Accept       json
 // @Produce      json
 // @Security     SessionCookie
-// @Param        body  body  dtos.CreateTripRequest  true  "quote_id de una cotización vigente"
+// @Param        body  body  dtos.CreateTripRequest  true  "quote_id y method_payment (PagoMovil con comprobante, o Balance)"
 // @Success      201  {object}  dtos.TripResponse
 // @Failure      400  {string}  string  "payload inválido"
 // @Failure      401  {string}  string  "No autorizado"
 // @Failure      404  {string}  string  "Cotización no encontrada, expirada o de otro cliente"
+// @Failure      422  {string}  string  "No se pudo subir el comprobante o saldo insuficiente"
 // @Router       /trips [post]
 func (h *tripsHandler) RequestTrip(c echo.Context) error {
 	ctx := c.Request().Context()
@@ -95,6 +98,7 @@ func (h *tripsHandler) EstimateFare(c echo.Context) error {
 
 // GetTrip godoc
 // @Summary      Detalle de un viaje
+// @Description  Si el viaje ya tiene rider asignado, `rider` trae nombre, teléfono, foto y vehículo. No incluye documentos KYC. pickup_code aparece desde accepted hasta que el pasajero sube; dropoff_code aparece en in_progress. Los cambios en vivo llegan por GET /trips/live.
 // @Tags         Trips
 // @Produce      json
 // @Security     SessionCookie
@@ -123,6 +127,7 @@ func (h *tripsHandler) GetTrip(c echo.Context) error {
 
 // GetTripHistory godoc
 // @Summary      Historial de viajes del cliente
+// @Description  Cada viaje con rider asignado incluye `rider` (nombre, teléfono, foto y vehículo). No incluye documentos KYC.
 // @Tags         Trips
 // @Produce      json
 // @Security     SessionCookie
@@ -142,7 +147,7 @@ func (h *tripsHandler) GetTripHistory(c echo.Context) error {
 
 // CancelTrip godoc
 // @Summary      Cancelar un viaje
-// @Description  Solo permitido mientras el viaje esté en requested/searching/accepted/arriving.
+// @Description  Solo permitido mientras el viaje esté en requested/payment_review/searching/accepted/arriving. Si se pagó con balance, el débito se reintegra.
 // @Tags         Trips
 // @Produce      json
 // @Security     SessionCookie

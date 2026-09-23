@@ -2,6 +2,7 @@ package dtos
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -10,32 +11,58 @@ import (
 
 var tripValidate = validator.New()
 
-// CreateTripRequest solo lleva el QuoteID: pickup/dropoff y fare vienen de la cotización.
+// CreateTripRequest exige la cotización vigente y el comprobante de Pago Móvil.
+// Pickup, dropoff y fare salen de la cotización; no se recalculan.
 type CreateTripRequest struct {
-	QuoteID uuid.UUID `json:"quote_id" validate:"required,uuid4"`
+	QuoteID           uuid.UUID `json:"quote_id" validate:"required,uuid4"`
+	MethodPayment     string    `json:"method_payment" validate:"required,oneof=PagoMovil Balance" example:"PagoMovil"`
+	PaymentProofImage string    `json:"payment_proof_image" validate:"max=7000000" example:"data:image/jpeg;base64,/9j/4AAQ..."`
 }
 
 func (r *CreateTripRequest) Validate() error {
-	return tripValidate.StructCtx(context.Background(), r)
+	if err := tripValidate.StructCtx(context.Background(), r); err != nil {
+		return err
+	}
+	if r.MethodPayment == "PagoMovil" && len(r.PaymentProofImage) == 0 {
+		return fmt.Errorf("payment_proof_image es requerido")
+	}
+	return nil
+}
+
+// RiderPublicInfo es lo que el cliente puede ver del rider asignado.
+// No incluye documentos KYC (cédula, carnet, licencia, carnet de circulación).
+type RiderPublicInfo struct {
+	Name            string  `json:"name"`
+	SurName         string  `json:"sur_name,omitempty"`
+	Phone           string  `json:"phone,omitempty"`
+	ProfilePhotoURL *string `json:"profile_photo_url,omitempty"`
+	VehicleType     *string `json:"vehicle_type,omitempty"`
+	VehiclePlate    *string `json:"vehicle_plate,omitempty"`
+	VehicleBrand    *string `json:"vehicle_brand,omitempty"`
+	VehicleModel    *string `json:"vehicle_model,omitempty"`
+	VehicleColor    *string `json:"vehicle_color,omitempty"`
 }
 
 type TripResponse struct {
-	ID               uuid.UUID  `json:"id"`
-	CustomerID       uuid.UUID  `json:"customer_id"`
-	RiderID          *uuid.UUID `json:"rider_id,omitempty"`
-	Status           string     `json:"status"`
-	PickupAddress    string     `json:"pickup_address"`
-	PickupLatitude   float64    `json:"pickup_latitude"`
-	PickupLongitude  float64    `json:"pickup_longitude"`
-	DropoffAddress   string     `json:"dropoff_address"`
-	DropoffLatitude  float64    `json:"dropoff_latitude"`
-	DropoffLongitude float64    `json:"dropoff_longitude"`
-	FareUSD          *float64   `json:"fare_usd,omitempty"`
-	FareBs           *float64   `json:"fare_bs,omitempty"`
-	RequestedAt      time.Time  `json:"requested_at"`
-	AcceptedAt       *time.Time `json:"accepted_at,omitempty"`
-	CompletedAt      *time.Time `json:"completed_at,omitempty"`
-	CancelledAt      *time.Time `json:"cancelled_at,omitempty"`
+	ID               uuid.UUID        `json:"id"`
+	CustomerID       uuid.UUID        `json:"customer_id"`
+	RiderID          *uuid.UUID       `json:"rider_id,omitempty"`
+	Rider            *RiderPublicInfo `json:"rider,omitempty"`
+	Status           string           `json:"status"`
+	PickupAddress    string           `json:"pickup_address"`
+	PickupLatitude   float64          `json:"pickup_latitude"`
+	PickupLongitude  float64          `json:"pickup_longitude"`
+	DropoffAddress   string           `json:"dropoff_address"`
+	DropoffLatitude  float64          `json:"dropoff_latitude"`
+	DropoffLongitude float64          `json:"dropoff_longitude"`
+	FareUSD          *float64         `json:"fare_usd,omitempty"`
+	FareBs           *float64         `json:"fare_bs,omitempty"`
+	RequestedAt      time.Time        `json:"requested_at"`
+	AcceptedAt       *time.Time       `json:"accepted_at,omitempty"`
+	CompletedAt      *time.Time       `json:"completed_at,omitempty"`
+	CancelledAt      *time.Time       `json:"cancelled_at,omitempty"`
+	PickupCode       *string          `json:"pickup_code,omitempty"`
+	DropoffCode      *string          `json:"dropoff_code,omitempty"`
 }
 
 type TripHistoryResponse struct {

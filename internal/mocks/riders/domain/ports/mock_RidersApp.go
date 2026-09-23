@@ -54,12 +54,30 @@ func (_m *RidersApp) AcceptTrip(ctx context.Context, riderID uuid.UUID, tripID u
 	return r0
 }
 
-// AdvanceTrip provides a mock function with given fields: ctx, riderID, tripID, conn
-func (_m *RidersApp) AdvanceTrip(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, conn ports.RiderConn) error {
-	ret := _m.Called(ctx, riderID, tripID, conn)
+// AdvanceTrip provides a mock function with given fields: ctx, riderID, tripID, code, conn
+func (_m *RidersApp) AdvanceTrip(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, code string, conn ports.RiderConn) error {
+	ret := _m.Called(ctx, riderID, tripID, code, conn)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AdvanceTrip")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string, ports.RiderConn) error); ok {
+		r0 = rf(ctx, riderID, tripID, code, conn)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// CancelAcceptedTrip provides a mock function with given fields: ctx, riderID, tripID, conn
+func (_m *RidersApp) CancelAcceptedTrip(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, conn ports.RiderConn) error {
+	ret := _m.Called(ctx, riderID, tripID, conn)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CancelAcceptedTrip")
 	}
 
 	var r0 error
