@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sync"
 	"testing"
@@ -609,4 +610,138 @@ func TestAdvanceTrip_ConcurrentCompletionIsSerialized(t *testing.T) {
 	assert.ErrorIs(t, secondErr, errcustom.ErrInvalidTransition)
 	require.NoError(t, firstErr)
 	tripsRepo.AssertExpectations(t) // CompleteTrip solo se llamó una vez (.Once())
+}
+
+func TestCancelAcceptedTrip_ReoffersExcludingCancellingRider(t *testing.T) {
+	for _, status := range []tripsModels.TripStatus{tripsModels.TripStatusAccepted, tripsModels.TripStatusArriving} {
+		t.Run(string(status), func(t *testing.T) {
+			repo := mocksriders.NewRidersRepo(t)
+			stream := mocksriders.NewRidersStream(t)
+			bcv := mockbcvports.NewBcvApp(t)
+			tripsRepo := mockstrips.NewTripsRepo(t)
+			tripEarnings := mocksriders.NewTripEarningRecorder(t)
+			svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+
+			repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
+			repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound)
+
+			riderA, riderB := uuid.New(), uuid.New()
+			connA, connB := mocksriders.NewRiderConn(t), mocksriders.NewRiderConn(t)
+			require.NoError(t, svc.Register(context.Background(), riderA, connA, riderModels.RiderModeTrips))
+			require.NoError(t, svc.Register(context.Background(), riderB, connB, riderModels.RiderModeTrips))
+			require.NoError(t, svc.UpdateLocation(context.Background(), riderA, 10.4807, -66.9036))
+			require.NoError(t, svc.UpdateLocation(context.Background(), riderB, 10.4820, -66.9036))
+
+			trip := samplePickupTrip(t)
+			trip.RiderID = &riderA
+			trip.Status = status
+			tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&trip, nil)
+			tripsRepo.On("ReleaseTripRider", mock.Anything, trip.ID, riderA).Return(true, nil)
+
+			var statusToA, offerToA, offerToB bool
+			connA.On("Send", mock.Anything).Run(func(args mock.Arguments) {
+				kind := messageType(t, args.Get(0).([]byte))
+				if kind == "trip_status" {
+					statusToA = true
+				}
+				if kind == "trip_offer" {
+					offerToA = true
+				}
+			}).Return()
+			connB.On("Send", mock.Anything).Run(func(args mock.Arguments) {
+				if messageType(t, args.Get(0).([]byte)) == "trip_offer" {
+					offerToB = true
+				}
+			}).Return()
+
+			err := svc.CancelAcceptedTrip(context.Background(), riderA, trip.ID, connA)
+
+			require.NoError(t, err)
+			require.True(t, statusToA)
+			require.True(t, offerToB)
+			require.False(t, offerToA)
+		})
+	}
+}
+
+func TestCancelAcceptedTrip_NoOtherRidersExpiresToNoDriver(t *testing.T) {
+	repo := mocksriders.NewRidersRepo(t)
+	stream := mocksriders.NewRidersStream(t)
+	bcv := mockbcvports.NewBcvApp(t)
+	tripsRepo := mockstrips.NewTripsRepo(t)
+	tripEarnings := mocksriders.NewTripEarningRecorder(t)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+
+	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
+	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound)
+
+	riderA := uuid.New()
+	connA := mocksriders.NewRiderConn(t)
+	require.NoError(t, svc.Register(context.Background(), riderA, connA, riderModels.RiderModeTrips))
+	require.NoError(t, svc.UpdateLocation(context.Background(), riderA, 10.4807, -66.9036))
+
+	trip := samplePickupTrip(t)
+	trip.RiderID = &riderA
+	trip.Status = tripsModels.TripStatusAccepted
+	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&trip, nil)
+	tripsRepo.On("ReleaseTripRider", mock.Anything, trip.ID, riderA).Return(true, nil)
+	tripsRepo.On("UpdateTripStatus", mock.Anything, trip.ID, tripsModels.TripStatusSearching, tripsModels.TripStatusNoDriver).Return(true, nil)
+	connA.On("Send", mock.Anything).Return()
+
+	err := svc.CancelAcceptedTrip(context.Background(), riderA, trip.ID, connA)
+
+	require.NoError(t, err)
+}
+
+func TestCancelAcceptedTrip_RejectsWhenNotAssigned(t *testing.T) {
+	repo := mocksriders.NewRidersRepo(t)
+	stream := mocksriders.NewRidersStream(t)
+	bcv := mockbcvports.NewBcvApp(t)
+	tripsRepo := mockstrips.NewTripsRepo(t)
+	tripEarnings := mocksriders.NewTripEarningRecorder(t)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+
+	riderA, other := uuid.New(), uuid.New()
+	tripID := uuid.New()
+	tripsRepo.On("GetTripByID", mock.Anything, tripID).Return(&tripsModels.Trip{
+		ID: tripID, RiderID: &other, Status: tripsModels.TripStatusAccepted,
+	}, nil)
+
+	err := svc.CancelAcceptedTrip(context.Background(), riderA, tripID, mocksriders.NewRiderConn(t))
+
+	assert.ErrorIs(t, err, errcustom.ErrInvalidTransition)
+	tripsRepo.AssertNotCalled(t, "ReleaseTripRider", mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestCancelAcceptedTrip_RejectsAfterPickup(t *testing.T) {
+	for _, status := range []tripsModels.TripStatus{tripsModels.TripStatusInProgress, tripsModels.TripStatusCompleted} {
+		t.Run(string(status), func(t *testing.T) {
+			repo := mocksriders.NewRidersRepo(t)
+			stream := mocksriders.NewRidersStream(t)
+			bcv := mockbcvports.NewBcvApp(t)
+			tripsRepo := mockstrips.NewTripsRepo(t)
+			tripEarnings := mocksriders.NewTripEarningRecorder(t)
+			svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+
+			riderA := uuid.New()
+			tripID := uuid.New()
+			tripsRepo.On("GetTripByID", mock.Anything, tripID).Return(&tripsModels.Trip{
+				ID: tripID, RiderID: &riderA, Status: status,
+			}, nil)
+
+			err := svc.CancelAcceptedTrip(context.Background(), riderA, tripID, mocksriders.NewRiderConn(t))
+
+			assert.ErrorIs(t, err, errcustom.ErrInvalidTransition)
+			tripsRepo.AssertNotCalled(t, "ReleaseTripRider", mock.Anything, mock.Anything, mock.Anything)
+		})
+	}
+}
+
+func messageType(t *testing.T, raw []byte) string {
+	t.Helper()
+	var msg struct {
+		Type string `json:"type"`
+	}
+	require.NoError(t, json.Unmarshal(raw, &msg))
+	return msg.Type
 }

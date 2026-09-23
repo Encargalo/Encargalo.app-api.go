@@ -43,6 +43,7 @@ type appRidersManager struct {
 	riderMode       map[uuid.UUID]riderModels.RiderMode
 	riderLocation   map[uuid.UUID]riderModels.RiderLocation
 	tripOffers      map[uuid.UUID]map[uuid.UUID]struct{}
+	tripExcluded    map[uuid.UUID]map[uuid.UUID]struct{}
 	tripTimers      map[uuid.UUID]*time.Timer
 	completingTrips map[uuid.UUID]struct{}
 	repo            ridersPorts.RidersRepo
@@ -59,6 +60,7 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 		riderMode:       make(map[uuid.UUID]riderModels.RiderMode),
 		riderLocation:   make(map[uuid.UUID]riderModels.RiderLocation),
 		tripOffers:      make(map[uuid.UUID]map[uuid.UUID]struct{}),
+		tripExcluded:    make(map[uuid.UUID]map[uuid.UUID]struct{}),
 		tripTimers:      make(map[uuid.UUID]*time.Timer),
 		completingTrips: make(map[uuid.UUID]struct{}),
 		repo:            repo,
@@ -329,7 +331,7 @@ type riderBroadcast struct {
 }
 
 func (r *appRidersManager) OfferTrip(ctx context.Context, trip tripsModels.Trip) {
-	candidates := r.nearestTripsRiders(trip)
+	candidates := r.nearestTripsRiders(trip, r.excludedRiderIDs(trip.ID))
 	if len(candidates) == 0 {
 		r.expireTripIfStillSearching(trip.ID)
 		return
@@ -374,6 +376,7 @@ func (r *appRidersManager) expireTripIfStillSearching(tripID uuid.UUID) {
 
 	r.mu.Lock()
 	delete(r.tripOffers, tripID)
+	delete(r.tripExcluded, tripID)
 	delete(r.tripTimers, tripID)
 	r.mu.Unlock()
 }
@@ -404,13 +407,16 @@ func (r *appRidersManager) endCompleting(tripID uuid.UUID) {
 	r.mu.Unlock()
 }
 
-func (r *appRidersManager) nearestTripsRiders(trip tripsModels.Trip) []riderModels.RiderLocationEntry {
+func (r *appRidersManager) nearestTripsRiders(trip tripsModels.Trip, exclude map[uuid.UUID]struct{}) []riderModels.RiderLocationEntry {
 	if trip.PickupH3Cell == nil {
 		return nil
 	}
 
 	byCell := make(map[string][]riderModels.RiderLocationEntry)
 	for _, e := range r.SnapshotTripsRiders() {
+		if _, skip := exclude[e.RiderID]; skip {
+			continue
+		}
 		byCell[e.Location.H3Cell] = append(byCell[e.Location.H3Cell], e)
 	}
 
@@ -500,6 +506,64 @@ func (r *appRidersManager) AcceptTrip(ctx context.Context, riderID, tripID uuid.
 	conn.Send(accepted)
 
 	return nil
+}
+
+// CancelAcceptedTrip libera el viaje antes de recoger al pasajero y lo vuelve
+// a ofertar sin el rider que canceló. in_progress queda fuera: sería un
+// incidente, no una re-oferta.
+func (r *appRidersManager) CancelAcceptedTrip(ctx context.Context, riderID, tripID uuid.UUID, conn ridersPorts.RiderConn) error {
+	trip, err := r.tripsRepo.GetTripByID(ctx, tripID)
+	if err != nil {
+		return err
+	}
+	if trip.RiderID == nil || *trip.RiderID != riderID {
+		return errcustom.ErrInvalidTransition
+	}
+	if trip.Status != tripsModels.TripStatusAccepted && trip.Status != tripsModels.TripStatusArriving {
+		return errcustom.ErrInvalidTransition
+	}
+
+	ok, err := r.tripsRepo.ReleaseTripRider(ctx, tripID, riderID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return errcustom.ErrInvalidTransition
+	}
+
+	r.excludeRider(tripID, riderID)
+	slog.Info("rider cancelled accepted trip", "tripID", tripID, "riderID", riderID, "fromStatus", string(trip.Status), "at", time.Now().UTC())
+
+	trip.Status = tripsModels.TripStatusSearching
+	trip.RiderID = nil
+	trip.AcceptedAt = nil
+	released, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: trip.ToDTO()})
+	conn.Send(released)
+
+	r.OfferTrip(ctx, *trip)
+	return nil
+}
+
+func (r *appRidersManager) excludeRider(tripID, riderID uuid.UUID) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	set, ok := r.tripExcluded[tripID]
+	if !ok {
+		set = make(map[uuid.UUID]struct{})
+		r.tripExcluded[tripID] = set
+	}
+	set[riderID] = struct{}{}
+}
+
+func (r *appRidersManager) excludedRiderIDs(tripID uuid.UUID) map[uuid.UUID]struct{} {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	src := r.tripExcluded[tripID]
+	out := make(map[uuid.UUID]struct{}, len(src))
+	for id := range src {
+		out[id] = struct{}{}
+	}
+	return out
 }
 
 // AdvanceTrip mueve el trip asignado al siguiente estado. Solo el rider
