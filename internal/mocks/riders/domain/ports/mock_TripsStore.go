@@ -16,32 +16,22 @@ type TripsStore struct {
 	mock.Mock
 }
 
-// AssignTripRider provides a mock function with given fields: ctx, tripID, riderID
-func (_m *TripsStore) AssignTripRider(ctx context.Context, tripID uuid.UUID, riderID uuid.UUID) (bool, error) {
-	ret := _m.Called(ctx, tripID, riderID)
-
+// AssignTripRider provides a mock function with given fields: ctx, tripID, riderID, pickupCode
+func (_m *TripsStore) AssignTripRider(ctx context.Context, tripID uuid.UUID, riderID uuid.UUID, pickupCode string) (bool, error) {
+	ret := _m.Called(ctx, tripID, riderID, pickupCode)
 	if len(ret) == 0 {
 		panic("no return value specified for AssignTripRider")
 	}
+	return ret.Bool(0), ret.Error(1)
+}
 
-	var r0 bool
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) (bool, error)); ok {
-		return rf(ctx, tripID, riderID)
+// StartTripWithPickupCode provides a mock function with given fields: ctx, tripID, riderID, pickupCode, dropoffCode
+func (_m *TripsStore) StartTripWithPickupCode(ctx context.Context, tripID uuid.UUID, riderID uuid.UUID, pickupCode string, dropoffCode string) (bool, error) {
+	ret := _m.Called(ctx, tripID, riderID, pickupCode, dropoffCode)
+	if len(ret) == 0 {
+		panic("no return value specified for StartTripWithPickupCode")
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) bool); ok {
-		r0 = rf(ctx, tripID, riderID)
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
-		r1 = rf(ctx, tripID, riderID)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
+	return ret.Bool(0), ret.Error(1)
 }
 
 // ReleaseTripRider provides a mock function with given fields: ctx, tripID, riderID
@@ -72,32 +62,13 @@ func (_m *TripsStore) ReleaseTripRider(ctx context.Context, tripID uuid.UUID, ri
 	return r0, r1
 }
 
-// CompleteTrip provides a mock function with given fields: ctx, tripID, fare
-func (_m *TripsStore) CompleteTrip(ctx context.Context, tripID uuid.UUID, fare float64) (bool, error) {
-	ret := _m.Called(ctx, tripID, fare)
-
+// CompleteTrip provides a mock function with given fields: ctx, tripID, fare, dropoffCode
+func (_m *TripsStore) CompleteTrip(ctx context.Context, tripID uuid.UUID, fare float64, dropoffCode string) (bool, error) {
+	ret := _m.Called(ctx, tripID, fare, dropoffCode)
 	if len(ret) == 0 {
 		panic("no return value specified for CompleteTrip")
 	}
-
-	var r0 bool
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, float64) (bool, error)); ok {
-		return rf(ctx, tripID, fare)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, float64) bool); ok {
-		r0 = rf(ctx, tripID, fare)
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, float64) error); ok {
-		r1 = rf(ctx, tripID, fare)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
+	return ret.Bool(0), ret.Error(1)
 }
 
 // GetTripByID provides a mock function with given fields: ctx, tripID

@@ -31,7 +31,7 @@ type RidersApp interface {
 	// lineal accepted→arriving→in_progress→completed. Al llegar a completed
 	// calcula la tarifa (distancia vial pickup→dropoff) y acredita la
 	// ganancia del rider.
-	AdvanceTrip(ctx context.Context, riderID, tripID uuid.UUID, conn RiderConn) error
+	AdvanceTrip(ctx context.Context, riderID, tripID uuid.UUID, code string, conn RiderConn) error
 }
 
 type RidersStream interface {
@@ -44,7 +44,8 @@ type RidersStream interface {
 type TripsStore interface {
 	GetTripByID(ctx context.Context, tripID uuid.UUID) (*tripsModels.Trip, error)
 	UpdateTripStatus(ctx context.Context, tripID uuid.UUID, fromStatus, toStatus tripsModels.TripStatus) (bool, error)
-	AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID) (bool, error)
+	AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID, pickupCode string) (bool, error)
+	StartTripWithPickupCode(ctx context.Context, tripID, riderID uuid.UUID, pickupCode, dropoffCode string) (bool, error)
 	ReleaseTripRider(ctx context.Context, tripID, riderID uuid.UUID) (bool, error)
-	CompleteTrip(ctx context.Context, tripID uuid.UUID, fare float64) (bool, error)
+	CompleteTrip(ctx context.Context, tripID uuid.UUID, fare float64, dropoffCode string) (bool, error)
 }

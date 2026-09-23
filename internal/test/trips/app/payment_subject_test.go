@@ -29,7 +29,7 @@ func paymentReviewTrip(id uuid.UUID) *models.Trip {
 func TestTripPaymentSubject_OnApproved_StartsMatching(t *testing.T) {
 	repo := mockstrips.NewTripsRepo(t)
 	matcher := mockstrips.NewTripRiderMatcher(t)
-	subject := app.NewTripPaymentSubject(repo, matcher)
+	subject := app.NewTripPaymentSubject(repo, matcher, nil)
 	tripID := uuid.New()
 
 	repo.On("GetTripByID", mock.Anything, tripID).Return(paymentReviewTrip(tripID), nil)
@@ -46,7 +46,7 @@ func TestTripPaymentSubject_OnApproved_StartsMatching(t *testing.T) {
 func TestTripPaymentSubject_OnApproved_RejectsWhenNotInPaymentReview(t *testing.T) {
 	repo := mockstrips.NewTripsRepo(t)
 	matcher := mockstrips.NewTripRiderMatcher(t)
-	subject := app.NewTripPaymentSubject(repo, matcher)
+	subject := app.NewTripPaymentSubject(repo, matcher, nil)
 	tripID := uuid.New()
 	trip := paymentReviewTrip(tripID)
 	trip.Status = models.TripStatusSearching
@@ -62,7 +62,7 @@ func TestTripPaymentSubject_OnApproved_RejectsWhenNotInPaymentReview(t *testing.
 func TestTripPaymentSubject_OnOverpaid_StartsMatching(t *testing.T) {
 	repo := mockstrips.NewTripsRepo(t)
 	matcher := mockstrips.NewTripRiderMatcher(t)
-	subject := app.NewTripPaymentSubject(repo, matcher)
+	subject := app.NewTripPaymentSubject(repo, matcher, nil)
 	tripID := uuid.New()
 
 	repo.On("GetTripByID", mock.Anything, tripID).Return(paymentReviewTrip(tripID), nil)
@@ -77,7 +77,7 @@ func TestTripPaymentSubject_OnOverpaid_StartsMatching(t *testing.T) {
 func TestTripPaymentSubject_OnRejected_CancelsWithoutMatching(t *testing.T) {
 	repo := mockstrips.NewTripsRepo(t)
 	matcher := mockstrips.NewTripRiderMatcher(t)
-	subject := app.NewTripPaymentSubject(repo, matcher)
+	subject := app.NewTripPaymentSubject(repo, matcher, nil)
 	tripID := uuid.New()
 
 	repo.On("GetTripByID", mock.Anything, tripID).Return(paymentReviewTrip(tripID), nil)
@@ -91,7 +91,7 @@ func TestTripPaymentSubject_OnRejected_CancelsWithoutMatching(t *testing.T) {
 
 func TestTripPaymentSubject_ExpectedAmountBs_UsesFrozenRate(t *testing.T) {
 	repo := mockstrips.NewTripsRepo(t)
-	subject := app.NewTripPaymentSubject(repo, nil)
+	subject := app.NewTripPaymentSubject(repo, nil, nil)
 	tripID := uuid.New()
 
 	repo.On("GetTripByID", mock.Anything, tripID).Return(paymentReviewTrip(tripID), nil)

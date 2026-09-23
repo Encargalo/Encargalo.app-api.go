@@ -36,6 +36,7 @@ type tripsDeps struct {
 	upload  *mockupload.UploadImage
 	hub     *mockpayments.StaffReviewHub
 	riders  *mockstrips.RiderPublicInfoLookup
+	balance *mockpayments.CustomerBalanceCreditor
 }
 
 func newTripsDeps(t *testing.T) tripsDeps {
@@ -48,8 +49,9 @@ func newTripsDeps(t *testing.T) tripsDeps {
 	upload := mockupload.NewUploadImage(t)
 	hub := mockpayments.NewStaffReviewHub(t)
 	riders := mockstrips.NewRiderPublicInfoLookup(t)
+	balance := mockpayments.NewCustomerBalanceCreditor(t)
 	return tripsDeps{
-		svc:     app.NewTripsApp(repo, matcher, bcv, quotes, upload, reviews, hub, riders),
+		svc:     app.NewTripsApp(repo, matcher, bcv, quotes, upload, reviews, hub, riders, balance, nil),
 		repo:    repo,
 		matcher: matcher,
 		bcv:     bcv,
@@ -58,6 +60,7 @@ func newTripsDeps(t *testing.T) tripsDeps {
 		upload:  upload,
 		hub:     hub,
 		riders:  riders,
+		balance: balance,
 	}
 }
 
@@ -444,4 +447,50 @@ func TestQuoteFlow_EndToEndFareNeverDrifts(t *testing.T) {
 	require.NotNil(t, resp.FareBs)
 	require.Equal(t, estimate.FareBs, *resp.FareBs)
 	d.matcher.AssertNotCalled(t, "OfferTrip", mock.Anything, mock.Anything)
+}
+
+func TestRequestTrip_BalanceDebitsFullFareAndOffers(t *testing.T) {
+	d := newTripsDeps(t)
+	customerID := uuid.New()
+	quote := sampleTripQuote(customerID)
+	expectedBs := money.RoundBs(quote.FareUSD * quote.BcvRate)
+	req := dtos.CreateTripRequest{QuoteID: quote.QuoteID, MethodPayment: models.MethodBalance}
+
+	d.quotes.On("Get", mock.Anything, customerID, quote.QuoteID).Return(quote, nil)
+	d.balance.On("GetBalanceBs", mock.Anything, customerID).Return(expectedBs, nil)
+	d.quotes.On("GetAndConsume", mock.Anything, customerID, quote.QuoteID).Return(quote, nil)
+	d.repo.On("CreateTrip", mock.Anything, mock.MatchedBy(func(trip *models.Trip) bool {
+		return trip.Status == models.TripStatusSearching &&
+			trip.BalancePaidBs != nil && *trip.BalancePaidBs == expectedBs &&
+			trip.Fare != nil && *trip.Fare == quote.FareUSD
+	})).Run(func(args mock.Arguments) {
+		args.Get(1).(*models.Trip).ID = uuid.New()
+	}).Return(nil)
+	d.balance.On("DebitForReference", mock.Anything, customerID, mock.AnythingOfType("uuid.UUID"), models.ReferenceTypeTrip, expectedBs).Return(nil)
+	d.matcher.On("OfferTrip", mock.Anything, mock.MatchedBy(func(trip models.Trip) bool {
+		return trip.Status == models.TripStatusSearching
+	})).Return()
+
+	resp, err := d.svc.RequestTrip(context.Background(), customerID, req)
+
+	require.NoError(t, err)
+	require.Equal(t, string(models.TripStatusSearching), resp.Status)
+	require.Equal(t, expectedBs, *resp.FareBs)
+	d.reviews.AssertNotCalled(t, "CreateReview", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestRequestTrip_InsufficientBalanceKeepsQuote(t *testing.T) {
+	d := newTripsDeps(t)
+	customerID := uuid.New()
+	quote := sampleTripQuote(customerID)
+	req := dtos.CreateTripRequest{QuoteID: quote.QuoteID, MethodPayment: models.MethodBalance}
+
+	d.quotes.On("Get", mock.Anything, customerID, quote.QuoteID).Return(quote, nil)
+	d.balance.On("GetBalanceBs", mock.Anything, customerID).Return(1.0, nil)
+
+	_, err := d.svc.RequestTrip(context.Background(), customerID, req)
+
+	require.ErrorIs(t, err, errcustom.ErrInsufficientBalance)
+	d.quotes.AssertNotCalled(t, "GetAndConsume", mock.Anything, mock.Anything, mock.Anything)
+	d.repo.AssertNotCalled(t, "CreateTrip", mock.Anything, mock.Anything)
 }

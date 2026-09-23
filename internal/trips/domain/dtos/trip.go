@@ -2,6 +2,7 @@ package dtos
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -14,12 +15,18 @@ var tripValidate = validator.New()
 // Pickup, dropoff y fare salen de la cotización; no se recalculan.
 type CreateTripRequest struct {
 	QuoteID           uuid.UUID `json:"quote_id" validate:"required,uuid4"`
-	MethodPayment     string    `json:"method_payment" validate:"required,oneof=PagoMovil" example:"PagoMovil"`
-	PaymentProofImage string    `json:"payment_proof_image" validate:"required,max=7000000" example:"data:image/jpeg;base64,/9j/4AAQ..."`
+	MethodPayment     string    `json:"method_payment" validate:"required,oneof=PagoMovil Balance" example:"PagoMovil"`
+	PaymentProofImage string    `json:"payment_proof_image" validate:"max=7000000" example:"data:image/jpeg;base64,/9j/4AAQ..."`
 }
 
 func (r *CreateTripRequest) Validate() error {
-	return tripValidate.StructCtx(context.Background(), r)
+	if err := tripValidate.StructCtx(context.Background(), r); err != nil {
+		return err
+	}
+	if r.MethodPayment == "PagoMovil" && len(r.PaymentProofImage) == 0 {
+		return fmt.Errorf("payment_proof_image es requerido")
+	}
+	return nil
 }
 
 // RiderPublicInfo es lo que el cliente puede ver del rider asignado.
@@ -54,6 +61,8 @@ type TripResponse struct {
 	AcceptedAt       *time.Time       `json:"accepted_at,omitempty"`
 	CompletedAt      *time.Time       `json:"completed_at,omitempty"`
 	CancelledAt      *time.Time       `json:"cancelled_at,omitempty"`
+	PickupCode       *string          `json:"pickup_code,omitempty"`
+	DropoffCode      *string          `json:"dropoff_code,omitempty"`
 }
 
 type TripHistoryResponse struct {

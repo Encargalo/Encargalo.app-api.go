@@ -28,7 +28,7 @@ func httpCode(err error) int {
 func newTripsHandler(t *testing.T) (tripshandler.TripsHandler, *mockstrips.TripsApp) {
 	t.Helper()
 	svc := mockstrips.NewTripsApp(t)
-	return tripshandler.NewTripsHandler(svc), svc
+	return tripshandler.NewTripsHandler(svc, nil), svc
 }
 
 func buildBody(t *testing.T, v any) *bytes.Buffer {

@@ -48,6 +48,7 @@ func (t *tripsGroup) Resource(g *echo.Echo) {
 		t.rateLimiter.LimitByKey(sessionUserIDKey, "trips:fare-estimate:daily", fareEstimateDailyLimitPerUser, fareEstimateDailyLimitWindow),
 	)
 	group.GET("/history", t.handlerTrips.GetTripHistory, t.middle.Auth, t.middle.Require(models.Customer))
+	group.GET("/live", t.handlerTrips.Live, t.middle.Auth, t.middle.Require(models.Customer))
 	group.GET("/:id", t.handlerTrips.GetTrip, t.middle.Auth, t.middle.Require(models.Customer))
 	group.POST("/:id/cancel", t.handlerTrips.CancelTrip, t.middle.Auth, t.middle.Require(models.Customer))
 }

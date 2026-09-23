@@ -43,6 +43,23 @@ func (r *tripQuotesRepo) Save(ctx context.Context, quote *models.TripQuote, ttl 
 	return nil
 }
 
+func (r *tripQuotesRepo) Get(ctx context.Context, customerID, quoteID uuid.UUID) (*models.TripQuote, error) {
+	raw, err := r.redis.Get(ctx, quoteKey(customerID, quoteID)).Result()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return nil, errcustom.ErrQuoteNotFound
+		}
+		slog.Error("tripQuotes Get redis failed", "quoteID", quoteID, "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+	var quote models.TripQuote
+	if err := json.Unmarshal([]byte(raw), &quote); err != nil {
+		slog.Error("tripQuotes Get unmarshal failed", "quoteID", quoteID, "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+	return &quote, nil
+}
+
 // GetAndConsume usa GETDEL: lectura y borrado atómicos, así un QuoteID solo sirve una vez.
 func (r *tripQuotesRepo) GetAndConsume(ctx context.Context, customerID, quoteID uuid.UUID) (*models.TripQuote, error) {
 	raw, err := r.redis.GetDel(ctx, quoteKey(customerID, quoteID)).Result()

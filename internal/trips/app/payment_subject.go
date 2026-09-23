@@ -16,12 +16,13 @@ import (
 // arranca hasta OnApproved u OnOverpaid. El crédito de balance lo resuelve
 // payments/app antes de llamar al subject.
 type TripPaymentSubject struct {
-	repo    ports.TripsRepo
-	matcher ports.TripRiderMatcher
+	repo      ports.TripsRepo
+	matcher   ports.TripRiderMatcher
+	customers ports.CustomerTripNotifier
 }
 
-func NewTripPaymentSubject(repo ports.TripsRepo, matcher ports.TripRiderMatcher) *TripPaymentSubject {
-	return &TripPaymentSubject{repo: repo, matcher: matcher}
+func NewTripPaymentSubject(repo ports.TripsRepo, matcher ports.TripRiderMatcher, customers ports.CustomerTripNotifier) *TripPaymentSubject {
+	return &TripPaymentSubject{repo: repo, matcher: matcher, customers: customers}
 }
 
 func (s *TripPaymentSubject) ExpectedAmountBs(ctx context.Context, referenceID uuid.UUID) (float64, error) {
@@ -64,7 +65,16 @@ func (s *TripPaymentSubject) OnRejected(ctx context.Context, referenceID, _ uuid
 	if !ok {
 		return errcustom.ErrInvalidStatus
 	}
+	trip.Status = models.TripStatusCancelled
+	s.notify(ctx, trip)
 	return nil
+}
+
+func (s *TripPaymentSubject) notify(ctx context.Context, trip *models.Trip) {
+	if s.customers == nil || trip == nil {
+		return
+	}
+	s.customers.NotifyTrip(ctx, *trip)
 }
 
 func (s *TripPaymentSubject) EnrichStaffReview(ctx context.Context, review paymentsModels.PaymentReview) (paymentsModels.PaymentReviewBroadcast, error) {
@@ -91,6 +101,7 @@ func (s *TripPaymentSubject) startMatching(ctx context.Context, referenceID uuid
 	if s.matcher != nil {
 		s.matcher.OfferTrip(ctx, *trip)
 	}
+	s.notify(ctx, trip)
 	return nil
 }
 
