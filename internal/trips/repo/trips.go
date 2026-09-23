@@ -96,6 +96,7 @@ func (r *tripsRepo) ReleaseTripRider(ctx context.Context, tripID, riderID uuid.U
 		Set("rider_id = NULL").
 		Set("status = ?", models.TripStatusSearching).
 		Set("accepted_at = NULL").
+		Set("pickup_code = NULL").
 		Set("updated_at = now()").
 		Where("id = ? AND rider_id = ? AND status IN (?)", tripID, riderID, bun.In([]models.TripStatus{
 			models.TripStatusAccepted,
@@ -115,14 +116,15 @@ func (r *tripsRepo) ReleaseTripRider(ctx context.Context, tripID, riderID uuid.U
 	return rows > 0, nil
 }
 
-func (r *tripsRepo) CompleteTrip(ctx context.Context, tripID uuid.UUID, fare float64) (bool, error) {
+func (r *tripsRepo) CompleteTrip(ctx context.Context, tripID uuid.UUID, fare float64, dropoffCode string) (bool, error) {
 	res, err := r.db.NewUpdate().
 		TableExpr("trips.trips").
 		Set("status = ?", models.TripStatusCompleted).
 		Set("fare = ?", fare).
 		Set("completed_at = now()").
+		Set("dropoff_code_used_at = now()").
 		Set("updated_at = now()").
-		Where("id = ? AND status = ?", tripID, models.TripStatusInProgress).
+		Where("id = ? AND status = ? AND dropoff_code = ? AND dropoff_code_used_at IS NULL", tripID, models.TripStatusInProgress, dropoffCode).
 		Exec(ctx)
 	if err != nil {
 		slog.Error("trips CompleteTrip failed", "tripID", tripID, "error", err)
@@ -137,12 +139,56 @@ func (r *tripsRepo) CompleteTrip(ctx context.Context, tripID uuid.UUID, fare flo
 	return rows > 0, nil
 }
 
-func (r *tripsRepo) AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID) (bool, error) {
+func (r *tripsRepo) StartTripWithPickupCode(ctx context.Context, tripID, riderID uuid.UUID, pickupCode, dropoffCode string) (bool, error) {
+	res, err := r.db.NewUpdate().
+		TableExpr("trips.trips").
+		Set("status = ?", models.TripStatusInProgress).
+		Set("pickup_code_used_at = now()").
+		Set("dropoff_code = ?", dropoffCode).
+		Set("updated_at = now()").
+		Where("id = ? AND rider_id = ? AND status = ? AND pickup_code = ? AND pickup_code_used_at IS NULL",
+			tripID, riderID, models.TripStatusArriving, pickupCode).
+		Exec(ctx)
+	if err != nil {
+		slog.Error("trips StartTripWithPickupCode failed", "tripID", tripID, "error", err)
+		return false, errcustom.Unexpected(err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		slog.Error("trips StartTripWithPickupCode: failed to read rows affected", "tripID", tripID, "error", err)
+		return false, errcustom.Unexpected(err)
+	}
+	return rows > 0, nil
+}
+
+func (r *tripsRepo) ListActiveTripsByCustomer(ctx context.Context, customerID uuid.UUID) ([]models.Trip, error) {
+	var trips []models.Trip
+	err := r.db.NewSelect().
+		Model(&trips).
+		Where("customer_id = ?", customerID).
+		Where("status IN (?)", bun.In([]models.TripStatus{
+			models.TripStatusPaymentReview,
+			models.TripStatusSearching,
+			models.TripStatusAccepted,
+			models.TripStatusArriving,
+			models.TripStatusInProgress,
+		})).
+		OrderExpr("requested_at DESC").
+		Scan(ctx)
+	if err != nil {
+		slog.Error("trips ListActiveTripsByCustomer failed", "customerID", customerID, "error", err)
+		return nil, errcustom.Unexpected(err)
+	}
+	return trips, nil
+}
+
+func (r *tripsRepo) AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID, pickupCode string) (bool, error) {
 	res, err := r.db.NewUpdate().
 		TableExpr("trips.trips").
 		Set("rider_id = ?", riderID).
 		Set("status = ?", models.TripStatusAccepted).
 		Set("accepted_at = now()").
+		Set("pickup_code = ?", pickupCode).
 		Set("updated_at = now()").
 		Where("id = ? AND status = ?", tripID, models.TripStatusSearching).
 		Exec(ctx)

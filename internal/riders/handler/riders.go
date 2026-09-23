@@ -60,11 +60,11 @@ func New(svc ridersPorts.RidersApp) RiderHandler {
 //
 // **advance_trip**
 //
-//	{"type":"advance_trip","trip_id":"<uuid>"}
+//	{"type":"advance_trip","trip_id":"<uuid>","code":"1234"}
 //
-// → Solo el rider asignado. Mueve el trip al siguiente estado
-// (accepted→arriving→in_progress→completed). Al llegar a completed calcula
-// la tarifa (distancia vial pickup→dropoff) y acredita la ganancia del rider.
+// → Solo el rider asignado. accepted→arriving no pide código. arriving→in_progress
+// exige el pickup_code que ve el cliente. in_progress→completed exige el dropoff_code.
+// El viaje que recibe el rider no incluye esos códigos. Al completar acredita la ganancia.
 //
 // **cancel_trip**
 //
@@ -200,6 +200,7 @@ func (h *riderHandler) HandleWebSocket(c echo.Context) error {
 			var payload struct {
 				Type   string `json:"type"`
 				TripID string `json:"trip_id"`
+				Code   string `json:"code"`
 			}
 			if err := json.Unmarshal(msg, &payload); err != nil || payload.TripID == "" {
 				errMsg, _ := json.Marshal(map[string]string{"type": "error", "message": "payload inválido"})
@@ -214,7 +215,7 @@ func (h *riderHandler) HandleWebSocket(c echo.Context) error {
 				continue
 			}
 
-			if err := h.svc.AdvanceTrip(ctx, riderID, tripID, client); err != nil {
+			if err := h.svc.AdvanceTrip(ctx, riderID, tripID, payload.Code, client); err != nil {
 				slog.Error("Error avanzando viaje", "riderID", riderID, "tripID", tripID, "error", err)
 				errMsg, _ := json.Marshal(map[string]string{"type": "error", "message": safeErrorMessage(err)})
 				client.Send(errMsg)
@@ -275,6 +276,9 @@ func safeErrorMessage(err error) string {
 	}
 	if errors.Is(err, errcustom.ErrInvalidCoordinates) {
 		return "coordenadas inválidas"
+	}
+	if errors.Is(err, errcustom.ErrInvalidCode) {
+		return "código de confirmación inválido"
 	}
 	return "error interno"
 }

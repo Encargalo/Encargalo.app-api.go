@@ -23,14 +23,35 @@ type TripsRepo interface {
 	GetTripByID(ctx context.Context, tripID uuid.UUID) (*models.Trip, error)
 	GetTripHistoryByCustomer(ctx context.Context, customerID uuid.UUID) ([]models.Trip, error)
 	UpdateTripStatus(ctx context.Context, tripID uuid.UUID, fromStatus, toStatus models.TripStatus) (bool, error)
-	AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID) (bool, error)
+	AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID, pickupCode string) (bool, error)
+	// StartTripWithPickupCode pasa arriving→in_progress si el código de subida coincide
+	// y guarda el código de bajada que el cliente mostrará al llegar.
+	StartTripWithPickupCode(ctx context.Context, tripID, riderID uuid.UUID, pickupCode, dropoffCode string) (bool, error)
+	ListActiveTripsByCustomer(ctx context.Context, customerID uuid.UUID) ([]models.Trip, error)
 	// ReleaseTripRider devuelve el viaje a searching y limpia rider_id solo si
 	// sigue asignado a ese rider en accepted o arriving. RowsAffected == 0 => el estado ya cambió.
 	ReleaseTripRider(ctx context.Context, tripID, riderID uuid.UUID) (bool, error)
 	// CompleteTrip hace un UPDATE condicional (WHERE status = in_progress) que
 	// setea status = completed, fare y completed_at en un solo movimiento
 	// atómico. RowsAffected == 0 => el estado ya cambió (CAS).
-	CompleteTrip(ctx context.Context, tripID uuid.UUID, fare float64) (bool, error)
+	CompleteTrip(ctx context.Context, tripID uuid.UUID, fare float64, dropoffCode string) (bool, error)
+}
+
+// CustomerConn es el WebSocket del cliente que sigue un viaje.
+type CustomerConn interface {
+	Send(msg []byte)
+}
+
+// CustomerTripNotifier empuja cambios de estado y la ubicación del rider al cliente conectado.
+type CustomerTripNotifier interface {
+	NotifyTrip(ctx context.Context, trip models.Trip)
+	NotifyRiderLocation(ctx context.Context, customerID, tripID uuid.UUID, lat, lng float64)
+}
+
+// CustomerTripLive es el lado de conexión del mismo hub.
+type CustomerTripLive interface {
+	Register(ctx context.Context, customerID uuid.UUID, conn CustomerConn) error
+	Unregister(customerID uuid.UUID, conn CustomerConn)
 }
 
 type TripRiderMatcher interface {
@@ -46,6 +67,8 @@ type RiderPublicInfoLookup interface {
 // TripQuotesRepo persiste TripQuote en Redis con TTL.
 type TripQuotesRepo interface {
 	Save(ctx context.Context, quote *models.TripQuote, ttl time.Duration) error
+	// Get lee la cotización sin consumirla. Sirve para validar saldo antes de quemarla.
+	Get(ctx context.Context, customerID, quoteID uuid.UUID) (*models.TripQuote, error)
 	// GetAndConsume borra la cotización atómicamente al leerla (GETDEL); escopada por
 	// customerID, así un quote_id ajeno nunca matchea (ni se borra) la de otro cliente.
 	GetAndConsume(ctx context.Context, customerID, quoteID uuid.UUID) (*models.TripQuote, error)

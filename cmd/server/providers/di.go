@@ -138,6 +138,13 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(appPayment.NewPaymentMethodsApp)
 	_ = Container.Provide(repoPayment.NewPaymentMethodsRepo)
 	_ = Container.Provide(handTrips.NewTripsHandler)
+	_ = Container.Provide(appTrips.NewCustomerTripHub)
+	_ = Container.Provide(func(h *appTrips.CustomerTripHub) tripsPorts.CustomerTripNotifier {
+		return h
+	})
+	_ = Container.Provide(func(h *appTrips.CustomerTripHub) tripsPorts.CustomerTripLive {
+		return h
+	})
 	_ = Container.Provide(appTrips.NewTripsApp)
 	_ = Container.Provide(appTrips.NewTripPaymentSubject)
 	_ = Container.Provide(appTrips.NewTripStaffSnapshot)

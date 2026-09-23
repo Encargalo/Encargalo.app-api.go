@@ -18,6 +18,19 @@ type TripQuotesRepo struct {
 	mock.Mock
 }
 
+// Get provides a mock function with given fields: ctx, customerID, quoteID
+func (_m *TripQuotesRepo) Get(ctx context.Context, customerID uuid.UUID, quoteID uuid.UUID) (*models.TripQuote, error) {
+	ret := _m.Called(ctx, customerID, quoteID)
+	if len(ret) == 0 {
+		panic("no return value specified for Get")
+	}
+	var quote *models.TripQuote
+	if ret.Get(0) != nil {
+		quote = ret.Get(0).(*models.TripQuote)
+	}
+	return quote, ret.Error(1)
+}
+
 // GetAndConsume provides a mock function with given fields: ctx, customerID, quoteID
 func (_m *TripQuotesRepo) GetAndConsume(ctx context.Context, customerID uuid.UUID, quoteID uuid.UUID) (*models.TripQuote, error) {
 	ret := _m.Called(ctx, customerID, quoteID)

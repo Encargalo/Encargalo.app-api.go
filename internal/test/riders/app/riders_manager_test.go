@@ -43,7 +43,7 @@ func TestRegister_SendsActiveAndAvailableOrders(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 
 	riderID := uuid.New()
 	conn := mocksriders.NewRiderConn(t)
@@ -68,7 +68,7 @@ func TestRegister_NoActiveOrNotFoundIsNotAnError(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 
 	riderID := uuid.New()
 	conn := mocksriders.NewRiderConn(t)
@@ -87,7 +87,7 @@ func TestRegister_RepoErrorPropagates(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 
 	riderID := uuid.New()
 	conn := mocksriders.NewRiderConn(t)
@@ -105,7 +105,7 @@ func TestUnregister_ClosesConnAndRemovesOnlyIfSameConn(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 
 	riderID := uuid.New()
 	conn := mocksriders.NewRiderConn(t)
@@ -120,7 +120,7 @@ func TestBroadcastNewOrder_SendsToAvailableRiders(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 	broadcaster := asBroadcaster(t, svc)
 
 	riderID := uuid.New()
@@ -144,7 +144,7 @@ func TestBroadcastOrderUpdate_OnlySendsToAssignedRider(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 	broadcaster := asBroadcaster(t, svc)
 
 	riderID := uuid.New()
@@ -170,7 +170,7 @@ func TestAcceptOrder_Success(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 
 	riderID := uuid.New()
 	orderID := uuid.New()
@@ -195,7 +195,7 @@ func TestAcceptOrder_InvalidStatus(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 
 	riderID, orderID := uuid.New(), uuid.New()
 	repo.On("SearchOrdersByID", mock.Anything, orderID).Return(&ordersModels.Order{ID: orderID, Status: string(ordersModels.StatusPending)}, nil)
@@ -211,7 +211,7 @@ func TestAcceptOrder_AlreadyAssignedNotifiesOrderTaken(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 
 	riderID, orderID := uuid.New(), uuid.New()
 	conn := mocksriders.NewRiderConn(t)
@@ -230,7 +230,7 @@ func TestAcceptOrder_OrderNotFound(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 
 	orderID := uuid.New()
 	repo.On("SearchOrdersByID", mock.Anything, orderID).Return(nil, errcustom.ErrNotFound)
@@ -246,7 +246,7 @@ func TestUpdateLocation_SnapshotOnlyIncludesTripsMode(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 
 	tripsRiderID, ordersRiderID := uuid.New(), uuid.New()
 	tripsConn, ordersConn := mocksriders.NewRiderConn(t), mocksriders.NewRiderConn(t)
@@ -276,7 +276,7 @@ func TestBroadcastNewOrder_SkipsRidersInTripsMode(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 	broadcaster := asBroadcaster(t, svc)
 
 	tripsRiderID, ordersRiderID := uuid.New(), uuid.New()
@@ -302,7 +302,7 @@ func TestUnregister_RemovesModeAndLocation(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 
 	riderID := uuid.New()
 	conn := mocksriders.NewRiderConn(t)
@@ -345,7 +345,7 @@ func TestOfferTrip_OffersNearestCandidatesSortedByDistance(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 	matcher := asMatcher(t, svc)
 
 	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
@@ -385,7 +385,7 @@ func TestOfferTrip_NoCandidatesExpiresTripToNoDriver(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 	matcher := asMatcher(t, svc)
 
 	trip := samplePickupTrip(t)
@@ -402,7 +402,7 @@ func TestAcceptTrip_Success(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 	matcher := asMatcher(t, svc)
 
 	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
@@ -416,7 +416,7 @@ func TestAcceptTrip_Success(t *testing.T) {
 
 	trip := samplePickupTrip(t)
 	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&tripsModels.Trip{ID: trip.ID, Status: tripsModels.TripStatusSearching}, nil)
-	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID).Return(true, nil)
+	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything).Return(true, nil)
 	matcher.OfferTrip(context.Background(), trip)
 
 	err := svc.AcceptTrip(context.Background(), riderID, trip.ID, conn)
@@ -430,7 +430,7 @@ func TestAcceptTrip_AlreadyTakenNotifiesTripTaken(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 	matcher := asMatcher(t, svc)
 
 	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
@@ -444,7 +444,7 @@ func TestAcceptTrip_AlreadyTakenNotifiesTripTaken(t *testing.T) {
 
 	trip := samplePickupTrip(t)
 	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&tripsModels.Trip{ID: trip.ID, Status: tripsModels.TripStatusSearching}, nil)
-	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID).Return(false, nil)
+	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything).Return(false, nil)
 	matcher.OfferTrip(context.Background(), trip)
 
 	err := svc.AcceptTrip(context.Background(), riderID, trip.ID, conn)
@@ -458,7 +458,7 @@ func TestAcceptTrip_RejectsWhenNotSearching(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 
 	riderID, tripID := uuid.New(), uuid.New()
 	tripsRepo.On("GetTripByID", mock.Anything, tripID).Return(&tripsModels.Trip{ID: tripID, Status: tripsModels.TripStatusAccepted}, nil)
@@ -474,7 +474,7 @@ func TestAdvanceTrip_AcceptedMovesToArriving(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 
 	riderID, tripID := uuid.New(), uuid.New()
 	conn := mocksriders.NewRiderConn(t)
@@ -483,7 +483,7 @@ func TestAdvanceTrip_AcceptedMovesToArriving(t *testing.T) {
 	tripsRepo.On("GetTripByID", mock.Anything, tripID).Return(&tripsModels.Trip{ID: tripID, RiderID: &riderID, Status: tripsModels.TripStatusAccepted}, nil)
 	tripsRepo.On("UpdateTripStatus", mock.Anything, tripID, tripsModels.TripStatusAccepted, tripsModels.TripStatusArriving).Return(true, nil)
 
-	err := svc.AdvanceTrip(context.Background(), riderID, tripID, conn)
+	err := svc.AdvanceTrip(context.Background(), riderID, tripID, "", conn)
 
 	require.NoError(t, err)
 }
@@ -494,16 +494,17 @@ func TestAdvanceTrip_ArrivingMovesToInProgress(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 
 	riderID, tripID := uuid.New(), uuid.New()
 	conn := mocksriders.NewRiderConn(t)
 	conn.On("Send", mock.Anything).Return()
 
-	tripsRepo.On("GetTripByID", mock.Anything, tripID).Return(&tripsModels.Trip{ID: tripID, RiderID: &riderID, Status: tripsModels.TripStatusArriving}, nil)
-	tripsRepo.On("UpdateTripStatus", mock.Anything, tripID, tripsModels.TripStatusArriving, tripsModels.TripStatusInProgress).Return(true, nil)
+	pickup := "1234"
+	tripsRepo.On("GetTripByID", mock.Anything, tripID).Return(&tripsModels.Trip{ID: tripID, RiderID: &riderID, Status: tripsModels.TripStatusArriving, PickupCode: &pickup}, nil)
+	tripsRepo.On("StartTripWithPickupCode", mock.Anything, tripID, riderID, pickup, mock.Anything).Return(true, nil)
 
-	err := svc.AdvanceTrip(context.Background(), riderID, tripID, conn)
+	err := svc.AdvanceTrip(context.Background(), riderID, tripID, pickup, conn)
 
 	require.NoError(t, err)
 }
@@ -514,7 +515,7 @@ func TestAdvanceTrip_InProgressCompletesAndRecordsEarning(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 
 	riderID, tripID := uuid.New(), uuid.New()
 	conn := mocksriders.NewRiderConn(t)
@@ -523,11 +524,11 @@ func TestAdvanceTrip_InProgressCompletesAndRecordsEarning(t *testing.T) {
 	// completeTrip usa el fare ya fijado en trip.Fare, no lo recalcula.
 	fare := deliveryfee.DevPlaceholderFee
 	tripsRepo.On("GetTripByID", mock.Anything, tripID).Return(&tripsModels.Trip{ID: tripID, RiderID: &riderID, Status: tripsModels.TripStatusInProgress, Fare: &fare}, nil)
-	tripsRepo.On("CompleteTrip", mock.Anything, tripID, deliveryfee.DevPlaceholderFee).Return(true, nil)
+	tripsRepo.On("CompleteTrip", mock.Anything, tripID, deliveryfee.DevPlaceholderFee, "5678").Return(true, nil)
 	bcv.On("GetRate", mock.Anything).Return(&bcvmodels.ExchangeRate{Rate: 40}, nil)
 	tripEarnings.On("RecordTripEarning", mock.Anything, riderID, tripID, deliveryfee.DevPlaceholderFee, 40.0).Return(nil)
 
-	err := svc.AdvanceTrip(context.Background(), riderID, tripID, conn)
+	err := svc.AdvanceTrip(context.Background(), riderID, tripID, "5678", conn)
 
 	require.NoError(t, err)
 }
@@ -538,12 +539,12 @@ func TestAdvanceTrip_RejectsWhenRiderNotAssigned(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 
 	assignedRiderID, otherRiderID, tripID := uuid.New(), uuid.New(), uuid.New()
 	tripsRepo.On("GetTripByID", mock.Anything, tripID).Return(&tripsModels.Trip{ID: tripID, RiderID: &assignedRiderID, Status: tripsModels.TripStatusAccepted}, nil)
 
-	err := svc.AdvanceTrip(context.Background(), otherRiderID, tripID, mocksriders.NewRiderConn(t))
+	err := svc.AdvanceTrip(context.Background(), otherRiderID, tripID, "", mocksriders.NewRiderConn(t))
 
 	assert.ErrorIs(t, err, errcustom.ErrInvalidTransition)
 }
@@ -554,12 +555,12 @@ func TestAdvanceTrip_RejectsTerminalStatus(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 
 	riderID, tripID := uuid.New(), uuid.New()
 	tripsRepo.On("GetTripByID", mock.Anything, tripID).Return(&tripsModels.Trip{ID: tripID, RiderID: &riderID, Status: tripsModels.TripStatusCompleted}, nil)
 
-	err := svc.AdvanceTrip(context.Background(), riderID, tripID, mocksriders.NewRiderConn(t))
+	err := svc.AdvanceTrip(context.Background(), riderID, tripID, "", mocksriders.NewRiderConn(t))
 
 	assert.ErrorIs(t, err, errcustom.ErrInvalidTransition)
 }
@@ -577,7 +578,7 @@ func TestAdvanceTrip_ConcurrentCompletionIsSerialized(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 
 	riderID, tripID := uuid.New(), uuid.New()
 	conn := mocksriders.NewRiderConn(t)
@@ -588,7 +589,7 @@ func TestAdvanceTrip_ConcurrentCompletionIsSerialized(t *testing.T) {
 
 	fare := deliveryfee.DevPlaceholderFee
 	tripsRepo.On("GetTripByID", mock.Anything, tripID).Return(&tripsModels.Trip{ID: tripID, RiderID: &riderID, Status: tripsModels.TripStatusInProgress, Fare: &fare}, nil)
-	tripsRepo.On("CompleteTrip", mock.Anything, tripID, deliveryfee.DevPlaceholderFee).Run(func(mock.Arguments) {
+	tripsRepo.On("CompleteTrip", mock.Anything, tripID, deliveryfee.DevPlaceholderFee, "5678").Run(func(mock.Arguments) {
 		close(entered)
 		<-proceed
 	}).Return(true, nil).Once()
@@ -598,12 +599,12 @@ func TestAdvanceTrip_ConcurrentCompletionIsSerialized(t *testing.T) {
 	var wg sync.WaitGroup
 	var firstErr error
 	wg.Go(func() {
-		firstErr = svc.AdvanceTrip(context.Background(), riderID, tripID, conn)
+		firstErr = svc.AdvanceTrip(context.Background(), riderID, tripID, "5678", conn)
 	})
 
 	<-entered // la primera llamada ya está dentro de CompleteTrip
 
-	secondErr := svc.AdvanceTrip(context.Background(), riderID, tripID, conn)
+	secondErr := svc.AdvanceTrip(context.Background(), riderID, tripID, "5678", conn)
 	close(proceed)
 	wg.Wait()
 
@@ -620,7 +621,7 @@ func TestCancelAcceptedTrip_ReoffersExcludingCancellingRider(t *testing.T) {
 			bcv := mockbcvports.NewBcvApp(t)
 			tripsRepo := mockstrips.NewTripsRepo(t)
 			tripEarnings := mocksriders.NewTripEarningRecorder(t)
-			svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+			svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 
 			repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
 			repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound)
@@ -670,7 +671,7 @@ func TestCancelAcceptedTrip_NoOtherRidersExpiresToNoDriver(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 
 	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
 	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound)
@@ -699,7 +700,7 @@ func TestCancelAcceptedTrip_RejectsWhenNotAssigned(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 
 	riderA, other := uuid.New(), uuid.New()
 	tripID := uuid.New()
@@ -721,7 +722,7 @@ func TestCancelAcceptedTrip_RejectsAfterPickup(t *testing.T) {
 			bcv := mockbcvports.NewBcvApp(t)
 			tripsRepo := mockstrips.NewTripsRepo(t)
 			tripEarnings := mocksriders.NewTripEarningRecorder(t)
-			svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings)
+			svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
 
 			riderA := uuid.New()
 			tripID := uuid.New()
@@ -753,7 +754,7 @@ func newTripOfferSvc(t *testing.T) (ridersPorts.RidersApp, *mockstrips.TripsRepo
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	return app.New(repo, stream, bcv, tripsRepo, tripEarnings), tripsRepo, repo
+	return app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil), tripsRepo, repo
 }
 
 func countTripOffers(t *testing.T) (map[uuid.UUID]int, func(uuid.UUID, *mocksriders.RiderConn)) {
@@ -905,4 +906,84 @@ func TestOfferTrip_ExpiresAtRoundCapEvenIfCandidatesRemain(t *testing.T) {
 		require.LessOrEqual(t, offers[id], 1)
 	}
 	require.Equal(t, 12, offered)
+}
+
+type recordingCustomer struct {
+	trips     []tripsModels.Trip
+	locations int
+	lastTrip  uuid.UUID
+}
+
+func (r *recordingCustomer) NotifyTrip(_ context.Context, trip tripsModels.Trip) {
+	r.trips = append(r.trips, trip)
+}
+
+func (r *recordingCustomer) NotifyRiderLocation(_ context.Context, _, tripID uuid.UUID, _, _ float64) {
+	r.locations++
+	r.lastTrip = tripID
+}
+
+func TestAcceptTrip_NotifiesCustomerCodeHiddenFromRider(t *testing.T) {
+	repo := mocksriders.NewRidersRepo(t)
+	stream := mocksriders.NewRidersStream(t)
+	bcv := mockbcvports.NewBcvApp(t)
+	tripsRepo := mockstrips.NewTripsRepo(t)
+	tripEarnings := mocksriders.NewTripEarningRecorder(t)
+	customer := &recordingCustomer{}
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, customer, nil)
+	matcher := asMatcher(t, svc)
+
+	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
+	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound)
+
+	riderID := uuid.New()
+	customerID := uuid.New()
+	var sent [][]byte
+	conn := mocksriders.NewRiderConn(t)
+	conn.On("Send", mock.Anything).Run(func(args mock.Arguments) {
+		sent = append(sent, append([]byte(nil), args.Get(0).([]byte)...))
+	}).Return()
+	require.NoError(t, svc.Register(context.Background(), riderID, conn, riderModels.RiderModeTrips))
+	require.NoError(t, svc.UpdateLocation(context.Background(), riderID, 10.4806, -66.9036))
+
+	trip := samplePickupTrip(t)
+	trip.CustomerID = customerID
+	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&tripsModels.Trip{
+		ID: trip.ID, CustomerID: customerID, Status: tripsModels.TripStatusSearching,
+	}, nil)
+	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything).Return(true, nil)
+	matcher.OfferTrip(context.Background(), trip)
+
+	require.NoError(t, svc.AcceptTrip(context.Background(), riderID, trip.ID, conn))
+
+	require.Len(t, customer.trips, 1)
+	require.NotNil(t, customer.trips[0].PickupCode)
+	require.Len(t, *customer.trips[0].PickupCode, 4)
+	for _, msg := range sent {
+		require.NotContains(t, string(msg), "pickup_code")
+	}
+
+	require.NoError(t, svc.UpdateLocation(context.Background(), riderID, 10.49, -66.91))
+	require.Equal(t, 1, customer.locations)
+	require.Equal(t, trip.ID, customer.lastTrip)
+}
+
+func TestAdvanceTrip_WrongPickupCodeDoesNotStartTrip(t *testing.T) {
+	repo := mocksriders.NewRidersRepo(t)
+	stream := mocksriders.NewRidersStream(t)
+	bcv := mockbcvports.NewBcvApp(t)
+	tripsRepo := mockstrips.NewTripsRepo(t)
+	tripEarnings := mocksriders.NewTripEarningRecorder(t)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil)
+
+	riderID, tripID := uuid.New(), uuid.New()
+	pickup := "1234"
+	tripsRepo.On("GetTripByID", mock.Anything, tripID).Return(&tripsModels.Trip{
+		ID: tripID, RiderID: &riderID, Status: tripsModels.TripStatusArriving, PickupCode: &pickup,
+	}, nil)
+	tripsRepo.On("StartTripWithPickupCode", mock.Anything, tripID, riderID, "0000", mock.Anything).Return(false, nil)
+
+	err := svc.AdvanceTrip(context.Background(), riderID, tripID, "0000", mocksriders.NewRiderConn(t))
+
+	require.ErrorIs(t, err, errcustom.ErrInvalidCode)
 }
