@@ -41,6 +41,12 @@ type RidersApp interface {
 	ActiveTrips(ctx context.Context, riderID uuid.UUID) ([]tripsDtos.TripResponse, error)
 }
 
+// PassengerLookup lee el nombre y el teléfono de la cuenta del pasajero.
+// No devuelve apellido ni email. Lo usa el rider asignado mientras el viaje sigue en curso.
+type PassengerLookup interface {
+	GetByCustomerID(ctx context.Context, customerID uuid.UUID) (tripsDtos.PassengerContact, error)
+}
+
 type RidersStream interface {
 	PublisherEvent(ctx context.Context, data any) error
 }
