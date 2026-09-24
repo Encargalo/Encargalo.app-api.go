@@ -65,6 +65,7 @@ type appRidersManager struct {
 	tripEarnings       ridersPorts.TripEarningRecorder
 	customers          tripsPorts.CustomerTripNotifier
 	balance            paymentsPorts.CustomerBalanceCreditor
+	passengers         ridersPorts.PassengerLookup
 	riderTrips         map[uuid.UUID]riderAssignment
 }
 
@@ -73,7 +74,7 @@ type riderAssignment struct {
 	customerID uuid.UUID
 }
 
-func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPorts.BcvApp, tripsRepo ridersPorts.TripsStore, tripEarnings ridersPorts.TripEarningRecorder, customers tripsPorts.CustomerTripNotifier, balance paymentsPorts.CustomerBalanceCreditor) ridersPorts.RidersApp {
+func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPorts.BcvApp, tripsRepo ridersPorts.TripsStore, tripEarnings ridersPorts.TripEarningRecorder, customers tripsPorts.CustomerTripNotifier, balance paymentsPorts.CustomerBalanceCreditor, passengers ridersPorts.PassengerLookup) ridersPorts.RidersApp {
 	return &appRidersManager{
 		availableRiders:    make(map[uuid.UUID]ridersPorts.RiderConn),
 		assignedOrders:     make(map[uuid.UUID][]uuid.UUID),
@@ -93,7 +94,34 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 		tripEarnings:       tripEarnings,
 		customers:          customers,
 		balance:            balance,
+		passengers:         passengers,
 		riderTrips:         make(map[uuid.UUID]riderAssignment),
+	}
+}
+
+// riderTripDTO es la vista del viaje para el rider asignado. El nombre y el
+// teléfono del pasajero entran solo en accepted, arriving e in_progress.
+// trip_offer sigue usando ToDTO y no llama este método.
+func (r *appRidersManager) riderTripDTO(ctx context.Context, trip *tripsModels.Trip) tripsDtos.TripResponse {
+	resp := trip.ToDTO()
+	if r.passengers == nil || !exposesPassengerContact(trip.Status) {
+		return resp
+	}
+	contact, err := r.passengers.GetByCustomerID(ctx, trip.CustomerID)
+	if err != nil {
+		slog.Error("error loading passenger contact for assigned rider", "tripID", trip.ID, "error", err)
+		return resp
+	}
+	resp.Customer = &contact
+	return resp
+}
+
+func exposesPassengerContact(status tripsModels.TripStatus) bool {
+	switch status {
+	case tripsModels.TripStatusAccepted, tripsModels.TripStatusArriving, tripsModels.TripStatusInProgress:
+		return true
+	default:
+		return false
 	}
 }
 
@@ -279,7 +307,7 @@ func (r *appRidersManager) SendActiveTrips(ctx context.Context, riderID uuid.UUI
 	rate := r.bcvRate(ctx)
 	for i := range trips {
 		trips[i].ApplyBsFare(rate)
-		data, err := json.Marshal(tripBroadcast{Type: "trip_status", Trip: trips[i].ToDTO()})
+		data, err := json.Marshal(tripBroadcast{Type: "trip_status", Trip: r.riderTripDTO(ctx, &trips[i])})
 		if err != nil {
 			slog.Error("error marshaling active trip for rider", "tripID", trips[i].ID, "error", err)
 			continue
@@ -304,7 +332,7 @@ func (r *appRidersManager) ActiveTrips(ctx context.Context, riderID uuid.UUID) (
 	out := make([]tripsDtos.TripResponse, len(trips))
 	for i := range trips {
 		trips[i].ApplyBsFare(rate)
-		out[i] = trips[i].ToDTO()
+		out[i] = r.riderTripDTO(ctx, &trips[i])
 	}
 	return out, nil
 }
@@ -484,11 +512,11 @@ type riderBroadcast struct {
 	Customer *riderModels.CustomerLocation `json:"customer,omitempty"`
 }
 
-func (r *appRidersManager) OfferTrip(ctx context.Context, trip tripsModels.Trip) {
-	r.offerTripRound(ctx, trip, 1)
+func (r *appRidersManager) OfferTrip(_ context.Context, trip tripsModels.Trip) {
+	r.offerTripRound(trip, 1)
 }
 
-func (r *appRidersManager) offerTripRound(ctx context.Context, trip tripsModels.Trip, round int) {
+func (r *appRidersManager) offerTripRound(trip tripsModels.Trip, round int) {
 	maxRings := tripSearchMaxRings + round - 1
 	candidates := r.nearestTripsRiders(trip, r.offerExclusions(trip.ID), maxRings)
 	if len(candidates) == 0 {
@@ -572,7 +600,7 @@ func (r *appRidersManager) onTripOfferTimeout(offered tripsModels.Trip) {
 		r.expireTripIfStillSearching(current.ID)
 		return
 	}
-	r.offerTripRound(ctx, *current, r.offerRound(current.ID)+1)
+	r.offerTripRound(*current, r.offerRound(current.ID)+1)
 }
 
 func (r *appRidersManager) offerRound(tripID uuid.UUID) int {
@@ -753,7 +781,7 @@ func (r *appRidersManager) AcceptTrip(ctx context.Context, riderID, tripID uuid.
 	trip.AcceptedAt = &acceptedAt
 	trip.PickupCode = &pickupCode
 	r.rememberRiderTrip(riderID, trip.ID, trip.CustomerID)
-	accepted, _ := json.Marshal(tripBroadcast{Type: "trip_accepted", Trip: trip.ToDTO()})
+	accepted, _ := json.Marshal(tripBroadcast{Type: "trip_accepted", Trip: r.riderTripDTO(ctx, trip)})
 	conn.Send(accepted)
 	r.notifyCustomer(ctx, trip)
 
@@ -791,7 +819,7 @@ func (r *appRidersManager) CancelAcceptedTrip(ctx context.Context, riderID, trip
 	trip.RiderID = nil
 	trip.AcceptedAt = nil
 	trip.PickupCode = nil
-	released, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: trip.ToDTO()})
+	released, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: r.riderTripDTO(ctx, trip)})
 	conn.Send(released)
 	r.notifyCustomer(ctx, trip)
 
@@ -845,7 +873,7 @@ func (r *appRidersManager) AdvanceTrip(ctx context.Context, riderID, tripID uuid
 	}
 
 	trip.Status = next
-	data, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: trip.ToDTO()})
+	data, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: r.riderTripDTO(ctx, trip)})
 	conn.Send(data)
 	r.notifyCustomer(ctx, trip)
 
@@ -872,7 +900,7 @@ func (r *appRidersManager) startTrip(ctx context.Context, trip *tripsModels.Trip
 	trip.Status = tripsModels.TripStatusInProgress
 	trip.PickupCodeUsedAt = &usedAt
 	trip.DropoffCode = &dropoffCode
-	data, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: trip.ToDTO()})
+	data, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: r.riderTripDTO(ctx, trip)})
 	conn.Send(data)
 	r.notifyCustomer(ctx, trip)
 	return nil
@@ -906,7 +934,7 @@ func (r *appRidersManager) completeTrip(ctx context.Context, trip *tripsModels.T
 	trip.CompletedAt = &completedAt
 	trip.DropoffCodeUsedAt = &completedAt
 	trip.ApplyBsFare(r.bcvRate(ctx))
-	data, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: trip.ToDTO()})
+	data, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: r.riderTripDTO(ctx, trip)})
 	conn.Send(data)
 	if trip.RiderID != nil {
 		r.forgetRiderTrip(*trip.RiderID)

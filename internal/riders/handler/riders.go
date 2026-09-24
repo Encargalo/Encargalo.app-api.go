@@ -89,10 +89,10 @@ func New(svc ridersPorts.RidersApp) RiderHandler {
 //   - `{"type":"order_accepted","order":{...}}` — asignación exitosa (con pickup_code)
 //   - `{"type":"order_taken","order_id":"<uuid>"}` — otro rider se adelantó
 //   - `{"type":"order_update","order":{...}}` — actualización de orden asignada (con pickup_code)
-//   - `{"type":"trip_offer","trip":{...}}` — viaje ofrecido a hasta 3 riders cercanos. Si nadie acepta en 10 min, otra ronda ofrece a otros 3 con un anillo H3 más de radio, hasta 4 rondas. Una ronda sin riders elegibles espera 5 min y también cuenta como ronda. Al terminar la ronda 4 el viaje pasa a no_driver.
-//   - `{"type":"trip_accepted","trip":{...}}` — asignación de viaje exitosa
+//   - `{"type":"trip_offer","trip":{...}}` — viaje ofrecido a hasta 3 riders cercanos. No incluye el bloque `customer`. Si nadie acepta en 10 min, otra ronda ofrece a otros 3 con un anillo H3 más de radio, hasta 4 rondas. Una ronda sin riders elegibles espera 5 min y también cuenta como ronda. Al terminar la ronda 4 el viaje pasa a no_driver.
+//   - `{"type":"trip_accepted","trip":{...}}` — asignación de viaje exitosa. Solo el rider que aceptó recibe `trip.customer` con `name` y `phone` (sin apellido).
 //   - `{"type":"trip_taken","trip_id":"<uuid>"}` — otro rider se adelantó
-//   - `{"type":"trip_status","trip":{...}}` — trip avanzó de estado (respuesta a advance_trip) o quedó liberado (respuesta a cancel_trip)
+//   - `{"type":"trip_status","trip":{...}}` — trip avanzó de estado (respuesta a advance_trip) o quedó liberado (respuesta a cancel_trip). `trip.customer` va solo al rider asignado mientras el viaje está en accepted, arriving o in_progress. Al completar o liberar el viaje, el bloque no se envía.
 //   - `{"type":"error","message":"..."}` — error procesando mensaje
 //
 // @Tags         Riders WebSocket
@@ -285,7 +285,7 @@ func (h *riderHandler) HandleWebSocket(c echo.Context) error {
 // GetActiveTrips godoc
 //
 // @Summary      Viajes activos del rider
-// @Description  Devuelve los viajes que el rider ya tiene asignados y siguen en curso (accepted, arriving o in_progress), sin códigos de subida/bajada. Sirve para recuperar el viaje al abrir la app sin depender del WebSocket. Lista vacía si no tiene ninguno.
+// @Description  Devuelve los viajes que el rider ya tiene asignados y siguen en curso (accepted, arriving o in_progress), sin códigos de subida/bajada. Cada viaje incluye `customer` con el nombre y el teléfono del pasajero (sin apellido); ese bloque no se envía en la oferta ni cuando el viaje ya finalizó. Sirve para recuperar el viaje al abrir la app sin depender del WebSocket. Lista vacía si no tiene ninguno.
 // @Tags         Riders
 // @Accept       json
 // @Produce      json
