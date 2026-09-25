@@ -216,6 +216,17 @@ func (_m *TripsStore) UpdateTripStatus(ctx context.Context, tripID uuid.UUID, fr
 	return r0, r1
 }
 
+func (_m *TripsStore) SaveTripPayment(ctx context.Context, tripID uuid.UUID, payment *models.TripPayment) error {
+	ret := _m.Called(ctx, tripID, payment)
+	if len(ret) == 0 {
+		panic("no return value specified for SaveTripPayment")
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, *models.TripPayment) error); ok {
+		return rf(ctx, tripID, payment)
+	}
+	return ret.Error(0)
+}
+
 // NewTripsStore creates a new instance of TripsStore. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewTripsStore(t interface {

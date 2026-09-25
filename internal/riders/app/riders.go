@@ -19,6 +19,7 @@ import (
 	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/deliveryfee"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	tripsApp "Encargalo.app-api.go/internal/trips/app"
 	tripsDtos "Encargalo.app-api.go/internal/trips/domain/dtos"
 	tripsModels "Encargalo.app-api.go/internal/trips/domain/models"
 	tripsPorts "Encargalo.app-api.go/internal/trips/domain/ports"
@@ -643,6 +644,7 @@ func (r *appRidersManager) expireTripIfStillSearching(tripID uuid.UUID) {
 			slog.Error("refund balance on no_driver", "tripID", trip.ID, "error", refundErr)
 		}
 	}
+	tripsApp.CreditUnservedPagoMovil(ctx, r.balance, trip, r.tripsRepo.SaveTripPayment)
 	r.notifyCustomer(ctx, trip)
 }
 

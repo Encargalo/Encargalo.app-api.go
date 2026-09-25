@@ -98,7 +98,7 @@ func (h *tripsHandler) EstimateFare(c echo.Context) error {
 
 // GetTrip godoc
 // @Summary      Detalle de un viaje
-// @Description  Si el viaje ya tiene rider asignado, `rider` trae nombre, teléfono, foto y vehículo. No incluye documentos KYC. pickup_code aparece desde accepted hasta que el pasajero sube; dropoff_code aparece en in_progress. Los cambios en vivo llegan por GET /trips/live.
+// @Description  Si el viaje ya tiene rider asignado, `rider` trae nombre, teléfono, foto y vehículo. No incluye documentos KYC. pickup_code aparece desde accepted hasta que el pasajero sube; dropoff_code aparece en in_progress. Si un Pago Móvil aprobado se reintegró a la cartera, `payment` trae transaction_id, credited_bs y refund_eligible_until. Los cambios en vivo llegan por GET /trips/live.
 // @Tags         Trips
 // @Produce      json
 // @Security     SessionCookie
@@ -147,7 +147,7 @@ func (h *tripsHandler) GetTripHistory(c echo.Context) error {
 
 // CancelTrip godoc
 // @Summary      Cancelar un viaje
-// @Description  Solo permitido mientras el viaje esté en requested/payment_review/searching/accepted/arriving. Si se pagó con balance, el débito se reintegra.
+// @Description  Solo permitido mientras el viaje esté en requested/payment_review/searching/accepted/arriving. Si se pagó con balance, el débito se reintegra. Si el Pago Móvil ya estaba aprobado (searching, accepted o arriving), se acredita la tarifa en Bs a la cartera y la respuesta trae payment.transaction_id.
 // @Tags         Trips
 // @Produce      json
 // @Security     SessionCookie

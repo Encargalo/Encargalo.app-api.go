@@ -38,7 +38,7 @@ func NewCustomerFinanceHandler(svc ports.CustomerFinanceApp) CustomerFinanceHand
 
 // GetBalance godoc
 // @Summary      Balance del cliente
-// @Description  Retorna balance_bs y balance_usd (tasa BCV vigente en bcv_rate) y los últimos 10 movimientos (amount_bs y amount_usd). Créditos elegibles incluyen refundable_pm_bs, can_request_refund (ventana/monto > $1 equivalente en Bs a la tasa congelada/saldo; no exige Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold / processing / payout) y créditos balance_refund_restore incluyen refund_request_id para abrir el detalle.
+// @Description  Retorna balance_bs y balance_usd (tasa BCV vigente en bcv_rate) y los últimos 10 movimientos (amount_bs y amount_usd). Créditos elegibles incluyen refundable_pm_bs, can_request_refund (ventana/monto > $1 equivalente en Bs a la tasa congelada/saldo; no exige Pago Móvil) y refund_eligible_until. Un movimiento de orden trae order_id; uno de viaje trae trip_id. Los débitos de devolución (balance_refund_hold / processing / payout) y créditos balance_refund_restore incluyen refund_request_id para abrir el detalle.
 // @Tags         Users Finance
 // @Produce      json
 // @Security     SessionCookie
@@ -106,7 +106,7 @@ func (h *customerFinanceHandler) UpsertPagoMovil(c echo.Context) error {
 
 // CreateRefundRequest godoc
 // @Summary      Solicitar devolución de crédito
-// @Description  Solicita devolución en efectivo de la porción Pago Móvil de un crédito elegible (> $1, ventana 15 min). Requiere Pago Móvil registrado.
+// @Description  Solicita devolución en efectivo de la porción Pago Móvil de un crédito elegible (> $1, ventana 15 min). Requiere Pago Móvil registrado. La respuesta trae order_id o trip_id según el crédito.
 // @Tags         Users Finance
 // @Accept       json
 // @Produce      json

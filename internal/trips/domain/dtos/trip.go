@@ -72,6 +72,17 @@ type TripResponse struct {
 	CancelledAt      *time.Time        `json:"cancelled_at,omitempty"`
 	PickupCode       *string           `json:"pickup_code,omitempty"`
 	DropoffCode      *string           `json:"dropoff_code,omitempty"`
+	Payment          *TripPayment      `json:"payment,omitempty"`
+}
+
+// TripPayment es el crédito a la cartera cuando un Pago Móvil aprobado no se prestó.
+type TripPayment struct {
+	ExpectedAmountBs    float64    `json:"expected_amount_bs,omitempty"`
+	TransactionID       *uuid.UUID `json:"transaction_id,omitempty"`
+	CreditedBs          *float64   `json:"credited_bs,omitempty"`
+	RefundablePMBs      *float64   `json:"refundable_pm_bs,omitempty"`
+	CanRequestRefund    bool       `json:"can_request_refund,omitempty"`
+	RefundEligibleUntil *string    `json:"refund_eligible_until,omitempty"`
 }
 
 type TripHistoryResponse struct {
