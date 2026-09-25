@@ -232,6 +232,9 @@ func (a *tripsApp) CancelTrip(ctx context.Context, tripID, requesterID uuid.UUID
 	if trip.CustomerID != requesterID {
 		return dtos.TripResponse{}, errcustom.ErrTripForbidden
 	}
+	if trip.Status == models.TripStatusPaymentReview {
+		return dtos.TripResponse{}, errcustom.ErrTripPaymentReviewPending
+	}
 	if !trip.IsCancellable() {
 		return dtos.TripResponse{}, errcustom.ErrTripNotCancellable
 	}

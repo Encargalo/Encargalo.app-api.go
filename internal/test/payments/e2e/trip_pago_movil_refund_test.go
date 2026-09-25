@@ -64,8 +64,13 @@ func TestE2E_CancelDuringPaymentReviewDoesNotCredit(t *testing.T) {
 	trip := insertPagoMovilTrip(t, customerID, tripsmodels.TripStatusPaymentReview, nil)
 
 	_, err := newTripsSvc().CancelTrip(context.Background(), trip.ID, customerID)
-	require.NoError(t, err)
+	require.ErrorIs(t, err, errcustom.ErrTripPaymentReviewPending)
 	require.Empty(t, ledgerForReference(t, trip.ID))
+
+	var status string
+	err = sqlDB.QueryRowContext(context.Background(), `SELECT status FROM trips.trips WHERE id = $1`, trip.ID).Scan(&status)
+	require.NoError(t, err)
+	require.Equal(t, string(tripsmodels.TripStatusPaymentReview), status)
 
 	var payment *string
 	err = sqlDB.QueryRowContext(context.Background(), `SELECT payment::text FROM trips.trips WHERE id = $1`, trip.ID).Scan(&payment)

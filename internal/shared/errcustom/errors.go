@@ -67,6 +67,7 @@ var (
 	ErrTrackingParamsTooLarge   = errors.New("params de tracking demasiado grandes")
 	ErrTripForbidden            = errors.New("el viaje no pertenece a este cliente")
 	ErrTripNotCancellable       = errors.New("el viaje no se puede cancelar en su estado actual")
+	ErrTripPaymentReviewPending = errors.New("no se puede cancelar el viaje mientras el pago móvil está en revisión")
 )
 
 var (
