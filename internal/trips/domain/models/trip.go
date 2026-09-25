@@ -30,13 +30,13 @@ const MethodPagoMovil = "PagoMovil"
 const MethodBalance = "Balance"
 
 // CancellableStatuses son los estados desde los que un customer puede cancelar
-// un trip; una vez in_progress/completed/cancelled/no_driver ya no aplica.
+// un trip. payment_review no está: el comprobante sigue en la cola del staff.
+// in_progress/completed/cancelled/no_driver tampoco.
 var CancellableStatuses = map[TripStatus]bool{
-	TripStatusRequested:     true,
-	TripStatusPaymentReview: true,
-	TripStatusSearching:     true,
-	TripStatusAccepted:      true,
-	TripStatusArriving:      true,
+	TripStatusRequested: true,
+	TripStatusSearching: true,
+	TripStatusAccepted:  true,
+	TripStatusArriving:  true,
 }
 
 type Trip struct {

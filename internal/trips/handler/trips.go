@@ -147,7 +147,7 @@ func (h *tripsHandler) GetTripHistory(c echo.Context) error {
 
 // CancelTrip godoc
 // @Summary      Cancelar un viaje
-// @Description  Solo permitido mientras el viaje esté en requested/payment_review/searching/accepted/arriving. Si se pagó con balance, el débito se reintegra. Si el Pago Móvil ya estaba aprobado (searching, accepted o arriving), se acredita la tarifa en Bs a la cartera y la respuesta trae payment.transaction_id.
+// @Description  Solo permitido mientras el viaje esté en requested/searching/accepted/arriving. En payment_review responde 422 trip_payment_review_pending: hay que esperar a que el staff resuelva el comprobante. Si se pagó con balance, el débito se reintegra. Si el Pago Móvil ya estaba aprobado (searching, accepted o arriving), se acredita la tarifa en Bs a la cartera y la respuesta trae payment.transaction_id.
 // @Tags         Trips
 // @Produce      json
 // @Security     SessionCookie
@@ -157,7 +157,7 @@ func (h *tripsHandler) GetTripHistory(c echo.Context) error {
 // @Failure      401  {string}  string  "No autorizado"
 // @Failure      403  {string}  string  "El viaje no pertenece a este cliente"
 // @Failure      404  {string}  string  "No encontrado"
-// @Failure      422  {string}  string  "El viaje no se puede cancelar en su estado actual"
+// @Failure      422  {string}  string  "Pago en revisión, o el viaje no se puede cancelar en su estado actual"
 // @Router       /trips/{id}/cancel [post]
 func (h *tripsHandler) CancelTrip(c echo.Context) error {
 	ctx := c.Request().Context()

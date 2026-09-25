@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/trips/domain/models"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
@@ -54,13 +55,11 @@ func TestCancelTrip_PagoMovilInReviewDoesNotCredit(t *testing.T) {
 	trip := pagoMovilTrip(models.TripStatusPaymentReview)
 
 	d.repo.On("GetTripByID", mock.Anything, trip.ID).Return(trip, nil)
-	d.repo.On("UpdateTripStatus", mock.Anything, trip.ID, models.TripStatusPaymentReview, models.TripStatusCancelled).Return(true, nil)
-	mockBcvRate(d.bcv, 40)
 
-	resp, err := d.svc.CancelTrip(context.Background(), trip.ID, trip.CustomerID)
+	_, err := d.svc.CancelTrip(context.Background(), trip.ID, trip.CustomerID)
 
-	require.NoError(t, err)
-	require.Nil(t, resp.Payment)
+	require.ErrorIs(t, err, errcustom.ErrTripPaymentReviewPending)
+	d.repo.AssertNotCalled(t, "UpdateTripStatus", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	d.balance.AssertNotCalled(t, "CreditOrderRejected", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }
 

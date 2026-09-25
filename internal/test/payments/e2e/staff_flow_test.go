@@ -327,7 +327,7 @@ func TestStaff_UniqueIndexRejectsASecondConsumedLast4(t *testing.T) {
 }
 
 func TestStaff_UnknownReferenceTypeDoesNotConsumeTheReview(t *testing.T) {
-	review, err := reviewsPort.CreateReview(context.Background(), "trip", uuid.New(), proofURL, 100, bcvRate)
+	review, err := reviewsPort.CreateReview(context.Background(), "legacy", uuid.New(), proofURL, 100, bcvRate)
 	require.NoError(t, err)
 
 	conn := dialStaff(t)
