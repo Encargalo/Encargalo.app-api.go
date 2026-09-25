@@ -90,6 +90,20 @@ func (r *tripsRepo) UpdateTripStatus(ctx context.Context, tripID uuid.UUID, from
 	return rows > 0, nil
 }
 
+func (r *tripsRepo) SaveTripPayment(ctx context.Context, tripID uuid.UUID, payment *models.TripPayment) error {
+	_, err := r.db.NewUpdate().
+		TableExpr("trips.trips").
+		Set("payment = ?", payment).
+		Set("updated_at = now()").
+		Where("id = ?", tripID).
+		Exec(ctx)
+	if err != nil {
+		slog.Error("trips SaveTripPayment failed", "tripID", tripID, "error", err)
+		return errcustom.Unexpected(err)
+	}
+	return nil
+}
+
 func (r *tripsRepo) ReleaseTripRider(ctx context.Context, tripID, riderID uuid.UUID) (bool, error) {
 	res, err := r.db.NewUpdate().
 		TableExpr("trips.trips").

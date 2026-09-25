@@ -60,11 +60,13 @@ type Trip struct {
 	// BcvRate es la tasa congelada en la cotización. ExpectedAmountBs = fare * bcv_rate.
 	BcvRate *float64 `bun:"bcv_rate"`
 	// BalancePaidBs es el débito al saldo cuando method_payment es Balance.
-	BalancePaidBs     *float64   `bun:"balance_paid_bs"`
-	PickupCode        *string    `bun:"pickup_code"`
-	DropoffCode       *string    `bun:"dropoff_code"`
-	PickupCodeUsedAt  *time.Time `bun:"pickup_code_used_at"`
-	DropoffCodeUsedAt *time.Time `bun:"dropoff_code_used_at"`
+	BalancePaidBs *float64 `bun:"balance_paid_bs"`
+	// Payment es el crédito a la cartera si el Pago Móvil aprobado no se prestó.
+	Payment           *TripPayment `bun:"payment,type:jsonb"`
+	PickupCode        *string      `bun:"pickup_code"`
+	DropoffCode       *string      `bun:"dropoff_code"`
+	PickupCodeUsedAt  *time.Time   `bun:"pickup_code_used_at"`
+	DropoffCodeUsedAt *time.Time   `bun:"dropoff_code_used_at"`
 	// FareBs no se persiste, se recalcula en cada respuesta (patrón Order.DeliveryFeeBs).
 	FareBs      *float64   `bun:"-"`
 	RequestedAt time.Time  `bun:"requested_at,notnull,default:current_timestamp"`
@@ -119,5 +121,6 @@ func (t *Trip) ToCustomerDTO() dtos.TripResponse {
 	if t.Status == TripStatusInProgress && t.DropoffCodeUsedAt == nil {
 		resp.DropoffCode = t.DropoffCode
 	}
+	resp.Payment = t.Payment.toDTO()
 	return resp
 }

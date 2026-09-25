@@ -13,6 +13,7 @@ type CustomerTransactionItem struct {
 	AmountUSD           float64  `json:"amount_usd"`
 	MovementType        string   `json:"movement_type"`
 	OrderID             *string  `json:"order_id,omitempty"`
+	TripID              *string  `json:"trip_id,omitempty"`
 	CreatedAt           string   `json:"created_at"`
 	RefundablePMBs      *float64 `json:"refundable_pm_bs,omitempty"`
 	CanRequestRefund    bool     `json:"can_request_refund,omitempty"`
@@ -46,6 +47,7 @@ type RefundRequestResponse struct {
 	ID              string  `json:"id"`
 	TransactionID   string  `json:"transaction_id"`
 	OrderID         *string `json:"order_id,omitempty"`
+	TripID          *string `json:"trip_id,omitempty"`
 	AmountBs        float64 `json:"amount_bs"`
 	Status          string  `json:"status"`
 	PMPhone         string  `json:"pm_phone"`
@@ -66,6 +68,7 @@ type RefundRequestBroadcast struct {
 	CustomerID    string  `json:"customer_id"`
 	TransactionID string  `json:"transaction_id"`
 	OrderID       *string `json:"order_id,omitempty"`
+	TripID        *string `json:"trip_id,omitempty"`
 	AmountBs      float64 `json:"amount_bs"`
 	// AmountUSD/BcvRate: equivalente informativo, ver RefundRequestResponse.
 	AmountUSD       float64 `json:"amount_usd,omitempty"`
