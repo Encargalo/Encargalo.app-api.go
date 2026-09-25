@@ -3724,6 +3724,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/riders/trips/active": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Devuelve los viajes que el rider ya tiene asignados y siguen en curso (accepted, arriving o in_progress), sin códigos de subida/bajada. Sirve para recuperar el viaje al abrir la app sin depender del WebSocket. Lista vacía si no tiene ninguno.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders"
+                ],
+                "summary": "Viajes activos del rider",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.ActiveTripsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Sesión no encontrada o inválida",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/riders/withdrawal": {
             "post": {
                 "security": [
@@ -5571,7 +5617,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Crea un viaje en estado \"requested\" a partir de una cotización vigente (ver POST /trips/fare-estimate): pickup/dropoff y fare quedan fijados por esa cotización, no se recalculan. El matching con conductores cercanos no está incluido en este endpoint.",
+                "description": "Crea un viaje a partir de una cotización vigente (POST /trips/fare-estimate). Con method_payment=PagoMovil el comprobante es obligatorio y el viaje queda en payment_review hasta que el staff lo apruebe. Con method_payment=Balance se debita la tarifa completa en Bs y el viaje pasa directo a searching. Pickup/dropoff y fare quedan fijados por la cotización.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5584,7 +5630,7 @@ const docTemplate = `{
                 "summary": "Solicitar un viaje",
                 "parameters": [
                     {
-                        "description": "quote_id de una cotización vigente",
+                        "description": "quote_id y method_payment (PagoMovil con comprobante, o Balance)",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -5614,6 +5660,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Cotización no encontrada, expirada o de otro cliente",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "No se pudo subir el comprobante o saldo insuficiente",
                         "schema": {
                             "type": "string"
                         }
@@ -5685,6 +5737,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
+                "description": "Cada viaje con rider asignado incluye ` + "`" + `rider` + "`" + ` (nombre, teléfono, foto y vehículo). No incluye documentos KYC.",
                 "produces": [
                     "application/json"
                 ],
@@ -5708,6 +5761,34 @@ const docTemplate = `{
                 }
             }
         },
+        "/trips/live": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "El cliente recibe el estado del viaje y la ubicación del rider sin volver a consultar. Al conectar se envían los viajes activos.",
+                "tags": [
+                    "Trips"
+                ],
+                "summary": "WebSocket del cliente para seguir sus viajes",
+                "responses": {
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/trips/{id}": {
             "get": {
                 "security": [
@@ -5715,6 +5796,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
+                "description": "Si el viaje ya tiene rider asignado, ` + "`" + `rider` + "`" + ` trae nombre, teléfono, foto y vehículo. No incluye documentos KYC. pickup_code aparece desde accepted hasta que el pasajero sube; dropoff_code aparece en in_progress. Los cambios en vivo llegan por GET /trips/live.",
                 "produces": [
                     "application/json"
                 ],
@@ -5772,7 +5854,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Solo permitido mientras el viaje esté en requested/searching/accepted/arriving.",
+                "description": "Solo permitido mientras el viaje esté en requested/payment_review/searching/accepted/arriving. Si se pagó con balance, el débito se reintegra.",
                 "produces": [
                     "application/json"
                 ],
@@ -8343,6 +8425,17 @@ const docTemplate = `{
                 }
             }
         },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.ActiveTripsResponse": {
+            "type": "object",
+            "properties": {
+                "trips": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.TripResponse"
+                    }
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_riders_domain_dtos.BalanceResponse": {
             "type": "object",
             "properties": {
@@ -9374,9 +9467,23 @@ const docTemplate = `{
         "Encargalo_app-api_go_internal_trips_domain_dtos.CreateTripRequest": {
             "type": "object",
             "required": [
+                "method_payment",
                 "quote_id"
             ],
             "properties": {
+                "method_payment": {
+                    "type": "string",
+                    "enum": [
+                        "PagoMovil",
+                        "Balance"
+                    ],
+                    "example": "PagoMovil"
+                },
+                "payment_proof_image": {
+                    "type": "string",
+                    "maxLength": 7000000,
+                    "example": "data:image/jpeg;base64,/9j/4AAQ..."
+                },
                 "quote_id": {
                     "type": "string"
                 }
@@ -9442,6 +9549,38 @@ const docTemplate = `{
                 }
             }
         },
+        "Encargalo_app-api_go_internal_trips_domain_dtos.RiderPublicInfo": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "profile_photo_url": {
+                    "type": "string"
+                },
+                "sur_name": {
+                    "type": "string"
+                },
+                "vehicle_brand": {
+                    "type": "string"
+                },
+                "vehicle_color": {
+                    "type": "string"
+                },
+                "vehicle_model": {
+                    "type": "string"
+                },
+                "vehicle_plate": {
+                    "type": "string"
+                },
+                "vehicle_type": {
+                    "type": "string"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_trips_domain_dtos.TripHistoryResponse": {
             "type": "object",
             "properties": {
@@ -9471,6 +9610,9 @@ const docTemplate = `{
                 "dropoff_address": {
                     "type": "string"
                 },
+                "dropoff_code": {
+                    "type": "string"
+                },
                 "dropoff_latitude": {
                     "type": "number"
                 },
@@ -9489,6 +9631,9 @@ const docTemplate = `{
                 "pickup_address": {
                     "type": "string"
                 },
+                "pickup_code": {
+                    "type": "string"
+                },
                 "pickup_latitude": {
                     "type": "number"
                 },
@@ -9497,6 +9642,9 @@ const docTemplate = `{
                 },
                 "requested_at": {
                     "type": "string"
+                },
+                "rider": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.RiderPublicInfo"
                 },
                 "rider_id": {
                     "type": "string"

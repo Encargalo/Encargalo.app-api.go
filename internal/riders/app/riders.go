@@ -36,8 +36,12 @@ const orderAcceptTimeout = 10 * time.Minute
 const (
 	tripOfferCandidateCount = 3
 	tripSearchMaxRings      = 3
-	tripAcceptTimeout       = 2 * time.Minute
-	// tripOfferMaxRounds es el tope de rondas (2 min cada una) antes de no_driver.
+	// tripAcceptTimeout es lo que dura una ronda con candidatos ofertados.
+	tripAcceptTimeout = 10 * time.Minute
+	// tripEmptyRoundTimeout es lo que dura una ronda sin riders elegibles, antes
+	// de pasar a la siguiente (puede conectarse alguien mientras tanto).
+	tripEmptyRoundTimeout = 5 * time.Minute
+	// tripOfferMaxRounds es el tope de rondas, con o sin candidatos, antes de no_driver.
 	tripOfferMaxRounds = 4
 )
 
@@ -50,6 +54,7 @@ type appRidersManager struct {
 	tripOffers         map[uuid.UUID]map[uuid.UUID]struct{}
 	tripAlreadyOffered map[uuid.UUID]map[uuid.UUID]struct{}
 	tripOfferRounds    map[uuid.UUID]int
+	tripOfferTrip      map[uuid.UUID]tripsModels.Trip
 	tripExcluded       map[uuid.UUID]map[uuid.UUID]struct{}
 	tripTimers         map[uuid.UUID]*time.Timer
 	completingTrips    map[uuid.UUID]struct{}
@@ -60,6 +65,7 @@ type appRidersManager struct {
 	tripEarnings       ridersPorts.TripEarningRecorder
 	customers          tripsPorts.CustomerTripNotifier
 	balance            paymentsPorts.CustomerBalanceCreditor
+	passengers         ridersPorts.PassengerLookup
 	riderTrips         map[uuid.UUID]riderAssignment
 }
 
@@ -68,7 +74,7 @@ type riderAssignment struct {
 	customerID uuid.UUID
 }
 
-func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPorts.BcvApp, tripsRepo ridersPorts.TripsStore, tripEarnings ridersPorts.TripEarningRecorder, customers tripsPorts.CustomerTripNotifier, balance paymentsPorts.CustomerBalanceCreditor) ridersPorts.RidersApp {
+func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPorts.BcvApp, tripsRepo ridersPorts.TripsStore, tripEarnings ridersPorts.TripEarningRecorder, customers tripsPorts.CustomerTripNotifier, balance paymentsPorts.CustomerBalanceCreditor, passengers ridersPorts.PassengerLookup) ridersPorts.RidersApp {
 	return &appRidersManager{
 		availableRiders:    make(map[uuid.UUID]ridersPorts.RiderConn),
 		assignedOrders:     make(map[uuid.UUID][]uuid.UUID),
@@ -77,6 +83,7 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 		tripOffers:         make(map[uuid.UUID]map[uuid.UUID]struct{}),
 		tripAlreadyOffered: make(map[uuid.UUID]map[uuid.UUID]struct{}),
 		tripOfferRounds:    make(map[uuid.UUID]int),
+		tripOfferTrip:      make(map[uuid.UUID]tripsModels.Trip),
 		tripExcluded:       make(map[uuid.UUID]map[uuid.UUID]struct{}),
 		tripTimers:         make(map[uuid.UUID]*time.Timer),
 		completingTrips:    make(map[uuid.UUID]struct{}),
@@ -87,7 +94,34 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 		tripEarnings:       tripEarnings,
 		customers:          customers,
 		balance:            balance,
+		passengers:         passengers,
 		riderTrips:         make(map[uuid.UUID]riderAssignment),
+	}
+}
+
+// riderTripDTO es la vista del viaje para el rider asignado. El nombre y el
+// teléfono del pasajero entran solo en accepted, arriving e in_progress.
+// trip_offer sigue usando ToDTO y no llama este método.
+func (r *appRidersManager) riderTripDTO(ctx context.Context, trip *tripsModels.Trip) tripsDtos.TripResponse {
+	resp := trip.ToDTO()
+	if r.passengers == nil || !exposesPassengerContact(trip.Status) {
+		return resp
+	}
+	contact, err := r.passengers.GetByCustomerID(ctx, trip.CustomerID)
+	if err != nil {
+		slog.Error("error loading passenger contact for assigned rider", "tripID", trip.ID, "error", err)
+		return resp
+	}
+	resp.Customer = &contact
+	return resp
+}
+
+func exposesPassengerContact(status tripsModels.TripStatus) bool {
+	switch status {
+	case tripsModels.TripStatusAccepted, tripsModels.TripStatusArriving, tripsModels.TripStatusInProgress:
+		return true
+	default:
+		return false
 	}
 }
 
@@ -164,6 +198,7 @@ func (r *appRidersManager) UpdateLocation(ctx context.Context, riderID uuid.UUID
 	}
 
 	r.mu.Lock()
+	prev, hadLocation := r.riderLocation[riderID]
 	r.riderLocation[riderID] = riderModels.RiderLocation{
 		Latitude:  lat,
 		Longitude: lng,
@@ -171,12 +206,135 @@ func (r *appRidersManager) UpdateLocation(ctx context.Context, riderID uuid.UUID
 		UpdatedAt: time.Now(),
 	}
 	assignment, onTrip := r.riderTrips[riderID]
+	inTripsMode := r.riderMode[riderID] == riderModels.RiderModeTrips
 	r.mu.Unlock()
 
 	if onTrip && r.customers != nil {
 		r.customers.NotifyRiderLocation(ctx, assignment.customerID, assignment.tripID, lat, lng)
 	}
+	if inTripsMode && (!hadLocation || prev.H3Cell != cell) {
+		r.offerOpenTripsToRider(ctx, riderID, cell)
+	}
 	return nil
+}
+
+// offerOpenTripsToRider le reenvía a un rider que llega tarde (primera ubicación
+// de la conexión) o que cambia de celda los viajes que siguen buscando conductor
+// dentro del radio de su ronda actual. Excluye los que canceló y los que ya se
+// ofertaron en una ronda anterior sin que él estuviera en ella; a quien ya está
+// en la ronda vigente se le reenvía la oferta (por si perdió la conexión).
+func (r *appRidersManager) offerOpenTripsToRider(ctx context.Context, riderID uuid.UUID, cell string) {
+	r.mu.RLock()
+	conn, connected := r.availableRiders[riderID]
+	if !connected || len(r.tripOfferTrip) == 0 {
+		r.mu.RUnlock()
+		return
+	}
+	open := make([]tripsModels.Trip, 0, len(r.tripOfferTrip))
+	for tripID, trip := range r.tripOfferTrip {
+		if trip.PickupH3Cell == nil {
+			continue
+		}
+		if _, excluded := r.tripExcluded[tripID][riderID]; excluded {
+			continue
+		}
+		_, offeredNow := r.tripOffers[tripID][riderID]
+		if _, offeredBefore := r.tripAlreadyOffered[tripID][riderID]; offeredBefore && !offeredNow {
+			continue
+		}
+		maxRings := tripSearchMaxRings + r.tripOfferRounds[tripID] - 1
+		if !cellWithinRings(*trip.PickupH3Cell, cell, maxRings) {
+			continue
+		}
+		open = append(open, trip)
+	}
+	r.mu.RUnlock()
+
+	for _, trip := range open {
+		current, err := r.tripsRepo.GetTripByID(ctx, trip.ID)
+		if err != nil {
+			slog.Error("error reading trip to offer to late rider", "tripID", trip.ID, "riderID", riderID, "error", err)
+			continue
+		}
+		if current.Status != tripsModels.TripStatusSearching {
+			continue
+		}
+		data, err := json.Marshal(tripBroadcast{Type: "trip_offer", Trip: trip.ToDTO()})
+		if err != nil {
+			slog.Error("error marshaling trip_offer for late rider", "error", err)
+			continue
+		}
+
+		r.mu.Lock()
+		if _, live := r.tripOfferTrip[trip.ID]; !live {
+			r.mu.Unlock()
+			continue
+		}
+		if r.tripOffers[trip.ID] == nil {
+			r.tripOffers[trip.ID] = make(map[uuid.UUID]struct{})
+		}
+		r.tripOffers[trip.ID][riderID] = struct{}{}
+		if r.tripAlreadyOffered[trip.ID] == nil {
+			r.tripAlreadyOffered[trip.ID] = make(map[uuid.UUID]struct{})
+		}
+		r.tripAlreadyOffered[trip.ID][riderID] = struct{}{}
+		r.mu.Unlock()
+
+		conn.Send(data)
+	}
+}
+
+func cellWithinRings(originCell, cell string, rings int) bool {
+	cells, err := geo.GridDisk(originCell, rings)
+	if err != nil {
+		return false
+	}
+	return slices.Contains(cells, cell)
+}
+
+// SendActiveTrips reenvía al rider que se reconecta en modo trips los viajes que
+// ya tiene asignados y vuelve a enlazar su ubicación con el cliente (riderTrips
+// vive en memoria y se pierde al reconectar).
+func (r *appRidersManager) SendActiveTrips(ctx context.Context, riderID uuid.UUID, conn ridersPorts.RiderConn) error {
+	trips, err := r.tripsRepo.ListActiveTripsByRider(ctx, riderID)
+	if err != nil {
+		return err
+	}
+	if len(trips) == 0 {
+		return nil
+	}
+
+	rate := r.bcvRate(ctx)
+	for i := range trips {
+		trips[i].ApplyBsFare(rate)
+		data, err := json.Marshal(tripBroadcast{Type: "trip_status", Trip: r.riderTripDTO(ctx, &trips[i])})
+		if err != nil {
+			slog.Error("error marshaling active trip for rider", "tripID", trips[i].ID, "error", err)
+			continue
+		}
+		conn.Send(data)
+	}
+	r.rememberRiderTrip(riderID, trips[0].ID, trips[0].CustomerID)
+	return nil
+}
+
+// ActiveTrips devuelve por REST los viajes en curso del rider, sin códigos.
+func (r *appRidersManager) ActiveTrips(ctx context.Context, riderID uuid.UUID) ([]tripsDtos.TripResponse, error) {
+	trips, err := r.tripsRepo.ListActiveTripsByRider(ctx, riderID)
+	if err != nil {
+		return nil, err
+	}
+	if len(trips) == 0 {
+		return []tripsDtos.TripResponse{}, nil
+	}
+
+	rate := r.bcvRate(ctx)
+	out := make([]tripsDtos.TripResponse, len(trips))
+	for i := range trips {
+		trips[i].ApplyBsFare(rate)
+		out[i] = r.riderTripDTO(ctx, &trips[i])
+	}
+	return out, nil
 }
 
 func (r *appRidersManager) SnapshotTripsRiders() []riderModels.RiderLocationEntry {
@@ -354,15 +512,28 @@ type riderBroadcast struct {
 	Customer *riderModels.CustomerLocation `json:"customer,omitempty"`
 }
 
-func (r *appRidersManager) OfferTrip(ctx context.Context, trip tripsModels.Trip) {
-	r.offerTripRound(ctx, trip, 1)
+func (r *appRidersManager) OfferTrip(_ context.Context, trip tripsModels.Trip) {
+	r.offerTripRound(trip, 1)
 }
 
-func (r *appRidersManager) offerTripRound(ctx context.Context, trip tripsModels.Trip, round int) {
+func (r *appRidersManager) offerTripRound(trip tripsModels.Trip, round int) {
 	maxRings := tripSearchMaxRings + round - 1
 	candidates := r.nearestTripsRiders(trip, r.offerExclusions(trip.ID), maxRings)
 	if len(candidates) == 0 {
-		r.expireTripIfStillSearching(trip.ID)
+		// Sin celda H3 el viaje nunca va a matchear: no tiene sentido esperar.
+		if trip.PickupH3Cell == nil {
+			r.expireTripIfStillSearching(trip.ID)
+			return
+		}
+		// Ronda vacía: igual espera tripEmptyRoundTimeout (puede conectarse un rider
+		// elegible) y cuenta como ronda; los ofertados de la ronda anterior ya
+		// no pueden aceptar.
+		r.mu.Lock()
+		r.tripOffers[trip.ID] = make(map[uuid.UUID]struct{})
+		r.tripOfferRounds[trip.ID] = round
+		r.tripOfferTrip[trip.ID] = trip
+		r.mu.Unlock()
+		r.scheduleOfferTimeout(trip, tripEmptyRoundTimeout)
 		return
 	}
 
@@ -383,6 +554,7 @@ func (r *appRidersManager) offerTripRound(ctx context.Context, trip tripsModels.
 	}
 	r.tripOffers[trip.ID] = offered
 	r.tripOfferRounds[trip.ID] = round
+	r.tripOfferTrip[trip.ID] = trip
 	r.mu.Unlock()
 
 	r.mu.RLock()
@@ -393,11 +565,11 @@ func (r *appRidersManager) offerTripRound(ctx context.Context, trip tripsModels.
 	}
 	r.mu.RUnlock()
 
-	r.scheduleOfferTimeout(trip)
+	r.scheduleOfferTimeout(trip, tripAcceptTimeout)
 }
 
-func (r *appRidersManager) scheduleOfferTimeout(trip tripsModels.Trip) {
-	timer := time.AfterFunc(tripAcceptTimeout, func() {
+func (r *appRidersManager) scheduleOfferTimeout(trip tripsModels.Trip, timeout time.Duration) {
+	timer := time.AfterFunc(timeout, func() {
 		r.onTripOfferTimeout(trip)
 	})
 	r.mu.Lock()
@@ -428,7 +600,7 @@ func (r *appRidersManager) onTripOfferTimeout(offered tripsModels.Trip) {
 		r.expireTripIfStillSearching(current.ID)
 		return
 	}
-	r.offerTripRound(ctx, *current, r.offerRound(current.ID)+1)
+	r.offerTripRound(*current, r.offerRound(current.ID)+1)
 }
 
 func (r *appRidersManager) offerRound(tripID uuid.UUID) int {
@@ -480,6 +652,7 @@ func (r *appRidersManager) clearTripOfferState(tripID uuid.UUID) {
 	delete(r.tripOffers, tripID)
 	delete(r.tripAlreadyOffered, tripID)
 	delete(r.tripOfferRounds, tripID)
+	delete(r.tripOfferTrip, tripID)
 	delete(r.tripExcluded, tripID)
 	if timer, ok := r.tripTimers[tripID]; ok {
 		timer.Stop()
@@ -608,7 +781,7 @@ func (r *appRidersManager) AcceptTrip(ctx context.Context, riderID, tripID uuid.
 	trip.AcceptedAt = &acceptedAt
 	trip.PickupCode = &pickupCode
 	r.rememberRiderTrip(riderID, trip.ID, trip.CustomerID)
-	accepted, _ := json.Marshal(tripBroadcast{Type: "trip_accepted", Trip: trip.ToDTO()})
+	accepted, _ := json.Marshal(tripBroadcast{Type: "trip_accepted", Trip: r.riderTripDTO(ctx, trip)})
 	conn.Send(accepted)
 	r.notifyCustomer(ctx, trip)
 
@@ -646,7 +819,7 @@ func (r *appRidersManager) CancelAcceptedTrip(ctx context.Context, riderID, trip
 	trip.RiderID = nil
 	trip.AcceptedAt = nil
 	trip.PickupCode = nil
-	released, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: trip.ToDTO()})
+	released, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: r.riderTripDTO(ctx, trip)})
 	conn.Send(released)
 	r.notifyCustomer(ctx, trip)
 
@@ -700,7 +873,7 @@ func (r *appRidersManager) AdvanceTrip(ctx context.Context, riderID, tripID uuid
 	}
 
 	trip.Status = next
-	data, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: trip.ToDTO()})
+	data, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: r.riderTripDTO(ctx, trip)})
 	conn.Send(data)
 	r.notifyCustomer(ctx, trip)
 
@@ -727,7 +900,7 @@ func (r *appRidersManager) startTrip(ctx context.Context, trip *tripsModels.Trip
 	trip.Status = tripsModels.TripStatusInProgress
 	trip.PickupCodeUsedAt = &usedAt
 	trip.DropoffCode = &dropoffCode
-	data, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: trip.ToDTO()})
+	data, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: r.riderTripDTO(ctx, trip)})
 	conn.Send(data)
 	r.notifyCustomer(ctx, trip)
 	return nil
@@ -761,7 +934,7 @@ func (r *appRidersManager) completeTrip(ctx context.Context, trip *tripsModels.T
 	trip.CompletedAt = &completedAt
 	trip.DropoffCodeUsedAt = &completedAt
 	trip.ApplyBsFare(r.bcvRate(ctx))
-	data, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: trip.ToDTO()})
+	data, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: r.riderTripDTO(ctx, trip)})
 	conn.Send(data)
 	if trip.RiderID != nil {
 		r.forgetRiderTrip(*trip.RiderID)
@@ -807,7 +980,7 @@ type tripBroadcast struct {
 	Trip tripsDtos.TripResponse `json:"trip"`
 }
 
-// AdvanceTripOfferTimeout corre el mismo camino que el timer de 2 minutos.
+// AdvanceTripOfferTimeout corre el mismo camino que el timer de oferta (tripAcceptTimeout o tripEmptyRoundTimeout).
 // Los tests lo usan para pasar de ronda sin esperar el timeout real.
 func AdvanceTripOfferTimeout(svc ridersPorts.RidersApp, trip tripsModels.Trip) {
 	mgr := svc.(*appRidersManager)

@@ -35,6 +35,7 @@ func (r *ridersGroup) Resource(g *echo.Echo) {
 	g.GET("/orders/rider", r.handlerRiders.HandleWebSocket, r.middle.Auth, r.middle.Require(models.Rider))
 
 	riders := g.Group("/riders", r.middle.Auth, r.middle.Require(models.Rider))
+	riders.GET("/trips/active", r.handlerRiders.GetActiveTrips)
 	riders.GET("/balance", r.handlerFinance.GetBalance)
 	riders.POST("/withdrawal", r.handlerFinance.RequestWithdrawal)
 	riders.GET("/transactions", r.handlerFinance.ListTransactions)

@@ -19,55 +19,24 @@ type TripsRepo struct {
 // AssignTripRider provides a mock function with given fields: ctx, tripID, riderID, pickupCode
 func (_m *TripsRepo) AssignTripRider(ctx context.Context, tripID uuid.UUID, riderID uuid.UUID, pickupCode string) (bool, error) {
 	ret := _m.Called(ctx, tripID, riderID, pickupCode)
+
 	if len(ret) == 0 {
 		panic("no return value specified for AssignTripRider")
-	}
-	return ret.Bool(0), ret.Error(1)
-}
-
-// StartTripWithPickupCode provides a mock function with given fields: ctx, tripID, riderID, pickupCode, dropoffCode
-func (_m *TripsRepo) StartTripWithPickupCode(ctx context.Context, tripID uuid.UUID, riderID uuid.UUID, pickupCode string, dropoffCode string) (bool, error) {
-	ret := _m.Called(ctx, tripID, riderID, pickupCode, dropoffCode)
-	if len(ret) == 0 {
-		panic("no return value specified for StartTripWithPickupCode")
-	}
-	return ret.Bool(0), ret.Error(1)
-}
-
-// ListActiveTripsByCustomer provides a mock function with given fields: ctx, customerID
-func (_m *TripsRepo) ListActiveTripsByCustomer(ctx context.Context, customerID uuid.UUID) ([]models.Trip, error) {
-	ret := _m.Called(ctx, customerID)
-	if len(ret) == 0 {
-		panic("no return value specified for ListActiveTripsByCustomer")
-	}
-	var trips []models.Trip
-	if ret.Get(0) != nil {
-		trips = ret.Get(0).([]models.Trip)
-	}
-	return trips, ret.Error(1)
-}
-
-// ReleaseTripRider provides a mock function with given fields: ctx, tripID, riderID
-func (_m *TripsRepo) ReleaseTripRider(ctx context.Context, tripID uuid.UUID, riderID uuid.UUID) (bool, error) {
-	ret := _m.Called(ctx, tripID, riderID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for ReleaseTripRider")
 	}
 
 	var r0 bool
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) (bool, error)); ok {
-		return rf(ctx, tripID, riderID)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string) (bool, error)); ok {
+		return rf(ctx, tripID, riderID, pickupCode)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) bool); ok {
-		r0 = rf(ctx, tripID, riderID)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string) bool); ok {
+		r0 = rf(ctx, tripID, riderID, pickupCode)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
-		r1 = rf(ctx, tripID, riderID)
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, string) error); ok {
+		r1 = rf(ctx, tripID, riderID, pickupCode)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -78,10 +47,29 @@ func (_m *TripsRepo) ReleaseTripRider(ctx context.Context, tripID uuid.UUID, rid
 // CompleteTrip provides a mock function with given fields: ctx, tripID, fare, dropoffCode
 func (_m *TripsRepo) CompleteTrip(ctx context.Context, tripID uuid.UUID, fare float64, dropoffCode string) (bool, error) {
 	ret := _m.Called(ctx, tripID, fare, dropoffCode)
+
 	if len(ret) == 0 {
 		panic("no return value specified for CompleteTrip")
 	}
-	return ret.Bool(0), ret.Error(1)
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, float64, string) (bool, error)); ok {
+		return rf(ctx, tripID, fare, dropoffCode)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, float64, string) bool); ok {
+		r0 = rf(ctx, tripID, fare, dropoffCode)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, float64, string) error); ok {
+		r1 = rf(ctx, tripID, fare, dropoffCode)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // CreateTrip provides a mock function with given fields: ctx, trip
@@ -155,6 +143,122 @@ func (_m *TripsRepo) GetTripHistoryByCustomer(ctx context.Context, customerID uu
 
 	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
 		r1 = rf(ctx, customerID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ListActiveTripsByCustomer provides a mock function with given fields: ctx, customerID
+func (_m *TripsRepo) ListActiveTripsByCustomer(ctx context.Context, customerID uuid.UUID) ([]models.Trip, error) {
+	ret := _m.Called(ctx, customerID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListActiveTripsByCustomer")
+	}
+
+	var r0 []models.Trip
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) ([]models.Trip, error)); ok {
+		return rf(ctx, customerID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) []models.Trip); ok {
+		r0 = rf(ctx, customerID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.Trip)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, customerID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ListActiveTripsByRider provides a mock function with given fields: ctx, riderID
+func (_m *TripsRepo) ListActiveTripsByRider(ctx context.Context, riderID uuid.UUID) ([]models.Trip, error) {
+	ret := _m.Called(ctx, riderID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListActiveTripsByRider")
+	}
+
+	var r0 []models.Trip
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) ([]models.Trip, error)); ok {
+		return rf(ctx, riderID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) []models.Trip); ok {
+		r0 = rf(ctx, riderID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.Trip)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, riderID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ReleaseTripRider provides a mock function with given fields: ctx, tripID, riderID
+func (_m *TripsRepo) ReleaseTripRider(ctx context.Context, tripID uuid.UUID, riderID uuid.UUID) (bool, error) {
+	ret := _m.Called(ctx, tripID, riderID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReleaseTripRider")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) (bool, error)); ok {
+		return rf(ctx, tripID, riderID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) bool); ok {
+		r0 = rf(ctx, tripID, riderID)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r1 = rf(ctx, tripID, riderID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// StartTripWithPickupCode provides a mock function with given fields: ctx, tripID, riderID, pickupCode, dropoffCode
+func (_m *TripsRepo) StartTripWithPickupCode(ctx context.Context, tripID uuid.UUID, riderID uuid.UUID, pickupCode string, dropoffCode string) (bool, error) {
+	ret := _m.Called(ctx, tripID, riderID, pickupCode, dropoffCode)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StartTripWithPickupCode")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string, string) (bool, error)); ok {
+		return rf(ctx, tripID, riderID, pickupCode, dropoffCode)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string, string) bool); ok {
+		r0 = rf(ctx, tripID, riderID, pickupCode, dropoffCode)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, string, string) error); ok {
+		r1 = rf(ctx, tripID, riderID, pickupCode, dropoffCode)
 	} else {
 		r1 = ret.Error(1)
 	}
