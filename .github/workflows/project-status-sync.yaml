@@ -10,9 +10,10 @@ name: Sync PR merge to Project board
 # incluidos, porque ese PR no trae los Closes de cada feature.
 # Si la issue no está en el Project, se agrega.
 #
-# Requiere el secret PROJECTS_TOKEN (PAT con permiso "Projects: Read and write"
-# sobre la org Encargalo): el GITHUB_TOKEN no puede escribir en Projects v2
-# de organización. Cerrar la issue usa el GITHUB_TOKEN del repo.
+# Leer PRs e issues, y cerrarlas, usa el GITHUB_TOKEN del job.
+# Escribir el Project usa el secret PROJECTS_TOKEN (PAT con permiso
+# "Projects: Read and write" sobre la org Encargalo): el GITHUB_TOKEN
+# no puede escribir en Projects v2 de organización.
 
 on:
   pull_request:
@@ -28,7 +29,8 @@ jobs:
     if: github.event.pull_request.merged == true && (github.event.pull_request.base.ref == 'dev' || github.event.pull_request.base.ref == 'main')
     runs-on: ubuntu-latest
     env:
-      GH_TOKEN: ${{ secrets.PROJECTS_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+      PROJECTS_TOKEN: ${{ secrets.PROJECTS_TOKEN }}
       PROJECT_ID: PVT_kwDODYO3gs4BKl0v
       STATUS_FIELD_ID: PVTSSF_lADODYO3gs4BKl0vzg6ab3I
       STATUS_IN_STAGING: f29138ee
@@ -104,7 +106,7 @@ jobs:
             }' -f owner="$REPO_OWNER" -f repo="$REPO_NAME" -F number="$PR_NUMBER" \
             --jq '[.data.repository.pullRequest.projectItems.nodes[] | select(.project.id == "'"$PROJECT_ID"'") | .id] | .[]')
           for item_id in $ids; do
-            gh api graphql -f query='
+            GH_TOKEN="$PROJECTS_TOKEN" gh api graphql -f query='
               mutation($project:ID!, $item:ID!, $field:ID!, $option:String!) {
                 updateProjectV2ItemFieldValue(input: {
                   projectId: $project, itemId: $item, fieldId: $field,
@@ -127,11 +129,11 @@ jobs:
               echo "skip #$number (no es una issue)"
               continue
             fi
-            item_id=$(gh api graphql -f query='
+            item_id=$(GH_TOKEN="$PROJECTS_TOKEN" gh api graphql -f query='
               mutation($project:ID!, $content:ID!) {
                 addProjectV2ItemById(input: {projectId: $project, contentId: $content}) { item { id } }
               }' -f project="$PROJECT_ID" -f content="$content_id" --jq '.data.addProjectV2ItemById.item.id')
-            gh api graphql -f query='
+            GH_TOKEN="$PROJECTS_TOKEN" gh api graphql -f query='
               mutation($project:ID!, $item:ID!, $field:ID!, $option:String!) {
                 updateProjectV2ItemFieldValue(input: {
                   projectId: $project, itemId: $item, fieldId: $field,
