@@ -128,6 +128,34 @@ func (_m *TripsApp) GetTripHistory(ctx context.Context, customerID uuid.UUID) (d
 	return r0, r1
 }
 
+// NearbyRiders provides a mock function with given fields: lat, lng
+func (_m *TripsApp) NearbyRiders(lat float64, lng float64) (dtos.NearbyRidersResponse, error) {
+	ret := _m.Called(lat, lng)
+
+	if len(ret) == 0 {
+		panic("no return value specified for NearbyRiders")
+	}
+
+	var r0 dtos.NearbyRidersResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(float64, float64) (dtos.NearbyRidersResponse, error)); ok {
+		return rf(lat, lng)
+	}
+	if rf, ok := ret.Get(0).(func(float64, float64) dtos.NearbyRidersResponse); ok {
+		r0 = rf(lat, lng)
+	} else {
+		r0 = ret.Get(0).(dtos.NearbyRidersResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(float64, float64) error); ok {
+		r1 = rf(lat, lng)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // RequestTrip provides a mock function with given fields: ctx, customerID, req
 func (_m *TripsApp) RequestTrip(ctx context.Context, customerID uuid.UUID, req dtos.CreateTripRequest) (dtos.TripResponse, error) {
 	ret := _m.Called(ctx, customerID, req)

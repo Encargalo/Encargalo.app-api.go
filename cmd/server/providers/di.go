@@ -211,6 +211,9 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(func(mgr ridersPorts.RidersApp) tripsPorts.TripRiderMatcher {
 		return mgr.(tripsPorts.TripRiderMatcher)
 	})
+	_ = Container.Provide(func(mgr ridersPorts.RidersApp) tripsPorts.NearbyRidersLookup {
+		return mgr.(tripsPorts.NearbyRidersLookup)
+	})
 	_ = Container.Provide(func(repo tripsPorts.TripsRepo) ridersPorts.TripsStore {
 		return repo
 	})

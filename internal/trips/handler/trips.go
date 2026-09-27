@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 
 	authModels "Encargalo.app-api.go/internal/auth/domain/models"
 	"Encargalo.app-api.go/internal/shared/errcustom"
@@ -18,6 +19,7 @@ type TripsHandler interface {
 	GetTripHistory(c echo.Context) error
 	CancelTrip(c echo.Context) error
 	EstimateFare(c echo.Context) error
+	NearbyRiders(c echo.Context) error
 	Live(c echo.Context) error
 }
 
@@ -94,6 +96,45 @@ func (h *tripsHandler) EstimateFare(c echo.Context) error {
 		return errcustom.ToHTTPError(err)
 	}
 	return response.Send(c, http.StatusOK, resp)
+}
+
+// NearbyRiders godoc
+// @Summary      Conductores cercanos para el mapa de cotización
+// @Description  Devuelve hasta 30 pines de conductores disponibles en modo viajes, a unos 2 km del punto. Cada coordenada está redondeada a ~100 m. No incluye id, nombre ni datos del vehículo. Pensado para consultarse cada pocos segundos mientras el mapa está abierto.
+// @Tags         Trips
+// @Accept       json
+// @Produce      json
+// @Security     SessionCookie
+// @Param        lat  query  number  true  "Latitud del centro del mapa"
+// @Param        lng  query  number  true  "Longitud del centro del mapa"
+// @Success      200  {object}  dtos.NearbyRidersResponse
+// @Failure      400  {string}  string  "coordenadas inválidas"
+// @Failure      401  {string}  string  "No autorizado"
+// @Failure      429  {string}  string  "rate limit"
+// @Router       /trips/nearby-riders [get]
+func (h *tripsHandler) NearbyRiders(c echo.Context) error {
+	lat, lng, err := parseMapPoint(c.QueryParam("lat"), c.QueryParam("lng"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "coordenadas inválidas")
+	}
+
+	resp, err := h.svc.NearbyRiders(lat, lng)
+	if err != nil {
+		return errcustom.ToHTTPError(err)
+	}
+	return response.Send(c, http.StatusOK, resp)
+}
+
+func parseMapPoint(latRaw, lngRaw string) (float64, float64, error) {
+	lat, err := strconv.ParseFloat(latRaw, 64)
+	if err != nil {
+		return 0, 0, err
+	}
+	lng, err := strconv.ParseFloat(lngRaw, 64)
+	if err != nil {
+		return 0, 0, err
+	}
+	return lat, lng, nil
 }
 
 // GetTrip godoc

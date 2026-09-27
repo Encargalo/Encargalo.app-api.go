@@ -52,6 +52,7 @@ type appRidersManager struct {
 	assignedOrders     map[uuid.UUID][]uuid.UUID // riderID → []orderID
 	riderMode          map[uuid.UUID]riderModels.RiderMode
 	riderLocation      map[uuid.UUID]riderModels.RiderLocation
+	ridersByCell       map[string]map[uuid.UUID]struct{}
 	tripOffers         map[uuid.UUID]map[uuid.UUID]struct{}
 	tripAlreadyOffered map[uuid.UUID]map[uuid.UUID]struct{}
 	tripOfferRounds    map[uuid.UUID]int
@@ -81,6 +82,7 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 		assignedOrders:     make(map[uuid.UUID][]uuid.UUID),
 		riderMode:          make(map[uuid.UUID]riderModels.RiderMode),
 		riderLocation:      make(map[uuid.UUID]riderModels.RiderLocation),
+		ridersByCell:       make(map[string]map[uuid.UUID]struct{}),
 		tripOffers:         make(map[uuid.UUID]map[uuid.UUID]struct{}),
 		tripAlreadyOffered: make(map[uuid.UUID]map[uuid.UUID]struct{}),
 		tripOfferRounds:    make(map[uuid.UUID]int),
@@ -134,6 +136,9 @@ func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn
 	r.mu.Lock()
 	r.availableRiders[riderID] = conn
 	r.riderMode[riderID] = mode
+	if loc, ok := r.riderLocation[riderID]; ok {
+		r.reindexRiderLocked(riderID, loc.H3Cell, loc.H3Cell, mode == riderModels.RiderModeTrips)
+	}
 	r.mu.Unlock()
 
 	activeOrders, err := r.repo.SearchActiveOrdersByRiderID(ctx, riderID)
@@ -183,6 +188,9 @@ func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn
 func (r *appRidersManager) Unregister(riderID uuid.UUID, conn ridersPorts.RiderConn) {
 	r.mu.Lock()
 	if stored, ok := r.availableRiders[riderID]; ok && stored == conn {
+		if loc, hasLoc := r.riderLocation[riderID]; hasLoc {
+			r.unindexCellLocked(riderID, loc.H3Cell)
+		}
 		delete(r.availableRiders, riderID)
 		delete(r.riderMode, riderID)
 		delete(r.riderLocation, riderID)
@@ -206,8 +214,13 @@ func (r *appRidersManager) UpdateLocation(ctx context.Context, riderID uuid.UUID
 		H3Cell:    cell,
 		UpdatedAt: time.Now(),
 	}
-	assignment, onTrip := r.riderTrips[riderID]
+	prevCell := ""
+	if hadLocation {
+		prevCell = prev.H3Cell
+	}
 	inTripsMode := r.riderMode[riderID] == riderModels.RiderModeTrips
+	r.reindexRiderLocked(riderID, prevCell, cell, inTripsMode)
+	assignment, onTrip := r.riderTrips[riderID]
 	r.mu.Unlock()
 
 	if onTrip && r.customers != nil {
