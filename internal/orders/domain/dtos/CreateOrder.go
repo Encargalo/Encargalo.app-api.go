@@ -21,7 +21,7 @@ type CreateOrder struct {
 	// shop/address/items/expected_total_price se toman del quote (pueden omitirse).
 	QuoteID       uuid.UUID `json:"quote_id,omitempty" example:"3fa85f64-5717-4562-b3fc-2c963f66afa6"`
 	ShopID        uuid.UUID `json:"shop_id" example:"3fa85f64-5717-4562-b3fc-2c963f66afa6"`
-	MethodPayment string    `json:"method_payment" validate:"required,oneof=PagoMovil" example:"PagoMovil"`
+	MethodPayment string    `json:"method_payment" validate:"required,oneof=PagoMovil Efectivo" example:"PagoMovil"`
 	// 7_000_000 ~ 5MB (límite del front) en base64.
 	PaymentProofImage string  `json:"payment_proof_image" validate:"max=7000000" example:"data:image/jpeg;base64,/9j/4AAQ..."`
 	Address           Address `json:"address"`
@@ -43,7 +43,7 @@ func (o *CreateOrder) Validate() error {
 	if o.ID == uuid.Nil {
 		return errors.New("id es requerido")
 	}
-	if o.MethodPayment != "PagoMovil" {
+	if o.MethodPayment != "PagoMovil" && o.MethodPayment != "Efectivo" {
 		return errors.New("method_payment inválido")
 	}
 

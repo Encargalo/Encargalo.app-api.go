@@ -28,6 +28,7 @@ const ReferenceTypeTrip = "trip"
 
 const MethodPagoMovil = "PagoMovil"
 const MethodBalance = "Balance"
+const MethodEfectivo = "Efectivo"
 
 // CancellableStatuses son los estados desde los que un customer puede cancelar
 // un trip. payment_review no está: el comprobante sigue en la cola del staff.
@@ -57,6 +58,9 @@ type Trip struct {
 	PickupH3CellZone  *string  `bun:"pickup_h3_cell_zone"`
 	DropoffH3CellZone *string  `bun:"dropoff_h3_cell_zone"`
 	Fare              *float64 `bun:"fare"`
+	// MethodPayment distingue PagoMovil, Balance y Efectivo. Vacío en viajes
+	// creados antes de persistir el método: esos se liquidan como bancarios.
+	MethodPayment string `bun:"method_payment,notnull,default:''"`
 	// BcvRate es la tasa congelada en la cotización. ExpectedAmountBs = fare * bcv_rate.
 	BcvRate *float64 `bun:"bcv_rate"`
 	// BalancePaidBs es el débito al saldo cuando method_payment es Balance.
@@ -91,7 +95,7 @@ func (t *Trip) ApplyBsFare(rate float64) {
 }
 
 func (t *Trip) ToDTO() dtos.TripResponse {
-	return dtos.TripResponse{
+	resp := dtos.TripResponse{
 		ID:               t.ID,
 		CustomerID:       t.CustomerID,
 		RiderID:          t.RiderID,
@@ -104,11 +108,17 @@ func (t *Trip) ToDTO() dtos.TripResponse {
 		DropoffLongitude: t.DropoffLongitude,
 		FareUSD:          t.Fare,
 		FareBs:           t.FareBs,
+		MethodPayment:    t.MethodPayment,
 		RequestedAt:      t.RequestedAt,
 		AcceptedAt:       t.AcceptedAt,
 		CompletedAt:      t.CompletedAt,
 		CancelledAt:      t.CancelledAt,
 	}
+	if t.MethodPayment == MethodEfectivo && t.Fare != nil {
+		fare := *t.Fare
+		resp.CollectUSD = &fare
+	}
+	return resp
 }
 
 // ToCustomerDTO incluye el código que el cliente debe mostrar. El rider no lo

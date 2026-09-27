@@ -70,7 +70,7 @@ func (o *orderHandler) CreateQuote(c echo.Context) error {
 
 // CreateOrder godoc
 // @Summary      Crear una nueva orden
-// @Description  Preferido: enviar `quote_id` de POST /orders/quote (total congelado; shop/items/address salen del quote). Legacy: sin quote_id, enviar carrito + `expected_total_price` (409 si el precio cambió). Opcionalmente `balance_amount_bs` (balance del customer, en bolívares; se convierte a USD con la tasa BCV del quote). Si queda resto Pago Móvil, requiere `payment_proof_image` y nace en Payment Review.
+// @Description  Preferido: enviar `quote_id` de POST /orders/quote (total congelado; shop/items/address salen del quote). Legacy: sin quote_id, enviar carrito + `expected_total_price` (409 si el precio cambió). `method_payment=Efectivo` no lleva comprobante y nace en Pending: el rider cobra el total al entregar. Opcionalmente `balance_amount_bs` en Pago Móvil (no se combina con efectivo). Si queda resto Pago Móvil, requiere `payment_proof_image` y nace en Payment Review.
 // @Tags         Orders
 // @Accept       json
 // @Produce      json

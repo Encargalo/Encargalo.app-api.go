@@ -956,8 +956,14 @@ func (r *appRidersManager) completeTrip(ctx context.Context, trip *tripsModels.T
 	}
 	r.notifyCustomer(ctx, trip)
 
-	if err := r.tripEarnings.RecordTripEarning(ctx, *trip.RiderID, trip.ID, fare, r.bcvRate(ctx)); err != nil {
-		slog.Error("error recording trip earning", "tripID", trip.ID, "riderID", *trip.RiderID, "error", err)
+	var earnErr error
+	if trip.MethodPayment == tripsModels.MethodEfectivo {
+		earnErr = r.tripEarnings.RecordTripCash(ctx, *trip.RiderID, trip.ID, fare, r.bcvRate(ctx))
+	} else {
+		earnErr = r.tripEarnings.RecordTripEarning(ctx, *trip.RiderID, trip.ID, fare, r.bcvRate(ctx))
+	}
+	if earnErr != nil {
+		slog.Error("error recording trip earning", "tripID", trip.ID, "riderID", *trip.RiderID, "error", earnErr)
 	}
 
 	return nil

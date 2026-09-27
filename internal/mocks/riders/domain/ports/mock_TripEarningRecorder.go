@@ -33,6 +33,24 @@ func (_m *TripEarningRecorder) RecordTripEarning(ctx context.Context, riderID uu
 	return r0
 }
 
+// RecordTripCash provides a mock function with given fields: ctx, riderID, tripID, fare, bcvRate
+func (_m *TripEarningRecorder) RecordTripCash(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare float64, bcvRate float64) error {
+	ret := _m.Called(ctx, riderID, tripID, fare, bcvRate)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RecordTripCash")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) error); ok {
+		r0 = rf(ctx, riderID, tripID, fare, bcvRate)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // NewTripEarningRecorder creates a new instance of TripEarningRecorder. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewTripEarningRecorder(t interface {

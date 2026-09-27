@@ -69,6 +69,9 @@ func (a *tripsApp) RequestTrip(ctx context.Context, customerID uuid.UUID, req dt
 	if req.MethodPayment == models.MethodBalance {
 		return a.requestTripWithBalance(ctx, customerID, req)
 	}
+	if req.MethodPayment == models.MethodEfectivo {
+		return a.requestTripCash(ctx, customerID, req)
+	}
 	if req.MethodPayment != models.MethodPagoMovil || strings.TrimSpace(req.PaymentProofImage) == "" {
 		return dtos.TripResponse{}, fmt.Errorf("%w: method_payment y payment_proof_image son requeridos", errcustom.ErrInvalidStatus)
 	}
@@ -101,6 +104,7 @@ func (a *tripsApp) RequestTrip(ctx context.Context, customerID uuid.UUID, req dt
 		DropoffLongitude: quote.DropoffLongitude,
 		Fare:             &fare,
 		BcvRate:          &rate,
+		MethodPayment:    models.MethodPagoMovil,
 	}
 
 	if cell, err := geo.LatLngToCell(quote.PickupLatitude, quote.PickupLongitude, geo.DriverMatchResolution); err == nil {
@@ -172,6 +176,7 @@ func (a *tripsApp) requestTripWithBalance(ctx context.Context, customerID uuid.U
 		Fare:             &fare,
 		BcvRate:          &rate,
 		BalancePaidBs:    &expectedBs,
+		MethodPayment:    models.MethodBalance,
 	}
 	if cell, err := geo.LatLngToCell(quote.PickupLatitude, quote.PickupLongitude, geo.DriverMatchResolution); err == nil {
 		trip.PickupH3Cell = &cell
@@ -189,6 +194,49 @@ func (a *tripsApp) requestTripWithBalance(ctx context.Context, customerID uuid.U
 		if _, cancelErr := a.repo.UpdateTripStatus(ctx, trip.ID, models.TripStatusSearching, models.TripStatusCancelled); cancelErr != nil {
 			slog.Error("RequestTrip cancel after balance debit failure", "tripID", trip.ID, "error", cancelErr)
 		}
+		return dtos.TripResponse{}, err
+	}
+	if a.matcher != nil {
+		a.matcher.OfferTrip(ctx, *trip)
+	}
+	trip.ApplyBsFare(quote.BcvRate)
+	a.notifyCustomer(ctx, trip)
+	return trip.ToCustomerDTO(), nil
+}
+
+// requestTripCash no cobra a la plataforma: el pasajero paga la tarifa al rider
+// al terminar, y el viaje sale a buscar conductor de inmediato.
+func (a *tripsApp) requestTripCash(ctx context.Context, customerID uuid.UUID, req dtos.CreateTripRequest) (dtos.TripResponse, error) {
+	quote, err := a.quotes.GetAndConsume(ctx, customerID, req.QuoteID)
+	if err != nil {
+		return dtos.TripResponse{}, err
+	}
+
+	fare := quote.FareUSD
+	rate := quote.BcvRate
+	trip := &models.Trip{
+		CustomerID:       customerID,
+		Status:           models.TripStatusSearching,
+		PickupAddress:    quote.PickupAddress,
+		PickupLatitude:   quote.PickupLatitude,
+		PickupLongitude:  quote.PickupLongitude,
+		DropoffAddress:   quote.DropoffAddress,
+		DropoffLatitude:  quote.DropoffLatitude,
+		DropoffLongitude: quote.DropoffLongitude,
+		Fare:             &fare,
+		BcvRate:          &rate,
+		MethodPayment:    models.MethodEfectivo,
+	}
+	if cell, err := geo.LatLngToCell(quote.PickupLatitude, quote.PickupLongitude, geo.DriverMatchResolution); err == nil {
+		trip.PickupH3Cell = &cell
+	}
+	if cell, err := geo.LatLngToCell(quote.PickupLatitude, quote.PickupLongitude, geo.ZoneAnalyticsResolution); err == nil {
+		trip.PickupH3CellZone = &cell
+	}
+	if cell, err := geo.LatLngToCell(quote.DropoffLatitude, quote.DropoffLongitude, geo.ZoneAnalyticsResolution); err == nil {
+		trip.DropoffH3CellZone = &cell
+	}
+	if err := a.repo.CreateTrip(ctx, trip); err != nil {
 		return dtos.TripResponse{}, err
 	}
 	if a.matcher != nil {
