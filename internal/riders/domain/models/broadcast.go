@@ -96,11 +96,9 @@ func NewRiderOrder(order ordersModels.Order, assigned bool) RiderOrder {
 		RiderAcceptedAt: order.RiderAcceptedAt,
 		CreatedAt:       order.CreatedAt,
 	}
-	if order.MethodPayment == string(ordersModels.MethodEfectivo) {
-		collect := order.TotalPrice
-		collectBs := order.TotalPriceBs
-		riderOrder.CollectUSD = &collect
-		riderOrder.CollectBs = &collectBs
+	if usd, bs, ok := cashCollect(order); ok {
+		riderOrder.CollectUSD = &usd
+		riderOrder.CollectBs = &bs
 	}
 
 	if assigned {
@@ -114,6 +112,23 @@ func NewRiderOrder(order ordersModels.Order, assigned bool) RiderOrder {
 // riderItemsFromDetails reads the product lines out of the order's Details
 // JSONB. Unmarshaling straight into RiderOrderItem drops price/observation
 // fields present in Details automatically, since they have no matching field.
+func cashCollect(order ordersModels.Order) (usd, bs float64, ok bool) {
+	if len(order.Details) > 0 {
+		var details ordersModels.Details
+		if err := json.Unmarshal(order.Details, &details); err == nil && details.PaymentDetails != nil && details.PaymentDetails.CashAmountBs > 0 {
+			bs = details.PaymentDetails.CashAmountBs
+			if details.PaymentDetails.BcvRate > 0 {
+				usd = bs / details.PaymentDetails.BcvRate
+			}
+			return usd, bs, true
+		}
+	}
+	if order.MethodPayment == string(ordersModels.MethodEfectivo) {
+		return order.TotalPrice, order.TotalPriceBs, true
+	}
+	return 0, 0, false
+}
+
 func riderItemsFromDetails(details json.RawMessage) []RiderOrderItem {
 	var parsed struct {
 		Items []RiderOrderItem `json:"items"`

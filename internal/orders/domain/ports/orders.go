@@ -88,6 +88,9 @@ type RideEarningRecorder interface {
 	// deliveryFee está en USD; bcvRate es la tasa a aplicar para convertir y
 	// acreditar en Bs (moneda nativa del balance de riders).
 	RecordRideEarning(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee, totalPrice, bcvRate float64, method string) error
+	// RecordRideCashCollected liquida un domicilio con efectivo parcial.
+	// El balance del rider se mueve por su pago menos el efectivo que cobró.
+	RecordRideCashCollected(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee, cashUSD, bcvRate float64) error
 }
 
 // ShopCommissionRecorder is implemented by shops/finance to record the shop's commission on delivery completion.

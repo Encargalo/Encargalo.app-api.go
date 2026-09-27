@@ -63,8 +63,9 @@ type Trip struct {
 	MethodPayment string `bun:"method_payment,notnull,default:''"`
 	// BcvRate es la tasa congelada en la cotización. ExpectedAmountBs = fare * bcv_rate.
 	BcvRate *float64 `bun:"bcv_rate"`
-	// BalancePaidBs es el débito al saldo cuando method_payment es Balance.
+	// BalancePaidBs es el débito al saldo. CashAmountBs es la parte que cobra el rider.
 	BalancePaidBs *float64 `bun:"balance_paid_bs"`
+	CashAmountBs  *float64 `bun:"cash_amount_bs"`
 	// Payment es el crédito a la cartera si el Pago Móvil aprobado no se prestó.
 	Payment           *TripPayment `bun:"payment,type:jsonb"`
 	PickupCode        *string      `bun:"pickup_code"`
@@ -114,7 +115,11 @@ func (t *Trip) ToDTO() dtos.TripResponse {
 		CompletedAt:      t.CompletedAt,
 		CancelledAt:      t.CancelledAt,
 	}
-	if t.MethodPayment == MethodEfectivo && t.Fare != nil {
+	if t.CashAmountBs != nil && *t.CashAmountBs > 0 && t.BcvRate != nil && *t.BcvRate > 0 {
+		usd := money.RoundUSD(*t.CashAmountBs / *t.BcvRate)
+		resp.CollectUSD = &usd
+	}
+	if resp.CollectUSD == nil && t.MethodPayment == MethodEfectivo && t.Fare != nil {
 		fare := *t.Fare
 		resp.CollectUSD = &fare
 	}

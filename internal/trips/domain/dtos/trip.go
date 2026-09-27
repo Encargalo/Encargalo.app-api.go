@@ -17,14 +17,21 @@ type CreateTripRequest struct {
 	QuoteID           uuid.UUID `json:"quote_id" validate:"required,uuid4"`
 	MethodPayment     string    `json:"method_payment" validate:"required,oneof=PagoMovil Balance Efectivo" example:"PagoMovil"`
 	PaymentProofImage string    `json:"payment_proof_image" validate:"max=7000000" example:"data:image/jpeg;base64,/9j/4AAQ..."`
+	// BalanceAmountBs y CashAmountBs parten la tarifa. Cero en ambos deja el
+	// método único de siempre. Con un monto, el otro método es el resto.
+	BalanceAmountBs float64 `json:"balance_amount_bs" example:"80"`
+	CashAmountBs    float64 `json:"cash_amount_bs" example:"120"`
 }
 
 func (r *CreateTripRequest) Validate() error {
 	if err := tripValidate.StructCtx(context.Background(), r); err != nil {
 		return err
 	}
-	if r.MethodPayment == "PagoMovil" && len(r.PaymentProofImage) == 0 {
+	if r.MethodPayment == "PagoMovil" && len(r.PaymentProofImage) == 0 && r.CashAmountBs <= 0 && r.BalanceAmountBs <= 0 {
 		return fmt.Errorf("payment_proof_image es requerido")
+	}
+	if r.BalanceAmountBs < 0 || r.CashAmountBs < 0 {
+		return fmt.Errorf("los montos no pueden ser negativos")
 	}
 	return nil
 }
