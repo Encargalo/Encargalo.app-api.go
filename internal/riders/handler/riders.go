@@ -93,6 +93,7 @@ func New(svc ridersPorts.RidersApp) RiderHandler {
 //   - `{"type":"trip_accepted","trip":{...}}` — asignación de viaje exitosa. Solo el rider que aceptó recibe `trip.customer` con `name` y `phone` (sin apellido).
 //   - `{"type":"trip_taken","trip_id":"<uuid>"}` — otro rider se adelantó
 //   - `{"type":"trip_status","trip":{...}}` — trip avanzó de estado (respuesta a advance_trip) o quedó liberado (respuesta a cancel_trip). `trip.customer` va solo al rider asignado mientras el viaje está en accepted, arriving o in_progress. Al completar o liberar el viaje, el bloque no se envía.
+//   - `{"type":"trip_cancelled","trip_id":"<uuid>"}` — el cliente canceló el viaje. Lo reciben el rider asignado (accepted o arriving) y los riders que tenían la oferta viva. No dice quién canceló ni el motivo. El rider asignado deja de reenviar su ubicación.
 //   - `{"type":"error","message":"..."}` — error procesando mensaje
 //
 // @Tags         Riders WebSocket

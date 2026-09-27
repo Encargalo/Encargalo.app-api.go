@@ -23,17 +23,18 @@ import (
 )
 
 type tripsApp struct {
-	repo      ports.TripsRepo
-	matcher   ports.TripRiderMatcher
-	bcv       bcvPorts.BcvApp
-	quotes    ports.TripQuotesRepo
-	upload    uploadimage.UploadImage
-	reviews   paymentsPorts.PaymentReviewsApp
-	hub       paymentsPorts.StaffReviewHub
-	riders    ports.RiderPublicInfoLookup
-	balance   paymentsPorts.CustomerBalanceCreditor
-	customers ports.CustomerTripNotifier
-	nearby    ports.NearbyRidersLookup
+	repo        ports.TripsRepo
+	matcher     ports.TripRiderMatcher
+	bcv         bcvPorts.BcvApp
+	quotes      ports.TripQuotesRepo
+	upload      uploadimage.UploadImage
+	reviews     paymentsPorts.PaymentReviewsApp
+	hub         paymentsPorts.StaffReviewHub
+	riders      ports.RiderPublicInfoLookup
+	balance     paymentsPorts.CustomerBalanceCreditor
+	customers   ports.CustomerTripNotifier
+	nearby      ports.NearbyRidersLookup
+	riderNotify ports.TripRiderNotifier
 }
 
 func NewTripsApp(
@@ -48,19 +49,21 @@ func NewTripsApp(
 	balance paymentsPorts.CustomerBalanceCreditor,
 	customers ports.CustomerTripNotifier,
 	nearby ports.NearbyRidersLookup,
+	riderNotify ports.TripRiderNotifier,
 ) ports.TripsApp {
 	return &tripsApp{
-		repo:      repo,
-		matcher:   matcher,
-		bcv:       bcv,
-		quotes:    quotes,
-		upload:    upload,
-		reviews:   reviews,
-		hub:       hub,
-		riders:    riders,
-		balance:   balance,
-		customers: customers,
-		nearby:    nearby,
+		repo:        repo,
+		matcher:     matcher,
+		bcv:         bcv,
+		quotes:      quotes,
+		upload:      upload,
+		reviews:     reviews,
+		hub:         hub,
+		riders:      riders,
+		balance:     balance,
+		customers:   customers,
+		nearby:      nearby,
+		riderNotify: riderNotify,
 	}
 }
 
@@ -436,6 +439,7 @@ func (a *tripsApp) CancelTrip(ctx context.Context, tripID, requesterID uuid.UUID
 		return dtos.TripResponse{}, err
 	}
 	a.notifyCustomer(ctx, trip)
+	a.notifyRidersCancelled(ctx, trip)
 	return resp, nil
 }
 
@@ -476,6 +480,13 @@ func (a *tripsApp) notifyCustomer(ctx context.Context, trip *models.Trip) {
 		return
 	}
 	a.customers.NotifyTrip(ctx, *trip)
+}
+
+func (a *tripsApp) notifyRidersCancelled(ctx context.Context, trip *models.Trip) {
+	if a.riderNotify == nil || trip == nil {
+		return
+	}
+	a.riderNotify.NotifyTripCancelled(ctx, *trip)
 }
 
 // EstimateFare calcula el fare una sola vez y lo congela en una TripQuote.
