@@ -12,8 +12,13 @@ type Zone string
 
 const (
 	MovementTypeRideBank MovementType = "ride_bank"
+	MovementTypeRideCash MovementType = "ride_cash"
 	MovementTypeTripBank MovementType = "trip_bank"
+	MovementTypeTripCash MovementType = "trip_cash"
 	MovementTypeWithdraw MovementType = "withdrawal"
+
+	// PaymentMethodEfectivo es el method_payment que cobra el rider en la entrega.
+	PaymentMethodEfectivo = "Efectivo"
 
 	MovementTypeStaffPayout      MovementType = "staff_payout"
 	MovementTypeAdjustmentCredit MovementType = "adjustment_credit"
@@ -74,4 +79,20 @@ type Transaction struct {
 	Notes         *string    `bun:"notes,nullzero"`
 	ProofURL      *string    `bun:"proof_url,nullzero"`
 	CreatedAt     time.Time  `bun:"created_at,nullzero"`
+}
+
+// RiderPayUSD es la parte del rider (80%) de una tarifa de envío o de viaje.
+func RiderPayUSD(fee float64) float64 {
+	return fee * RiderShare
+}
+
+// CashOwedUSD es lo que el rider nos debe después de quedarse con su pago.
+// Ese pago ya viene dentro del efectivo que cobró: un pedido de $10 cuyo
+// pago es $2 deja una deuda de $8, no de $10 ni de $2.
+func CashOwedUSD(collected, riderPay float64) float64 {
+	owed := collected - riderPay
+	if owed < 0 {
+		return 0
+	}
+	return owed
 }

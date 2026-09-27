@@ -31,11 +31,15 @@ func NewShopFinanceApp(repo ports.ShopFinanceRepo, bcv bcvPorts.BcvApp) ports.Sh
 func (f *shopFinanceApp) RecordSaleCommission(ctx context.Context, shopID uuid.UUID, orderID uuid.UUID, totalPrice, deliveryFee float64, method string, isLaunchPromo, isZeroCommission bool, promoSubsidyAmount float64) error {
 	breakdown := models.ComputeShopSaleBreakdown(totalPrice, deliveryFee, promoSubsidyAmount, isLaunchPromo, isZeroCommission)
 	delta := breakdown.Net
+	movement := models.MovementTypeSaleDeliveryBank
+	if method == models.MethodEfectivo {
+		movement = models.MovementTypeSaleDeliveryCash
+	}
 
 	tx := models.ShopTransaction{
 		ID:            uuid.New(),
 		OrderID:       &orderID,
-		MovementType:  string(models.MovementTypeSaleDeliveryBank),
+		MovementType:  string(movement),
 		PaymentMethod: &method,
 		CreatedAt:     time.Now(),
 	}

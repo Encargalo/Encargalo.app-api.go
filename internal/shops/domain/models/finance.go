@@ -15,6 +15,7 @@ const (
 	// ZeroCommissionShare es el share que recibe el negocio durante sus
 	// primeros 8 días de vida (comisión 0% en vez del 10% habitual).
 	ZeroCommissionShare = 1.0
+	MethodEfectivo      = "Efectivo"
 )
 
 // ShopSaleShare devuelve el porcentaje del subtotal que recibe el negocio.

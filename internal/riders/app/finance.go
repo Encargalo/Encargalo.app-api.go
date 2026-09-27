@@ -24,23 +24,31 @@ func NewFinanceApp(repo ports.FinanceRepo, bcv bcvPorts.BcvApp) ports.FinanceApp
 	return &financeApp{repo, bcv}
 }
 
-// RecordRideEarning credits the rider's balance with 80% of the delivery fee
-// (USD, calculado por orders), convertido a Bs con bcvRate — la tasa que el
-// caller resolvió para este movimiento (ver orders/app.CompleteDelivery, que
-// usa la tasa BCV vigente al completar la entrega, no la del quote original
-// que ya expiró para entonces). Falla en vez de acreditar Bs=0 si no hay tasa.
-func (f *financeApp) RecordRideEarning(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee, _ float64, bcvRate float64, method string) error {
+// RecordRideEarning liquida el domicilio al completar. En Pago Móvil acredita
+// el 80% del delivery fee: la plataforma tiene el dinero y le debe su pago.
+// En efectivo debita lo que cobró y no es suyo (total − pago). bcvRate es la
+// tasa que el caller resolvió para este movimiento (ver orders/app al
+// completar la entrega). Falla en vez de mover Bs=0 si no hay tasa.
+func (f *financeApp) RecordRideEarning(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee, totalPrice, bcvRate float64, method string) error {
 	if bcvRate <= 0 {
 		return errcustom.ErrBcvRateUnavailable
 	}
-	deltaBs := money.RoundBs(deliveryFee * models.RiderShare * bcvRate)
 	rate := bcvRate
 	serviceType := models.ServiceTypeDelivery
+	movement := models.MovementTypeRideBank
+	deltaUSD := models.RiderPayUSD(deliveryFee)
+	if method == models.PaymentMethodEfectivo {
+		// Ya cobró el total. Su pago se queda en el bolsillo; el balance baja
+		// solo por el resto (lo del local y la comisión).
+		movement = models.MovementTypeRideCash
+		deltaUSD = -models.CashOwedUSD(totalPrice, models.RiderPayUSD(deliveryFee))
+	}
+	deltaBs := money.RoundBs(deltaUSD * bcvRate)
 
 	tx := models.Transaction{
 		ID:            uuid.New(),
 		OrderID:       &orderID,
-		MovementType:  string(models.MovementTypeRideBank),
+		MovementType:  string(movement),
 		ServiceType:   &serviceType,
 		PaymentMethod: &method,
 		Currency:      models.CurrencyVES,
@@ -72,6 +80,32 @@ func (f *financeApp) RecordTripEarning(ctx context.Context, riderID uuid.UUID, t
 		Currency:     models.CurrencyVES,
 		BcvRate:      &rate,
 		CreatedAt:    time.Now(),
+	}
+
+	_, err := f.repo.RecordMovement(ctx, riderID, entityTypeRider, deltaBs, 0, tx)
+	return err
+}
+
+// RecordTripCash debita la parte de la tarifa que el rider cobró y no es su
+// pago (20%). El 80% ya lo tiene en el efectivo del pasajero.
+func (f *financeApp) RecordTripCash(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare, bcvRate float64) error {
+	if bcvRate <= 0 {
+		return errcustom.ErrBcvRateUnavailable
+	}
+	deltaBs := money.RoundBs(-models.CashOwedUSD(fare, models.RiderPayUSD(fare)) * bcvRate)
+	rate := bcvRate
+	serviceType := models.ServiceTypeTrip
+	method := models.PaymentMethodEfectivo
+
+	tx := models.Transaction{
+		ID:            uuid.New(),
+		TripID:        &tripID,
+		MovementType:  string(models.MovementTypeTripCash),
+		ServiceType:   &serviceType,
+		PaymentMethod: &method,
+		Currency:      models.CurrencyVES,
+		BcvRate:       &rate,
+		CreatedAt:     time.Now(),
 	}
 
 	_, err := f.repo.RecordMovement(ctx, riderID, entityTypeRider, deltaBs, 0, tx)

@@ -108,6 +108,7 @@ var allowedTransitionStatuses = map[models.OrderStatus]bool{
 
 var paymentAutoTransitions = map[models.PaymentMethod]map[models.OrderStatus]models.OrderStatus{
 	models.MethodPagoMovil: {models.StatusAccepted: models.StatusInPreparation},
+	models.MethodEfectivo:  {models.StatusAccepted: models.StatusInPreparation},
 }
 
 type statusHandler func(ctx context.Context, order models.Order) error
@@ -511,6 +512,14 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		}
 	}
 
+	isCash := models.PaymentMethod(strings.TrimSpace(order.MethodPayment)) == models.MethodEfectivo
+	if isCash {
+		if balanceUsedBs > 0 {
+			return &models.Order{}, fmt.Errorf("%w: efectivo no se combina con balance", errcustom.ErrInvalidBalanceAmount)
+		}
+		pagoMovilBs = 0
+	}
+
 	if pagoMovilBs > priceTolerance && order.PaymentProofImage == "" {
 		return &models.Order{}, fmt.Errorf("%w: payment_proof_image es requerido cuando el balance no cubre el total", errcustom.ErrInvalidBalanceAmount)
 	}
@@ -522,6 +531,9 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		BalanceAmountBs:   balanceUsedBs,
 		PagoMovilAmountBs: pagoMovilBs,
 		BcvRate:           rate,
+	}
+	if isCash {
+		DetailsModel.PaymentDetails.CashAmountBs = totalBs
 	}
 
 	var proofURL string

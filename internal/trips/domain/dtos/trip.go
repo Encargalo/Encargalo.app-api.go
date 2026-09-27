@@ -15,7 +15,7 @@ var tripValidate = validator.New()
 // Pickup, dropoff y fare salen de la cotización; no se recalculan.
 type CreateTripRequest struct {
 	QuoteID           uuid.UUID `json:"quote_id" validate:"required,uuid4"`
-	MethodPayment     string    `json:"method_payment" validate:"required,oneof=PagoMovil Balance" example:"PagoMovil"`
+	MethodPayment     string    `json:"method_payment" validate:"required,oneof=PagoMovil Balance Efectivo" example:"PagoMovil"`
 	PaymentProofImage string    `json:"payment_proof_image" validate:"max=7000000" example:"data:image/jpeg;base64,/9j/4AAQ..."`
 }
 
@@ -66,13 +66,17 @@ type TripResponse struct {
 	DropoffLongitude float64           `json:"dropoff_longitude"`
 	FareUSD          *float64          `json:"fare_usd,omitempty"`
 	FareBs           *float64          `json:"fare_bs,omitempty"`
-	RequestedAt      time.Time         `json:"requested_at"`
-	AcceptedAt       *time.Time        `json:"accepted_at,omitempty"`
-	CompletedAt      *time.Time        `json:"completed_at,omitempty"`
-	CancelledAt      *time.Time        `json:"cancelled_at,omitempty"`
-	PickupCode       *string           `json:"pickup_code,omitempty"`
-	DropoffCode      *string           `json:"dropoff_code,omitempty"`
-	Payment          *TripPayment      `json:"payment,omitempty"`
+	MethodPayment    string            `json:"method_payment,omitempty"`
+	// CollectUSD es lo que el rider cobra en efectivo al pasajero. Su pago ya
+	// va dentro de ese monto; el resto queda como deuda en su balance.
+	CollectUSD  *float64     `json:"collect_usd,omitempty"`
+	RequestedAt time.Time    `json:"requested_at"`
+	AcceptedAt  *time.Time   `json:"accepted_at,omitempty"`
+	CompletedAt *time.Time   `json:"completed_at,omitempty"`
+	CancelledAt *time.Time   `json:"cancelled_at,omitempty"`
+	PickupCode  *string      `json:"pickup_code,omitempty"`
+	DropoffCode *string      `json:"dropoff_code,omitempty"`
+	Payment     *TripPayment `json:"payment,omitempty"`
 }
 
 // TripPayment es el crédito a la cartera cuando un Pago Móvil aprobado no se prestó.

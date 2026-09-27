@@ -31,6 +31,9 @@ type PaymentDetails struct {
 	CreditedBs        *float64            `json:"credited_bs,omitempty"`
 	BalanceAmountBs   float64             `json:"balance_amount_bs,omitempty"`
 	PagoMovilAmountBs float64             `json:"pago_movil_amount_bs,omitempty"`
+	// CashAmountBs es el total en Bs que el rider cobra al cliente cuando
+	// method_payment es Efectivo.
+	CashAmountBs float64 `json:"cash_amount_bs,omitempty"`
 	// PagoMovilAmountUSD se lee de pedidos viejos (pre-migracion a Bs). No se
 	// emite en escrituras nuevas; paymentSplitFromDetails lo convierte con la
 	// tasa congelada si PagoMovilAmountBs viene vacio.

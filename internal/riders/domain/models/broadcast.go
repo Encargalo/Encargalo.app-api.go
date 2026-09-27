@@ -56,15 +56,19 @@ type RiderOrderItem struct {
 // DeliveryCode is never included — it's shown by the customer to the rider
 // in person, so the rider must not receive it through this channel at all.
 type RiderOrder struct {
-	ID              uuid.UUID        `json:"id"`
-	ShopID          uuid.UUID        `json:"shop_id"`
-	CustomerID      uuid.UUID        `json:"customer_id"`
-	BatchID         uuid.UUID        `json:"batch_id,omitempty"`
-	Number          int              `json:"number"`
-	MethodPayment   string           `json:"method_payment"`
-	Status          string           `json:"status"`
-	DeliveryFee     float64          `json:"delivery_fee"`
-	DeliveryFeeBs   float64          `json:"delivery_fee_bs"`
+	ID            uuid.UUID `json:"id"`
+	ShopID        uuid.UUID `json:"shop_id"`
+	CustomerID    uuid.UUID `json:"customer_id"`
+	BatchID       uuid.UUID `json:"batch_id,omitempty"`
+	Number        int       `json:"number"`
+	MethodPayment string    `json:"method_payment"`
+	Status        string    `json:"status"`
+	DeliveryFee   float64   `json:"delivery_fee"`
+	DeliveryFeeBs float64   `json:"delivery_fee_bs"`
+	// CollectUSD es el total que el rider cobra en efectivo. Su pago ya está
+	// en delivery_fee; el resto nos lo debe.
+	CollectUSD      *float64         `json:"collect_usd,omitempty"`
+	CollectBs       *float64         `json:"collect_bs,omitempty"`
 	Items           []RiderOrderItem `json:"items,omitempty"`
 	PickupCode      *string          `json:"pickup_code,omitempty"`
 	RiderID         *uuid.UUID       `json:"rider_id,omitempty"`
@@ -91,6 +95,12 @@ func NewRiderOrder(order ordersModels.Order, assigned bool) RiderOrder {
 		RiderID:         order.RiderID,
 		RiderAcceptedAt: order.RiderAcceptedAt,
 		CreatedAt:       order.CreatedAt,
+	}
+	if order.MethodPayment == string(ordersModels.MethodEfectivo) {
+		collect := order.TotalPrice
+		collectBs := order.TotalPriceBs
+		riderOrder.CollectUSD = &collect
+		riderOrder.CollectBs = &collectBs
 	}
 
 	if assigned {

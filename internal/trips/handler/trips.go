@@ -34,12 +34,12 @@ func NewTripsHandler(svc ports.TripsApp, live ports.CustomerTripLive) TripsHandl
 
 // RequestTrip godoc
 // @Summary      Solicitar un viaje
-// @Description  Crea un viaje a partir de una cotización vigente (POST /trips/fare-estimate). Con method_payment=PagoMovil el comprobante es obligatorio y el viaje queda en payment_review hasta que el staff lo apruebe. Con method_payment=Balance se debita la tarifa completa en Bs y el viaje pasa directo a searching. Pickup/dropoff y fare quedan fijados por la cotización.
+// @Description  Crea un viaje a partir de una cotización vigente (POST /trips/fare-estimate). Con method_payment=PagoMovil el comprobante es obligatorio y el viaje queda en payment_review hasta que el staff lo apruebe. Con method_payment=Balance se debita la tarifa completa en Bs y el viaje pasa directo a searching. Con method_payment=Efectivo no hay comprobante ni débito: el pasajero paga la tarifa al rider al terminar y el viaje pasa directo a searching. Pickup/dropoff y fare quedan fijados por la cotización.
 // @Tags         Trips
 // @Accept       json
 // @Produce      json
 // @Security     SessionCookie
-// @Param        body  body  dtos.CreateTripRequest  true  "quote_id y method_payment (PagoMovil con comprobante, o Balance)"
+// @Param        body  body  dtos.CreateTripRequest  true  "quote_id y method_payment (PagoMovil con comprobante, Balance, o Efectivo)"
 // @Success      201  {object}  dtos.TripResponse
 // @Failure      400  {string}  string  "payload inválido"
 // @Failure      401  {string}  string  "No autorizado"
