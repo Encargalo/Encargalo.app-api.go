@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.1](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.0.0...v2.0.1) (2026-09-27)
+
+
+### Bug Fixes
+
+* **ci:** leer el repo con el token del job al sincronizar el tablero ([7eaeda0](https://github.com/Encargalo/Encargalo.app-api.go/commit/7eaeda0bbc281b6630693c29e89bf4ef2a0c5606))
+
 ## [2.0.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.9.0...v2.0.0) (2026-09-27)
 
 
