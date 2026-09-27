@@ -64,6 +64,13 @@ type TripRiderMatcher interface {
 	OfferTrip(ctx context.Context, trip models.Trip)
 }
 
+// TripRiderNotifier avisa a los conductores cuando el cliente cancela.
+// Lo implementa riders; trips no importa ese módulo.
+// El mensaje no dice quién canceló ni el motivo.
+type TripRiderNotifier interface {
+	NotifyTripCancelled(ctx context.Context, trip models.Trip)
+}
+
 // RiderPublicInfoLookup resuelve los datos públicos del rider asignado.
 // Lo implementa riders a partir de su perfil y de la cuenta, sin documentos KYC.
 type RiderPublicInfoLookup interface {
