@@ -26,13 +26,20 @@ type FinanceApp interface {
 	// convertir y acreditar en Bs, análogo a RecordRideEarning pero sin
 	// método de pago (los viajes no tienen ese concepto todavía).
 	RecordTripEarning(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare, bcvRate float64) error
+	// RecordTripCash debita lo que el rider cobró en efectivo y no es su pago.
+	RecordTripCash(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare, bcvRate float64) error
+	RecordRideCashCollected(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee, cashUSD, bcvRate float64) error
+	RecordTripCashCollected(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare, cashUSD, bcvRate float64) error
 	GetBalance(ctx context.Context, riderID uuid.UUID) (dtos.BalanceResponse, error)
 	RequestWithdrawal(ctx context.Context, riderID uuid.UUID) (dtos.WithdrawalResponse, error)
 	ListTransactions(ctx context.Context, riderID uuid.UUID, page, limit int) (dtos.TransactionsResponse, error)
 }
 
 // TripEarningRecorder is the narrow slice of FinanceApp that the rider-trip
-// matching flow needs to credit a completed trip — implemented by financeApp.
+// matching flow needs to settle a completed trip — implemented by financeApp.
 type TripEarningRecorder interface {
 	RecordTripEarning(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare, bcvRate float64) error
+	// RecordTripCash debita lo que el rider cobró en efectivo y no es su pago.
+	RecordTripCash(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare, bcvRate float64) error
+	RecordTripCashCollected(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare, cashUSD, bcvRate float64) error
 }

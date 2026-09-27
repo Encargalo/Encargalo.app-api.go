@@ -28,15 +28,16 @@ const ReferenceTypeTrip = "trip"
 
 const MethodPagoMovil = "PagoMovil"
 const MethodBalance = "Balance"
+const MethodEfectivo = "Efectivo"
 
 // CancellableStatuses son los estados desde los que un customer puede cancelar
-// un trip; una vez in_progress/completed/cancelled/no_driver ya no aplica.
+// un trip. payment_review no está: el comprobante sigue en la cola del staff.
+// in_progress/completed/cancelled/no_driver tampoco.
 var CancellableStatuses = map[TripStatus]bool{
-	TripStatusRequested:     true,
-	TripStatusPaymentReview: true,
-	TripStatusSearching:     true,
-	TripStatusAccepted:      true,
-	TripStatusArriving:      true,
+	TripStatusRequested: true,
+	TripStatusSearching: true,
+	TripStatusAccepted:  true,
+	TripStatusArriving:  true,
 }
 
 type Trip struct {
@@ -57,14 +58,20 @@ type Trip struct {
 	PickupH3CellZone  *string  `bun:"pickup_h3_cell_zone"`
 	DropoffH3CellZone *string  `bun:"dropoff_h3_cell_zone"`
 	Fare              *float64 `bun:"fare"`
+	// MethodPayment distingue PagoMovil, Balance y Efectivo. Vacío en viajes
+	// creados antes de persistir el método: esos se liquidan como bancarios.
+	MethodPayment string `bun:"method_payment,notnull,default:''"`
 	// BcvRate es la tasa congelada en la cotización. ExpectedAmountBs = fare * bcv_rate.
 	BcvRate *float64 `bun:"bcv_rate"`
-	// BalancePaidBs es el débito al saldo cuando method_payment es Balance.
-	BalancePaidBs     *float64   `bun:"balance_paid_bs"`
-	PickupCode        *string    `bun:"pickup_code"`
-	DropoffCode       *string    `bun:"dropoff_code"`
-	PickupCodeUsedAt  *time.Time `bun:"pickup_code_used_at"`
-	DropoffCodeUsedAt *time.Time `bun:"dropoff_code_used_at"`
+	// BalancePaidBs es el débito al saldo. CashAmountBs es la parte que cobra el rider.
+	BalancePaidBs *float64 `bun:"balance_paid_bs"`
+	CashAmountBs  *float64 `bun:"cash_amount_bs"`
+	// Payment es el crédito a la cartera si el Pago Móvil aprobado no se prestó.
+	Payment           *TripPayment `bun:"payment,type:jsonb"`
+	PickupCode        *string      `bun:"pickup_code"`
+	DropoffCode       *string      `bun:"dropoff_code"`
+	PickupCodeUsedAt  *time.Time   `bun:"pickup_code_used_at"`
+	DropoffCodeUsedAt *time.Time   `bun:"dropoff_code_used_at"`
 	// FareBs no se persiste, se recalcula en cada respuesta (patrón Order.DeliveryFeeBs).
 	FareBs      *float64   `bun:"-"`
 	RequestedAt time.Time  `bun:"requested_at,notnull,default:current_timestamp"`
@@ -89,7 +96,7 @@ func (t *Trip) ApplyBsFare(rate float64) {
 }
 
 func (t *Trip) ToDTO() dtos.TripResponse {
-	return dtos.TripResponse{
+	resp := dtos.TripResponse{
 		ID:               t.ID,
 		CustomerID:       t.CustomerID,
 		RiderID:          t.RiderID,
@@ -102,11 +109,21 @@ func (t *Trip) ToDTO() dtos.TripResponse {
 		DropoffLongitude: t.DropoffLongitude,
 		FareUSD:          t.Fare,
 		FareBs:           t.FareBs,
+		MethodPayment:    t.MethodPayment,
 		RequestedAt:      t.RequestedAt,
 		AcceptedAt:       t.AcceptedAt,
 		CompletedAt:      t.CompletedAt,
 		CancelledAt:      t.CancelledAt,
 	}
+	if t.CashAmountBs != nil && *t.CashAmountBs > 0 && t.BcvRate != nil && *t.BcvRate > 0 {
+		usd := money.RoundUSD(*t.CashAmountBs / *t.BcvRate)
+		resp.CollectUSD = &usd
+	}
+	if resp.CollectUSD == nil && t.MethodPayment == MethodEfectivo && t.Fare != nil {
+		fare := *t.Fare
+		resp.CollectUSD = &fare
+	}
+	return resp
 }
 
 // ToCustomerDTO incluye el código que el cliente debe mostrar. El rider no lo
@@ -119,5 +136,6 @@ func (t *Trip) ToCustomerDTO() dtos.TripResponse {
 	if t.Status == TripStatusInProgress && t.DropoffCodeUsedAt == nil {
 		resp.DropoffCode = t.DropoffCode
 	}
+	resp.Payment = t.Payment.toDTO()
 	return resp
 }

@@ -16,6 +16,8 @@ type TripsApp interface {
 	CancelTrip(ctx context.Context, tripID, requesterID uuid.UUID) (dtos.TripResponse, error)
 	// EstimateFare congela el precio en una TripQuote; RequestTrip la exige en vez de recalcular.
 	EstimateFare(ctx context.Context, req dtos.FareEstimateRequest) (dtos.FareEstimateResponse, error)
+	// NearbyRiders devuelve pines anónimos de conductores disponibles alrededor de un punto.
+	NearbyRiders(lat, lng float64) (dtos.NearbyRidersResponse, error)
 }
 
 type TripsRepo interface {
@@ -23,6 +25,7 @@ type TripsRepo interface {
 	GetTripByID(ctx context.Context, tripID uuid.UUID) (*models.Trip, error)
 	GetTripHistoryByCustomer(ctx context.Context, customerID uuid.UUID) ([]models.Trip, error)
 	UpdateTripStatus(ctx context.Context, tripID uuid.UUID, fromStatus, toStatus models.TripStatus) (bool, error)
+	SaveTripPayment(ctx context.Context, tripID uuid.UUID, payment *models.TripPayment) error
 	AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID, pickupCode string) (bool, error)
 	// StartTripWithPickupCode pasa arriving→in_progress si el código de subida coincide
 	// y guarda el código de bajada que el cliente mostrará al llegar.
@@ -65,6 +68,12 @@ type TripRiderMatcher interface {
 // Lo implementa riders a partir de su perfil y de la cuenta, sin documentos KYC.
 type RiderPublicInfoLookup interface {
 	GetByRiderID(ctx context.Context, riderID uuid.UUID) (dtos.RiderPublicInfo, error)
+}
+
+// NearbyRidersLookup lee conductores en modo viajes cerca de un punto.
+// Lo implementa el mismo proceso que guarda su ubicación en vivo.
+type NearbyRidersLookup interface {
+	NearbyRiders(lat, lng float64) ([]dtos.NearbyRider, error)
 }
 
 // TripQuotesRepo persiste TripQuote en Redis con TTL.

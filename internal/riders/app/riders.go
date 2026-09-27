@@ -19,6 +19,7 @@ import (
 	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/deliveryfee"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	tripsApp "Encargalo.app-api.go/internal/trips/app"
 	tripsDtos "Encargalo.app-api.go/internal/trips/domain/dtos"
 	tripsModels "Encargalo.app-api.go/internal/trips/domain/models"
 	tripsPorts "Encargalo.app-api.go/internal/trips/domain/ports"
@@ -51,6 +52,7 @@ type appRidersManager struct {
 	assignedOrders     map[uuid.UUID][]uuid.UUID // riderID → []orderID
 	riderMode          map[uuid.UUID]riderModels.RiderMode
 	riderLocation      map[uuid.UUID]riderModels.RiderLocation
+	ridersByCell       map[string]map[uuid.UUID]struct{}
 	tripOffers         map[uuid.UUID]map[uuid.UUID]struct{}
 	tripAlreadyOffered map[uuid.UUID]map[uuid.UUID]struct{}
 	tripOfferRounds    map[uuid.UUID]int
@@ -80,6 +82,7 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 		assignedOrders:     make(map[uuid.UUID][]uuid.UUID),
 		riderMode:          make(map[uuid.UUID]riderModels.RiderMode),
 		riderLocation:      make(map[uuid.UUID]riderModels.RiderLocation),
+		ridersByCell:       make(map[string]map[uuid.UUID]struct{}),
 		tripOffers:         make(map[uuid.UUID]map[uuid.UUID]struct{}),
 		tripAlreadyOffered: make(map[uuid.UUID]map[uuid.UUID]struct{}),
 		tripOfferRounds:    make(map[uuid.UUID]int),
@@ -133,6 +136,9 @@ func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn
 	r.mu.Lock()
 	r.availableRiders[riderID] = conn
 	r.riderMode[riderID] = mode
+	if loc, ok := r.riderLocation[riderID]; ok {
+		r.reindexRiderLocked(riderID, loc.H3Cell, loc.H3Cell, mode == riderModels.RiderModeTrips)
+	}
 	r.mu.Unlock()
 
 	activeOrders, err := r.repo.SearchActiveOrdersByRiderID(ctx, riderID)
@@ -182,6 +188,9 @@ func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn
 func (r *appRidersManager) Unregister(riderID uuid.UUID, conn ridersPorts.RiderConn) {
 	r.mu.Lock()
 	if stored, ok := r.availableRiders[riderID]; ok && stored == conn {
+		if loc, hasLoc := r.riderLocation[riderID]; hasLoc {
+			r.unindexCellLocked(riderID, loc.H3Cell)
+		}
 		delete(r.availableRiders, riderID)
 		delete(r.riderMode, riderID)
 		delete(r.riderLocation, riderID)
@@ -205,8 +214,13 @@ func (r *appRidersManager) UpdateLocation(ctx context.Context, riderID uuid.UUID
 		H3Cell:    cell,
 		UpdatedAt: time.Now(),
 	}
-	assignment, onTrip := r.riderTrips[riderID]
+	prevCell := ""
+	if hadLocation {
+		prevCell = prev.H3Cell
+	}
 	inTripsMode := r.riderMode[riderID] == riderModels.RiderModeTrips
+	r.reindexRiderLocked(riderID, prevCell, cell, inTripsMode)
+	assignment, onTrip := r.riderTrips[riderID]
 	r.mu.Unlock()
 
 	if onTrip && r.customers != nil {
@@ -643,6 +657,7 @@ func (r *appRidersManager) expireTripIfStillSearching(tripID uuid.UUID) {
 			slog.Error("refund balance on no_driver", "tripID", trip.ID, "error", refundErr)
 		}
 	}
+	tripsApp.CreditUnservedPagoMovil(ctx, r.balance, trip, r.tripsRepo.SaveTripPayment)
 	r.notifyCustomer(ctx, trip)
 }
 
@@ -941,8 +956,20 @@ func (r *appRidersManager) completeTrip(ctx context.Context, trip *tripsModels.T
 	}
 	r.notifyCustomer(ctx, trip)
 
-	if err := r.tripEarnings.RecordTripEarning(ctx, *trip.RiderID, trip.ID, fare, r.bcvRate(ctx)); err != nil {
-		slog.Error("error recording trip earning", "tripID", trip.ID, "riderID", *trip.RiderID, "error", err)
+	var earnErr error
+	cashUSD := tripCashCollectedUSD(trip, fare)
+	partialCash := cashUSD > 0 && fare-cashUSD > 0.01
+	if partialCash {
+		earnErr = r.tripEarnings.RecordTripCashCollected(ctx, *trip.RiderID, trip.ID, fare, cashUSD, r.bcvRate(ctx))
+	}
+	if cashUSD > 0 && !partialCash {
+		earnErr = r.tripEarnings.RecordTripCash(ctx, *trip.RiderID, trip.ID, fare, r.bcvRate(ctx))
+	}
+	if cashUSD <= 0 {
+		earnErr = r.tripEarnings.RecordTripEarning(ctx, *trip.RiderID, trip.ID, fare, r.bcvRate(ctx))
+	}
+	if earnErr != nil {
+		slog.Error("error recording trip earning", "tripID", trip.ID, "riderID", *trip.RiderID, "error", earnErr)
 	}
 
 	return nil
@@ -965,6 +992,19 @@ func (r *appRidersManager) notifyCustomer(ctx context.Context, trip *tripsModels
 		return
 	}
 	r.customers.NotifyTrip(ctx, *trip)
+}
+
+func tripCashCollectedUSD(trip *tripsModels.Trip, fare float64) float64 {
+	if trip == nil {
+		return 0
+	}
+	if trip.CashAmountBs != nil && *trip.CashAmountBs > 0 && trip.BcvRate != nil && *trip.BcvRate > 0 {
+		return *trip.CashAmountBs / *trip.BcvRate
+	}
+	if trip.MethodPayment == tripsModels.MethodEfectivo {
+		return fare
+	}
+	return 0
 }
 
 func (r *appRidersManager) bcvRate(ctx context.Context) float64 {

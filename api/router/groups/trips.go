@@ -23,6 +23,14 @@ const (
 
 	fareEstimateDailyLimitPerUser = 200
 	fareEstimateDailyLimitWindow  = 24 * time.Hour
+
+	// nearbyRiders se consulta en polling (~cada 5 s) mientras el mapa de
+	// cotización está abierto. No llama a Google, así que el tope es por minuto:
+	// 20/usuario deja margen sobre 12/min, y 60/IP cubre varias personas en la misma red.
+	nearbyRidersUserRateLimitCount  = 20
+	nearbyRidersUserRateLimitWindow = time.Minute
+	nearbyRidersIPRateLimitCount    = 60
+	nearbyRidersIPRateLimitWindow   = time.Minute
 )
 
 type TripsGroup interface {
@@ -49,6 +57,10 @@ func (t *tripsGroup) Resource(g *echo.Echo) {
 	)
 	group.GET("/history", t.handlerTrips.GetTripHistory, t.middle.Auth, t.middle.Require(models.Customer))
 	group.GET("/live", t.handlerTrips.Live, t.middle.Auth, t.middle.Require(models.Customer))
+	group.GET("/nearby-riders", t.handlerTrips.NearbyRiders, t.middle.Auth, t.middle.Require(models.Customer),
+		t.rateLimiter.LimitByIP("trips:nearby-riders", nearbyRidersIPRateLimitCount, nearbyRidersIPRateLimitWindow),
+		t.rateLimiter.LimitByKey(sessionUserIDKey, "trips:nearby-riders", nearbyRidersUserRateLimitCount, nearbyRidersUserRateLimitWindow),
+	)
 	group.GET("/:id", t.handlerTrips.GetTrip, t.middle.Auth, t.middle.Require(models.Customer))
 	group.POST("/:id/cancel", t.handlerTrips.CancelTrip, t.middle.Auth, t.middle.Require(models.Customer))
 }

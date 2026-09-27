@@ -8,6 +8,7 @@ import (
 	"time"
 
 	bcvPorts "Encargalo.app-api.go/internal/bcv/domain/ports"
+	paymentsModels "Encargalo.app-api.go/internal/payments/domain/models"
 	paymentsPorts "Encargalo.app-api.go/internal/payments/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/geo"
 	"Encargalo.app-api.go/internal/pkg/money"
@@ -32,6 +33,7 @@ type tripsApp struct {
 	riders    ports.RiderPublicInfoLookup
 	balance   paymentsPorts.CustomerBalanceCreditor
 	customers ports.CustomerTripNotifier
+	nearby    ports.NearbyRidersLookup
 }
 
 func NewTripsApp(
@@ -45,6 +47,7 @@ func NewTripsApp(
 	riders ports.RiderPublicInfoLookup,
 	balance paymentsPorts.CustomerBalanceCreditor,
 	customers ports.CustomerTripNotifier,
+	nearby ports.NearbyRidersLookup,
 ) ports.TripsApp {
 	return &tripsApp{
 		repo:      repo,
@@ -57,14 +60,21 @@ func NewTripsApp(
 		riders:    riders,
 		balance:   balance,
 		customers: customers,
+		nearby:    nearby,
 	}
 }
 
 // RequestTrip nunca calcula el fare: usa el que EstimateFare ya congeló en la quote.
 // El viaje nace en payment_review y no se oferta a riders hasta que el staff apruebe el comprobante.
 func (a *tripsApp) RequestTrip(ctx context.Context, customerID uuid.UUID, req dtos.CreateTripRequest) (dtos.TripResponse, error) {
+	if req.BalanceAmountBs > 0 || req.CashAmountBs > 0 {
+		return a.requestTripSplit(ctx, customerID, req)
+	}
 	if req.MethodPayment == models.MethodBalance {
 		return a.requestTripWithBalance(ctx, customerID, req)
+	}
+	if req.MethodPayment == models.MethodEfectivo {
+		return a.requestTripCash(ctx, customerID, req)
 	}
 	if req.MethodPayment != models.MethodPagoMovil || strings.TrimSpace(req.PaymentProofImage) == "" {
 		return dtos.TripResponse{}, fmt.Errorf("%w: method_payment y payment_proof_image son requeridos", errcustom.ErrInvalidStatus)
@@ -98,6 +108,7 @@ func (a *tripsApp) RequestTrip(ctx context.Context, customerID uuid.UUID, req dt
 		DropoffLongitude: quote.DropoffLongitude,
 		Fare:             &fare,
 		BcvRate:          &rate,
+		MethodPayment:    models.MethodPagoMovil,
 	}
 
 	if cell, err := geo.LatLngToCell(quote.PickupLatitude, quote.PickupLongitude, geo.DriverMatchResolution); err == nil {
@@ -169,6 +180,7 @@ func (a *tripsApp) requestTripWithBalance(ctx context.Context, customerID uuid.U
 		Fare:             &fare,
 		BcvRate:          &rate,
 		BalancePaidBs:    &expectedBs,
+		MethodPayment:    models.MethodBalance,
 	}
 	if cell, err := geo.LatLngToCell(quote.PickupLatitude, quote.PickupLongitude, geo.DriverMatchResolution); err == nil {
 		trip.PickupH3Cell = &cell
@@ -189,6 +201,168 @@ func (a *tripsApp) requestTripWithBalance(ctx context.Context, customerID uuid.U
 		return dtos.TripResponse{}, err
 	}
 	if a.matcher != nil {
+		a.matcher.OfferTrip(ctx, *trip)
+	}
+	trip.ApplyBsFare(quote.BcvRate)
+	a.notifyCustomer(ctx, trip)
+	return trip.ToCustomerDTO(), nil
+}
+
+// requestTripCash no cobra a la plataforma: el pasajero paga la tarifa al rider
+// al terminar, y el viaje sale a buscar conductor de inmediato.
+func (a *tripsApp) requestTripCash(ctx context.Context, customerID uuid.UUID, req dtos.CreateTripRequest) (dtos.TripResponse, error) {
+	quote, err := a.quotes.GetAndConsume(ctx, customerID, req.QuoteID)
+	if err != nil {
+		return dtos.TripResponse{}, err
+	}
+
+	fare := quote.FareUSD
+	rate := quote.BcvRate
+	trip := &models.Trip{
+		CustomerID:       customerID,
+		Status:           models.TripStatusSearching,
+		PickupAddress:    quote.PickupAddress,
+		PickupLatitude:   quote.PickupLatitude,
+		PickupLongitude:  quote.PickupLongitude,
+		DropoffAddress:   quote.DropoffAddress,
+		DropoffLatitude:  quote.DropoffLatitude,
+		DropoffLongitude: quote.DropoffLongitude,
+		Fare:             &fare,
+		BcvRate:          &rate,
+		MethodPayment:    models.MethodEfectivo,
+	}
+	if cell, err := geo.LatLngToCell(quote.PickupLatitude, quote.PickupLongitude, geo.DriverMatchResolution); err == nil {
+		trip.PickupH3Cell = &cell
+	}
+	if cell, err := geo.LatLngToCell(quote.PickupLatitude, quote.PickupLongitude, geo.ZoneAnalyticsResolution); err == nil {
+		trip.PickupH3CellZone = &cell
+	}
+	if cell, err := geo.LatLngToCell(quote.DropoffLatitude, quote.DropoffLongitude, geo.ZoneAnalyticsResolution); err == nil {
+		trip.DropoffH3CellZone = &cell
+	}
+	if err := a.repo.CreateTrip(ctx, trip); err != nil {
+		return dtos.TripResponse{}, err
+	}
+	if a.matcher != nil {
+		a.matcher.OfferTrip(ctx, *trip)
+	}
+	trip.ApplyBsFare(quote.BcvRate)
+	a.notifyCustomer(ctx, trip)
+	return trip.ToCustomerDTO(), nil
+}
+
+// requestTripSplit parte la tarifa en dos métodos. Si hay Pago Móvil, el viaje
+// espera la revisión. Si no, sale a searching y el rider cobra solo el efectivo.
+func (a *tripsApp) requestTripSplit(ctx context.Context, customerID uuid.UUID, req dtos.CreateTripRequest) (dtos.TripResponse, error) {
+	preview, err := a.quotes.Get(ctx, customerID, req.QuoteID)
+	if err != nil {
+		return dtos.TripResponse{}, err
+	}
+	if preview.BcvRate <= 0 || preview.FareUSD <= 0 {
+		return dtos.TripResponse{}, errcustom.ErrUnexpectedError
+	}
+	totalBs := money.RoundBs(preview.FareUSD * preview.BcvRate)
+	split, err := paymentsModels.ResolveTenders(totalBs, money.RoundBs(req.BalanceAmountBs), money.RoundBs(req.CashAmountBs), req.MethodPayment)
+	if err != nil {
+		return dtos.TripResponse{}, fmt.Errorf("%w: %s", errcustom.ErrInvalidStatus, err.Error())
+	}
+	if !split.IsPair() {
+		return dtos.TripResponse{}, fmt.Errorf("%w: %s", errcustom.ErrInvalidStatus, paymentsModels.ErrTooManyTenders.Error())
+	}
+	if split.PagoMovilBs > 0.01 && strings.TrimSpace(req.PaymentProofImage) == "" {
+		return dtos.TripResponse{}, fmt.Errorf("%w: payment_proof_image es requerido", errcustom.ErrInvalidStatus)
+	}
+	if split.BalanceBs > 0.01 {
+		if a.balance == nil {
+			return dtos.TripResponse{}, errcustom.ErrUnexpectedError
+		}
+		available, err := a.balance.GetBalanceBs(ctx, customerID)
+		if err != nil {
+			return dtos.TripResponse{}, err
+		}
+		if available+0.01 < split.BalanceBs {
+			return dtos.TripResponse{}, errcustom.ErrInsufficientBalance
+		}
+	}
+
+	var proofURL string
+	if split.PagoMovilBs > 0.01 {
+		proofUpload, err := a.upload.UploadImage(ctx, req.PaymentProofImage)
+		if err != nil || proofUpload == nil || proofUpload.SecureURL == "" {
+			return dtos.TripResponse{}, errcustom.ErrUploadingImage
+		}
+		proofURL = proofUpload.SecureURL
+	}
+
+	quote, err := a.quotes.GetAndConsume(ctx, customerID, req.QuoteID)
+	if err != nil {
+		return dtos.TripResponse{}, err
+	}
+	fare := quote.FareUSD
+	rate := quote.BcvRate
+	status := models.TripStatusSearching
+	if split.PagoMovilBs > 0.01 {
+		status = models.TripStatusPaymentReview
+	}
+	trip := &models.Trip{
+		CustomerID:       customerID,
+		Status:           status,
+		PickupAddress:    quote.PickupAddress,
+		PickupLatitude:   quote.PickupLatitude,
+		PickupLongitude:  quote.PickupLongitude,
+		DropoffAddress:   quote.DropoffAddress,
+		DropoffLatitude:  quote.DropoffLatitude,
+		DropoffLongitude: quote.DropoffLongitude,
+		Fare:             &fare,
+		BcvRate:          &rate,
+		MethodPayment:    req.MethodPayment,
+	}
+	if split.BalanceBs > 0.01 {
+		balanceBs := money.RoundBs(split.BalanceBs)
+		trip.BalancePaidBs = &balanceBs
+	}
+	if split.CashBs > 0.01 {
+		cashBs := money.RoundBs(split.CashBs)
+		trip.CashAmountBs = &cashBs
+	}
+	if cell, err := geo.LatLngToCell(quote.PickupLatitude, quote.PickupLongitude, geo.DriverMatchResolution); err == nil {
+		trip.PickupH3Cell = &cell
+	}
+	if cell, err := geo.LatLngToCell(quote.PickupLatitude, quote.PickupLongitude, geo.ZoneAnalyticsResolution); err == nil {
+		trip.PickupH3CellZone = &cell
+	}
+	if cell, err := geo.LatLngToCell(quote.DropoffLatitude, quote.DropoffLongitude, geo.ZoneAnalyticsResolution); err == nil {
+		trip.DropoffH3CellZone = &cell
+	}
+	if err := a.repo.CreateTrip(ctx, trip); err != nil {
+		return dtos.TripResponse{}, err
+	}
+	if trip.BalancePaidBs != nil {
+		if err := a.balance.DebitForReference(ctx, customerID, trip.ID, models.ReferenceTypeTrip, *trip.BalancePaidBs); err != nil {
+			if _, cancelErr := a.repo.UpdateTripStatus(ctx, trip.ID, status, models.TripStatusCancelled); cancelErr != nil {
+				slog.Error("RequestTrip cancel after balance debit failure", "tripID", trip.ID, "error", cancelErr)
+			}
+			return dtos.TripResponse{}, err
+		}
+	}
+	if split.PagoMovilBs > 0.01 {
+		review, err := a.reviews.CreateReview(ctx, models.ReferenceTypeTrip, trip.ID, proofURL, money.RoundBs(split.PagoMovilBs), quote.BcvRate)
+		if err != nil {
+			if _, cancelErr := a.repo.UpdateTripStatus(ctx, trip.ID, status, models.TripStatusCancelled); cancelErr != nil {
+				slog.Error("RequestTrip cancel after review failure", "tripID", trip.ID, "error", cancelErr)
+			}
+			if trip.BalancePaidBs != nil && *trip.BalancePaidBs > 0 && a.balance != nil {
+				if refundErr := a.balance.RefundBalancePayment(ctx, customerID, trip.ID, models.ReferenceTypeTrip, *trip.BalancePaidBs); refundErr != nil {
+					slog.Error("RequestTrip refund after review failure", "tripID", trip.ID, "error", refundErr)
+				}
+			}
+			return dtos.TripResponse{}, err
+		}
+		if a.hub != nil && review != nil {
+			_ = a.hub.BroadcastReview(broadcastFromTrip(review, trip))
+		}
+	}
+	if split.PagoMovilBs <= 0.01 && a.matcher != nil {
 		a.matcher.OfferTrip(ctx, *trip)
 	}
 	trip.ApplyBsFare(quote.BcvRate)
@@ -232,6 +406,9 @@ func (a *tripsApp) CancelTrip(ctx context.Context, tripID, requesterID uuid.UUID
 	if trip.CustomerID != requesterID {
 		return dtos.TripResponse{}, errcustom.ErrTripForbidden
 	}
+	if trip.Status == models.TripStatusPaymentReview {
+		return dtos.TripResponse{}, errcustom.ErrTripPaymentReviewPending
+	}
 	if !trip.IsCancellable() {
 		return dtos.TripResponse{}, errcustom.ErrTripNotCancellable
 	}
@@ -244,8 +421,12 @@ func (a *tripsApp) CancelTrip(ctx context.Context, tripID, requesterID uuid.UUID
 		return dtos.TripResponse{}, errcustom.ErrTripNotCancellable
 	}
 
+	verifiedPagoMovil := trip.HasVerifiedPagoMovil()
 	trip.Status = models.TripStatusCancelled
-	if trip.BalancePaidBs != nil && *trip.BalancePaidBs > 0 && a.balance != nil {
+	if verifiedPagoMovil {
+		CreditUnservedPagoMovil(ctx, a.balance, trip, a.repo.SaveTripPayment)
+	}
+	if !verifiedPagoMovil && trip.BalancePaidBs != nil && *trip.BalancePaidBs > 0 && a.balance != nil {
 		if refundErr := a.balance.RefundBalancePayment(ctx, trip.CustomerID, trip.ID, models.ReferenceTypeTrip, *trip.BalancePaidBs); refundErr != nil {
 			slog.Error("CancelTrip refund balance", "tripID", trip.ID, "error", refundErr)
 		}
@@ -270,6 +451,24 @@ func (a *tripsApp) toResponse(ctx context.Context, trip *models.Trip, rate float
 	}
 	resp.Rider = &info
 	return resp, nil
+}
+
+func (a *tripsApp) NearbyRiders(lat, lng float64) (dtos.NearbyRidersResponse, error) {
+	if !validCoordinates(lat, lng) {
+		return dtos.NearbyRidersResponse{}, errcustom.ErrInvalidCoordinates
+	}
+	empty := dtos.NearbyRidersResponse{Riders: []dtos.NearbyRider{}}
+	if a.nearby == nil {
+		return empty, nil
+	}
+	riders, err := a.nearby.NearbyRiders(lat, lng)
+	if err != nil {
+		return dtos.NearbyRidersResponse{}, err
+	}
+	if riders == nil {
+		riders = []dtos.NearbyRider{}
+	}
+	return dtos.NearbyRidersResponse{Riders: riders}, nil
 }
 
 func (a *tripsApp) notifyCustomer(ctx context.Context, trip *models.Trip) {
@@ -333,6 +532,10 @@ func (a *tripsApp) fareEstimate(pickupLat, pickupLon, dropoffLat, dropoffLon flo
 		}, nil
 	}
 	return deliveryfee.CalculateWithDuration(pickupLat, pickupLon, dropoffLat, dropoffLon)
+}
+
+func validCoordinates(lat, lng float64) bool {
+	return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
 }
 
 func (a *tripsApp) bcvRate(ctx context.Context) float64 {

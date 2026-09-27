@@ -18,9 +18,10 @@ const (
 	ReviewRefundedShopReject PaymentReviewStatus = "refunded_shop_reject"
 )
 
-// ReferenceTypeOrder es el único tipo registrado por este cambio. Trips
-// agrega su propia constante en su paquete al implementar PaymentSubject.
-const ReferenceTypeOrder = "order"
+const (
+	ReferenceTypeOrder = "order"
+	ReferenceTypeTrip  = "trip"
+)
 
 const PaymentProofAlertInterval = 3 * time.Minute
 

@@ -108,6 +108,7 @@ var allowedTransitionStatuses = map[models.OrderStatus]bool{
 
 var paymentAutoTransitions = map[models.PaymentMethod]map[models.OrderStatus]models.OrderStatus{
 	models.MethodPagoMovil: {models.StatusAccepted: models.StatusInPreparation},
+	models.MethodEfectivo:  {models.StatusAccepted: models.StatusInPreparation},
 }
 
 type statusHandler func(ctx context.Context, order models.Order) error
@@ -480,12 +481,13 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 	}
 
 	balanceUsedBs := money.RoundBs(order.BalanceAmountBs)
+	cashBs := money.RoundBs(order.CashAmountBs)
 	balanceUsedUSD := 0.0
 	if balanceUsedBs > 0 {
 		balanceUsedUSD = money.RoundUSD(balanceUsedBs / rate)
 	}
 	totalBs := money.RoundBs(orderModel.TotalPrice * rate)
-	pagoMovilBs := money.RoundBs(totalBs - balanceUsedBs)
+	pagoMovilBs := money.RoundBs(totalBs - balanceUsedBs - cashBs)
 	if pagoMovilBs < 0 {
 		pagoMovilBs = 0
 	}
@@ -508,7 +510,30 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		if math.Abs(orderModel.TotalPrice-balanceUsedUSD) <= priceTolerance {
 			balanceUsedBs = totalBs
 			pagoMovilBs = 0
+			cashBs = 0
 		}
+	}
+
+	isCash := models.PaymentMethod(strings.TrimSpace(order.MethodPayment)) == models.MethodEfectivo
+	splitRequested := cashBs > 0 || (isCash && balanceUsedBs > 0)
+	if splitRequested {
+		split, err := paymentsModels.ResolveTenders(totalBs, balanceUsedBs, cashBs, order.MethodPayment)
+		if err != nil {
+			return &models.Order{}, fmt.Errorf("%w: %s", errcustom.ErrInvalidBalanceAmount, err.Error())
+		}
+		if !split.IsPair() {
+			return &models.Order{}, fmt.Errorf("%w: %s", errcustom.ErrInvalidBalanceAmount, paymentsModels.ErrTooManyTenders.Error())
+		}
+		if isCash && split.CashBs <= 0.01 {
+			return &models.Order{}, fmt.Errorf("%w: efectivo requiere un monto en efectivo", errcustom.ErrInvalidBalanceAmount)
+		}
+		balanceUsedBs = money.RoundBs(split.BalanceBs)
+		cashBs = money.RoundBs(split.CashBs)
+		pagoMovilBs = money.RoundBs(split.PagoMovilBs)
+	}
+	if isCash && !splitRequested {
+		pagoMovilBs = 0
+		cashBs = totalBs
 	}
 
 	if pagoMovilBs > priceTolerance && order.PaymentProofImage == "" {
@@ -522,6 +547,15 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		BalanceAmountBs:   balanceUsedBs,
 		PagoMovilAmountBs: pagoMovilBs,
 		BcvRate:           rate,
+	}
+	if cashBs > 0 {
+		DetailsModel.PaymentDetails.CashAmountBs = cashBs
+	}
+
+	orderModel.Status = string(models.StatusPending)
+	if pagoMovilBs <= priceTolerance {
+		now := time.Now()
+		orderModel.PendingAt = &now
 	}
 
 	var proofURL string
@@ -537,11 +571,6 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		DetailsModel.PaymentDetails.PaymentProofURL = proofURL
 		DetailsModel.PaymentDetails.ExpectedAmountBs = pagoMovilBs
 		orderModel.Status = string(models.StatusPaymentReview)
-	} else {
-		// 100% balance (or no PM remainder): va directo al local.
-		orderModel.Status = string(models.StatusPending)
-		now := time.Now()
-		orderModel.PendingAt = &now
 	}
 
 	// Consume the quote only after side-effect-free validation (including proof upload).
@@ -651,6 +680,46 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 	return orderDB, nil
 }
 
+func cashCollectedUSD(order *models.Order) float64 {
+	cashBs := cashAmountBsFromOrder(order)
+	if cashBs <= 0 {
+		if models.PaymentMethod(strings.TrimSpace(order.MethodPayment)) == models.MethodEfectivo {
+			return order.TotalPrice
+		}
+		return 0
+	}
+	rate := bcvRateFromPaymentDetails(order)
+	if rate <= 0 {
+		return 0
+	}
+	return cashBs / rate
+}
+
+func cashAmountBsFromOrder(order *models.Order) float64 {
+	if order == nil || len(order.Details) == 0 {
+		return 0
+	}
+	var details models.Details
+	if err := json.Unmarshal(order.Details, &details); err != nil || details.PaymentDetails == nil {
+		return 0
+	}
+	return details.PaymentDetails.CashAmountBs
+}
+
+func (o *orderApp) refundCashOrderBalance(ctx context.Context, order *models.Order) {
+	if order == nil {
+		return
+	}
+	var details models.Details
+	if len(order.Details) > 0 {
+		_ = json.Unmarshal(order.Details, &details)
+	}
+	if details.PaymentDetails == nil || details.PaymentDetails.BalanceAmountBs <= 0 {
+		return
+	}
+	o.refundBalanceDebit(ctx, order.CustomerID, order.ID, details.PaymentDetails.BalanceAmountBs)
+}
+
 func (o *orderApp) refundBalanceDebit(ctx context.Context, customerID, orderID uuid.UUID, amount float64) {
 	if amount <= 0 || o.customerBalance == nil {
 		return
@@ -739,6 +808,10 @@ func (o *orderApp) refundCustomerOnShopRejectWithReason(ctx context.Context, ord
 	if o.customerBalance == nil {
 		return
 	}
+	if models.PaymentMethod(strings.TrimSpace(order.MethodPayment)) == models.MethodEfectivo {
+		o.refundCashOrderBalance(ctx, order)
+		return
+	}
 	if models.PaymentMethod(strings.TrimSpace(order.MethodPayment)) != models.MethodPagoMovil {
 		return
 	}
@@ -762,6 +835,12 @@ func (o *orderApp) refundCustomerOnShopRejectWithReason(ctx context.Context, ord
 		balanceUsedBs = debited
 	}
 	totalBs := money.RoundBs(order.TotalPrice * rate)
+	if cashBs := cashAmountBsFromOrder(order); cashBs > 0 {
+		totalBs = money.RoundBs(totalBs - cashBs)
+		if totalBs < 0 {
+			totalBs = 0
+		}
+	}
 	refundablePMBs := cashRefundablePMBs(totalBs, balanceUsedBs, pmFromDetails, hasPD)
 	txID, createdAt, err := o.customerBalance.CreditOrderRejected(ctx, order.CustomerID, order.ID, paymentsModels.ReferenceTypeOrder, totalBs, refundablePMBs, rate)
 	if err != nil {
@@ -1014,11 +1093,24 @@ func (o *orderApp) ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code 
 	// Sin tasa persistida por orden a esta altura del ciclo de vida (ver
 	// refundCustomerOnShopRejectWithReason): se usa la tasa BCV vigente al
 	// completar la entrega, más justa para el rider que la del quote inicial.
-	if err := o.finance.RecordRideEarning(ctx, *order.RiderID, order.ID, order.DeliveryFee, order.TotalPrice, o.bcvRate(ctx), order.MethodPayment); err != nil {
-		slog.Error("error recording ride earning", "orderID", orderID, "error", err)
+	cashUSD := cashCollectedUSD(order)
+	shopMethod := order.MethodPayment
+	partialCash := cashUSD > priceTolerance && order.TotalPrice-cashUSD > priceTolerance
+	if cashUSD > priceTolerance {
+		shopMethod = string(models.MethodEfectivo)
+	}
+	if partialCash {
+		if err := o.finance.RecordRideCashCollected(ctx, *order.RiderID, order.ID, order.DeliveryFee, cashUSD, o.bcvRate(ctx)); err != nil {
+			slog.Error("error recording ride cash", "orderID", orderID, "error", err)
+		}
+	}
+	if !partialCash {
+		if err := o.finance.RecordRideEarning(ctx, *order.RiderID, order.ID, order.DeliveryFee, order.TotalPrice, o.bcvRate(ctx), order.MethodPayment); err != nil {
+			slog.Error("error recording ride earning", "orderID", orderID, "error", err)
+		}
 	}
 
-	if err := o.shopCommission.RecordSaleCommission(ctx, order.ShopID, order.ID, order.TotalPrice, order.DeliveryFee, order.MethodPayment, order.IsLaunchPromo, order.IsZeroCommission, order.PromoSubsidyAmount); err != nil {
+	if err := o.shopCommission.RecordSaleCommission(ctx, order.ShopID, order.ID, order.TotalPrice, order.DeliveryFee, shopMethod, order.IsLaunchPromo, order.IsZeroCommission, order.PromoSubsidyAmount); err != nil {
 		slog.Error("error recording shop commission", "orderID", orderID, "shopID", order.ShopID, "error", err)
 	}
 

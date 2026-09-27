@@ -15,16 +15,23 @@ var tripValidate = validator.New()
 // Pickup, dropoff y fare salen de la cotización; no se recalculan.
 type CreateTripRequest struct {
 	QuoteID           uuid.UUID `json:"quote_id" validate:"required,uuid4"`
-	MethodPayment     string    `json:"method_payment" validate:"required,oneof=PagoMovil Balance" example:"PagoMovil"`
+	MethodPayment     string    `json:"method_payment" validate:"required,oneof=PagoMovil Balance Efectivo" example:"PagoMovil"`
 	PaymentProofImage string    `json:"payment_proof_image" validate:"max=7000000" example:"data:image/jpeg;base64,/9j/4AAQ..."`
+	// BalanceAmountBs y CashAmountBs parten la tarifa. Cero en ambos deja el
+	// método único de siempre. Con un monto, el otro método es el resto.
+	BalanceAmountBs float64 `json:"balance_amount_bs" example:"80"`
+	CashAmountBs    float64 `json:"cash_amount_bs" example:"120"`
 }
 
 func (r *CreateTripRequest) Validate() error {
 	if err := tripValidate.StructCtx(context.Background(), r); err != nil {
 		return err
 	}
-	if r.MethodPayment == "PagoMovil" && len(r.PaymentProofImage) == 0 {
+	if r.MethodPayment == "PagoMovil" && len(r.PaymentProofImage) == 0 && r.CashAmountBs <= 0 && r.BalanceAmountBs <= 0 {
 		return fmt.Errorf("payment_proof_image es requerido")
+	}
+	if r.BalanceAmountBs < 0 || r.CashAmountBs < 0 {
+		return fmt.Errorf("los montos no pueden ser negativos")
 	}
 	return nil
 }
@@ -66,16 +73,42 @@ type TripResponse struct {
 	DropoffLongitude float64           `json:"dropoff_longitude"`
 	FareUSD          *float64          `json:"fare_usd,omitempty"`
 	FareBs           *float64          `json:"fare_bs,omitempty"`
-	RequestedAt      time.Time         `json:"requested_at"`
-	AcceptedAt       *time.Time        `json:"accepted_at,omitempty"`
-	CompletedAt      *time.Time        `json:"completed_at,omitempty"`
-	CancelledAt      *time.Time        `json:"cancelled_at,omitempty"`
-	PickupCode       *string           `json:"pickup_code,omitempty"`
-	DropoffCode      *string           `json:"dropoff_code,omitempty"`
+	MethodPayment    string            `json:"method_payment,omitempty"`
+	// CollectUSD es lo que el rider cobra en efectivo al pasajero. Su pago ya
+	// va dentro de ese monto; el resto queda como deuda en su balance.
+	CollectUSD  *float64     `json:"collect_usd,omitempty"`
+	RequestedAt time.Time    `json:"requested_at"`
+	AcceptedAt  *time.Time   `json:"accepted_at,omitempty"`
+	CompletedAt *time.Time   `json:"completed_at,omitempty"`
+	CancelledAt *time.Time   `json:"cancelled_at,omitempty"`
+	PickupCode  *string      `json:"pickup_code,omitempty"`
+	DropoffCode *string      `json:"dropoff_code,omitempty"`
+	Payment     *TripPayment `json:"payment,omitempty"`
+}
+
+// TripPayment es el crédito a la cartera cuando un Pago Móvil aprobado no se prestó.
+type TripPayment struct {
+	ExpectedAmountBs    float64    `json:"expected_amount_bs,omitempty"`
+	TransactionID       *uuid.UUID `json:"transaction_id,omitempty"`
+	CreditedBs          *float64   `json:"credited_bs,omitempty"`
+	RefundablePMBs      *float64   `json:"refundable_pm_bs,omitempty"`
+	CanRequestRefund    bool       `json:"can_request_refund,omitempty"`
+	RefundEligibleUntil *string    `json:"refund_eligible_until,omitempty"`
 }
 
 type TripHistoryResponse struct {
 	Trips []TripResponse `json:"trips"`
+}
+
+// NearbyRider es un conductor disponible en el mapa de cotización.
+// La coordenada está redondeada (~100 m) y no incluye id ni datos del perfil.
+type NearbyRider struct {
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+}
+
+type NearbyRidersResponse struct {
+	Riders []NearbyRider `json:"riders"`
 }
 
 // FareEstimateRequest congela todo lo necesario para crear el viaje después.

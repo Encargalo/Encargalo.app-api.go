@@ -28,6 +28,9 @@ func NewTripStaffSnapshot(trips ports.TripsRepo, reviews paymentsPorts.PaymentRe
 			if err != nil || trip == nil {
 				continue
 			}
+			if trip.Status != models.TripStatusPaymentReview {
+				continue
+			}
 			out = append(out, broadcastFromTrip(&review, trip))
 		}
 		return out, nil

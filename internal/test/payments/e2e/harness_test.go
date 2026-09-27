@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
@@ -28,14 +29,21 @@ import (
 	paymentsrepo "Encargalo.app-api.go/internal/payments/repo"
 	"Encargalo.app-api.go/internal/pkg/money"
 	"Encargalo.app-api.go/internal/shared/config"
+	"Encargalo.app-api.go/internal/shared/errcustom"
 	shopmodels "Encargalo.app-api.go/internal/shops/domain/models/shops"
+	tripsapp "Encargalo.app-api.go/internal/trips/app"
+	tripsports "Encargalo.app-api.go/internal/trips/domain/ports"
+	tripshandler "Encargalo.app-api.go/internal/trips/handler"
+	tripsrepo "Encargalo.app-api.go/internal/trips/repo"
 	usersapp "Encargalo.app-api.go/internal/users/app"
 	usersmodels "Encargalo.app-api.go/internal/users/domain/models"
 	usersports "Encargalo.app-api.go/internal/users/domain/ports"
+	usershandler "Encargalo.app-api.go/internal/users/handler"
 	usersrepo "Encargalo.app-api.go/internal/users/repo"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
@@ -170,7 +178,9 @@ func finish(m *testing.M) int {
 	wire()
 
 	e := echo.New()
+	e.HTTPErrorHandler = errcustom.HTTPErrorHandler
 	groups.NewPaymentsGroup(staffSessionAuth{staffID: staffID}, paymentshandler.NewStaffReviewsHandler(hub, reviewsPort)).Resource(e)
+	mountTripPaymentHTTP(e)
 	httpServer = httptest.NewServer(e)
 	defer httpServer.Close()
 
@@ -331,11 +341,59 @@ func wire() {
 	registry := paymentsapp.NewSubjectRegistry()
 	subject := ordersapp.NewOrderPaymentSubject(ordersRepo, reviewsRepo, creditor, nil)
 	registry.Register(paymentsmodels.ReferenceTypeOrder, subject)
+	tripsRepo := tripsrepo.NewTripsRepo(db)
+	registry.Register(paymentsmodels.ReferenceTypeTrip, tripsapp.NewTripPaymentSubject(tripsRepo, nil, nil))
 
 	hub = paymentsapp.NewStaffReviewHub(reviewsRepo)
 	reviewsPort = paymentsapp.NewPaymentReviewsApp(reviewsRepo, creditor, hub, registry)
 	reviewsPort.SetSnapshotProvider(ordersapp.NewOrderStaffSnapshot(ordersRepo, reviewsRepo))
 	hub.SetSnapshotProvider(reviewsPort.ListActiveForStaff)
+	hub.SetSnapshotProvider(tripsapp.NewTripStaffSnapshot(tripsRepo, reviewsRepo))
+
+	quoteStore = newMemQuotes()
+	tripsHTTP = tripsapp.NewTripsApp(tripsRepo, nil, fixedBCV{}, quoteStore, fakeUpload{}, reviewsPort, hub, nil, reviewsApp, nil, nil)
+}
+
+// testCustomerHeader sustituye la sesión que Traefik inyecta. El handler es el de producción.
+const testCustomerHeader = "X-Test-Customer-Id"
+
+var (
+	quoteStore *memQuotes
+	tripsHTTP  tripsports.TripsApp
+)
+
+type headerCustomerAuth struct{}
+
+func (headerCustomerAuth) Auth(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		id, err := uuid.Parse(c.Request().Header.Get(testCustomerHeader))
+		if err != nil {
+			return echo.NewHTTPError(http.StatusUnauthorized, "no autorizado")
+		}
+		session := authmodels.ActiveSession{UserID: id, Roles: []authmodels.Role{authmodels.Customer}}
+		ctx := context.WithValue(c.Request().Context(), authmodels.SessionKey, session)
+		c.SetRequest(c.Request().WithContext(ctx))
+		return next(c)
+	}
+}
+
+func (headerCustomerAuth) Require(...authmodels.Role) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc { return next }
+}
+
+func mountTripPaymentHTTP(e *echo.Echo) {
+	authn := headerCustomerAuth{}
+	trips := tripshandler.NewTripsHandler(tripsHTTP, nil)
+	tg := e.Group("/trips")
+	tg.POST("", trips.RequestTrip, middleware.BodyLimit("8M"), authn.Auth, authn.Require(authmodels.Customer))
+	tg.GET("/:id", trips.GetTrip, authn.Auth, authn.Require(authmodels.Customer))
+	tg.POST("/:id/cancel", trips.CancelTrip, authn.Auth, authn.Require(authmodels.Customer))
+
+	finance := usershandler.NewCustomerFinanceHandler(reviewsApp)
+	ug := e.Group("/users")
+	ug.GET("/balance", finance.GetBalance, authn.Auth, authn.Require(authmodels.Customer))
+	ug.PUT("/pago-movil", finance.UpsertPagoMovil, authn.Auth, authn.Require(authmodels.Customer))
+	ug.POST("/balance/refund-requests", finance.CreateRefundRequest, authn.Auth, authn.Require(authmodels.Customer))
 }
 
 type staffSessionAuth struct {

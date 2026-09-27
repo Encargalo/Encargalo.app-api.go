@@ -56,15 +56,19 @@ type RiderOrderItem struct {
 // DeliveryCode is never included — it's shown by the customer to the rider
 // in person, so the rider must not receive it through this channel at all.
 type RiderOrder struct {
-	ID              uuid.UUID        `json:"id"`
-	ShopID          uuid.UUID        `json:"shop_id"`
-	CustomerID      uuid.UUID        `json:"customer_id"`
-	BatchID         uuid.UUID        `json:"batch_id,omitempty"`
-	Number          int              `json:"number"`
-	MethodPayment   string           `json:"method_payment"`
-	Status          string           `json:"status"`
-	DeliveryFee     float64          `json:"delivery_fee"`
-	DeliveryFeeBs   float64          `json:"delivery_fee_bs"`
+	ID            uuid.UUID `json:"id"`
+	ShopID        uuid.UUID `json:"shop_id"`
+	CustomerID    uuid.UUID `json:"customer_id"`
+	BatchID       uuid.UUID `json:"batch_id,omitempty"`
+	Number        int       `json:"number"`
+	MethodPayment string    `json:"method_payment"`
+	Status        string    `json:"status"`
+	DeliveryFee   float64   `json:"delivery_fee"`
+	DeliveryFeeBs float64   `json:"delivery_fee_bs"`
+	// CollectUSD es el total que el rider cobra en efectivo. Su pago ya está
+	// en delivery_fee; el resto nos lo debe.
+	CollectUSD      *float64         `json:"collect_usd,omitempty"`
+	CollectBs       *float64         `json:"collect_bs,omitempty"`
 	Items           []RiderOrderItem `json:"items,omitempty"`
 	PickupCode      *string          `json:"pickup_code,omitempty"`
 	RiderID         *uuid.UUID       `json:"rider_id,omitempty"`
@@ -92,6 +96,10 @@ func NewRiderOrder(order ordersModels.Order, assigned bool) RiderOrder {
 		RiderAcceptedAt: order.RiderAcceptedAt,
 		CreatedAt:       order.CreatedAt,
 	}
+	if usd, bs, ok := cashCollect(order); ok {
+		riderOrder.CollectUSD = &usd
+		riderOrder.CollectBs = &bs
+	}
 
 	if assigned {
 		riderOrder.Items = riderItemsFromDetails(order.Details)
@@ -104,6 +112,23 @@ func NewRiderOrder(order ordersModels.Order, assigned bool) RiderOrder {
 // riderItemsFromDetails reads the product lines out of the order's Details
 // JSONB. Unmarshaling straight into RiderOrderItem drops price/observation
 // fields present in Details automatically, since they have no matching field.
+func cashCollect(order ordersModels.Order) (usd, bs float64, ok bool) {
+	if len(order.Details) > 0 {
+		var details ordersModels.Details
+		if err := json.Unmarshal(order.Details, &details); err == nil && details.PaymentDetails != nil && details.PaymentDetails.CashAmountBs > 0 {
+			bs = details.PaymentDetails.CashAmountBs
+			if details.PaymentDetails.BcvRate > 0 {
+				usd = bs / details.PaymentDetails.BcvRate
+			}
+			return usd, bs, true
+		}
+	}
+	if order.MethodPayment == string(ordersModels.MethodEfectivo) {
+		return order.TotalPrice, order.TotalPriceBs, true
+	}
+	return 0, 0, false
+}
+
 func riderItemsFromDetails(details json.RawMessage) []RiderOrderItem {
 	var parsed struct {
 		Items []RiderOrderItem `json:"items"`

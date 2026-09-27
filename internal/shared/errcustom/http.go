@@ -73,6 +73,7 @@ var statusMap = map[error]int{
 	ErrTrackingParamsTooLarge:   http.StatusBadRequest,
 	ErrTripForbidden:            http.StatusForbidden,
 	ErrTripNotCancellable:       http.StatusUnprocessableEntity,
+	ErrTripPaymentReviewPending: http.StatusUnprocessableEntity,
 }
 
 var codeMap = map[error]string{
@@ -137,6 +138,7 @@ var codeMap = map[error]string{
 	ErrTrackingParamsTooLarge:   "tracking_params_too_large",
 	ErrTripForbidden:            "trip_forbidden",
 	ErrTripNotCancellable:       "trip_not_cancellable",
+	ErrTripPaymentReviewPending: "trip_payment_review_pending",
 }
 
 func Code(sentinel error) string {

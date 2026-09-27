@@ -2158,7 +2158,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Preferido: enviar ` + "`" + `quote_id` + "`" + ` de POST /orders/quote (total congelado; shop/items/address salen del quote). Legacy: sin quote_id, enviar carrito + ` + "`" + `expected_total_price` + "`" + ` (409 si el precio cambió). Opcionalmente ` + "`" + `balance_amount_bs` + "`" + ` (balance del customer, en bolívares; se convierte a USD con la tasa BCV del quote). Si queda resto Pago Móvil, requiere ` + "`" + `payment_proof_image` + "`" + ` y nace en Payment Review.",
+                "description": "Preferido: enviar ` + "`" + `quote_id` + "`" + ` de POST /orders/quote. Se pueden combinar dos métodos: Pago Móvil + saldo, efectivo + saldo, o efectivo + Pago Móvil (` + "`" + `cash_amount_bs` + "`" + `). Los tres juntos se rechazan. Si hay Pago Móvil hace falta comprobante y la orden nace en Payment Review. Efectivo + saldo no lleva comprobante y nace en Pending; el rider cobra solo la parte en efectivo.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3731,7 +3731,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Devuelve los viajes que el rider ya tiene asignados y siguen en curso (accepted, arriving o in_progress), sin códigos de subida/bajada. Sirve para recuperar el viaje al abrir la app sin depender del WebSocket. Lista vacía si no tiene ninguno.",
+                "description": "Devuelve los viajes que el rider ya tiene asignados y siguen en curso (accepted, arriving o in_progress), sin códigos de subida/bajada. Cada viaje incluye ` + "`" + `customer` + "`" + ` con el nombre y el teléfono del pasajero (sin apellido); ese bloque no se envía en la oferta ni cuando el viaje ya finalizó. Sirve para recuperar el viaje al abrir la app sin depender del WebSocket. Lista vacía si no tiene ninguno.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5617,7 +5617,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Crea un viaje a partir de una cotización vigente (POST /trips/fare-estimate). Con method_payment=PagoMovil el comprobante es obligatorio y el viaje queda en payment_review hasta que el staff lo apruebe. Con method_payment=Balance se debita la tarifa completa en Bs y el viaje pasa directo a searching. Pickup/dropoff y fare quedan fijados por la cotización.",
+                "description": "Crea un viaje a partir de una cotización vigente. Un método solo: PagoMovil (comprobante, payment_review), Balance (debita la tarifa, searching) o Efectivo (el pasajero paga al rider, searching). También dos métodos con balance_amount_bs y/o cash_amount_bs: el resto lo cubre el method_payment. Los tres juntos se rechazan. Si hay Pago Móvil, el viaje no se oferta hasta aprobar el comprobante.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5630,7 +5630,7 @@ const docTemplate = `{
                 "summary": "Solicitar un viaje",
                 "parameters": [
                     {
-                        "description": "quote_id y method_payment (PagoMovil con comprobante, o Balance)",
+                        "description": "quote_id y method_payment (PagoMovil con comprobante, Balance, o Efectivo)",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -5789,6 +5789,68 @@ const docTemplate = `{
                 }
             }
         },
+        "/trips/nearby-riders": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Devuelve hasta 30 pines de conductores disponibles en modo viajes, a unos 2 km del punto. Cada coordenada está redondeada a ~100 m. No incluye id, nombre ni datos del vehículo. Pensado para consultarse cada pocos segundos mientras el mapa está abierto.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Trips"
+                ],
+                "summary": "Conductores cercanos para el mapa de cotización",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "Latitud del centro del mapa",
+                        "name": "lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Longitud del centro del mapa",
+                        "name": "lng",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.NearbyRidersResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "coordenadas inválidas",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "429": {
+                        "description": "rate limit",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/trips/{id}": {
             "get": {
                 "security": [
@@ -5796,7 +5858,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Si el viaje ya tiene rider asignado, ` + "`" + `rider` + "`" + ` trae nombre, teléfono, foto y vehículo. No incluye documentos KYC. pickup_code aparece desde accepted hasta que el pasajero sube; dropoff_code aparece en in_progress. Los cambios en vivo llegan por GET /trips/live.",
+                "description": "Si el viaje ya tiene rider asignado, ` + "`" + `rider` + "`" + ` trae nombre, teléfono, foto y vehículo. No incluye documentos KYC. pickup_code aparece desde accepted hasta que el pasajero sube; dropoff_code aparece en in_progress. Si un Pago Móvil aprobado se reintegró a la cartera, ` + "`" + `payment` + "`" + ` trae transaction_id, credited_bs y refund_eligible_until. Los cambios en vivo llegan por GET /trips/live.",
                 "produces": [
                     "application/json"
                 ],
@@ -5854,7 +5916,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Solo permitido mientras el viaje esté en requested/payment_review/searching/accepted/arriving. Si se pagó con balance, el débito se reintegra.",
+                "description": "Solo permitido mientras el viaje esté en requested/searching/accepted/arriving. En payment_review responde 422 trip_payment_review_pending: hay que esperar a que el staff resuelva el comprobante. Si se pagó con balance, el débito se reintegra. Si el Pago Móvil ya estaba aprobado (searching, accepted o arriving), se acredita la tarifa en Bs a la cartera y la respuesta trae payment.transaction_id.",
                 "produces": [
                     "application/json"
                 ],
@@ -5903,7 +5965,7 @@ const docTemplate = `{
                         }
                     },
                     "422": {
-                        "description": "El viaje no se puede cancelar en su estado actual",
+                        "description": "Pago en revisión, o el viaje no se puede cancelar en su estado actual",
                         "schema": {
                             "type": "string"
                         }
@@ -6323,7 +6385,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna balance_bs y balance_usd (tasa BCV vigente en bcv_rate) y los últimos 10 movimientos (amount_bs y amount_usd). Créditos elegibles incluyen refundable_pm_bs, can_request_refund (ventana/monto \u003e $1 equivalente en Bs a la tasa congelada/saldo; no exige Pago Móvil) y refund_eligible_until. Los débitos de devolución (balance_refund_hold / processing / payout) y créditos balance_refund_restore incluyen refund_request_id para abrir el detalle.",
+                "description": "Retorna balance_bs y balance_usd (tasa BCV vigente en bcv_rate) y los últimos 10 movimientos (amount_bs y amount_usd). Créditos elegibles incluyen refundable_pm_bs, can_request_refund (ventana/monto \u003e $1 equivalente en Bs a la tasa congelada/saldo; no exige Pago Móvil) y refund_eligible_until. Un movimiento de orden trae order_id; uno de viaje trae trip_id. Los débitos de devolución (balance_refund_hold / processing / payout) y créditos balance_refund_restore incluyen refund_request_id para abrir el detalle.",
                 "produces": [
                     "application/json"
                 ],
@@ -6392,7 +6454,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Solicita devolución en efectivo de la porción Pago Móvil de un crédito elegible (\u003e $1, ventana 15 min). Requiere Pago Móvil registrado.",
+                "description": "Solicita devolución en efectivo de la porción Pago Móvil de un crédito elegible (\u003e $1, ventana 15 min). Requiere Pago Móvil registrado. La respuesta trae order_id o trip_id según el crédito.",
                 "consumes": [
                     "application/json"
                 ],
@@ -7438,6 +7500,11 @@ const docTemplate = `{
                     "type": "number",
                     "example": 148.5
                 },
+                "cash_amount_bs": {
+                    "description": "CashAmountBs es la parte en efectivo, en bolívares. 0 = el resto se\ninfiere: con Efectivo y saldo, el efectivo es lo que el saldo no cubre.",
+                    "type": "number",
+                    "example": 200
+                },
                 "expected_total_price": {
                     "description": "ExpectedTotalPrice (legacy sin quote): total que el front mostró.\nCon quote_id se ignora. Sin quote_id sigue siendo obligatorio.",
                     "type": "number",
@@ -7456,7 +7523,8 @@ const docTemplate = `{
                 "method_payment": {
                     "type": "string",
                     "enum": [
-                        "PagoMovil"
+                        "PagoMovil",
+                        "Efectivo"
                     ],
                     "example": "PagoMovil"
                 },
@@ -9471,11 +9539,21 @@ const docTemplate = `{
                 "quote_id"
             ],
             "properties": {
+                "balance_amount_bs": {
+                    "description": "BalanceAmountBs y CashAmountBs parten la tarifa. Cero en ambos deja el\nmétodo único de siempre. Con un monto, el otro método es el resto.",
+                    "type": "number",
+                    "example": 80
+                },
+                "cash_amount_bs": {
+                    "type": "number",
+                    "example": 120
+                },
                 "method_payment": {
                     "type": "string",
                     "enum": [
                         "PagoMovil",
-                        "Balance"
+                        "Balance",
+                        "Efectivo"
                     ],
                     "example": "PagoMovil"
                 },
@@ -9549,6 +9627,39 @@ const docTemplate = `{
                 }
             }
         },
+        "Encargalo_app-api_go_internal_trips_domain_dtos.NearbyRider": {
+            "type": "object",
+            "properties": {
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_trips_domain_dtos.NearbyRidersResponse": {
+            "type": "object",
+            "properties": {
+                "riders": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.NearbyRider"
+                    }
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_trips_domain_dtos.PassengerContact": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_trips_domain_dtos.RiderPublicInfo": {
             "type": "object",
             "properties": {
@@ -9592,6 +9703,29 @@ const docTemplate = `{
                 }
             }
         },
+        "Encargalo_app-api_go_internal_trips_domain_dtos.TripPayment": {
+            "type": "object",
+            "properties": {
+                "can_request_refund": {
+                    "type": "boolean"
+                },
+                "credited_bs": {
+                    "type": "number"
+                },
+                "expected_amount_bs": {
+                    "type": "number"
+                },
+                "refund_eligible_until": {
+                    "type": "string"
+                },
+                "refundable_pm_bs": {
+                    "type": "number"
+                },
+                "transaction_id": {
+                    "type": "string"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_trips_domain_dtos.TripResponse": {
             "type": "object",
             "properties": {
@@ -9601,8 +9735,15 @@ const docTemplate = `{
                 "cancelled_at": {
                     "type": "string"
                 },
+                "collect_usd": {
+                    "description": "CollectUSD es lo que el rider cobra en efectivo al pasajero. Su pago ya\nva dentro de ese monto; el resto queda como deuda en su balance.",
+                    "type": "number"
+                },
                 "completed_at": {
                     "type": "string"
+                },
+                "customer": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.PassengerContact"
                 },
                 "customer_id": {
                     "type": "string"
@@ -9627,6 +9768,12 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "string"
+                },
+                "method_payment": {
+                    "type": "string"
+                },
+                "payment": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.TripPayment"
                 },
                 "pickup_address": {
                     "type": "string"
@@ -9815,6 +9962,9 @@ const docTemplate = `{
                 },
                 "refundable_pm_bs": {
                     "type": "number"
+                },
+                "trip_id": {
+                    "type": "string"
                 }
             }
         },
@@ -9881,6 +10031,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "transaction_id": {
+                    "type": "string"
+                },
+                "trip_id": {
                     "type": "string"
                 }
             }

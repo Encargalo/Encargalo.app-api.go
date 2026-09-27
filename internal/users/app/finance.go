@@ -94,6 +94,9 @@ func (f *customerFinanceApp) GetBalance(ctx context.Context, customerID uuid.UUI
 		if orderID := orderIDFromReference(t.ReferenceID, t.ReferenceType); orderID != nil {
 			items[i].OrderID = orderID
 		}
+		if tripID := tripIDFromReference(t.ReferenceID, t.ReferenceType); tripID != nil {
+			items[i].TripID = tripID
+		}
 		if t.RefundRequestID != nil {
 			s := t.RefundRequestID.String()
 			items[i].RefundRequestID = &s
@@ -514,7 +517,15 @@ func (f *customerFinanceApp) publishRefundPendingAlert(ctx context.Context, req 
 }
 
 func orderIDFromReference(id *uuid.UUID, referenceType *string) *string {
-	if id == nil || referenceType == nil || *referenceType != paymentsModels.ReferenceTypeOrder {
+	return idFromReference(id, referenceType, paymentsModels.ReferenceTypeOrder)
+}
+
+func tripIDFromReference(id *uuid.UUID, referenceType *string) *string {
+	return idFromReference(id, referenceType, paymentsModels.ReferenceTypeTrip)
+}
+
+func idFromReference(id *uuid.UUID, referenceType *string, want string) *string {
+	if id == nil || referenceType == nil || *referenceType != want {
 		return nil
 	}
 	s := id.String()
@@ -546,6 +557,9 @@ func toRefundDTO(req models.BalanceRefundRequest) dto.RefundRequestResponse {
 	}
 	if orderID := orderIDFromReference(req.ReferenceID, req.ReferenceType); orderID != nil {
 		out.OrderID = orderID
+	}
+	if tripID := tripIDFromReference(req.ReferenceID, req.ReferenceType); tripID != nil {
+		out.TripID = tripID
 	}
 	if req.AcceptedAt != nil {
 		s := req.AcceptedAt.Format(time.RFC3339)
@@ -580,6 +594,9 @@ func (f *customerFinanceApp) toBroadcast(ctx context.Context, req models.Balance
 	}
 	if orderID := orderIDFromReference(req.ReferenceID, req.ReferenceType); orderID != nil {
 		b.OrderID = orderID
+	}
+	if tripID := tripIDFromReference(req.ReferenceID, req.ReferenceType); tripID != nil {
+		b.TripID = tripID
 	}
 	f.applyAmountUSD(ctx, &b, req.AmountBs)
 	return b
