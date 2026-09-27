@@ -34,7 +34,7 @@ func NewTripsHandler(svc ports.TripsApp, live ports.CustomerTripLive) TripsHandl
 
 // RequestTrip godoc
 // @Summary      Solicitar un viaje
-// @Description  Crea un viaje a partir de una cotización vigente (POST /trips/fare-estimate). Con method_payment=PagoMovil el comprobante es obligatorio y el viaje queda en payment_review hasta que el staff lo apruebe. Con method_payment=Balance se debita la tarifa completa en Bs y el viaje pasa directo a searching. Con method_payment=Efectivo no hay comprobante ni débito: el pasajero paga la tarifa al rider al terminar y el viaje pasa directo a searching. Pickup/dropoff y fare quedan fijados por la cotización.
+// @Description  Crea un viaje a partir de una cotización vigente. Un método solo: PagoMovil (comprobante, payment_review), Balance (debita la tarifa, searching) o Efectivo (el pasajero paga al rider, searching). También dos métodos con balance_amount_bs y/o cash_amount_bs: el resto lo cubre el method_payment. Los tres juntos se rechazan. Si hay Pago Móvil, el viaje no se oferta hasta aprobar el comprobante.
 // @Tags         Trips
 // @Accept       json
 // @Produce      json

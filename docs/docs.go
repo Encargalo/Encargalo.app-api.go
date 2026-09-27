@@ -2158,7 +2158,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Preferido: enviar ` + "`" + `quote_id` + "`" + ` de POST /orders/quote (total congelado; shop/items/address salen del quote). Legacy: sin quote_id, enviar carrito + ` + "`" + `expected_total_price` + "`" + ` (409 si el precio cambió). Opcionalmente ` + "`" + `balance_amount_bs` + "`" + ` (balance del customer, en bolívares; se convierte a USD con la tasa BCV del quote). Si queda resto Pago Móvil, requiere ` + "`" + `payment_proof_image` + "`" + ` y nace en Payment Review.",
+                "description": "Preferido: enviar ` + "`" + `quote_id` + "`" + ` de POST /orders/quote. Se pueden combinar dos métodos: Pago Móvil + saldo, efectivo + saldo, o efectivo + Pago Móvil (` + "`" + `cash_amount_bs` + "`" + `). Los tres juntos se rechazan. Si hay Pago Móvil hace falta comprobante y la orden nace en Payment Review. Efectivo + saldo no lleva comprobante y nace en Pending; el rider cobra solo la parte en efectivo.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5617,7 +5617,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Crea un viaje a partir de una cotización vigente (POST /trips/fare-estimate). Con method_payment=PagoMovil el comprobante es obligatorio y el viaje queda en payment_review hasta que el staff lo apruebe. Con method_payment=Balance se debita la tarifa completa en Bs y el viaje pasa directo a searching. Pickup/dropoff y fare quedan fijados por la cotización.",
+                "description": "Crea un viaje a partir de una cotización vigente. Un método solo: PagoMovil (comprobante, payment_review), Balance (debita la tarifa, searching) o Efectivo (el pasajero paga al rider, searching). También dos métodos con balance_amount_bs y/o cash_amount_bs: el resto lo cubre el method_payment. Los tres juntos se rechazan. Si hay Pago Móvil, el viaje no se oferta hasta aprobar el comprobante.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5630,7 +5630,7 @@ const docTemplate = `{
                 "summary": "Solicitar un viaje",
                 "parameters": [
                     {
-                        "description": "quote_id y method_payment (PagoMovil con comprobante, o Balance)",
+                        "description": "quote_id y method_payment (PagoMovil con comprobante, Balance, o Efectivo)",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -7500,6 +7500,11 @@ const docTemplate = `{
                     "type": "number",
                     "example": 148.5
                 },
+                "cash_amount_bs": {
+                    "description": "CashAmountBs es la parte en efectivo, en bolívares. 0 = el resto se\ninfiere: con Efectivo y saldo, el efectivo es lo que el saldo no cubre.",
+                    "type": "number",
+                    "example": 200
+                },
                 "expected_total_price": {
                     "description": "ExpectedTotalPrice (legacy sin quote): total que el front mostró.\nCon quote_id se ignora. Sin quote_id sigue siendo obligatorio.",
                     "type": "number",
@@ -7518,7 +7523,8 @@ const docTemplate = `{
                 "method_payment": {
                     "type": "string",
                     "enum": [
-                        "PagoMovil"
+                        "PagoMovil",
+                        "Efectivo"
                     ],
                     "example": "PagoMovil"
                 },
@@ -9533,11 +9539,21 @@ const docTemplate = `{
                 "quote_id"
             ],
             "properties": {
+                "balance_amount_bs": {
+                    "description": "BalanceAmountBs y CashAmountBs parten la tarifa. Cero en ambos deja el\nmétodo único de siempre. Con un monto, el otro método es el resto.",
+                    "type": "number",
+                    "example": 80
+                },
+                "cash_amount_bs": {
+                    "type": "number",
+                    "example": 120
+                },
                 "method_payment": {
                     "type": "string",
                     "enum": [
                         "PagoMovil",
-                        "Balance"
+                        "Balance",
+                        "Efectivo"
                     ],
                     "example": "PagoMovil"
                 },
@@ -9719,6 +9735,10 @@ const docTemplate = `{
                 "cancelled_at": {
                     "type": "string"
                 },
+                "collect_usd": {
+                    "description": "CollectUSD es lo que el rider cobra en efectivo al pasajero. Su pago ya\nva dentro de ese monto; el resto queda como deuda en su balance.",
+                    "type": "number"
+                },
                 "completed_at": {
                     "type": "string"
                 },
@@ -9747,6 +9767,9 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "id": {
+                    "type": "string"
+                },
+                "method_payment": {
                     "type": "string"
                 },
                 "payment": {

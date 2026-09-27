@@ -60,6 +60,30 @@ func (f *financeApp) RecordRideEarning(ctx context.Context, riderID uuid.UUID, o
 	return err
 }
 
+// RecordRideCashCollected mueve el balance por el pago del rider menos el
+// efectivo que ya cobró. Si el efectivo es mayor, el delta es negativo.
+func (f *financeApp) RecordRideCashCollected(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee, cashUSD, bcvRate float64) error {
+	if bcvRate <= 0 {
+		return errcustom.ErrBcvRateUnavailable
+	}
+	deltaBs := money.RoundBs((models.RiderPayUSD(deliveryFee) - cashUSD) * bcvRate)
+	rate := bcvRate
+	serviceType := models.ServiceTypeDelivery
+	method := models.PaymentMethodEfectivo
+	tx := models.Transaction{
+		ID:            uuid.New(),
+		OrderID:       &orderID,
+		MovementType:  string(models.MovementTypeRideCash),
+		ServiceType:   &serviceType,
+		PaymentMethod: &method,
+		Currency:      models.CurrencyVES,
+		BcvRate:       &rate,
+		CreatedAt:     time.Now(),
+	}
+	_, err := f.repo.RecordMovement(ctx, riderID, entityTypeRider, deltaBs, 0, tx)
+	return err
+}
+
 // RecordTripEarning credits the rider's balance with RiderShare of the trip
 // fare (USD, calculado por distancia vial pickup→dropoff), convertido a Bs
 // con bcvRate — análogo a RecordRideEarning pero sin payment_method (los
@@ -108,6 +132,30 @@ func (f *financeApp) RecordTripCash(ctx context.Context, riderID uuid.UUID, trip
 		CreatedAt:     time.Now(),
 	}
 
+	_, err := f.repo.RecordMovement(ctx, riderID, entityTypeRider, deltaBs, 0, tx)
+	return err
+}
+
+// RecordTripCashCollected mueve el balance por el pago del rider menos el
+// efectivo que cobró de la tarifa. El resto de la tarifa ya lo tiene la plataforma.
+func (f *financeApp) RecordTripCashCollected(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare, cashUSD, bcvRate float64) error {
+	if bcvRate <= 0 {
+		return errcustom.ErrBcvRateUnavailable
+	}
+	deltaBs := money.RoundBs((models.RiderPayUSD(fare) - cashUSD) * bcvRate)
+	rate := bcvRate
+	serviceType := models.ServiceTypeTrip
+	method := models.PaymentMethodEfectivo
+	tx := models.Transaction{
+		ID:            uuid.New(),
+		TripID:        &tripID,
+		MovementType:  string(models.MovementTypeTripCash),
+		ServiceType:   &serviceType,
+		PaymentMethod: &method,
+		Currency:      models.CurrencyVES,
+		BcvRate:       &rate,
+		CreatedAt:     time.Now(),
+	}
 	_, err := f.repo.RecordMovement(ctx, riderID, entityTypeRider, deltaBs, 0, tx)
 	return err
 }

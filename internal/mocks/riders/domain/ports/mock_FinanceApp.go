@@ -126,6 +126,42 @@ func (_m *FinanceApp) RecordTripCash(ctx context.Context, riderID uuid.UUID, tri
 	return r0
 }
 
+// RecordRideCashCollected provides a mock function with given fields: ctx, riderID, orderID, deliveryFee, cashUSD, bcvRate
+func (_m *FinanceApp) RecordRideCashCollected(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee float64, cashUSD float64, bcvRate float64) error {
+	ret := _m.Called(ctx, riderID, orderID, deliveryFee, cashUSD, bcvRate)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RecordRideCashCollected")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64, float64) error); ok {
+		r0 = rf(ctx, riderID, orderID, deliveryFee, cashUSD, bcvRate)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// RecordTripCashCollected provides a mock function with given fields: ctx, riderID, tripID, fare, cashUSD, bcvRate
+func (_m *FinanceApp) RecordTripCashCollected(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare float64, cashUSD float64, bcvRate float64) error {
+	ret := _m.Called(ctx, riderID, tripID, fare, cashUSD, bcvRate)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RecordTripCashCollected")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64, float64) error); ok {
+		r0 = rf(ctx, riderID, tripID, fare, cashUSD, bcvRate)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // RequestWithdrawal provides a mock function with given fields: ctx, riderID
 func (_m *FinanceApp) RequestWithdrawal(ctx context.Context, riderID uuid.UUID) (dtos.WithdrawalResponse, error) {
 	ret := _m.Called(ctx, riderID)

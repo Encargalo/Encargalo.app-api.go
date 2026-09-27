@@ -957,9 +957,15 @@ func (r *appRidersManager) completeTrip(ctx context.Context, trip *tripsModels.T
 	r.notifyCustomer(ctx, trip)
 
 	var earnErr error
-	if trip.MethodPayment == tripsModels.MethodEfectivo {
+	cashUSD := tripCashCollectedUSD(trip, fare)
+	partialCash := cashUSD > 0 && fare-cashUSD > 0.01
+	if partialCash {
+		earnErr = r.tripEarnings.RecordTripCashCollected(ctx, *trip.RiderID, trip.ID, fare, cashUSD, r.bcvRate(ctx))
+	}
+	if cashUSD > 0 && !partialCash {
 		earnErr = r.tripEarnings.RecordTripCash(ctx, *trip.RiderID, trip.ID, fare, r.bcvRate(ctx))
-	} else {
+	}
+	if cashUSD <= 0 {
 		earnErr = r.tripEarnings.RecordTripEarning(ctx, *trip.RiderID, trip.ID, fare, r.bcvRate(ctx))
 	}
 	if earnErr != nil {
@@ -986,6 +992,19 @@ func (r *appRidersManager) notifyCustomer(ctx context.Context, trip *tripsModels
 		return
 	}
 	r.customers.NotifyTrip(ctx, *trip)
+}
+
+func tripCashCollectedUSD(trip *tripsModels.Trip, fare float64) float64 {
+	if trip == nil {
+		return 0
+	}
+	if trip.CashAmountBs != nil && *trip.CashAmountBs > 0 && trip.BcvRate != nil && *trip.BcvRate > 0 {
+		return *trip.CashAmountBs / *trip.BcvRate
+	}
+	if trip.MethodPayment == tripsModels.MethodEfectivo {
+		return fare
+	}
+	return 0
 }
 
 func (r *appRidersManager) bcvRate(ctx context.Context) float64 {

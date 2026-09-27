@@ -33,6 +33,9 @@ type CreateOrder struct {
 	// equivalga a >= $1 y <= min(balance disponible, total de la orden). Si
 	// cubre el total no se requiere comprobante.
 	BalanceAmountBs float64 `json:"balance_amount_bs" example:"148.5"`
+	// CashAmountBs es la parte en efectivo, en bolívares. 0 = el resto se
+	// infiere: con Efectivo y saldo, el efectivo es lo que el saldo no cubre.
+	CashAmountBs float64 `json:"cash_amount_bs" example:"200"`
 
 	CreateItemsOrder []CreateItemsOrder `json:"items"`
 }
@@ -81,6 +84,9 @@ func (o *CreateOrder) Validate() error {
 func (o *CreateOrder) validateBalanceOnly() error {
 	if o.BalanceAmountBs < 0 {
 		return errors.New("balance_amount_bs no puede ser negativo")
+	}
+	if o.CashAmountBs < 0 {
+		return errors.New("cash_amount_bs no puede ser negativo")
 	}
 	return nil
 }
