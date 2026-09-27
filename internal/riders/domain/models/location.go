@@ -24,3 +24,14 @@ type RiderLocationEntry struct {
 	RiderID  uuid.UUID
 	Location RiderLocation
 }
+
+const (
+	// NearbyRiderRings es el radio de búsqueda en anillos H3 de resolución 8 (~2 km).
+	NearbyRiderRings = 2
+	// NearbyRiderMaxResults acota la respuesta: el mapa no necesita la flota entera.
+	NearbyRiderMaxResults = 30
+	// NearbyRiderMaxAge descarta ubicaciones que dejaron de reportarse.
+	NearbyRiderMaxAge = 45 * time.Second
+	// NearbyCoordDecimals redondea a 0.001° (~111 m) para no publicar el GPS crudo.
+	NearbyCoordDecimals = 1000
+)

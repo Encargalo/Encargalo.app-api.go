@@ -1668,6 +1668,27 @@ definitions:
       quote_id:
         type: string
     type: object
+  Encargalo_app-api_go_internal_trips_domain_dtos.NearbyRider:
+    properties:
+      latitude:
+        type: number
+      longitude:
+        type: number
+    type: object
+  Encargalo_app-api_go_internal_trips_domain_dtos.NearbyRidersResponse:
+    properties:
+      riders:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.NearbyRider'
+        type: array
+    type: object
+  Encargalo_app-api_go_internal_trips_domain_dtos.PassengerContact:
+    properties:
+      name:
+        type: string
+      phone:
+        type: string
+    type: object
   Encargalo_app-api_go_internal_trips_domain_dtos.RiderPublicInfo:
     properties:
       name:
@@ -1696,6 +1717,21 @@ definitions:
           $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.TripResponse'
         type: array
     type: object
+  Encargalo_app-api_go_internal_trips_domain_dtos.TripPayment:
+    properties:
+      can_request_refund:
+        type: boolean
+      credited_bs:
+        type: number
+      expected_amount_bs:
+        type: number
+      refund_eligible_until:
+        type: string
+      refundable_pm_bs:
+        type: number
+      transaction_id:
+        type: string
+    type: object
   Encargalo_app-api_go_internal_trips_domain_dtos.TripResponse:
     properties:
       accepted_at:
@@ -1704,6 +1740,8 @@ definitions:
         type: string
       completed_at:
         type: string
+      customer:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.PassengerContact'
       customer_id:
         type: string
       dropoff_address:
@@ -1720,6 +1758,8 @@ definitions:
         type: number
       id:
         type: string
+      payment:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.TripPayment'
       pickup_address:
         type: string
       pickup_code:
@@ -1854,6 +1894,8 @@ definitions:
         type: string
       refundable_pm_bs:
         type: number
+      trip_id:
+        type: string
     type: object
   Encargalo_app-api_go_internal_users_domain_dto.PagoMovilResponse:
     properties:
@@ -1897,6 +1939,8 @@ definitions:
       status:
         type: string
       transaction_id:
+        type: string
+      trip_id:
         type: string
     type: object
   Encargalo_app-api_go_internal_users_domain_dto.RegisterCustomer:
@@ -4618,7 +4662,9 @@ paths:
       consumes:
       - application/json
       description: Devuelve los viajes que el rider ya tiene asignados y siguen en
-        curso (accepted, arriving o in_progress), sin códigos de subida/bajada. Sirve
+        curso (accepted, arriving o in_progress), sin códigos de subida/bajada. Cada
+        viaje incluye `customer` con el nombre y el teléfono del pasajero (sin apellido);
+        ese bloque no se envía en la oferta ni cuando el viaje ya finalizó. Sirve
         para recuperar el viaje al abrir la app sin depender del WebSocket. Lista
         vacía si no tiene ninguno.
       produces:
@@ -5894,8 +5940,9 @@ paths:
     get:
       description: Si el viaje ya tiene rider asignado, `rider` trae nombre, teléfono,
         foto y vehículo. No incluye documentos KYC. pickup_code aparece desde accepted
-        hasta que el pasajero sube; dropoff_code aparece en in_progress. Los cambios
-        en vivo llegan por GET /trips/live.
+        hasta que el pasajero sube; dropoff_code aparece en in_progress. Si un Pago
+        Móvil aprobado se reintegró a la cartera, `payment` trae transaction_id, credited_bs
+        y refund_eligible_until. Los cambios en vivo llegan por GET /trips/live.
       parameters:
       - description: Trip ID
         in: path
@@ -5932,8 +5979,11 @@ paths:
       - Trips
   /trips/{id}/cancel:
     post:
-      description: Solo permitido mientras el viaje esté en requested/payment_review/searching/accepted/arriving.
-        Si se pagó con balance, el débito se reintegra.
+      description: 'Solo permitido mientras el viaje esté en requested/searching/accepted/arriving.
+        En payment_review responde 422 trip_payment_review_pending: hay que esperar
+        a que el staff resuelva el comprobante. Si se pagó con balance, el débito
+        se reintegra. Si el Pago Móvil ya estaba aprobado (searching, accepted o arriving),
+        se acredita la tarifa en Bs a la cartera y la respuesta trae payment.transaction_id.'
       parameters:
       - description: Trip ID
         in: path
@@ -5964,7 +6014,8 @@ paths:
           schema:
             type: string
         "422":
-          description: El viaje no se puede cancelar en su estado actual
+          description: Pago en revisión, o el viaje no se puede cancelar en su estado
+            actual
           schema:
             type: string
       security:
@@ -6047,6 +6098,49 @@ paths:
       security:
       - SessionCookie: []
       summary: WebSocket del cliente para seguir sus viajes
+      tags:
+      - Trips
+  /trips/nearby-riders:
+    get:
+      consumes:
+      - application/json
+      description: Devuelve hasta 30 pines de conductores disponibles en modo viajes,
+        a unos 2 km del punto. Cada coordenada está redondeada a ~100 m. No incluye
+        id, nombre ni datos del vehículo. Pensado para consultarse cada pocos segundos
+        mientras el mapa está abierto.
+      parameters:
+      - description: Latitud del centro del mapa
+        in: query
+        name: lat
+        required: true
+        type: number
+      - description: Longitud del centro del mapa
+        in: query
+        name: lng
+        required: true
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.NearbyRidersResponse'
+        "400":
+          description: coordenadas inválidas
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "429":
+          description: rate limit
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Conductores cercanos para el mapa de cotización
       tags:
       - Trips
   /turbo/entry:
@@ -6330,8 +6424,9 @@ paths:
         y los últimos 10 movimientos (amount_bs y amount_usd). Créditos elegibles
         incluyen refundable_pm_bs, can_request_refund (ventana/monto > $1 equivalente
         en Bs a la tasa congelada/saldo; no exige Pago Móvil) y refund_eligible_until.
-        Los débitos de devolución (balance_refund_hold / processing / payout) y créditos
-        balance_refund_restore incluyen refund_request_id para abrir el detalle.
+        Un movimiento de orden trae order_id; uno de viaje trae trip_id. Los débitos
+        de devolución (balance_refund_hold / processing / payout) y créditos balance_refund_restore
+        incluyen refund_request_id para abrir el detalle.
       produces:
       - application/json
       responses:
@@ -6377,7 +6472,8 @@ paths:
       consumes:
       - application/json
       description: Solicita devolución en efectivo de la porción Pago Móvil de un
-        crédito elegible (> $1, ventana 15 min). Requiere Pago Móvil registrado.
+        crédito elegible (> $1, ventana 15 min). Requiere Pago Móvil registrado. La
+        respuesta trae order_id o trip_id según el crédito.
       parameters:
       - description: transaction_id del crédito
         in: body

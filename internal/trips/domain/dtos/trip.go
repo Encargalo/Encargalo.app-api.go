@@ -89,6 +89,17 @@ type TripHistoryResponse struct {
 	Trips []TripResponse `json:"trips"`
 }
 
+// NearbyRider es un conductor disponible en el mapa de cotización.
+// La coordenada está redondeada (~100 m) y no incluye id ni datos del perfil.
+type NearbyRider struct {
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+}
+
+type NearbyRidersResponse struct {
+	Riders []NearbyRider `json:"riders"`
+}
+
 // FareEstimateRequest congela todo lo necesario para crear el viaje después.
 type FareEstimateRequest struct {
 	CustomerID       uuid.UUID `json:"customer_id" swaggerignore:"true"`

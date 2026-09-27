@@ -32,6 +32,7 @@ type tripsApp struct {
 	riders    ports.RiderPublicInfoLookup
 	balance   paymentsPorts.CustomerBalanceCreditor
 	customers ports.CustomerTripNotifier
+	nearby    ports.NearbyRidersLookup
 }
 
 func NewTripsApp(
@@ -45,6 +46,7 @@ func NewTripsApp(
 	riders ports.RiderPublicInfoLookup,
 	balance paymentsPorts.CustomerBalanceCreditor,
 	customers ports.CustomerTripNotifier,
+	nearby ports.NearbyRidersLookup,
 ) ports.TripsApp {
 	return &tripsApp{
 		repo:      repo,
@@ -57,6 +59,7 @@ func NewTripsApp(
 		riders:    riders,
 		balance:   balance,
 		customers: customers,
+		nearby:    nearby,
 	}
 }
 
@@ -279,6 +282,24 @@ func (a *tripsApp) toResponse(ctx context.Context, trip *models.Trip, rate float
 	return resp, nil
 }
 
+func (a *tripsApp) NearbyRiders(lat, lng float64) (dtos.NearbyRidersResponse, error) {
+	if !validCoordinates(lat, lng) {
+		return dtos.NearbyRidersResponse{}, errcustom.ErrInvalidCoordinates
+	}
+	empty := dtos.NearbyRidersResponse{Riders: []dtos.NearbyRider{}}
+	if a.nearby == nil {
+		return empty, nil
+	}
+	riders, err := a.nearby.NearbyRiders(lat, lng)
+	if err != nil {
+		return dtos.NearbyRidersResponse{}, err
+	}
+	if riders == nil {
+		riders = []dtos.NearbyRider{}
+	}
+	return dtos.NearbyRidersResponse{Riders: riders}, nil
+}
+
 func (a *tripsApp) notifyCustomer(ctx context.Context, trip *models.Trip) {
 	if a.customers == nil || trip == nil {
 		return
@@ -340,6 +361,10 @@ func (a *tripsApp) fareEstimate(pickupLat, pickupLon, dropoffLat, dropoffLon flo
 		}, nil
 	}
 	return deliveryfee.CalculateWithDuration(pickupLat, pickupLon, dropoffLat, dropoffLon)
+}
+
+func validCoordinates(lat, lng float64) bool {
+	return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
 }
 
 func (a *tripsApp) bcvRate(ctx context.Context) float64 {
