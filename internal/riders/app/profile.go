@@ -70,6 +70,33 @@ func (a *riderProfileApp) GetProfile(ctx context.Context, userID uuid.UUID) (dto
 	return a.toResponse(profile, name, sur, ph, email, hasRole), nil
 }
 
+func (a *riderProfileApp) GetOwnProfile(ctx context.Context, userID uuid.UUID) (dtos.RiderSelfProfileResponse, error) {
+	name, sur, _, _, err := a.repo.GetAccountBasics(ctx, userID)
+	if err != nil {
+		return dtos.RiderSelfProfileResponse{}, err
+	}
+	out := dtos.RiderSelfProfileResponse{
+		Driver: dtos.RiderSelfDriver{UserID: userID.String(), Name: name, SurName: sur},
+	}
+
+	profile, err := a.repo.GetByUserID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, errcustom.ErrNotFound) {
+			return out, nil
+		}
+		return dtos.RiderSelfProfileResponse{}, err
+	}
+	out.Driver.ProfilePhotoURL = profile.ProfilePhotoURL
+	out.Vehicle = dtos.RiderSelfVehicle{
+		Type:  profile.VehicleType,
+		Plate: profile.VehiclePlate,
+		Brand: profile.VehicleBrand,
+		Model: profile.VehicleModel,
+		Color: profile.VehicleColor,
+	}
+	return out, nil
+}
+
 func (a *riderProfileApp) ListProfiles(ctx context.Context, status models.RiderProfileStatus) ([]dtos.RiderProfileResponse, error) {
 	if status == "" {
 		status = models.RiderProfileDraft

@@ -102,6 +102,34 @@ func (_m *RiderProfileApp) FindCandidate(ctx context.Context, phone string) (dto
 	return r0, r1
 }
 
+// GetOwnProfile provides a mock function with given fields: ctx, userID
+func (_m *RiderProfileApp) GetOwnProfile(ctx context.Context, userID uuid.UUID) (dtos.RiderSelfProfileResponse, error) {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetOwnProfile")
+	}
+
+	var r0 dtos.RiderSelfProfileResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (dtos.RiderSelfProfileResponse, error)); ok {
+		return rf(ctx, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) dtos.RiderSelfProfileResponse); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		r0 = ret.Get(0).(dtos.RiderSelfProfileResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetProfile provides a mock function with given fields: ctx, userID
 func (_m *RiderProfileApp) GetProfile(ctx context.Context, userID uuid.UUID) (dtos.RiderProfileResponse, error) {
 	ret := _m.Called(ctx, userID)

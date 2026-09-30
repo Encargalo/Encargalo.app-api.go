@@ -14,6 +14,7 @@ type RidersGroup interface {
 type ridersGroup struct {
 	middle              auth.AuthMiddleware
 	handlerRiders       ridersHandler.RiderHandler
+	handlerProfile      ridersHandler.RiderProfileHandler
 	handlerFinance      ridersHandler.FinanceHandler
 	handlerStaffRiders  ridersHandler.StaffRiderHandler
 	handlerStaffFinance ridersHandler.StaffFinanceHandler
@@ -22,11 +23,12 @@ type ridersGroup struct {
 func NewRidersGroup(
 	middle auth.AuthMiddleware,
 	handlerRiders ridersHandler.RiderHandler,
+	handlerProfile ridersHandler.RiderProfileHandler,
 	handlerFinance ridersHandler.FinanceHandler,
 	handlerStaffRiders ridersHandler.StaffRiderHandler,
 	handlerStaffFinance ridersHandler.StaffFinanceHandler,
 ) RidersGroup {
-	return &ridersGroup{middle, handlerRiders, handlerFinance, handlerStaffRiders, handlerStaffFinance}
+	return &ridersGroup{middle, handlerRiders, handlerProfile, handlerFinance, handlerStaffRiders, handlerStaffFinance}
 }
 
 func (r *ridersGroup) Resource(g *echo.Echo) {
@@ -35,6 +37,7 @@ func (r *ridersGroup) Resource(g *echo.Echo) {
 	g.GET("/orders/rider", r.handlerRiders.HandleWebSocket, r.middle.Auth, r.middle.Require(models.Rider))
 
 	riders := g.Group("/riders", r.middle.Auth, r.middle.Require(models.Rider))
+	riders.GET("/profile", r.handlerProfile.GetProfile)
 	riders.GET("/trips/active", r.handlerRiders.GetActiveTrips)
 	riders.GET("/balance", r.handlerFinance.GetBalance)
 	riders.POST("/withdrawal", r.handlerFinance.RequestWithdrawal)
