@@ -161,12 +161,7 @@ func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn
 
 	for _, order := range activeOrders {
 		deliveryfee.ApplyBsToOrder(ctx, r.bcv, &order)
-		data, _ := json.Marshal(riderBroadcast{
-			Type:     "order_update",
-			Order:    riderModels.NewRiderOrder(order, true),
-			Shop:     r.shopForOrder(ctx, order),
-			Customer: customerLocation(order, true),
-		})
+		data, _ := json.Marshal(r.orderBroadcast(ctx, "order_update", order, true))
 		conn.Send(data)
 	}
 
@@ -177,12 +172,7 @@ func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn
 
 	for _, order := range availableOrders {
 		deliveryfee.ApplyBsToOrder(ctx, r.bcv, &order)
-		data, _ := json.Marshal(riderBroadcast{
-			Type:     "new_order",
-			Order:    riderModels.NewRiderOrder(order, false),
-			Shop:     r.shopForOrder(ctx, order),
-			Customer: customerLocation(order, false),
-		})
+		data, _ := json.Marshal(r.orderBroadcast(ctx, "new_order", order, false))
 		conn.Send(data)
 	}
 
@@ -370,12 +360,7 @@ func (r *appRidersManager) SnapshotTripsRiders() []riderModels.RiderLocationEntr
 }
 
 func (r *appRidersManager) BroadcastNewOrder(ctx context.Context, order ordersModels.Order) {
-	data, err := json.Marshal(riderBroadcast{
-		Type:     "new_order",
-		Order:    riderModels.NewRiderOrder(order, false),
-		Shop:     r.shopForOrder(ctx, order),
-		Customer: customerLocation(order, false),
-	})
+	data, err := json.Marshal(r.orderBroadcast(ctx, "new_order", order, false))
 	if err != nil {
 		slog.Error("error marshaling new_order broadcast", "error", err)
 		return
@@ -412,12 +397,7 @@ func (r *appRidersManager) BroadcastNewOrder(ctx context.Context, order ordersMo
 }
 
 func (r *appRidersManager) BroadcastOrderUpdate(ctx context.Context, order ordersModels.Order) {
-	data, err := json.Marshal(riderBroadcast{
-		Type:     "order_update",
-		Order:    riderModels.NewRiderOrder(order, true),
-		Shop:     r.shopForOrder(ctx, order),
-		Customer: customerLocation(order, true),
-	})
+	data, err := json.Marshal(r.orderBroadcast(ctx, "order_update", order, true))
 	if err != nil {
 		slog.Error("error marshaling order_update for rider", "error", err)
 		return
@@ -466,12 +446,7 @@ func (r *appRidersManager) AcceptOrder(ctx context.Context, riderID uuid.UUID, o
 	r.mu.Unlock()
 
 	deliveryfee.ApplyBsToOrder(ctx, r.bcv, order)
-	accepted, _ := json.Marshal(riderBroadcast{
-		Type:     "order_accepted",
-		Order:    riderModels.NewRiderOrder(*order, true),
-		Shop:     r.shopForOrder(ctx, *order),
-		Customer: customerLocation(*order, true),
-	})
+	accepted, _ := json.Marshal(r.orderBroadcast(ctx, "order_accepted", *order, true))
 	conn.Send(accepted)
 
 	return nil
@@ -528,6 +503,25 @@ type riderBroadcast struct {
 	Order    riderModels.RiderOrder        `json:"order"`
 	Shop     *ordersModels.ShopOrder       `json:"shop,omitempty"`
 	Customer *riderModels.CustomerLocation `json:"customer,omitempty"`
+	// ShopToCustomerKm es la distancia en línea recta tienda → destino de entrega.
+	ShopToCustomerKm *float64 `json:"shop_to_customer_km,omitempty"`
+}
+
+// orderBroadcast arma el evento de orden para riders. assigned sigue la misma
+// semántica que en NewRiderOrder.
+func (r *appRidersManager) orderBroadcast(ctx context.Context, eventType string, order ordersModels.Order, assigned bool) riderBroadcast {
+	shop := r.shopForOrder(ctx, order)
+	msg := riderBroadcast{
+		Type:     eventType,
+		Order:    riderModels.NewRiderOrder(order, assigned),
+		Shop:     shop,
+		Customer: customerLocation(order, assigned),
+	}
+	if shop != nil {
+		km := geo.HaversineKm(shop.Latitude, shop.Longitude, order.Latitude, order.Longitude)
+		msg.ShopToCustomerKm = &km
+	}
+	return msg
 }
 
 func (r *appRidersManager) OfferTrip(_ context.Context, trip tripsModels.Trip) {
