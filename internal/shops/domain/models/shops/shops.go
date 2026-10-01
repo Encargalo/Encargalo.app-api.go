@@ -165,8 +165,8 @@ func (s *Shop) ToDomainDTO(distance entity.ShopDistance) dtos.ShopResponse {
 		Name:           s.Name,
 		Slug:           s.Slug,
 		Address:        s.Address,
-		Latitude:       *s.Latitude,
-		Longitude:      *s.Longitude,
+		Latitude:       derefCoord(s.Latitude),
+		Longitude:      derefCoord(s.Longitude),
 		HomePhone:      s.HomePhone,
 		Logo:           s.LogoImage,
 		Banner:         s.Banner,
@@ -177,6 +177,14 @@ func (s *Shop) ToDomainDTO(distance entity.ShopDistance) dtos.ShopResponse {
 		Time:           prepTimeMinutes(s.Type, distance.Duration),
 		HasLaunchPromo: s.HasActiveLaunchPromo(),
 	}
+}
+
+// Fuera de producción el listado no filtra shops sin coordenadas.
+func derefCoord(c *float64) float64 {
+	if c == nil {
+		return 0
+	}
+	return *c
 }
 
 // prepTimeMinutes calcula el tiempo mostrado al cliente a partir de la
