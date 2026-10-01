@@ -59,16 +59,19 @@ type appRidersManager struct {
 	tripOfferTrip      map[uuid.UUID]tripsModels.Trip
 	tripExcluded       map[uuid.UUID]map[uuid.UUID]struct{}
 	tripTimers         map[uuid.UUID]*time.Timer
-	completingTrips    map[uuid.UUID]struct{}
-	repo               ridersPorts.RidersRepo
-	stream             ridersPorts.RidersStream
-	bcv                bcvPorts.BcvApp
-	tripsRepo          ridersPorts.TripsStore
-	tripEarnings       ridersPorts.TripEarningRecorder
-	customers          tripsPorts.CustomerTripNotifier
-	balance            paymentsPorts.CustomerBalanceCreditor
-	passengers         ridersPorts.PassengerLookup
-	riderTrips         map[uuid.UUID]riderAssignment
+	// tripWithdrawn marca viajes que el cliente ya canceló. Una ronda que ya
+	// pasó el chequeo de status no puede volver a publicar la oferta.
+	tripWithdrawn   map[uuid.UUID]struct{}
+	completingTrips map[uuid.UUID]struct{}
+	repo            ridersPorts.RidersRepo
+	stream          ridersPorts.RidersStream
+	bcv             bcvPorts.BcvApp
+	tripsRepo       ridersPorts.TripsStore
+	tripEarnings    ridersPorts.TripEarningRecorder
+	customers       tripsPorts.CustomerTripNotifier
+	balance         paymentsPorts.CustomerBalanceCreditor
+	passengers      ridersPorts.PassengerLookup
+	riderTrips      map[uuid.UUID]riderAssignment
 }
 
 type riderAssignment struct {
@@ -89,6 +92,7 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 		tripOfferTrip:      make(map[uuid.UUID]tripsModels.Trip),
 		tripExcluded:       make(map[uuid.UUID]map[uuid.UUID]struct{}),
 		tripTimers:         make(map[uuid.UUID]*time.Timer),
+		tripWithdrawn:      make(map[uuid.UUID]struct{}),
 		completingTrips:    make(map[uuid.UUID]struct{}),
 		repo:               repo,
 		stream:             stream,
@@ -157,12 +161,7 @@ func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn
 
 	for _, order := range activeOrders {
 		deliveryfee.ApplyBsToOrder(ctx, r.bcv, &order)
-		data, _ := json.Marshal(riderBroadcast{
-			Type:     "order_update",
-			Order:    riderModels.NewRiderOrder(order, true),
-			Shop:     r.shopForOrder(ctx, order),
-			Customer: customerLocation(order, true),
-		})
+		data, _ := json.Marshal(r.orderBroadcast(ctx, "order_update", order, true))
 		conn.Send(data)
 	}
 
@@ -173,12 +172,7 @@ func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn
 
 	for _, order := range availableOrders {
 		deliveryfee.ApplyBsToOrder(ctx, r.bcv, &order)
-		data, _ := json.Marshal(riderBroadcast{
-			Type:     "new_order",
-			Order:    riderModels.NewRiderOrder(order, false),
-			Shop:     r.shopForOrder(ctx, order),
-			Customer: customerLocation(order, false),
-		})
+		data, _ := json.Marshal(r.orderBroadcast(ctx, "new_order", order, false))
 		conn.Send(data)
 	}
 
@@ -366,12 +360,7 @@ func (r *appRidersManager) SnapshotTripsRiders() []riderModels.RiderLocationEntr
 }
 
 func (r *appRidersManager) BroadcastNewOrder(ctx context.Context, order ordersModels.Order) {
-	data, err := json.Marshal(riderBroadcast{
-		Type:     "new_order",
-		Order:    riderModels.NewRiderOrder(order, false),
-		Shop:     r.shopForOrder(ctx, order),
-		Customer: customerLocation(order, false),
-	})
+	data, err := json.Marshal(r.orderBroadcast(ctx, "new_order", order, false))
 	if err != nil {
 		slog.Error("error marshaling new_order broadcast", "error", err)
 		return
@@ -408,12 +397,7 @@ func (r *appRidersManager) BroadcastNewOrder(ctx context.Context, order ordersMo
 }
 
 func (r *appRidersManager) BroadcastOrderUpdate(ctx context.Context, order ordersModels.Order) {
-	data, err := json.Marshal(riderBroadcast{
-		Type:     "order_update",
-		Order:    riderModels.NewRiderOrder(order, true),
-		Shop:     r.shopForOrder(ctx, order),
-		Customer: customerLocation(order, true),
-	})
+	data, err := json.Marshal(r.orderBroadcast(ctx, "order_update", order, true))
 	if err != nil {
 		slog.Error("error marshaling order_update for rider", "error", err)
 		return
@@ -462,12 +446,7 @@ func (r *appRidersManager) AcceptOrder(ctx context.Context, riderID uuid.UUID, o
 	r.mu.Unlock()
 
 	deliveryfee.ApplyBsToOrder(ctx, r.bcv, order)
-	accepted, _ := json.Marshal(riderBroadcast{
-		Type:     "order_accepted",
-		Order:    riderModels.NewRiderOrder(*order, true),
-		Shop:     r.shopForOrder(ctx, *order),
-		Customer: customerLocation(*order, true),
-	})
+	accepted, _ := json.Marshal(r.orderBroadcast(ctx, "order_accepted", *order, true))
 	conn.Send(accepted)
 
 	return nil
@@ -524,6 +503,25 @@ type riderBroadcast struct {
 	Order    riderModels.RiderOrder        `json:"order"`
 	Shop     *ordersModels.ShopOrder       `json:"shop,omitempty"`
 	Customer *riderModels.CustomerLocation `json:"customer,omitempty"`
+	// ShopToCustomerKm es la distancia en línea recta tienda → destino de entrega.
+	ShopToCustomerKm *float64 `json:"shop_to_customer_km,omitempty"`
+}
+
+// orderBroadcast arma el evento de orden para riders. assigned sigue la misma
+// semántica que en NewRiderOrder.
+func (r *appRidersManager) orderBroadcast(ctx context.Context, eventType string, order ordersModels.Order, assigned bool) riderBroadcast {
+	shop := r.shopForOrder(ctx, order)
+	msg := riderBroadcast{
+		Type:     eventType,
+		Order:    riderModels.NewRiderOrder(order, assigned),
+		Shop:     shop,
+		Customer: customerLocation(order, assigned),
+	}
+	if shop != nil {
+		km := geo.HaversineKm(shop.Latitude, shop.Longitude, order.Latitude, order.Longitude)
+		msg.ShopToCustomerKm = &km
+	}
+	return msg
 }
 
 func (r *appRidersManager) OfferTrip(_ context.Context, trip tripsModels.Trip) {
@@ -543,6 +541,10 @@ func (r *appRidersManager) offerTripRound(trip tripsModels.Trip, round int) {
 		// elegible) y cuenta como ronda; los ofertados de la ronda anterior ya
 		// no pueden aceptar.
 		r.mu.Lock()
+		if _, withdrawn := r.tripWithdrawn[trip.ID]; withdrawn {
+			r.mu.Unlock()
+			return
+		}
 		r.tripOffers[trip.ID] = make(map[uuid.UUID]struct{})
 		r.tripOfferRounds[trip.ID] = round
 		r.tripOfferTrip[trip.ID] = trip
@@ -558,6 +560,10 @@ func (r *appRidersManager) offerTripRound(trip tripsModels.Trip, round int) {
 	}
 
 	r.mu.Lock()
+	if _, withdrawn := r.tripWithdrawn[trip.ID]; withdrawn {
+		r.mu.Unlock()
+		return
+	}
 	offered := make(map[uuid.UUID]struct{}, len(candidates))
 	if r.tripAlreadyOffered[trip.ID] == nil {
 		r.tripAlreadyOffered[trip.ID] = make(map[uuid.UUID]struct{})
@@ -572,6 +578,10 @@ func (r *appRidersManager) offerTripRound(trip tripsModels.Trip, round int) {
 	r.mu.Unlock()
 
 	r.mu.RLock()
+	if _, withdrawn := r.tripWithdrawn[trip.ID]; withdrawn {
+		r.mu.RUnlock()
+		return
+	}
 	for _, c := range candidates {
 		if conn, ok := r.availableRiders[c.RiderID]; ok {
 			conn.Send(data)
@@ -587,6 +597,11 @@ func (r *appRidersManager) scheduleOfferTimeout(trip tripsModels.Trip, timeout t
 		r.onTripOfferTimeout(trip)
 	})
 	r.mu.Lock()
+	if _, withdrawn := r.tripWithdrawn[trip.ID]; withdrawn {
+		timer.Stop()
+		r.mu.Unlock()
+		return
+	}
 	if prev, ok := r.tripTimers[trip.ID]; ok {
 		prev.Stop()
 	}
@@ -987,6 +1002,53 @@ func (r *appRidersManager) forgetRiderTrip(riderID uuid.UUID) {
 	r.mu.Unlock()
 }
 
+// NotifyTripCancelled avisa al rider asignado y a quienes tienen la oferta,
+// deja de reenviar la ubicación del asignado y retira la búsqueda en memoria.
+// El mensaje no incluye motivo ni quién canceló.
+func (r *appRidersManager) NotifyTripCancelled(_ context.Context, trip tripsModels.Trip) {
+	payload, err := json.Marshal(tripCancelledNotice{
+		Type:   "trip_cancelled",
+		TripID: trip.ID.String(),
+	})
+	if err != nil {
+		slog.Error("error marshaling trip_cancelled", "tripID", trip.ID, "error", err)
+		return
+	}
+
+	r.mu.Lock()
+	recipients := make(map[uuid.UUID]ridersPorts.RiderConn)
+	collect := func(riderID uuid.UUID) {
+		if conn, ok := r.availableRiders[riderID]; ok {
+			recipients[riderID] = conn
+		}
+	}
+	for riderID := range r.tripOffers[trip.ID] {
+		collect(riderID)
+	}
+	for riderID := range r.tripAlreadyOffered[trip.ID] {
+		collect(riderID)
+	}
+	if trip.RiderID != nil {
+		collect(*trip.RiderID)
+		delete(r.riderTrips, *trip.RiderID)
+	}
+	r.tripWithdrawn[trip.ID] = struct{}{}
+	delete(r.tripOffers, trip.ID)
+	delete(r.tripAlreadyOffered, trip.ID)
+	delete(r.tripOfferRounds, trip.ID)
+	delete(r.tripOfferTrip, trip.ID)
+	delete(r.tripExcluded, trip.ID)
+	if timer, ok := r.tripTimers[trip.ID]; ok {
+		timer.Stop()
+		delete(r.tripTimers, trip.ID)
+	}
+	r.mu.Unlock()
+
+	for _, conn := range recipients {
+		conn.Send(payload)
+	}
+}
+
 func (r *appRidersManager) notifyCustomer(ctx context.Context, trip *tripsModels.Trip) {
 	if r.customers == nil || trip == nil {
 		return
@@ -1018,6 +1080,11 @@ func (r *appRidersManager) bcvRate(ctx context.Context) float64 {
 type tripBroadcast struct {
 	Type string                 `json:"type"`
 	Trip tripsDtos.TripResponse `json:"trip"`
+}
+
+type tripCancelledNotice struct {
+	Type   string `json:"type"`
+	TripID string `json:"trip_id"`
 }
 
 // AdvanceTripOfferTimeout corre el mismo camino que el timer de oferta (tripAcceptTimeout o tripEmptyRoundTimeout).

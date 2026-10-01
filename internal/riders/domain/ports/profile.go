@@ -28,6 +28,9 @@ type RiderProfileRepo interface {
 type RiderProfileApp interface {
 	FindCandidate(ctx context.Context, phone string) (dtos.CandidateResponse, error)
 	GetProfile(ctx context.Context, userID uuid.UUID) (dtos.RiderProfileResponse, error)
+	// GetOwnProfile devuelve al propio conductor sus datos y su vehículo, sin campos internos.
+	// Si aún no tiene perfil, devuelve solo los datos de la cuenta con el vehículo vacío.
+	GetOwnProfile(ctx context.Context, userID uuid.UUID) (dtos.RiderSelfProfileResponse, error)
 	ListProfiles(ctx context.Context, status models.RiderProfileStatus) ([]dtos.RiderProfileResponse, error)
 	UpsertProfile(ctx context.Context, userID uuid.UUID, req dtos.UpsertRiderProfileRequest) (dtos.RiderProfileResponse, error)
 	// DeletePhoto limpia el campo en DB y elimina el asset en Cloudinary.

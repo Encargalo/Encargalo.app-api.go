@@ -39,6 +39,31 @@ type RiderProfileResponse struct {
 	Completion         RiderCompletionDTO `json:"completion"`
 }
 
+// RiderSelfDriver son los datos del conductor que él mismo puede ver en su panel.
+type RiderSelfDriver struct {
+	UserID          string  `json:"user_id"`
+	Name            string  `json:"name"`
+	SurName         string  `json:"sur_name,omitempty"`
+	ProfilePhotoURL *string `json:"profile_photo_url,omitempty"`
+}
+
+// RiderSelfVehicle es el vehículo del conductor. Por ahora hay uno solo por rider;
+// si aún no tiene perfil se serializa como objeto vacío.
+type RiderSelfVehicle struct {
+	Type  *string `json:"type,omitempty"`
+	Plate *string `json:"plate,omitempty"`
+	Brand *string `json:"brand,omitempty"`
+	Model *string `json:"model,omitempty"`
+	Color *string `json:"color,omitempty"`
+}
+
+// RiderSelfProfileResponse es lo mínimo que necesita el panel del conductor activo.
+// No incluye contacto, notas ni fotos de documentos.
+type RiderSelfProfileResponse struct {
+	Driver  RiderSelfDriver  `json:"driver"`
+	Vehicle RiderSelfVehicle `json:"vehicle"`
+}
+
 type CandidateResponse struct {
 	UserID       string                `json:"user_id"`
 	Name         string                `json:"name"`

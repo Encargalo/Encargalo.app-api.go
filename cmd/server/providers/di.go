@@ -196,6 +196,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(handOrders.New)
 	_ = Container.Provide(handRiders.New)
 	_ = Container.Provide(handRiders.NewFinanceHandler)
+	_ = Container.Provide(handRiders.NewRiderProfileHandler)
 	_ = Container.Provide(handRiders.NewStaffRiderHandler)
 	_ = Container.Provide(handRiders.NewStaffFinanceHandler)
 	_ = Container.Provide(repoRiders.NewRidersRepo)
@@ -210,6 +211,9 @@ func BuildContainer() *dig.Container {
 	})
 	_ = Container.Provide(func(mgr ridersPorts.RidersApp) tripsPorts.TripRiderMatcher {
 		return mgr.(tripsPorts.TripRiderMatcher)
+	})
+	_ = Container.Provide(func(mgr ridersPorts.RidersApp) tripsPorts.TripRiderNotifier {
+		return mgr.(tripsPorts.TripRiderNotifier)
 	})
 	_ = Container.Provide(func(mgr ridersPorts.RidersApp) tripsPorts.NearbyRidersLookup {
 		return mgr.(tripsPorts.NearbyRidersLookup)
