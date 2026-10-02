@@ -582,7 +582,7 @@ func (s *shopsRepo) FindMatchedProducts(ctx context.Context, shopIDs []uuid.UUID
 			ID:                item.ID,
 			ShopID:            item.ShopID,
 			Name:              item.Name,
-			Ref:               float64(item.Price),
+			Ref:               item.Price,
 			Image:             item.Image,
 			Description:       item.Description,
 			Score:             item.Score,

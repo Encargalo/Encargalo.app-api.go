@@ -16,7 +16,7 @@ type TrendingRow struct {
 	ItemID                string     `bun:"item_id"`
 	ItemCategoryID        string     `bun:"item_category_id"`
 	ItemName              string     `bun:"item_name"`
-	ItemPrice             int        `bun:"item_price"`
+	ItemPrice             float64    `bun:"item_price"`
 	ItemImage             string     `bun:"item_image"`
 	ItemDesc              string     `bun:"item_desc"`
 	ItemScore             float32    `bun:"item_score"`

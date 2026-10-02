@@ -24,7 +24,7 @@ func sampleOpenShop(shopID uuid.UUID) *ordermodels.ShopOrder {
 	return &ordermodels.ShopOrder{ID: shopID, Opened: true, Type: "Restaurant"}
 }
 
-func sampleCatalogItem(itemID uuid.UUID, price int) productmodels.Item {
+func sampleCatalogItem(itemID uuid.UUID, price float64) productmodels.Item {
 	return productmodels.Item{ID: itemID, Price: price, AvailabilityStatus: productmodels.AvailabilityActive}
 }
 
@@ -35,7 +35,7 @@ func sampleAccount(customerID uuid.UUID) *usersmodels.Account {
 // wireNoQuoteItemCatalog configura las expectativas de repo/shops/bcv comunes
 // al camino sin quote (priceOrderDraft), usado por CreateQuote y por
 // CreateOrder cuando order.QuoteID es uuid.Nil.
-func wireNoQuoteItemCatalog(m *orderAppMocks, shopID, itemID uuid.UUID, price int) {
+func wireNoQuoteItemCatalog(m *orderAppMocks, shopID, itemID uuid.UUID, price float64) {
 	m.repo.On("SearchShopByID", mock.Anything, shopID).Return(sampleOpenShop(shopID), nil)
 	m.shops.On("SearchBatchByShopID", mock.Anything, shopID).Return(uuid.New(), nil)
 	m.repo.On("SearchItemsByID", mock.Anything, mock.Anything).Return(productmodels.Items{sampleCatalogItem(itemID, price)}, nil)

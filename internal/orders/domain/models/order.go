@@ -142,7 +142,7 @@ func (o *Order) SetItemImage(items models.Items) {
 
 func (o *Order) SetPrices(items models.Items) {
 
-	priceMap := make(map[uuid.UUID]int, len(items))
+	priceMap := make(map[uuid.UUID]float64, len(items))
 	for _, item := range items {
 		// ShopPrice ya refleja el descuento propio del negocio (si tiene uno
 		// activo), así el subtotal de la orden nace con ese descuento
@@ -150,16 +150,16 @@ func (o *Order) SetPrices(items models.Items) {
 		priceMap[item.ID] = item.ShopPrice()
 	}
 
-	var total int
+	var total float64
 	for i := range o.ItemsOrders {
 		if price, ok := priceMap[o.ItemsOrders[i].ItemID]; ok {
 			o.ItemsOrders[i].UnitPrice = price
-			o.ItemsOrders[i].TotalPrice = price * o.ItemsOrders[i].Amount
+			o.ItemsOrders[i].TotalPrice = money.RoundUSD(price * float64(o.ItemsOrders[i].Amount))
 			total += o.ItemsOrders[i].TotalPrice
 		}
 	}
 
-	o.TotalPrice = float64(total) + o.DeliveryFee
+	o.TotalPrice = money.RoundUSD(total) + o.DeliveryFee
 }
 
 // ApplyLaunchPromo, si active, subsidia el 50% del subtotal (items +
@@ -207,15 +207,15 @@ func (o *Order) ApplyBsPrice(rate float64) {
 
 func (o *Order) SetAdditionalsPrices(addittions []Addition) {
 
-	priceMap := make(map[uuid.UUID]int, len(addittions))
+	priceMap := make(map[uuid.UUID]float64, len(addittions))
 	for _, addition := range addittions {
 		priceMap[addition.ID] = addition.Price
 	}
 
-	var totalAdd int
+	var totalAdd float64
 	for i := range o.ItemsOrders {
 
-		var subTotalAdd int
+		var subTotalAdd float64
 
 		for j := range o.ItemsOrders[i].Additions {
 
@@ -223,7 +223,7 @@ func (o *Order) SetAdditionalsPrices(addittions []Addition) {
 
 				o.ItemsOrders[i].Additions[j].UnitPrice = price
 
-				o.ItemsOrders[i].Additions[j].TotalPrice = price * o.ItemsOrders[i].Amount
+				o.ItemsOrders[i].Additions[j].TotalPrice = money.RoundUSD(price * float64(o.ItemsOrders[i].Amount))
 
 				subTotalAdd += o.ItemsOrders[i].Additions[j].TotalPrice
 
@@ -234,5 +234,5 @@ func (o *Order) SetAdditionalsPrices(addittions []Addition) {
 		totalAdd += subTotalAdd
 
 	}
-	o.TotalPrice += float64(totalAdd)
+	o.TotalPrice += money.RoundUSD(totalAdd)
 }

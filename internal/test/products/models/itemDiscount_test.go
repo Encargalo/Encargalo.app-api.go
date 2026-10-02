@@ -10,17 +10,17 @@ import (
 
 func TestItemDiscount_Apply_Percentage(t *testing.T) {
 	d := &models.ItemDiscount{DiscountType: models.DiscountTypePercentage, Value: 20}
-	assert.Equal(t, 80, d.Apply(100))
+	assert.Equal(t, 80.0, d.Apply(100))
 }
 
 func TestItemDiscount_Apply_Fixed(t *testing.T) {
 	d := &models.ItemDiscount{DiscountType: models.DiscountTypeFixed, Value: 30}
-	assert.Equal(t, 70, d.Apply(100))
+	assert.Equal(t, 70.0, d.Apply(100))
 }
 
 func TestItemDiscount_Apply_NeverNegative(t *testing.T) {
 	d := &models.ItemDiscount{DiscountType: models.DiscountTypeFixed, Value: 500}
-	assert.Equal(t, 0, d.Apply(100))
+	assert.Equal(t, 0.0, d.Apply(100))
 }
 
 func TestItemDiscount_IsCurrentlyActive(t *testing.T) {
@@ -50,7 +50,7 @@ func TestItemDiscount_IsCurrentlyActive(t *testing.T) {
 
 func TestItem_ShopPrice_NoDiscount(t *testing.T) {
 	item := &models.Item{Price: 100}
-	assert.Equal(t, 100, item.ShopPrice())
+	assert.Equal(t, 100.0, item.ShopPrice())
 }
 
 func TestItem_ShopPrice_WithActiveDiscount(t *testing.T) {
@@ -58,7 +58,7 @@ func TestItem_ShopPrice_WithActiveDiscount(t *testing.T) {
 		Price:    100,
 		Discount: &models.ItemDiscount{IsActive: true, DiscountType: models.DiscountTypePercentage, Value: 25},
 	}
-	assert.Equal(t, 75, item.ShopPrice())
+	assert.Equal(t, 75.0, item.ShopPrice())
 }
 
 func TestItem_ShopPrice_WithInactiveDiscount(t *testing.T) {
@@ -66,5 +66,10 @@ func TestItem_ShopPrice_WithInactiveDiscount(t *testing.T) {
 		Price:    100,
 		Discount: &models.ItemDiscount{IsActive: false, DiscountType: models.DiscountTypePercentage, Value: 25},
 	}
-	assert.Equal(t, 100, item.ShopPrice())
+	assert.Equal(t, 100.0, item.ShopPrice())
+}
+
+func TestItemDiscount_Apply_DecimalPrice(t *testing.T) {
+	d := &models.ItemDiscount{DiscountType: models.DiscountTypePercentage, Value: 10, IsActive: true}
+	assert.Equal(t, 1.29, d.Apply(1.43))
 }

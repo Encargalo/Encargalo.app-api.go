@@ -12,5 +12,5 @@ type Items struct {
 	ShopID uuid.UUID `bun:"shop_id"`
 	Name   string    `bun:"name" json:"name"`
 	Image  string    `bun:"image" json:"image"`
-	Price  int       `bun:"price" json:"price"`
+	Price  float64   `bun:"price" json:"price"`
 }

@@ -14,8 +14,8 @@ type AdditionsOrder struct {
 	AdditionID  uuid.UUID `bun:"addition_id,type:uuid,notnull" json:"addition_id"`
 	Name        string    `bun:"name,notnull" json:"name"`
 	Amount      int       `bun:"amount,notnull" json:"amount"`
-	UnitPrice   int       `bun:"unit_price,notnull" json:"unit_price"`
-	TotalPrice  int       `bun:"total_price,notnull" json:"total_price"`
+	UnitPrice   float64   `bun:"unit_price,notnull" json:"unit_price"`
+	TotalPrice  float64   `bun:"total_price,notnull" json:"total_price"`
 }
 
 func (ao *AdditionsOrder) BuildDtoToModel(dto dtos.CreateAdditionsOrders, orderItemID uuid.UUID, amount int) {

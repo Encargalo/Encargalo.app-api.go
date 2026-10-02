@@ -37,6 +37,6 @@ type QuoteItemView struct {
 	ItemID     uuid.UUID `json:"item_id"`
 	Name       string    `json:"name"`
 	Amount     int       `json:"amount"`
-	UnitPrice  int       `json:"unit_price"`
-	TotalPrice int       `json:"total_price"`
+	UnitPrice  float64   `json:"unit_price"`
+	TotalPrice float64   `json:"total_price"`
 }

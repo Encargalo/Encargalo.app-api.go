@@ -83,8 +83,8 @@ func (d *Details) BuildDetails(order *Order, shop *ShopOrder, customer *models.A
 		d.ItemsDetails[i].Image = order.ItemsOrders[i].Image
 		d.ItemsDetails[i].UnitPrice = order.ItemsOrders[i].UnitPrice
 		d.ItemsDetails[i].TotalPrice = order.ItemsOrders[i].TotalPrice
-		d.ItemsDetails[i].UnitPriceBs = money.RoundBs(float64(order.ItemsOrders[i].UnitPrice) * rate)
-		d.ItemsDetails[i].TotalPriceBs = money.RoundBs(float64(order.ItemsOrders[i].TotalPrice) * rate)
+		d.ItemsDetails[i].UnitPriceBs = money.RoundBs(order.ItemsOrders[i].UnitPrice * rate)
+		d.ItemsDetails[i].TotalPriceBs = money.RoundBs(order.ItemsOrders[i].TotalPrice * rate)
 		d.ItemsDetails[i].Observation = order.ItemsOrders[i].Observation
 		d.ItemsDetails[i].Flavors = order.ItemsOrders[i].FlavorsDetails
 		d.ItemsDetails[i].Additions = make([]additionsDetails, len(order.ItemsOrders[i].Additions))
@@ -94,8 +94,8 @@ func (d *Details) BuildDetails(order *Order, shop *ShopOrder, customer *models.A
 			d.ItemsDetails[i].Additions[j].Amount = order.ItemsOrders[i].Additions[j].Amount
 			d.ItemsDetails[i].Additions[j].UnitPrice = order.ItemsOrders[i].Additions[j].UnitPrice
 			d.ItemsDetails[i].Additions[j].TotalPrice = order.ItemsOrders[i].Additions[j].TotalPrice
-			d.ItemsDetails[i].Additions[j].UnitPriceBs = money.RoundBs(float64(order.ItemsOrders[i].Additions[j].UnitPrice) * rate)
-			d.ItemsDetails[i].Additions[j].TotalPriceBs = money.RoundBs(float64(order.ItemsOrders[i].Additions[j].TotalPrice) * rate)
+			d.ItemsDetails[i].Additions[j].UnitPriceBs = money.RoundBs(order.ItemsOrders[i].Additions[j].UnitPrice * rate)
+			d.ItemsDetails[i].Additions[j].TotalPriceBs = money.RoundBs(order.ItemsOrders[i].Additions[j].TotalPrice * rate)
 		}
 	}
 
@@ -127,8 +127,8 @@ type itemsDetails struct {
 	Name         string             `json:"name"`
 	Image        string             `json:"image"`
 	Amount       int                `json:"amount"`
-	UnitPrice    int                `json:"unit_price"`
-	TotalPrice   int                `json:"total_price"`
+	UnitPrice    float64            `json:"unit_price"`
+	TotalPrice   float64            `json:"total_price"`
 	UnitPriceBs  float64            `json:"unit_price_bs"`
 	TotalPriceBs float64            `json:"total_price_bs"`
 	Observation  string             `json:"observation"`
@@ -140,8 +140,8 @@ type additionsDetails struct {
 	ID           uuid.UUID `json:"id"`
 	Name         string    `json:"name"`
 	Amount       int       `json:"amount"`
-	UnitPrice    int       `json:"unit_price"`
-	TotalPrice   int       `json:"total_price"`
+	UnitPrice    float64   `json:"unit_price"`
+	TotalPrice   float64   `json:"total_price"`
 	UnitPriceBs  float64   `json:"unit_price_bs"`
 	TotalPriceBs float64   `json:"total_price_bs"`
 }
