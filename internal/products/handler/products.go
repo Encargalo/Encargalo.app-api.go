@@ -46,7 +46,7 @@ func NewProducsHandler(svc ports.ProductsApp) ProductsHandler {
 
 // SearchProductsByShopID godoc
 // @Summary      Obtener productos por tienda
-// @Description  Retorna productos agrupados por categoría para clientes. Excluye categorías `hidden`, items `hidden`, sabores/adiciones no disponibles, y aplica horario de categoría (America/Caracas). Items con `effective_status: out_of_stock` o `can_order: false` se muestran pero no se pueden pedir (p. ej. cuando los sabores activos son menos que `min_selection`).
+// @Description  Retorna productos agrupados por categoría para clientes. Excluye categorías `hidden`, items `hidden`, sabores/adiciones no disponibles, y aplica horario de categoría (America/Caracas). Items con `effective_status: out_of_stock` o `can_order: false` se muestran pero no se pueden pedir (p. ej. cuando los sabores activos son menos que `min_selection`). Cada categoría incluye `macro_category` (id, name, slug, shop_type) para agrupar el catálogo en dos niveles (macro → categoría).
 // @Tags         Products
 // @Produce      json
 // @Security     SessionCookie

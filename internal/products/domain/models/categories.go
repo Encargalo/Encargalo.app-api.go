@@ -29,12 +29,21 @@ func (c *Category) ToDomainDTO() dtos.CategoryResponse {
 		ShopID:             c.ShopID,
 		Name:               c.Name,
 		MacroCategoryID:    c.MacroCategoryID,
+		MacroCategory:      c.macroCategoryDTO(),
 		AvailabilityStatus: string(c.AvailabilityStatus),
 		CanOrder:           c.AvailabilityStatus.CanOrder(),
 		Details:            c.Details.ToDomainDTO(),
 		Items:              c.Items.ToDomainDTO(c.Details),
 		Schedules:          c.Schedules.ToDomainDTO(),
 	}
+}
+
+func (c *Category) macroCategoryDTO() *dtos.MacroCategoryResponse {
+	if c.MacroCategory == nil {
+		return nil
+	}
+	macro := c.MacroCategory.ToDomainDTO()
+	return &macro
 }
 
 // ToOwnerCatalogDTO expone la categoría completa (details/flavors, horarios, macro)
