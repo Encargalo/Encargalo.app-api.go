@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.1.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.0.1...v2.1.0) (2026-10-01)
+
+
+### Features
+
+* **riders:** enviar la distancia tienda→entrega en los eventos de orden ([76d8fbd](https://github.com/Encargalo/Encargalo.app-api.go/commit/76d8fbdb043b6f22d48ef6e933ed0f6c902a58f5))
+* **riders:** enviar la distancia tienda→entrega en los eventos de orden ([2baffe2](https://github.com/Encargalo/Encargalo.app-api.go/commit/2baffe228a5f114a3e3f389f2a64b282c45e7362)), closes [#235](https://github.com/Encargalo/Encargalo.app-api.go/issues/235)
+* **riders:** exponer el perfil y el vehículo del conductor en GET /riders/profile ([e759b81](https://github.com/Encargalo/Encargalo.app-api.go/commit/e759b81ce6364a1be2c60f87d7ec5a228fb69291))
+* **riders:** exponer el perfil y el vehículo del conductor en GET /riders/profile ([79a0ef9](https://github.com/Encargalo/Encargalo.app-api.go/commit/79a0ef920576d381427eb1113969fed8f17b4428)), closes [#236](https://github.com/Encargalo/Encargalo.app-api.go/issues/236)
+* **trips:** avisar al conductor cuando el cliente cancela el viaje ([c46c114](https://github.com/Encargalo/Encargalo.app-api.go/commit/c46c1141137f37471a88e8b7fa67ff1bcd71d684))
+
+
+### Bug Fixes
+
+* **shops:** evitar pánico al listar negocios sin coordenadas ([86aaa99](https://github.com/Encargalo/Encargalo.app-api.go/commit/86aaa99eb58ac121b286eaa10e676bdfe4ad8771))
+
 ## [2.0.1](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.0.0...v2.0.1) (2026-09-27)
 
 
