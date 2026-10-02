@@ -6,5 +6,5 @@ type Addition struct {
 	ID     uuid.UUID `json:"id"`
 	ShopID uuid.UUID `json:"shop_id"`
 	Name   string    `json:"name"`
-	Price  int       `json:"price"`
+	Price  float64   `json:"price"`
 }

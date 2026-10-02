@@ -1,9 +1,9 @@
 package models
 
 import (
-	"math"
 	"time"
 
+	"Encargalo.app-api.go/internal/pkg/money"
 	"Encargalo.app-api.go/internal/products/domain/dtos"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
@@ -57,17 +57,17 @@ func (d *ItemDiscount) IsCurrentlyActive() bool {
 
 // Apply calcula el precio del negocio (en la misma unidad que Item.Price)
 // tras restar este descuento, sin permitir precios negativos.
-func (d *ItemDiscount) Apply(price int) int {
+func (d *ItemDiscount) Apply(price float64) float64 {
 	var discounted float64
 	if d.DiscountType == DiscountTypePercentage {
-		discounted = float64(price) * (1 - d.Value/100)
+		discounted = price * (1 - d.Value/100)
 	} else {
-		discounted = float64(price) - d.Value
+		discounted = price - d.Value
 	}
 	if discounted < 0 {
 		discounted = 0
 	}
-	return int(math.Round(discounted))
+	return money.RoundUSD(discounted)
 }
 
 func (d *ItemDiscount) ToDomainDTO() dtos.ItemDiscountResponse {

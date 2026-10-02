@@ -14,7 +14,7 @@ const MacroSlugAdiciones = "adiciones"
 type AdditionEntry struct {
 	ID        uuid.UUID `json:"id"`
 	Name      string    `json:"name"`
-	Price     int       `json:"price"`
+	Price     float64   `json:"price"`
 	Available *bool     `json:"available,omitempty"`
 }
 
@@ -33,7 +33,7 @@ func (a AdditionEntries) ToDomainDTO() dtos.AdditionsResponse {
 		resp[i] = dtos.AdditionResponse{
 			ID:        entry.ID,
 			Name:      entry.Name,
-			Ref:       float64(entry.Price),
+			Ref:       entry.Price,
 			Available: entry.IsAvailable(),
 		}
 	}
@@ -49,7 +49,7 @@ func (a AdditionEntries) ToCustomerDTO() dtos.AdditionsResponse {
 		resp = append(resp, dtos.AdditionResponse{
 			ID:        entry.ID,
 			Name:      entry.Name,
-			Ref:       float64(entry.Price),
+			Ref:       entry.Price,
 			Available: true,
 		})
 	}

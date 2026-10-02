@@ -743,7 +743,7 @@ func (p *productsApp) SeedDefaultCategories(ctx context.Context, shopID uuid.UUI
 // validateDiscountValue asegura que el valor del descuento tenga sentido
 // según su tipo: porcentaje entre 1 y 99, o monto fijo positivo y menor al
 // precio del producto (nunca puede dejarlo en 0 o negativo).
-func validateDiscountValue(discountType string, value float64, itemPrice int) error {
+func validateDiscountValue(discountType string, value float64, itemPrice float64) error {
 	switch discountType {
 	case models.DiscountTypePercentage:
 		if value < 1 || value > 99 {
@@ -753,7 +753,7 @@ func validateDiscountValue(discountType string, value float64, itemPrice int) er
 		if value <= 0 {
 			return errcustom.ErrInvalidDiscountFixed
 		}
-		if value >= float64(itemPrice) {
+		if value >= itemPrice {
 			return errcustom.ErrInvalidDiscountFixed
 		}
 	default:

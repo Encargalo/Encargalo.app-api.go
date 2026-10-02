@@ -11,7 +11,7 @@ type UpdateItem struct {
 
 	ID                 uuid.UUID          `bun:"id,pk,type:uuid"`
 	Name               string             `bun:"name,notnull"`
-	Price              int                `bun:"price,notnull"`
+	Price              float64            `bun:"price,notnull"`
 	Description        string             `bun:"description"`
 	HasFlavors         bool               `bun:"has_flavors,notnull"`
 	AvailabilityStatus AvailabilityStatus `bun:"availability_status,notnull"`
