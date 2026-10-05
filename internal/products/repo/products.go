@@ -17,6 +17,7 @@ import (
 	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/deliveryfee"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/shops/domain/models/shops"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/schema"
@@ -559,6 +560,31 @@ func (p *productsRepo) GetTrendingByCoords(ctx context.Context, coords dtos.Tren
 
 	var rows []models.TrendingRow
 
+	query, args := TrendingQuery(config.Get().IsProduction(), lat, lon)
+	err := p.db.NewRaw(query, args...).Scan(ctx, &rows)
+	if err != nil {
+		slog.Error("error al obtener trending products", "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	fee, minutes := p.deliveryEstimatesByShop(coords, rows)
+	bundle := trendingCacheBundle{
+		Rows:      rows,
+		Fee:       fee,
+		Minutes:   minutes,
+		Schedules: p.schedulesByCategory(ctx, rows),
+	}
+
+	if err := p.cache.Set(ctx, cacheKey, bundle, 15*time.Minute); err != nil {
+		slog.Error("error al guardar trending en cache", "error", err)
+	}
+
+	return buildTrendingResponse(bundle), nil
+}
+
+// TrendingQuery usa el mismo radio de cobertura que el listado de negocios para
+// que trending nunca quede vacío mientras /shops sí muestra negocios.
+func TrendingQuery(isProduction bool, lat, lon float64) (string, []any) {
 	query := `
 		SELECT
 			s.id::text        AS shop_id,
@@ -588,7 +614,7 @@ func (p *productsRepo) GetTrendingByCoords(ctx context.Context, coords dtos.Tren
 			AND i.sold > 0
 	`
 	args := []any{models.AvailabilityHidden}
-	if config.Get().IsProduction() {
+	if isProduction {
 		query += `
 			AND s.latitude IS NOT NULL
 			AND s.longitude IS NOT NULL
@@ -596,34 +622,15 @@ func (p *productsRepo) GetTrendingByCoords(ctx context.Context, coords dtos.Tren
 				cos(radians(?)) * cos(radians(s.latitude)) *
 				cos(radians(s.longitude) - radians(?)) +
 				sin(radians(?)) * sin(radians(s.latitude))
-			) <= 1
+			) <= ?
 		`
-		args = append(args, lat, lon, lat)
+		args = append(args, lat, lon, lat, shops.CoverageRadiusKm)
 	}
 	query += `
 		ORDER BY i.sold DESC
 		LIMIT 30
 	`
-
-	err := p.db.NewRaw(query, args...).Scan(ctx, &rows)
-	if err != nil {
-		slog.Error("error al obtener trending products", "error", err)
-		return nil, errcustom.ErrUnexpectedError
-	}
-
-	fee, minutes := p.deliveryEstimatesByShop(coords, rows)
-	bundle := trendingCacheBundle{
-		Rows:      rows,
-		Fee:       fee,
-		Minutes:   minutes,
-		Schedules: p.schedulesByCategory(ctx, rows),
-	}
-
-	if err := p.cache.Set(ctx, cacheKey, bundle, 15*time.Minute); err != nil {
-		slog.Error("error al guardar trending en cache", "error", err)
-	}
-
-	return buildTrendingResponse(bundle), nil
+	return query, args
 }
 
 // buildTrendingResponse arma la respuesta pública a partir del bundle
