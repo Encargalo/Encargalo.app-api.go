@@ -13,12 +13,19 @@ func TestTrendingQuery_ProductionUsesShopsCoverageRadius(t *testing.T) {
 	query, args := repo.TrendingQuery(true, 10.1780808, -66.8158868)
 
 	require.Contains(t, query, ") <= ?")
-	require.Equal(t, []any{models.AvailabilityHidden, 10.1780808, -66.8158868, 10.1780808, shops.CoverageRadiusKm}, args)
+	require.Equal(t, []any{models.AvailabilityHidden, shops.ShopTypeTurbo, 10.1780808, -66.8158868, 10.1780808, shops.CoverageRadiusKm}, args)
+}
+
+func TestTrendingQuery_ExcludesTurboShops(t *testing.T) {
+	query, args := repo.TrendingQuery(true, 10.1780808, -66.8158868)
+
+	require.Contains(t, query, "s.type != ?")
+	require.Contains(t, args, any(shops.ShopTypeTurbo))
 }
 
 func TestTrendingQuery_OutsideProductionSkipsDistanceFilter(t *testing.T) {
 	query, args := repo.TrendingQuery(false, 10.1780808, -66.8158868)
 
 	require.NotContains(t, query, "radians")
-	require.Equal(t, []any{models.AvailabilityHidden}, args)
+	require.Equal(t, []any{models.AvailabilityHidden, shops.ShopTypeTurbo}, args)
 }
