@@ -1,5 +1,227 @@
 # Changelog
 
+## [2.1.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.0.1...v2.1.0) (2026-10-01)
+
+
+### Features
+
+* **riders:** enviar la distancia tienda→entrega en los eventos de orden ([76d8fbd](https://github.com/Encargalo/Encargalo.app-api.go/commit/76d8fbdb043b6f22d48ef6e933ed0f6c902a58f5))
+* **riders:** enviar la distancia tienda→entrega en los eventos de orden ([2baffe2](https://github.com/Encargalo/Encargalo.app-api.go/commit/2baffe228a5f114a3e3f389f2a64b282c45e7362)), closes [#235](https://github.com/Encargalo/Encargalo.app-api.go/issues/235)
+* **riders:** exponer el perfil y el vehículo del conductor en GET /riders/profile ([e759b81](https://github.com/Encargalo/Encargalo.app-api.go/commit/e759b81ce6364a1be2c60f87d7ec5a228fb69291))
+* **riders:** exponer el perfil y el vehículo del conductor en GET /riders/profile ([79a0ef9](https://github.com/Encargalo/Encargalo.app-api.go/commit/79a0ef920576d381427eb1113969fed8f17b4428)), closes [#236](https://github.com/Encargalo/Encargalo.app-api.go/issues/236)
+* **trips:** avisar al conductor cuando el cliente cancela el viaje ([c46c114](https://github.com/Encargalo/Encargalo.app-api.go/commit/c46c1141137f37471a88e8b7fa67ff1bcd71d684))
+
+
+### Bug Fixes
+
+* **shops:** evitar pánico al listar negocios sin coordenadas ([86aaa99](https://github.com/Encargalo/Encargalo.app-api.go/commit/86aaa99eb58ac121b286eaa10e676bdfe4ad8771))
+
+## [2.0.1](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.0.0...v2.0.1) (2026-09-27)
+
+
+### Bug Fixes
+
+* **ci:** leer el repo con el token del job al sincronizar el tablero ([7eaeda0](https://github.com/Encargalo/Encargalo.app-api.go/commit/7eaeda0bbc281b6630693c29e89bf4ef2a0c5606))
+
+## [2.0.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.9.0...v2.0.0) (2026-09-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* **finance:** details.payment y el WS de payment review emiten pago_movil_amount_bs en lugar de pago_movil_amount_usd. Complete de devoluciones y el CTA deben usar campos *_bs.
+* **finance:** balance y movimientos solo en balance_bs/balance_usd
+* **maps:** la variable de entorno GOOGLE_MATRIX pasa a llamarse GOOGLE_SERVER_KEY (mismo valor). Hay que renombrarla en Railway antes de desplegar o el servicio no arranca (config.Google.ServerKey es requerido).
+* **auth:** el backend deja de aceptar la cookie encargalo-session directamente en cualquier ruta protegida por Auth/Require. Depende por completo de que Traefik esté sirviendo el tráfico e inyectando X-Encargalo-Session + X-Internal-Gateway-Secret. Solo seguro de desplegar una vez que Traefik ya sirve el 100% del tráfico público (ver railway-traefik) — que es el caso hoy en staging, validado en la sesión de pruebas previa (login real + rutas protegidas vía Traefik, rate limit, IPs reales).
+* **finance:** los endpoints de refund/payment-reviews devuelven y esperan amount_bs / refundable_pm_bs / credited_bs / balance_amount_bs en vez de sus equivalentes *_usd. Los clientes que parseen estos campos deben actualizarse.
+
+### Features
+
+* agregar búsqueda de tiendas por categoría macro y proximidad ([dc6ea2a](https://github.com/Encargalo/Encargalo.app-api.go/commit/dc6ea2a6b00e7b32c5d2aca5670862bc2691eb1f))
+* agregar búsqueda de tiendas por categoría macro y proximidad ([b667302](https://github.com/Encargalo/Encargalo.app-api.go/commit/b66730290ffd4544c2d8e034dd6b4f56531adb8c))
+* agregar endpoint para obtener productos más vendidos cerca del usuario ([3236b8b](https://github.com/Encargalo/Encargalo.app-api.go/commit/3236b8bdbdf8ff331c0623e66ccd5a4645e354c6))
+* agregar endpoint para obtener productos más vendidos cerca del usuario ([b1beabf](https://github.com/Encargalo/Encargalo.app-api.go/commit/b1beabfa35f28c219cc66577c851c4d2bddd041f))
+* **analytics:** añadir worker ETL OLTP→OLAP para métricas en Grafana ([962d28a](https://github.com/Encargalo/Encargalo.app-api.go/commit/962d28abb2fba4d6a5e98c0aba0041dcf5477bb7))
+* **analytics:** exportar logs del ETL a Loki vía OTLP ([44d9868](https://github.com/Encargalo/Encargalo.app-api.go/commit/44d9868669d2abf80a66ac0f9e939d4093fa2722))
+* **analytics:** heatmap de zonas para viajes (cube_trip) ([7d23c31](https://github.com/Encargalo/Encargalo.app-api.go/commit/7d23c315ebb82a56de88021449c1ef1fa7839e39))
+* **analytics:** heatmap de zonas para viajes (cube_trip) ([27d46d0](https://github.com/Encargalo/Encargalo.app-api.go/commit/27d46d08005c4d0e14b2f6dd8c5c537c058b2611))
+* **analytics:** propagar h3_cell de shops y orders al pipeline ETL/OLAP ([8105246](https://github.com/Encargalo/Encargalo.app-api.go/commit/810524627c0d61f19d67f34a01154b752b527748))
+* **analytics:** propagar h3_cell de shops y orders al pipeline ETL/OLAP ([19084d1](https://github.com/Encargalo/Encargalo.app-api.go/commit/19084d17c37fbc1f355730b86a8769a65c52f395))
+* **auth:** agregar endpoint interno de verificación de sesión para gateway ([d752fc4](https://github.com/Encargalo/Encargalo.app-api.go/commit/d752fc4c19b9718af524cb328983e323f2a06c17))
+* **auth:** Deploy B — Auth() confía en el header de Traefik, no en la cookie ([7af5250](https://github.com/Encargalo/Encargalo.app-api.go/commit/7af525074ec952a89f6727a1a4024a92f45e522b))
+* **bcv:** exponer ruta GET /bcv/rate protegida por API key ([bc38815](https://github.com/Encargalo/Encargalo.app-api.go/commit/bc38815470d975a532ee24157809fa22cfc1bf96))
+* **bcv:** exponer ruta GET /bcv/rate protegida por API key ([1c1ebeb](https://github.com/Encargalo/Encargalo.app-api.go/commit/1c1ebeb970bd60f64c35a829fda91bdb30d1a2ff))
+* **bcv:** exponer ruta GET /bcv/rate protegida por API key para clientes externos ([045567d](https://github.com/Encargalo/Encargalo.app-api.go/commit/045567d3a205eb397437c40beb888bd1f2f6f0de))
+* **finance:** calcular devoluciones y créditos cash-refundable en Bs ([cc9c227](https://github.com/Encargalo/Encargalo.app-api.go/commit/cc9c22754191e1407634c836c4237f5197ae4adf))
+* **finance:** exponer balance y movimientos en Bs y USD ([7e5f423](https://github.com/Encargalo/Encargalo.app-api.go/commit/7e5f4232dc205187ddbc4a2e84241fb62925c4ef))
+* **finance:** migrar balances y transacciones de customers/riders a VES con tasa BCV ([fd0bb7d](https://github.com/Encargalo/Encargalo.app-api.go/commit/fd0bb7d9e7c8613ba49bd24948c0738f2c67d17b))
+* **finance:** staff payouts for riders and shops with unified module ([fec8d67](https://github.com/Encargalo/Encargalo.app-api.go/commit/fec8d67c8baa2a3913e2f2e2a897ca290ef7932e))
+* **geo:** calcular y persistir h3_cell en shops y orders al crear/editar ([4e5ed1c](https://github.com/Encargalo/Encargalo.app-api.go/commit/4e5ed1c8f40dbfb9bbfd8c0d1d871e0197b2df00))
+* **geo:** calcular y persistir h3_cell en shops y orders al crear/editar ([f414a75](https://github.com/Encargalo/Encargalo.app-api.go/commit/f414a750ac0094bc03ad4b797462c5c1c48cc88b))
+* **maps:** exponer componentes de dirección de Google al cliente ([c8aa5d0](https://github.com/Encargalo/Encargalo.app-api.go/commit/c8aa5d0ace599b1f342538d9a5f37f4726d2dc8a))
+* **maps:** proxy backend para Google Places/Geocoding ([d3b73a7](https://github.com/Encargalo/Encargalo.app-api.go/commit/d3b73a7aea8881d8d8524b3e823c03b64ded1d13))
+* **observability:** exponer pprof interno y trazar llamadas externas de /orders ([1b868b9](https://github.com/Encargalo/Encargalo.app-api.go/commit/1b868b9c48ca57739f2c14990fb4423c10e93c19))
+* **observability:** exportar trazas y logs vía OTLP al stack de Grafana ([c7c2831](https://github.com/Encargalo/Encargalo.app-api.go/commit/c7c2831ac5857d528c3b77b80629108571ccdeb8))
+* **observability:** soportar token bearer en el exportador OTLP ([f7a4cf3](https://github.com/Encargalo/Encargalo.app-api.go/commit/f7a4cf37b3d33d95dd2838d2213ed230862d9898))
+* **orders,money:** order history endpoint and Bs price rounding ([489162a](https://github.com/Encargalo/Encargalo.app-api.go/commit/489162a187983f6c8457046a46df01be1551e10c))
+* **orders,money:** order history endpoint and Bs price rounding ([1adcaca](https://github.com/Encargalo/Encargalo.app-api.go/commit/1adcacad82f3c24867f925b81b6d3dde67ff1d32))
+* **orders,riders:** pago movil, codigos retiro/entrega y comisiones ([929f51f](https://github.com/Encargalo/Encargalo.app-api.go/commit/929f51fdbac21e613d9e3b01778d8d7b40e2863c))
+* **orders,riders:** pago movil, códigos retiro/entrega y comisiones ([ba5a5b5](https://github.com/Encargalo/Encargalo.app-api.go/commit/ba5a5b5d4c479c9629fd0ee4c4c2d7c23054cfbb))
+* **orders,shops,redis:** broadcast ws on delivery, fix stats lost calc and refactor redis stream config ([673708b](https://github.com/Encargalo/Encargalo.app-api.go/commit/673708b72f841960b399226f1d01f645a2df6495))
+* **orders:** agregar códigos de confirmación de recogida y entrega ([f6a0c1f](https://github.com/Encargalo/Encargalo.app-api.go/commit/f6a0c1f1b240fcc3993120a6f5ed31428d11f349))
+* **orders:** agregar códigos de confirmación de recogida y entrega ([1ba95ad](https://github.com/Encargalo/Encargalo.app-api.go/commit/1ba95adf1f73bffd732d01149bde83ead8ba9eb3))
+* **orders:** alertar comprobantes pendientes y auto-rechazo a los 10 min ([e9521bd](https://github.com/Encargalo/Encargalo.app-api.go/commit/e9521bd527aa61ef719ec72c7997630706af7b75))
+* **orders:** payment review, quotes, timeout de aceptación y access log ([59456d9](https://github.com/Encargalo/Encargalo.app-api.go/commit/59456d9c06a632295e4c9665633a17f517297b16))
+* **payments:** aceptar pago en efectivo en pedidos y viajes ([8890b93](https://github.com/Encargalo/Encargalo.app-api.go/commit/8890b93442028ad01e2c2ba38862b8ac74586fe6))
+* **payments:** aceptar pago en efectivo en pedidos y viajes ([5940ec8](https://github.com/Encargalo/Encargalo.app-api.go/commit/5940ec88d730f2730c9d9507560d3a4a648bcbb5))
+* **payments:** combinar dos métodos de pago en pedidos y viajes ([8043681](https://github.com/Encargalo/Encargalo.app-api.go/commit/8043681ac28942c92544de21f06666c002cafba6))
+* **payments:** combinar dos métodos de pago en pedidos y viajes ([0b42735](https://github.com/Encargalo/Encargalo.app-api.go/commit/0b4273578c4d3b47743c684721927bd46c6592f0))
+* **payments:** unificar validación de pagos, balance y reembolsos ([65d48ad](https://github.com/Encargalo/Encargalo.app-api.go/commit/65d48ad71d8af187f81f64e02256cdf4d5e430f2))
+* **payments:** unificar validación de pagos, balance y reembolsos ([69c3773](https://github.com/Encargalo/Encargalo.app-api.go/commit/69c377397be83c20c35f01c8ec1b0329b1411301))
+* **pkg/geo:** agregar utilidad de indexación H3 ([2ff7f07](https://github.com/Encargalo/Encargalo.app-api.go/commit/2ff7f0735d73df2980773d1be3d05abe71cb7c12))
+* **pkg/geo:** agregar utilidad de indexación H3 ([191f3e3](https://github.com/Encargalo/Encargalo.app-api.go/commit/191f3e3e802e37c15f5ddfd3b40fa61c5b23e93c)), closes [#167](https://github.com/Encargalo/Encargalo.app-api.go/issues/167)
+* **postgres:** crear extensión pg_stat_statements ([b6035ee](https://github.com/Encargalo/Encargalo.app-api.go/commit/b6035eec35c991ae6b932f543f63b151d2cc0c70))
+* **postgres:** loguear queries lentas o con error a Loki ([5b54c62](https://github.com/Encargalo/Encargalo.app-api.go/commit/5b54c624937e2b93095f613535fc4e604a8eaeca))
+* **products,orders,shops:** agregar promociones de lanzamiento y des… ([7e4e731](https://github.com/Encargalo/Encargalo.app-api.go/commit/7e4e731fc7a59a5d2a09d732d8449b8025579616))
+* **products,orders,shops:** agregar promociones de lanzamiento y descuentos por producto ([95a68e9](https://github.com/Encargalo/Encargalo.app-api.go/commit/95a68e9b0d39295143c5b7616fd7e6f9ff013268))
+* **products:** allow deleting shop discount by item id ([00ffcdf](https://github.com/Encargalo/Encargalo.app-api.go/commit/00ffcdf2c1f60c1362fe9ea4b26a894f436766aa))
+* **products:** expose shop discount on items and clarify validation errors ([9fef360](https://github.com/Encargalo/Encargalo.app-api.go/commit/9fef360b21dd087b7aa077277a5d7f9be1e4b9ca))
+* **products:** rediseñar sabores, adiciones, disponibilidad y logging ([58bc35a](https://github.com/Encargalo/Encargalo.app-api.go/commit/58bc35a1c01115cbe372ac8c444cc78b6605271c))
+* **products:** sembrar categorías default por micro-categoría en vez de macro ([7e881b4](https://github.com/Encargalo/Encargalo.app-api.go/commit/7e881b42beb13161a8ee15d3b062b69bd7d1c662))
+* **riders,orders,products:** payload de riders con shop/customer/items y delivery estimado en trending ([1ac6758](https://github.com/Encargalo/Encargalo.app-api.go/commit/1ac6758685ae626578a295196d148ac9f76ca456))
+* **riders,orders,products:** payload de riders con shop/customer/items y delivery estimado en trending ([704488d](https://github.com/Encargalo/Encargalo.app-api.go/commit/704488d302ff1c37f3471c13343970d12f1f6307))
+* **riders,websocket:** cliente WS compartido, keepalive y reconexión con órdenes disponibles ([ecb885c](https://github.com/Encargalo/Encargalo.app-api.go/commit/ecb885ceddfbb33b53f37680ea7c833fc315d30d))
+* **riders:** agregar dominio de riders y asignación de órdenes con WebSocket ([35c7b92](https://github.com/Encargalo/Encargalo.app-api.go/commit/35c7b92caec4207fa37cfa6882c0ca22836e521f))
+* **riders:** dominio de riders, WebSocket y asignación de órdenes ([27f9052](https://github.com/Encargalo/Encargalo.app-api.go/commit/27f905258d2f006556fca444643cab8ee477d658))
+* **riders:** dominio de riders, WebSocket, balance y comisiones ([e1cc9e9](https://github.com/Encargalo/Encargalo.app-api.go/commit/e1cc9e9a018faebc454606ce4e138e8ced6648ea))
+* **riders:** modo activo del rider + ubicación en tiempo real (sub-PR 2/4 de [#169](https://github.com/Encargalo/Encargalo.app-api.go/issues/169)) ([2b3db1c](https://github.com/Encargalo/Encargalo.app-api.go/commit/2b3db1c74cc5e7e84fde830a77e47d82fd4e9042))
+* **riders:** modo activo del rider + ubicación en tiempo real (sub-PR 2/4 de [#169](https://github.com/Encargalo/Encargalo.app-api.go/issues/169)) ([0041c33](https://github.com/Encargalo/Encargalo.app-api.go/commit/0041c33823b1d88453768a122d8ac01203559cdc))
+* **riders:** reenviar viajes abiertos y viaje activo al conductor ([11c8696](https://github.com/Encargalo/Encargalo.app-api.go/commit/11c86963e15dca276d4f251d984b6b0d9baa8237))
+* **riders:** reenviar viajes abiertos y viaje activo al conductor ([6360672](https://github.com/Encargalo/Encargalo.app-api.go/commit/6360672f68a11ed94fc85e6972a0c0ddcd6f8c57))
+* **shared:** agregar envoltorio de respuesta v2 opt-in por header ([a370848](https://github.com/Encargalo/Encargalo.app-api.go/commit/a370848be47cba299854d3ef639e33db7243c252))
+* **shared:** recortar el stream de Redis a 48h de retención ([069b690](https://github.com/Encargalo/Encargalo.app-api.go/commit/069b690bab25edc90fc7cd4f1e4dc6cc272f1d06))
+* shop finance, WS compartido y reconexión de riders con órdenes disponibles ([a98837c](https://github.com/Encargalo/Encargalo.app-api.go/commit/a98837c16169730eb166d923336ec316951b85aa))
+* **shops,orders:** gestionar lotes de jornada por apertura/cierre del local ([ea01b17](https://github.com/Encargalo/Encargalo.app-api.go/commit/ea01b173dbec88b8bd2716d4eab38582426d386c))
+* **shops,products:** open/close endpoint, delivery_fee_bs en shops y BCV en app layer ([cdf753e](https://github.com/Encargalo/Encargalo.app-api.go/commit/cdf753e81d426c714dd3f52a418392e446d9289f))
+* **shops,products:** open/close endpoint, delivery_fee_bs en shops y… ([140f2c1](https://github.com/Encargalo/Encargalo.app-api.go/commit/140f2c19755d432ce63359f6f0fa4083dcf5808e))
+* **shops:** add stats endpoints for business dashboard ([a46fc2c](https://github.com/Encargalo/Encargalo.app-api.go/commit/a46fc2cf72e9b90f3ec39cac335157461bf70669))
+* **shops:** agregar modalidad Turbo con asignación por geolocalización ([352557a](https://github.com/Encargalo/Encargalo.app-api.go/commit/352557a0d8cacfb76583e6101bf8955474df67df))
+* **shops:** agregar onboarding de shops por staff con gestión de catálogo ([f95fe90](https://github.com/Encargalo/Encargalo.app-api.go/commit/f95fe90b848fd21a51ce60fcd7317bd77901e174))
+* **shops:** agregar stats de clientes nuevos vs recurrentes ([90c4483](https://github.com/Encargalo/Encargalo.app-api.go/commit/90c4483b639d172188dd38529b7820419447c538))
+* **shops:** clientes nuevos vs recurrentes en stats ([5c69ce8](https://github.com/Encargalo/Encargalo.app-api.go/commit/5c69ce85b200ed5115a167f42704fd0391785ff3))
+* **shops:** sistema de balance, comisiones y liquidación para locales ([3c5bfbd](https://github.com/Encargalo/Encargalo.app-api.go/commit/3c5bfbd2a86db0d3827eec7d7a6ab146fa2a4d4c)), closes [#131](https://github.com/Encargalo/Encargalo.app-api.go/issues/131)
+* **shops:** soportar tipo Supermarket y filtro opcional por type ([2b9f523](https://github.com/Encargalo/Encargalo.app-api.go/commit/2b9f52318c76431ef1115731eb7995e02e96b15e))
+* **tracking:** registrar pixels genéricos y sincronizarlos a OLAP ([22c5b2d](https://github.com/Encargalo/Encargalo.app-api.go/commit/22c5b2d7bc821aa3104c5569a0350a5cac524cf2))
+* **trips:** acreditar el pago móvil a la cartera si el viaje no se presta ([3d82feb](https://github.com/Encargalo/Encargalo.app-api.go/commit/3d82feb49ae4a5dc41e06a28b7894b4f3e31b837))
+* **trips:** acreditar el pago móvil si el viaje no se presta ([b3b598d](https://github.com/Encargalo/Encargalo.app-api.go/commit/b3b598d8019ad3f3a75b46c44df366e2dd0e0330))
+* **trips:** agregar cotización de tarifa con precio fijo desde la creación ([4fa990a](https://github.com/Encargalo/Encargalo.app-api.go/commit/4fa990a166963800c05403a74197a820bd337300))
+* **trips:** ciclo de vida completo + RecordTripEarning (sub-PR 4/4 de [#169](https://github.com/Encargalo/Encargalo.app-api.go/issues/169)) ([e988c00](https://github.com/Encargalo/Encargalo.app-api.go/commit/e988c00673435839380d14f1d9ad10fb0fc8b839))
+* **trips:** ciclo de vida completo + RecordTripEarning (sub-PR 4/4 de [#169](https://github.com/Encargalo/Encargalo.app-api.go/issues/169)) ([7f3036d](https://github.com/Encargalo/Encargalo.app-api.go/commit/7f3036d139897d69f9e62ec8a6b82e8742ab5f30))
+* **trips:** dominio base de viajes con REST CRUD (sub-PR 1/4 de [#169](https://github.com/Encargalo/Encargalo.app-api.go/issues/169)) ([9e6c1c6](https://github.com/Encargalo/Encargalo.app-api.go/commit/9e6c1c6fc4ef455e2e6ffac156ec13fce4111498))
+* **trips:** dominio base de viajes con REST CRUD (sub-PR 1/4 de [#169](https://github.com/Encargalo/Encargalo.app-api.go/issues/169)) ([c7f3d2a](https://github.com/Encargalo/Encargalo.app-api.go/commit/c7f3d2a622a52930a5382d4451a141ff5ea98d9a))
+* **trips:** exigir comprobante de pago móvil antes de ofertar el viaje ([fc14c25](https://github.com/Encargalo/Encargalo.app-api.go/commit/fc14c25912cc182b4ae9f831e6786c3f043dfe0d))
+* **trips:** exigir comprobante de pago móvil antes de ofertar el viaje ([e413912](https://github.com/Encargalo/Encargalo.app-api.go/commit/e413912c50e33955d31e8418b73c6057c6e3925a))
+* **trips:** impedir cancelar mientras el pago móvil está en revisión ([c1264a3](https://github.com/Encargalo/Encargalo.app-api.go/commit/c1264a392f88af624d5a03c89a9e8b22756e9297))
+* **trips:** impedir cancelar mientras el pago móvil está en revisión ([b64f8b2](https://github.com/Encargalo/Encargalo.app-api.go/commit/b64f8b27f4b5efea956889b385f002f0ca65202a))
+* **trips:** matching de trips a riders vía WebSocket (sub-PR 3/4 de [#169](https://github.com/Encargalo/Encargalo.app-api.go/issues/169)) ([4e35f87](https://github.com/Encargalo/Encargalo.app-api.go/commit/4e35f872a320f4636e6a647ecc7c516c89fb0ed0))
+* **trips:** matching de trips a riders vía WebSocket (sub-PR 3/4 de [#169](https://github.com/Encargalo/Encargalo.app-api.go/issues/169)) ([23638ce](https://github.com/Encargalo/Encargalo.app-api.go/commit/23638cec347bcb3576abc2bd34ffb7ed4c3b5015))
+* **trips:** mostrar conductores cercanos en el mapa de cotización ([2e2fde6](https://github.com/Encargalo/Encargalo.app-api.go/commit/2e2fde657e66aa07dc392f5b7116bace43ac22a2))
+* **trips:** mostrar conductores cercanos en el mapa de cotización ([886abae](https://github.com/Encargalo/Encargalo.app-api.go/commit/886abae977ff4a541b931e7b7845ffa496bd5e3b))
+* **trips:** mostrar datos públicos del rider en el detalle y el historial ([67c9480](https://github.com/Encargalo/Encargalo.app-api.go/commit/67c94805a1d6602bf52dcb5dfa69e647f2b38a19))
+* **trips:** mostrar datos públicos del rider en el detalle y el historial ([ecc6517](https://github.com/Encargalo/Encargalo.app-api.go/commit/ecc6517f9731f6a99b6ac0982f327e4bf0293076))
+* **trips:** mostrar nombre y teléfono del pasajero al rider que acepta ([fbe2031](https://github.com/Encargalo/Encargalo.app-api.go/commit/fbe2031b239ab5a81304e15220e9a0f5cf7fa5f5))
+* **trips:** mostrar nombre y teléfono del pasajero al rider que acepta ([6b3d540](https://github.com/Encargalo/Encargalo.app-api.go/commit/6b3d5400ad198dd2d87e186c83db736b55927650))
+* **trips:** ofertar el viaje en rondas hasta agotar riders cercanos ([e34c132](https://github.com/Encargalo/Encargalo.app-api.go/commit/e34c13254591e8a501f4add3277b024d0640ffb8))
+* **trips:** ofertar el viaje en rondas hasta agotar riders cercanos ([cd4b92e](https://github.com/Encargalo/Encargalo.app-api.go/commit/cd4b92e27431e8e24e459de9ed61868bffe430ac))
+* **trips:** reofertar el viaje cuando el rider asignado cancela ([f3d0692](https://github.com/Encargalo/Encargalo.app-api.go/commit/f3d0692150a640275a26fb4ffe23dd56aa57a9cd))
+* **trips:** reofertar el viaje cuando el rider asignado cancela ([540bb72](https://github.com/Encargalo/Encargalo.app-api.go/commit/540bb729a91ce7dc5df2fde70d639d41940e0cda))
+* **trips:** seguir el viaje en vivo con códigos de subida/bajada y pago por saldo ([ee2d0ae](https://github.com/Encargalo/Encargalo.app-api.go/commit/ee2d0ae64c9b2ff98f30302b402f7ed1b4ab08eb))
+* **trips:** seguir el viaje en vivo con códigos de subida/bajada y pago por saldo ([0cc2d56](https://github.com/Encargalo/Encargalo.app-api.go/commit/0cc2d56b373a2e37eb19ca507ab0d20832c54df7))
+* **users:** devoluciones de balance, hold/processing/payout y monto Bs al CRM ([3dd8755](https://github.com/Encargalo/Encargalo.app-api.go/commit/3dd8755300c0624d18513c36cca60f8568e72709))
+* **users:** eliminación de cuenta con período de gracia de 30 días ([d54776a](https://github.com/Encargalo/Encargalo.app-api.go/commit/d54776acf0955effe54f9468f733941bb5bb4b91))
+* **users:** staff grant and revoke role endpoints ([a8d1888](https://github.com/Encargalo/Encargalo.app-api.go/commit/a8d1888eb4d9583b3b9e49986bf2dc3eefcaf56a))
+* **users:** staff user management with cursor pagination ([4d7c58a](https://github.com/Encargalo/Encargalo.app-api.go/commit/4d7c58aba0e05dd2db41c156243a1f0f1f1b9288))
+
+
+### Bug Fixes
+
+* **analytics:** mapear PORT de Railway a SERVER_PORT en el ETL ([5ba7dae](https://github.com/Encargalo/Encargalo.app-api.go/commit/5ba7dae0426504da740d88f124dde1f95c72f4b4))
+* **analytics:** partir upserts OLAP bajo el límite de parámetros de Postgres ([382b6a6](https://github.com/Encargalo/Encargalo.app-api.go/commit/382b6a6b1e370aa9c4845b926d216aa358cc1a4b))
+* **auth:** rate limiting, ip/user-agent y manejo de errores en sign-in ([f3754e1](https://github.com/Encargalo/Encargalo.app-api.go/commit/f3754e1b50a8195c8e7da73f4f5a19a7c75d7c5c))
+* **auth:** registrar /internal/verify-session como GET, no POST ([e17a18e](https://github.com/Encargalo/Encargalo.app-api.go/commit/e17a18e9403ed34cf904f085b6464e5e8e24a110))
+* **auth:** responder logout con un objeto json en vez de string plano ([d7e84f0](https://github.com/Encargalo/Encargalo.app-api.go/commit/d7e84f09ce52b8c782c511484ed86fe284a8823b))
+* calificar columnas en relación Item.Discount para evitar ambigüe… ([3c98120](https://github.com/Encargalo/Encargalo.app-api.go/commit/3c98120bf62c766e31a3e29f4f9002c734ae87e2))
+* calificar columnas en relación Item.Discount para evitar ambigüedad SQL ([be9f405](https://github.com/Encargalo/Encargalo.app-api.go/commit/be9f405e9e23dcae425a3bdba9d5be50ca822096))
+* **ci:** correr coverage tras merge a main y detectar tests con find ([2f6d45a](https://github.com/Encargalo/Encargalo.app-api.go/commit/2f6d45ae1616f37a9237d4a0cfbe92f7672c2869))
+* **ci:** correr coverage tras merge a main y detectar tests con find ([4ae456e](https://github.com/Encargalo/Encargalo.app-api.go/commit/4ae456e7b0a9bc123264fb90befd73d98b195f98))
+* **ci:** medir cobertura real con -coverpkg=./... ([5844b5a](https://github.com/Encargalo/Encargalo.app-api.go/commit/5844b5a6f020406525c8737c731db4885aa0d150))
+* **ci:** medir cobertura real con -coverpkg=./... ([e5d04a9](https://github.com/Encargalo/Encargalo.app-api.go/commit/e5d04a9af1164cdcf328df0da675cf60880a4615))
+* **ci:** reparar badges de codecov y release en README ([38ec6c2](https://github.com/Encargalo/Encargalo.app-api.go/commit/38ec6c284d7cf610d83feb50a2826ce11ee92dc1))
+* **ci:** reparar badges de codecov y release en README ([7251fc1](https://github.com/Encargalo/Encargalo.app-api.go/commit/7251fc193e23bb995e1e5d32269f4c1ce1e57499))
+* **config:** reconocer produccion de Railway y ocultar items hidden en trending ([e46bc8f](https://github.com/Encargalo/Encargalo.app-api.go/commit/e46bc8f17fbc3df552e2e8f7b8ffaeb1284a26cb))
+* corregir bugs en lógica BCV y caché de precios en productos ([04363d5](https://github.com/Encargalo/Encargalo.app-api.go/commit/04363d560f750fbdb249d16d6f9c6d9ad7089825))
+* **deps:** actualizar echo/v4 a v4.15.3 por CVE-2026-55677 ([946e3e9](https://github.com/Encargalo/Encargalo.app-api.go/commit/946e3e900d165a8c12b26a130e620e31d172900b))
+* **deps:** actualizar grpc a v1.82.1 y eliminar integración Slack ([e6f7d84](https://github.com/Encargalo/Encargalo.app-api.go/commit/e6f7d84bdf8bac2aae174fdb26678eaaeee2a709))
+* **deps:** cerrar alertas de Dependabot en grpc y OpenTelemetry ([e310e4a](https://github.com/Encargalo/Encargalo.app-api.go/commit/e310e4aa7e52727c5a266ea8db84261d09550288))
+* **deps:** cerrar alertas de Dependabot en grpc y OpenTelemetry ([106b201](https://github.com/Encargalo/Encargalo.app-api.go/commit/106b2015bea39de70637d891d080fd4140775f9b))
+* **diagnostics:** requerir sesión con rol Staff para /debug/pprof ([b22759e](https://github.com/Encargalo/Encargalo.app-api.go/commit/b22759e4a65a3c5e941bcb10e33cad66e7e711ba))
+* embed tzdata en el binario para que cargue America/Caracas en ru… ([c25e97e](https://github.com/Encargalo/Encargalo.app-api.go/commit/c25e97e2b7b1afbfcc54207a20aa320865b86781))
+* embed tzdata en el binario para que cargue America/Caracas en runtime ([54a64a7](https://github.com/Encargalo/Encargalo.app-api.go/commit/54a64a7adafa12aa06ba6ea436f989ec0d6d21ea))
+* **migrations:** corregir columnas del INSERT en payment_methods ([5dbe06d](https://github.com/Encargalo/Encargalo.app-api.go/commit/5dbe06d4f0ad52dc6ece25e4cb57afe240c60980))
+* **observability:** forzar el path OTLP correcto por señal ([57e225c](https://github.com/Encargalo/Encargalo.app-api.go/commit/57e225cb0e074aac9056df6d7ff3d99750d9e2a6))
+* **observability:** incluir método, ruta y status en el mensaje de logs HTTP ([0b8e708](https://github.com/Encargalo/Encargalo.app-api.go/commit/0b8e7084a7f6ea0e13f83f5080341e5799c70d88))
+* **observability:** usar el patrón de ruta en vez de la URL cruda en el campo endpoint ([9a98a99](https://github.com/Encargalo/Encargalo.app-api.go/commit/9a98a99653f7fc8ba0f3230600db1057aa64f48b))
+* **orders,products:** calificar columnas ambiguas tras el JOIN a discounts ([935ba2d](https://github.com/Encargalo/Encargalo.app-api.go/commit/935ba2dcefbcf30340b24051d9ae1c6c0e17e403))
+* **orders:** corregir BOLA cross-shop en ciclo de vida de órdenes ([c76f360](https://github.com/Encargalo/Encargalo.app-api.go/commit/c76f360e9d02676ff98746f0f761add1ca820cd4))
+* **orders:** guardar created_at real al crear una orden ([07ea8c3](https://github.com/Encargalo/Encargalo.app-api.go/commit/07ea8c37a7403d62f39552ac2295795899bd6ca4))
+* **orders:** incrementar sold del producto en async sin pasar por redis ([ee5a030](https://github.com/Encargalo/Encargalo.app-api.go/commit/ee5a0304e303a4da6b8d8e2eaa66da6e2f95aecc))
+* **orders:** limitar tamano del comprobante de pago movil ([aca77fe](https://github.com/Encargalo/Encargalo.app-api.go/commit/aca77fede62866285b7ad4cf57ab51e93a2291c0))
+* **orders:** no consumir cotización si falla el comprobante ([cd17a18](https://github.com/Encargalo/Encargalo.app-api.go/commit/cd17a18bb8277d5017234c16623e3c38d7687bcb))
+* **orders:** romper ciclo de DI usando ProductsRepo en lugar de ProductsApp ([48ada1e](https://github.com/Encargalo/Encargalo.app-api.go/commit/48ada1e08af69118a660cc4575b0c5e8236314ed))
+* **orders:** usar el mismo delivery fee placeholder que el listado fuera de production ([9ea38b6](https://github.com/Encargalo/Encargalo.app-api.go/commit/9ea38b61910a852ec9c8e5be1644c0ba90df8716))
+* **products:** corregir alias del JOIN en relación Item.Discount ([d7369aa](https://github.com/Encargalo/Encargalo.app-api.go/commit/d7369aaf9603bb634a1cd83ac0a68e9bc3296bd4))
+* **server:** usar X-Real-Ip para c.RealIP() en vez de X-Forwarded-For ([21580a9](https://github.com/Encargalo/Encargalo.app-api.go/commit/21580a9e9eea6a2b7c93d742648763ce7a1be877))
+* **shops:** count only sale movements in stats total earned ([402a5b5](https://github.com/Encargalo/Encargalo.app-api.go/commit/402a5b59c916d24cae2c8a22079aea6062eadd24))
+* **shops:** usar fecha de transacción para stats de órdenes completadas ([3356851](https://github.com/Encargalo/Encargalo.app-api.go/commit/335685122fb331b7bf6c9f684b421aadd4dc428d))
+* **shops:** usar fecha de transacción para stats de órdenes completadas ([db4e405](https://github.com/Encargalo/Encargalo.app-api.go/commit/db4e4050c54fdedbf685631f481e2f1131244482))
+* **trips:** corregir FK de customer_id a users.accounts ([fce0e5c](https://github.com/Encargalo/Encargalo.app-api.go/commit/fce0e5cec850cfb68248bf951bc157394d1ceb7b))
+* **trips:** corregir FK de customer_id a users.accounts ([93c6980](https://github.com/Encargalo/Encargalo.app-api.go/commit/93c69808bad6c64dad5f1bbc86e7dc273a0ac87e))
+* **trips:** mitigar spam de advance_trip y generalizar mensaje de transición ([64e2793](https://github.com/Encargalo/Encargalo.app-api.go/commit/64e2793fd1b518aaa9023ec61da412cfceba727e))
+* **trips:** propaga fallos de transición y evita filtrar el modelo de dominio por WebSocket ([bdb89d2](https://github.com/Encargalo/Encargalo.app-api.go/commit/bdb89d2e39fe8d7c99ff2e5ee69acf3e11706e5a))
+* **trips:** rondas de búsqueda de 10 min y rondas vacías de 5 min ([193f64a](https://github.com/Encargalo/Encargalo.app-api.go/commit/193f64af5234af39935432c18b8c6f44b17b5722))
+* **trips:** rondas de búsqueda de 10 min y rondas vacías de 5 min ([f257a11](https://github.com/Encargalo/Encargalo.app-api.go/commit/f257a11eba4bd9a5c86c88f200e40bc50eddb5f9))
+* **trips:** rondas de búsqueda de 15 min y esperar también en rondas vacías ([cedfc3f](https://github.com/Encargalo/Encargalo.app-api.go/commit/cedfc3f28ab092a1de19b7b7f6385a0a1f193829))
+* **users:** errores crudos, sesión inválida en registro y código muerto ([6b9968c](https://github.com/Encargalo/Encargalo.app-api.go/commit/6b9968c32858efe38d30db1b475e48fe127c73c4))
+* **users:** no guardar email vacío en el registro de customers ([b7e9574](https://github.com/Encargalo/Encargalo.app-api.go/commit/b7e9574e0be2ec9bd9844caa4d2a7fdc7663414c))
+
+
+### Refactors
+
+* **analytics:** usar config mínima dedicada para cmd/etl ([2d0c87f](https://github.com/Encargalo/Encargalo.app-api.go/commit/2d0c87f6800dda52303fbd781e35abee3af2a975))
+* **finance:** balance y movimientos solo en balance_bs/balance_usd ([37a62f6](https://github.com/Encargalo/Encargalo.app-api.go/commit/37a62f6cfda4ce0e75793f3fea40fb35abae1615))
+* **handlers:** simplificar acceso a sesión removiendo verificación redundante ([a4d50a9](https://github.com/Encargalo/Encargalo.app-api.go/commit/a4d50a9925513420adda8db46ddcc2fc250bb2a7))
+* **orders:** aplicar strategy pattern en UpdateOrderStatus y corregir violaciones arquitectónicas ([e7e5d4a](https://github.com/Encargalo/Encargalo.app-api.go/commit/e7e5d4a191975365e8ae1a7dd3544bdad3aa478e))
+* **orders:** strategy pattern en UpdateOrderStatus + correcciones arquitectónicas ([b37c0cd](https://github.com/Encargalo/Encargalo.app-api.go/commit/b37c0cd15cb1c07a64b071d03c13d35f544e8ce6))
+* **riders:** corregir violaciones arquitectónicas y agregar tests ([3c2ce2b](https://github.com/Encargalo/Encargalo.app-api.go/commit/3c2ce2bd2eda25ec0edb5d4a539a5a11678cd62b))
+* **shops:** unificar cálculo de comisión del negocio ([58586f4](https://github.com/Encargalo/Encargalo.app-api.go/commit/58586f439fcc1b62653512838eff543e431cc675))
+* **shops:** unificar cálculo de comisión del negocio ([d896b14](https://github.com/Encargalo/Encargalo.app-api.go/commit/d896b14a9d54da5aae8e708f6d7c8f1e9256ff23))
+
+
+### Performance
+
+* **postgres:** configurar pool de conexiones y evitar reconexión por query ([784c6d9](https://github.com/Encargalo/Encargalo.app-api.go/commit/784c6d9f15258e70730b86208a74539793ed599f))
+* **riders:** cancelar el timer de expiración de trip al aceptarlo ([784c6d9](https://github.com/Encargalo/Encargalo.app-api.go/commit/784c6d9f15258e70730b86208a74539793ed599f))
+* **riders:** quitar COUNT(*) innecesario del preview de saldo ([cc74c43](https://github.com/Encargalo/Encargalo.app-api.go/commit/cc74c432be49ed1ce37ae1ba7699d9bb771ceec6))
+* **trips:** colapsar lectura + update de AdvanceTrip en una sola query ([43148f6](https://github.com/Encargalo/Encargalo.app-api.go/commit/43148f6fb75f2ec8e74006d91d70ccfb374242bc))
+* **trips:** eliminar índices sin uso en trips.trips ([7d61fac](https://github.com/Encargalo/Encargalo.app-api.go/commit/7d61fac88edfb3ed429635362dfed6230fb87c96))
+
+
+### Documentation
+
+* agregar auditoría de arquitectura y seguridad ([3f2b72b](https://github.com/Encargalo/Encargalo.app-api.go/commit/3f2b72b0f74a204f9c089f499eba08ddfbb432bf))
+* **postman:** limpiar colecciones y agregar environments por entorno ([55d0e1e](https://github.com/Encargalo/Encargalo.app-api.go/commit/55d0e1e3022ac94d08e0789effa4074fa8f010ad))
+* prohibir firma de IA en commits y PRs ([c9c189b](https://github.com/Encargalo/Encargalo.app-api.go/commit/c9c189bdd8195a63ba07fc48d0da9d184bed6592))
+* **riders:** regenerar swagger con GET /riders/trips/active ([f4ba742](https://github.com/Encargalo/Encargalo.app-api.go/commit/f4ba7421e3fa925b09e0b20e0028d9ec7769f91a))
+
 ## [1.9.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v1.8.0...v1.9.0) (2026-05-29)
 
 
