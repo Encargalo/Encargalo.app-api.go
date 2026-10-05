@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"log/slog"
 
 	paymentsModels "Encargalo.app-api.go/internal/payments/domain/models"
 	paymentsPorts "Encargalo.app-api.go/internal/payments/domain/ports"
@@ -19,10 +20,11 @@ type TripPaymentSubject struct {
 	repo      ports.TripsRepo
 	matcher   ports.TripRiderMatcher
 	customers ports.CustomerTripNotifier
+	balance   paymentsPorts.CustomerBalanceCreditor
 }
 
-func NewTripPaymentSubject(repo ports.TripsRepo, matcher ports.TripRiderMatcher, customers ports.CustomerTripNotifier) *TripPaymentSubject {
-	return &TripPaymentSubject{repo: repo, matcher: matcher, customers: customers}
+func NewTripPaymentSubject(repo ports.TripsRepo, matcher ports.TripRiderMatcher, customers ports.CustomerTripNotifier, balance paymentsPorts.CustomerBalanceCreditor) *TripPaymentSubject {
+	return &TripPaymentSubject{repo: repo, matcher: matcher, customers: customers, balance: balance}
 }
 
 func (s *TripPaymentSubject) ExpectedAmountBs(ctx context.Context, referenceID uuid.UUID) (float64, error) {
@@ -66,8 +68,19 @@ func (s *TripPaymentSubject) OnRejected(ctx context.Context, referenceID, _ uuid
 		return errcustom.ErrInvalidStatus
 	}
 	trip.Status = models.TripStatusCancelled
+	s.refundBalancePaid(ctx, trip)
 	s.notify(ctx, trip)
 	return nil
+}
+
+// refundBalancePaid devuelve la porción de saldo de un viaje mixto; la de Pago Móvil la acredita payments.
+func (s *TripPaymentSubject) refundBalancePaid(ctx context.Context, trip *models.Trip) {
+	if s.balance == nil || trip.BalancePaidBs == nil || *trip.BalancePaidBs <= 0 {
+		return
+	}
+	if err := s.balance.RefundBalancePayment(ctx, trip.CustomerID, trip.ID, models.ReferenceTypeTrip, *trip.BalancePaidBs); err != nil {
+		slog.Error("trip payment rejected refund balance", "tripID", trip.ID, "error", err)
+	}
 }
 
 func (s *TripPaymentSubject) notify(ctx context.Context, trip *models.Trip) {

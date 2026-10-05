@@ -342,7 +342,7 @@ func wire() {
 	subject := ordersapp.NewOrderPaymentSubject(ordersRepo, reviewsRepo, creditor, nil)
 	registry.Register(paymentsmodels.ReferenceTypeOrder, subject)
 	tripsRepo := tripsrepo.NewTripsRepo(db)
-	registry.Register(paymentsmodels.ReferenceTypeTrip, tripsapp.NewTripPaymentSubject(tripsRepo, nil, nil))
+	registry.Register(paymentsmodels.ReferenceTypeTrip, tripsapp.NewTripPaymentSubject(tripsRepo, nil, nil, creditor))
 
 	hub = paymentsapp.NewStaffReviewHub(reviewsRepo)
 	reviewsPort = paymentsapp.NewPaymentReviewsApp(reviewsRepo, creditor, hub, registry)
