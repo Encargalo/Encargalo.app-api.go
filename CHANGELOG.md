@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.2.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.1.0...v2.2.0) (2026-10-05)
+
+
+### Features
+
+* **maps:** devolver todos los resultados del geocoding inverso ([38ad2c8](https://github.com/Encargalo/Encargalo.app-api.go/commit/38ad2c8c256bfcf5517212ff0f1061b1759da29c))
+* **products:** incluir macro categoría en el catálogo de productos ([19b8add](https://github.com/Encargalo/Encargalo.app-api.go/commit/19b8adde468d9087cd06a20a4af340f3d09f32fd))
+* **products:** permitir precios con centavos en productos y pedidos ([0cefada](https://github.com/Encargalo/Encargalo.app-api.go/commit/0cefada12cad2679769bb69f10f5919006e2a0a8))
+
+
+### Bug Fixes
+
+* **products:** excluir negocios Turbo del trending ([8c7efe8](https://github.com/Encargalo/Encargalo.app-api.go/commit/8c7efe89a98bd5473e2be7f76f7ef674c220f3b0))
+* **products:** excluir negocios Turbo del trending ([8490f2f](https://github.com/Encargalo/Encargalo.app-api.go/commit/8490f2f844919be6555ddb270a117fee3acaf6f7))
+* **products:** radio de cobertura y sin Turbo en trending ([2fce84c](https://github.com/Encargalo/Encargalo.app-api.go/commit/2fce84c29efb7bfe0ab87606b96d420ce4a43a42))
+* **products:** usar el radio de cobertura de negocios en trending ([dd043ab](https://github.com/Encargalo/Encargalo.app-api.go/commit/dd043ab469fd711363edeaf51024a7afc4e0d645))
+* **products:** usar el radio de cobertura de negocios en trending ([6b1e672](https://github.com/Encargalo/Encargalo.app-api.go/commit/6b1e6723c987cd778845809b2d6be5c3efa8a6af))
+* **trips:** reembolsar completo los viajes con pago mixto ([b26df39](https://github.com/Encargalo/Encargalo.app-api.go/commit/b26df391143823aceff3fac3fed8aa107f31b561))
+* **trips:** reembolsar completo los viajes con pago mixto ([9bafa1b](https://github.com/Encargalo/Encargalo.app-api.go/commit/9bafa1b058fa9ce1903656f532f911e93be4ad9f))
+* **trips:** reembolsar completo los viajes con pago mixto ([587ba99](https://github.com/Encargalo/Encargalo.app-api.go/commit/587ba9979f0ed199f390351a5ba3394d3e721254))
+
 ## [2.1.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.0.1...v2.1.0) (2026-10-01)
 
 
