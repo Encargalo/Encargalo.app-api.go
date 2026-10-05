@@ -229,6 +229,7 @@ func (p *productsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.U
 			AdditionalJoinOnConditions: activeDiscountJoinConditions(),
 		}).
 		Relation("Schedules").
+		Relation("MacroCategory").
 		Scan(ctx); err != nil {
 		slog.Error("error al obtener los productos", "error", err)
 		return nil, errcustom.ErrUnexpectedError
@@ -317,7 +318,7 @@ func (p *productsRepo) SearchAdditionsCatalogByShopID(ctx context.Context, shopI
 		data = append(data, dtos.AdditionResponse{
 			ID:        entry.ID,
 			Name:      entry.Name,
-			Ref:       float64(entry.Price),
+			Ref:       entry.Price,
 			Available: entry.IsAvailable(),
 		})
 	}
@@ -634,7 +635,7 @@ func buildTrendingResponse(bundle trendingCacheBundle) dtos.TrendingResponse {
 		shopID, _ := uuid.Parse(r.ShopID)
 		itemID, _ := uuid.Parse(r.ItemID)
 		categoryID, _ := uuid.Parse(r.ItemCategoryID)
-		ref := float64(r.ItemPrice)
+		ref := r.ItemPrice
 		effectiveRef := ref
 		hasLaunchPromo := r.HasActiveLaunchPromo()
 		if hasLaunchPromo {

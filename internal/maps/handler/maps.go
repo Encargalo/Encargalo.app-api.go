@@ -26,7 +26,7 @@ func NewMapsHandler(svc ports.MapsApp) MapsHandler {
 
 // ReverseGeocode godoc
 // @Summary      Geocoding inverso
-// @Description  Resuelve una dirección a partir de una coordenada, usando la Google Geocoding API. Incluye formatted_address, parts (locality=ciudad, administrative_area_level_1=estado, administrative_area_level_2=municipio/provincia) y address_components crudos de Google para que el cliente arme la dirección. Cacheado por el servidor por coordenadas redondeadas.
+// @Description  Resuelve una dirección a partir de una coordenada, usando la Google Geocoding API. Incluye formatted_address, parts (locality=ciudad, administrative_area_level_1=estado, administrative_area_level_2=municipio/provincia) y address_components crudos de Google del primer resultado, y en results todos los candidatos que devolvió Google (el primero a menudo no trae street_number y uno posterior sí) para que el cliente elija y arme la dirección. Cacheado por el servidor por coordenadas redondeadas.
 // @Tags         Maps
 // @Produce      json
 // @Security     SessionCookie

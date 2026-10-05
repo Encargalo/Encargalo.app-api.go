@@ -17,8 +17,8 @@ type ItemsOrder struct {
 	Name        string          `bun:"name"`
 	Image       string          `bun:"image"`
 	Amount      int             `bun:"amount"`
-	UnitPrice   int             `bun:"unit_price"`
-	TotalPrice  int             `bun:"total_price"`
+	UnitPrice   float64         `bun:"unit_price"`
+	TotalPrice  float64         `bun:"total_price"`
 	Observation string          `bun:"observation"`
 	Flavors     json.RawMessage `bun:"flavors,type:jsonb"`
 

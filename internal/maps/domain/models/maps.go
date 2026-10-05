@@ -27,10 +27,24 @@ type AddressParts struct {
 	Subpremise               string `json:"subpremise,omitempty"`
 }
 
-// ReverseGeocodeResult is the resolved address for a lat/lng pair.
+// ReverseGeocodeResult is the resolved address for a lat/lng pair. Top-level
+// fields mirror results[0]; results carries every candidate Google returned.
 type ReverseGeocodeResult struct {
 	FormattedAddress  string             `json:"formatted_address"`
 	ShortAddress      string             `json:"short_address"`
+	Parts             AddressParts       `json:"parts"`
+	AddressComponents []AddressComponent `json:"address_components"`
+	Results           []GeocodeCandidate `json:"results"`
+}
+
+// GeocodeCandidate is one entry of Google's reverse geocoding results.
+type GeocodeCandidate struct {
+	FormattedAddress  string             `json:"formatted_address"`
+	PlaceID           string             `json:"place_id"`
+	Types             []string           `json:"types"`
+	Lat               float64            `json:"lat"`
+	Lng               float64            `json:"lng"`
+	LocationType      string             `json:"location_type"`
 	Parts             AddressParts       `json:"parts"`
 	AddressComponents []AddressComponent `json:"address_components"`
 }

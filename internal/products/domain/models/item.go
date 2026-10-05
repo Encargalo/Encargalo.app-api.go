@@ -17,7 +17,7 @@ type Item struct {
 	ShopID             uuid.UUID          `bun:"shop_id" json:"shop_id"`
 	CategoryID         uuid.UUID          `bun:"category_id" json:"category_id"`
 	Name               string             `bun:"name" json:"name"`
-	Price              int                `bun:"price" json:"price"`
+	Price              float64            `bun:"price" json:"price"`
 	Image              string             `bun:"image" json:"image"`
 	ImagePublicID      string             `bun:"image_public_id" json:"-"`
 	ImageHash          string             `bun:"image_hash" json:"-"`
@@ -38,7 +38,7 @@ type Item struct {
 // ShopPrice devuelve el precio que realmente cobra el negocio, tras aplicar
 // su propio descuento (si tiene uno activo). Es el precio base sobre el que
 // luego se compone la promo de lanzamiento de la plataforma (día 1).
-func (i *Item) ShopPrice() int {
+func (i *Item) ShopPrice() float64 {
 	if i.Discount == nil || !i.Discount.IsCurrentlyActive() {
 		return i.Price
 	}
@@ -68,7 +68,7 @@ func (i *Item) ToDomainDTO(categoryDetails CategoryDetails) dtos.ItemResponse {
 		ShopID:             i.ShopID,
 		CategoryID:         i.CategoryID,
 		Name:               i.Name,
-		Ref:                float64(i.Price),
+		Ref:                i.Price,
 		EffectiveRef:       float64(shopPrice),
 		HasShopDiscount:    i.Discount != nil && i.Discount.IsCurrentlyActive(),
 		Image:              i.Image,

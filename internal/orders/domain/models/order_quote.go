@@ -42,8 +42,8 @@ type QuoteLineSnapshot struct {
 	Name           string                  `json:"name"`
 	Image          string                  `json:"image"`
 	Amount         int                     `json:"amount"`
-	UnitPrice      int                     `json:"unit_price"`
-	TotalPrice     int                     `json:"total_price"`
+	UnitPrice      float64                 `json:"unit_price"`
+	TotalPrice     float64                 `json:"total_price"`
 	Observation    string                  `json:"observation"`
 	Flavors        json.RawMessage         `json:"flavors"`
 	FlavorsDetails []ItemFlavor            `json:"flavors_details,omitempty"`
@@ -53,8 +53,8 @@ type QuoteLineSnapshot struct {
 type QuoteAdditionSnapshot struct {
 	AdditionID uuid.UUID `json:"addition_id"`
 	Name       string    `json:"name"`
-	UnitPrice  int       `json:"unit_price"`
-	TotalPrice int       `json:"total_price"`
+	UnitPrice  float64   `json:"unit_price"`
+	TotalPrice float64   `json:"total_price"`
 }
 
 // AcceptableForCreate: vigente, o en gracia si hay comprobante.

@@ -24,8 +24,8 @@ func TestOrder_SetPrices_UsesShopPrice(t *testing.T) {
 
 	order.SetPrices(items)
 
-	assert.Equal(t, 10, order.ItemsOrders[0].UnitPrice)
-	assert.Equal(t, 20, order.ItemsOrders[0].TotalPrice)
+	assert.Equal(t, 10.0, order.ItemsOrders[0].UnitPrice)
+	assert.Equal(t, 20.0, order.ItemsOrders[0].TotalPrice)
 	assert.Equal(t, float64(22), order.TotalPrice)
 }
 
