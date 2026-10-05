@@ -612,8 +612,9 @@ func TrendingQuery(isProduction bool, lat, lon float64) (string, []any) {
 			AND i.is_available = true
 			AND i.availability_status != ?
 			AND i.sold > 0
+			AND s.type != ?
 	`
-	args := []any{models.AvailabilityHidden}
+	args := []any{models.AvailabilityHidden, shops.ShopTypeTurbo}
 	if isProduction {
 		query += `
 			AND s.latitude IS NOT NULL
