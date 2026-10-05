@@ -17,6 +17,20 @@ type ReverseGeocodeResult struct {
 	ShortAddress      string
 	Parts             AddressParts
 	AddressComponents []AddressComponent
+	Results           []GeocodeCandidate
+}
+
+// GeocodeCandidate is one entry of Google's results array, kept whole because
+// the first one often lacks street_number while a later one has it.
+type GeocodeCandidate struct {
+	FormattedAddress  string
+	PlaceID           string
+	Types             []string
+	Lat               float64
+	Lng               float64
+	LocationType      string
+	Parts             AddressParts
+	AddressComponents []AddressComponent
 }
 
 // ReverseGeocode resolves a lat/lng pair into a human-readable address via
@@ -50,7 +64,16 @@ func ReverseGeocode(ctx context.Context, lat, lng float64) (*ReverseGeocodeResul
 		Status  string `json:"status"`
 		Results []struct {
 			FormattedAddress  string                   `json:"formatted_address"`
+			PlaceID           string                   `json:"place_id"`
+			Types             []string                 `json:"types"`
 			AddressComponents []googleAddressComponent `json:"address_components"`
+			Geometry          struct {
+				Location struct {
+					Lat float64 `json:"lat"`
+					Lng float64 `json:"lng"`
+				} `json:"location"`
+				LocationType string `json:"location_type"`
+			} `json:"geometry"`
 		} `json:"results"`
 	}
 
@@ -68,17 +91,32 @@ func ReverseGeocode(ctx context.Context, lat, lng float64) (*ReverseGeocodeResul
 		return nil, ErrNoResults
 	}
 
-	result := data.Results[0]
-	components, parts := parseAddressComponents(result.AddressComponents)
-	shortAddress := result.FormattedAddress
-	if len(components) > 0 {
-		shortAddress = components[0].LongName
+	candidates := make([]GeocodeCandidate, 0, len(data.Results))
+	for _, r := range data.Results {
+		components, parts := parseAddressComponents(r.AddressComponents)
+		candidates = append(candidates, GeocodeCandidate{
+			FormattedAddress:  r.FormattedAddress,
+			PlaceID:           r.PlaceID,
+			Types:             r.Types,
+			Lat:               r.Geometry.Location.Lat,
+			Lng:               r.Geometry.Location.Lng,
+			LocationType:      r.Geometry.LocationType,
+			Parts:             parts,
+			AddressComponents: components,
+		})
+	}
+
+	first := candidates[0]
+	shortAddress := first.FormattedAddress
+	if len(first.AddressComponents) > 0 {
+		shortAddress = first.AddressComponents[0].LongName
 	}
 
 	return &ReverseGeocodeResult{
-		FormattedAddress:  result.FormattedAddress,
+		FormattedAddress:  first.FormattedAddress,
 		ShortAddress:      shortAddress,
-		Parts:             parts,
-		AddressComponents: components,
+		Parts:             first.Parts,
+		AddressComponents: first.AddressComponents,
+		Results:           candidates,
 	}, nil
 }

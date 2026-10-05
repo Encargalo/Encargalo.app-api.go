@@ -16,9 +16,9 @@ import (
 )
 
 const (
-	// v2: payload now includes address_components + parts; bumping the prefix
-	// discards cached responses that only had formatted_address.
-	reverseGeocodePrefix = "maps:reverse_geocode:v2:"
+	// v3: payload now includes every Google result; bumping the prefix
+	// discards cached responses that only had results[0].
+	reverseGeocodePrefix = "maps:reverse_geocode:v3:"
 	reverseGeocodeTTL    = 15 * time.Minute
 
 	placeDetailsPrefix = "maps:place_details:v2:"
@@ -60,6 +60,7 @@ func (r *mapsRepo) ReverseGeocode(ctx context.Context, lat, lng float64) (*model
 		ShortAddress:      raw.ShortAddress,
 		Parts:             toDomainParts(raw.Parts),
 		AddressComponents: toDomainComponents(raw.AddressComponents),
+		Results:           toDomainCandidates(raw.Results),
 	}
 
 	if err := r.cache.Set(ctx, cacheKey, result, reverseGeocodeTTL); err != nil {
@@ -154,4 +155,21 @@ func toDomainComponents(src []googlemaps.AddressComponent) []models.AddressCompo
 		})
 	}
 	return components
+}
+
+func toDomainCandidates(src []googlemaps.GeocodeCandidate) []models.GeocodeCandidate {
+	candidates := make([]models.GeocodeCandidate, 0, len(src))
+	for _, c := range src {
+		candidates = append(candidates, models.GeocodeCandidate{
+			FormattedAddress:  c.FormattedAddress,
+			PlaceID:           c.PlaceID,
+			Types:             c.Types,
+			Lat:               c.Lat,
+			Lng:               c.Lng,
+			LocationType:      c.LocationType,
+			Parts:             toDomainParts(c.Parts),
+			AddressComponents: toDomainComponents(c.AddressComponents),
+		})
+	}
+	return candidates
 }

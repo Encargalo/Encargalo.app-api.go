@@ -162,11 +162,27 @@ Response `200`:
   "formatted_address": "Av. Francisco de Miranda, Chacao 1060, Miranda, Venezuela",
   "short_address": "123",
   "parts": { "…mismos campos que details…" },
-  "address_components": [ "…mismo array que details…" ]
+  "address_components": [ "…mismo array que details…" ],
+  "results": [
+    {
+      "formatted_address": "308 Av. Luis Roche, Caracas 1060, Miranda, Venezuela",
+      "place_id": "ChIJ…",
+      "types": ["street_address"],
+      "lat": 10.4971,
+      "lng": -66.8479,
+      "location_type": "RANGE_INTERPOLATED",
+      "parts": { "street_number": "308", "route": "Avenida Luis Roche", "…": "…" },
+      "address_components": [ "…" ]
+    }
+  ]
 }
 ```
 
-`short_address` es el primer componente de Google (a veces el número de calle). Úsalo como label corto del pin si hace falta; para el formulario usa `parts`.
+Los campos de primer nivel (`formatted_address`, `short_address`, `parts`, `address_components`) salen de `results[0]`. `results` trae **todos** los candidatos que devolvió Google, en el mismo orden, sin filtrar.
+
+`results[0]` muchas veces **no** trae `street_number` (puede ser un `establishment`, un `premise` con Plus Code o un `route`), mientras que un candidato posterior sí. Sugerencia: elegir el primer candidato cuyos `types` incluyan `street_address` o `premise` y que tenga `parts.street_number`; si ninguno lo tiene, el primero que no sea `plus_code`. Ojo: Google a veces pone basura en `street_number` (`PB`, o el mismo valor que `postal_code`).
+
+`short_address` es el primer componente de Google (a veces el número de calle, a veces un Plus Code). Úsalo como label corto del pin si hace falta; para el formulario usa `parts`.
 
 Debounce al arrastrar el mapa. El backend cachea por coords redondeadas a 5 decimales (~1.1 m), pero igual cuenta contra el rate limit.
 
