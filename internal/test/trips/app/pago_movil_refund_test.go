@@ -79,3 +79,43 @@ func TestCancelTrip_BalanceStillRefundsDebit(t *testing.T) {
 	require.NoError(t, err)
 	d.balance.AssertNotCalled(t, "CreditOrderRejected", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }
+
+func TestCancelTrip_MixedBalancePagoMovilRefundsBothLegs(t *testing.T) {
+	d := newTripsDeps(t)
+	trip := pagoMovilTrip(models.TripStatusSearching)
+	fare := 1.20
+	rate := 871.3689
+	paid := 500.64
+	trip.Fare = &fare
+	trip.BcvRate = &rate
+	trip.BalancePaidBs = &paid
+	trip.MethodPayment = models.MethodPagoMovil
+	txID := uuid.New()
+
+	d.repo.On("GetTripByID", mock.Anything, trip.ID).Return(trip, nil)
+	d.repo.On("UpdateTripStatus", mock.Anything, trip.ID, models.TripStatusSearching, models.TripStatusCancelled).Return(true, nil)
+	d.balance.On("CreditOrderRejected", mock.Anything, trip.CustomerID, trip.ID, models.ReferenceTypeTrip, 545.0, 545.0, rate).
+		Return(txID, time.Now(), nil).Once()
+	d.balance.On("RefundBalancePayment", mock.Anything, trip.CustomerID, trip.ID, models.ReferenceTypeTrip, paid).Return(nil).Once()
+	d.repo.On("SaveTripPayment", mock.Anything, trip.ID, mock.Anything).Return(nil)
+	mockBcvRate(d.bcv, rate)
+
+	_, err := d.svc.CancelTrip(context.Background(), trip.ID, trip.CustomerID)
+
+	require.NoError(t, err)
+}
+
+func TestCancelTrip_CashTripDoesNotCredit(t *testing.T) {
+	d := newTripsDeps(t)
+	trip := pagoMovilTrip(models.TripStatusSearching)
+	trip.MethodPayment = models.MethodEfectivo
+
+	d.repo.On("GetTripByID", mock.Anything, trip.ID).Return(trip, nil)
+	d.repo.On("UpdateTripStatus", mock.Anything, trip.ID, models.TripStatusSearching, models.TripStatusCancelled).Return(true, nil)
+	mockBcvRate(d.bcv, 40)
+
+	_, err := d.svc.CancelTrip(context.Background(), trip.ID, trip.CustomerID)
+
+	require.NoError(t, err)
+	d.balance.AssertNotCalled(t, "CreditOrderRejected", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+}

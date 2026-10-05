@@ -19,19 +19,32 @@ type TripPayment struct {
 	RefundEligibleUntil *string    `json:"refund_eligible_until,omitempty"`
 }
 
-// PagoMovilChargeBs es la tarifa en Bs congelada (fare × bcv_rate) de un viaje
-// que no se pagó con saldo y que todavía no tiene crédito de reembolso.
+// PagoMovilChargeBs es la porción de la tarifa congelada (fare × bcv_rate) que
+// se cubrió con Pago Móvil, descontando saldo y efectivo, mientras no tenga
+// crédito de reembolso.
 func (t *Trip) PagoMovilChargeBs() (amount, rate float64, ok bool) {
-	if t == nil || (t.BalancePaidBs != nil && *t.BalancePaidBs > 0) {
+	if t == nil || t.Fare == nil || t.BcvRate == nil || *t.Fare <= 0 || *t.BcvRate <= 0 {
 		return 0, 0, false
 	}
 	if t.Payment != nil && t.Payment.TransactionID != nil {
 		return 0, 0, false
 	}
-	if t.Fare == nil || t.BcvRate == nil || *t.Fare <= 0 || *t.BcvRate <= 0 {
+	// Efectivo puro no guarda cash_amount_bs: toda la tarifa se paga al rider.
+	if t.MethodPayment == MethodEfectivo && t.CashAmountBs == nil {
 		return 0, 0, false
 	}
-	return money.RoundBs(*t.Fare * *t.BcvRate), *t.BcvRate, true
+	amount = money.RoundBs(*t.Fare**t.BcvRate - bsOrZero(t.BalancePaidBs) - bsOrZero(t.CashAmountBs))
+	if amount <= 0.01 {
+		return 0, 0, false
+	}
+	return amount, *t.BcvRate, true
+}
+
+func bsOrZero(v *float64) float64 {
+	if v == nil {
+		return 0
+	}
+	return *v
 }
 
 // HasVerifiedPagoMovil es true cuando el staff ya aprobó el comprobante

@@ -429,7 +429,7 @@ func (a *tripsApp) CancelTrip(ctx context.Context, tripID, requesterID uuid.UUID
 	if verifiedPagoMovil {
 		CreditUnservedPagoMovil(ctx, a.balance, trip, a.repo.SaveTripPayment)
 	}
-	if !verifiedPagoMovil && trip.BalancePaidBs != nil && *trip.BalancePaidBs > 0 && a.balance != nil {
+	if trip.BalancePaidBs != nil && *trip.BalancePaidBs > 0 && a.balance != nil {
 		if refundErr := a.balance.RefundBalancePayment(ctx, trip.CustomerID, trip.ID, models.ReferenceTypeTrip, *trip.BalancePaidBs); refundErr != nil {
 			slog.Error("CancelTrip refund balance", "tripID", trip.ID, "error", refundErr)
 		}
