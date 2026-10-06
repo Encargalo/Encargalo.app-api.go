@@ -97,6 +97,7 @@ type CustomerResponse struct {
 	Email        string     `json:"email" example:"carlos.ramirez@example.com"`
 	BirthdayDate string     `json:"birthday_date" example:"1990-05-20"`
 	Role         string     `json:"role" example:"customer"`
+	CreatedAt    time.Time  `json:"created_at" example:"2026-03-15T14:30:00Z"`
 	ShopID       *uuid.UUID `json:"shop_id,omitempty" example:"456e7890-e89b-12d3-a456-426614174001"`
 	Shop         *ShopInfo  `json:"shop,omitempty"`
 	// ScheduledDeletionAt viene presente solo si el usuario solicitó eliminar

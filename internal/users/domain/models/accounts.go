@@ -106,13 +106,20 @@ func (c *Account) ToDomainDTO() dto.CustomerResponse {
 		role = defaultRole
 	}
 
+	birthday := ""
+	if c.BirthdayDate != nil {
+		birthday = c.BirthdayDate.Format(time.DateOnly)
+	}
+
 	response := dto.CustomerResponse{
-		ID:      c.ID,
-		Name:    c.Name,
-		SurName: surName,
-		Phone:   phone,
-		Email:   email,
-		Role:    role,
+		ID:           c.ID,
+		Name:         c.Name,
+		SurName:      surName,
+		Phone:        phone,
+		Email:        email,
+		BirthdayDate: birthday,
+		Role:         role,
+		CreatedAt:    c.CreatedAt.UTC(),
 	}
 
 	if c.ShopID != (uuid.UUID{}) {

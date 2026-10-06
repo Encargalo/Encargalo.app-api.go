@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+	"time"
 
 	authmodels "Encargalo.app-api.go/internal/auth/domain/models"
 	mocksauthports "Encargalo.app-api.go/internal/mocks/auth/domain/ports"
@@ -172,6 +173,29 @@ func TestSearchCustomer_Success(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, tc.Res.Code)
+}
+
+func TestSearchCustomer_ReturnsCreatedAtAndBirthday(t *testing.T) {
+	h, svc, _, _, _ := newUsersHandler(t)
+
+	userID := uuid.New()
+	tc := buildhttptest.SetupControllerCase("/users", http.MethodGet, nil)
+	ctx, tc := sessionCtx(t, tc, userID)
+
+	createdAt := time.Date(2026, time.March, 15, 14, 30, 0, 0, time.UTC)
+	birthday := time.Date(1990, time.May, 20, 0, 0, 0, 0, time.UTC)
+	account := &models.Account{ID: userID, Name: "Carlos", CreatedAt: createdAt, BirthdayDate: &birthday}
+	svc.On("SearchCustomerProfileByID", ctx, userID).Return(account, nil)
+
+	err := h.SearchCustomer(tc.Ctx)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, tc.Res.Code)
+
+	var body map[string]any
+	assert.NoError(t, json.Unmarshal(tc.Res.Body.Bytes(), &body))
+	assert.Equal(t, "2026-03-15T14:30:00Z", body["created_at"])
+	assert.Equal(t, "1990-05-20", body["birthday_date"])
 }
 
 func TestSearchCustomer_NotFound(t *testing.T) {
