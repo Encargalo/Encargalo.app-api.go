@@ -1865,6 +1865,9 @@ definitions:
       birthday_date:
         example: "1990-05-20"
         type: string
+      created_at:
+        example: "2026-03-15T14:30:00Z"
+        type: string
       email:
         example: carlos.ramirez@example.com
         type: string
@@ -6236,7 +6239,8 @@ paths:
       tags:
       - Users
     get:
-      description: Retorna los datos del usuario autenticado sin importar su rol.
+      description: Retorna los datos del usuario autenticado sin importar su rol,
+        incluida la fecha de creación de la cuenta (`created_at`, ISO 8601 UTC).
         Para usuarios con rol OrderManager u Owner, la respuesta incluye adicionalmente
         los campos `shop_id` y `shop`. Si el usuario solicitó eliminar su cuenta,
         incluye `scheduled_deletion_at` con la fecha en la que se finalizará la eliminación
