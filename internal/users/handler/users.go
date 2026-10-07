@@ -84,7 +84,7 @@ func (c *customersHandler) RegisterCustomer(e echo.Context) error {
 
 // SearchCustomer godoc
 // @Summary      Obtener perfil del usuario autenticado
-// @Description  Retorna los datos del usuario autenticado sin importar su rol. Para usuarios con rol OrderManager u Owner, la respuesta incluye adicionalmente los campos `shop_id` y `shop`. Si el usuario solicitó eliminar su cuenta, incluye `scheduled_deletion_at` con la fecha en la que se finalizará la eliminación de no volver a iniciar sesión antes.
+// @Description  Retorna los datos del usuario autenticado sin importar su rol, incluida la fecha de creación de la cuenta (`created_at`, ISO 8601 UTC). Para usuarios con rol OrderManager u Owner, la respuesta incluye adicionalmente los campos `shop_id` y `shop`. Si el usuario solicitó eliminar su cuenta, incluye `scheduled_deletion_at` con la fecha en la que se finalizará la eliminación de no volver a iniciar sesión antes.
 // @Tags         Users
 // @Produce      json
 // @Security     SessionCookie
