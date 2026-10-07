@@ -474,13 +474,16 @@ func TestAcceptTrip_AlreadyTakenNotifiesTripTaken(t *testing.T) {
 	require.NoError(t, svc.UpdateLocation(context.Background(), riderID, 10.4806, -66.9036))
 
 	trip := samplePickupTrip(t)
-	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&tripsModels.Trip{ID: trip.ID, Status: tripsModels.TripStatusSearching}, nil)
+	otherRider := uuid.New()
+	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&tripsModels.Trip{ID: trip.ID, Status: tripsModels.TripStatusSearching}, nil).Once()
+	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&tripsModels.Trip{ID: trip.ID, Status: tripsModels.TripStatusAccepted, RiderID: &otherRider}, nil)
 	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything).Return(false, nil)
 	matcher.OfferTrip(context.Background(), trip)
 
 	err := svc.AcceptTrip(context.Background(), riderID, trip.ID, conn)
 
 	require.NoError(t, err)
+	conn.AssertCalled(t, "Send", mock.MatchedBy(func(raw []byte) bool { return messageType(t, raw) == "trip_taken" }))
 }
 
 func TestAcceptTrip_RejectsWhenNotSearching(t *testing.T) {
