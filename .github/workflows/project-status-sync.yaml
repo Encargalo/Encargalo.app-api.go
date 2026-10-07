@@ -1,23 +1,35 @@
 name: Sync PR merge to Project board
 
-# Mueve la issue en el Project cuando se mergea un PR:
-#   base=dev  -> "In staging" (la issue sigue abierta)
-#   base=main -> "Done" y se cierra la issue
+# Mueve las tarjetas del Project cuando se mergea un PR:
+#   base=dev  -> el PR y sus issues pasan a "In staging" (las issues siguen abiertas)
+#   base=main -> el PR y sus issues pasan a "Done" y se cierran las issues
 # La issue se reconoce por:
 #   - closing keyword en el PR (Closes/Fixes/Resolves #N)
-#   - número en la rama: feat/187-..., fix/129-...
+#   - número en la rama: feat/187-..., fix/129-..., salvo que el PR diga
+#     "Refs #N" (cambio parcial: la issue no se mueve ni se cierra)
 # En un release dev -> main, se recorren los "Merge pull request #N"
-# incluidos, porque ese PR no trae los Closes de cada feature.
-# Si la issue no está en el Project, se agrega.
+# incluidos, porque ese PR no trae los Closes de cada feature; esos PRs
+# también pasan a "Done".
+# Si el PR o la issue no están en el Project, se agregan. Una tarjeta en
+# "Done" no vuelve a "In staging".
 #
 # Leer PRs e issues, y cerrarlas, usa el GITHUB_TOKEN del job.
-# Escribir el Project usa el secret PROJECTS_TOKEN (PAT con permiso
-# "Projects: Read and write" sobre la org Encargalo): el GITHUB_TOKEN
-# no puede escribir en Projects v2 de organización.
+# Todo lo que toca el Project usa el secret PROJECTS_TOKEN: el GITHUB_TOKEN
+# no ve los Projects v2 de la organización. El PAT necesita "Projects: Read
+# and write" sobre la org Encargalo y acceso a este repo con "Issues" y
+# "Pull requests" en lectura; sin ese acceso no resuelve la issue/PR.
+#
+# workflow_dispatch permite re-sincronizar a mano un PR ya mergeado.
 
 on:
   pull_request:
     types: [closed]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Número del PR ya mergeado a dev o main"
+        required: true
+        type: number
 
 permissions:
   contents: read
@@ -26,7 +38,10 @@ permissions:
 
 jobs:
   sync-project-status:
-    if: github.event.pull_request.merged == true && (github.event.pull_request.base.ref == 'dev' || github.event.pull_request.base.ref == 'main')
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+       (github.event.pull_request.base.ref == 'dev' || github.event.pull_request.base.ref == 'main'))
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
@@ -37,27 +52,42 @@ jobs:
       STATUS_DONE: 98236657
       REPO_OWNER: ${{ github.repository_owner }}
       REPO_NAME: ${{ github.event.repository.name }}
-      PR_NUMBER: ${{ github.event.pull_request.number }}
-      BASE_REF: ${{ github.event.pull_request.base.ref }}
+      PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
     steps:
       - name: Determine target status option
         id: target
         run: |
-          if [ "$BASE_REF" = "main" ]; then
-            echo "option_id=$STATUS_DONE" >> "$GITHUB_OUTPUT"
-            echo "close_issues=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "option_id=$STATUS_IN_STAGING" >> "$GITHUB_OUTPUT"
-            echo "close_issues=false" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          read -r base merged < <(gh pr view "$PR_NUMBER" --repo "$REPO_OWNER/$REPO_NAME" --json baseRefName,mergedAt --jq '"\(.baseRefName) \(.mergedAt != null)"')
+          if [ "$merged" != "true" ]; then
+            echo "::error::El PR #$PR_NUMBER no está mergeado"
+            exit 1
           fi
+          case "$base" in
+            main)
+              echo "option_id=$STATUS_DONE" >> "$GITHUB_OUTPUT"
+              echo "close_issues=true" >> "$GITHUB_OUTPUT" ;;
+            dev)
+              echo "option_id=$STATUS_IN_STAGING" >> "$GITHUB_OUTPUT"
+              echo "close_issues=false" >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo "::error::El PR #$PR_NUMBER apunta a $base, no a dev ni main"
+              exit 1 ;;
+          esac
+          echo "base_ref=$base" >> "$GITHUB_OUTPUT"
 
-      - name: Collect linked issue numbers
+      - name: Collect linked issue and PR numbers
         id: issues
+        env:
+          BASE_REF: ${{ steps.target.outputs.base_ref }}
         run: |
           set -euo pipefail
 
           extract_closing() {
             printf '%s\n' "$1" | grep -oiE '(close[sd]?|fix(e[sd])?|resolve[sd]?)[: ]+#[0-9]+([, ]+#[0-9]+)*' | grep -oE '[0-9]+' || true
+          }
+          extract_refs() {
+            printf '%s\n' "$1" | grep -oiE '\brefs?[: ]+#[0-9]+([, ]+#[0-9]+)*' | grep -oE '[0-9]+' || true
           }
           extract_branch() {
             printf '%s\n' "$1" | grep -oE '(^|/)(feat|fix|chore|refactor|perf|docs)/[0-9]+-' | grep -oE '[0-9]+' || true
@@ -65,91 +95,124 @@ jobs:
 
           issues_of_pr() {
             local n="$1"
-            local json branch title body
+            local json branch title body refs
             json=$(gh pr view "$n" --repo "$REPO_OWNER/$REPO_NAME" --json closingIssuesReferences,headRefName,title,body)
             branch=$(printf '%s' "$json" | jq -r '.headRefName')
             title=$(printf '%s' "$json" | jq -r '.title')
             body=$(printf '%s' "$json" | jq -r '.body // ""')
+            refs=$( { extract_refs "$title"; extract_refs "$body"; } | sort -u )
             printf '%s' "$json" | jq -r '.closingIssuesReferences[].number // empty'
-            extract_branch "$branch"
             extract_closing "$title"
             extract_closing "$body"
+            for num in $(extract_branch "$branch"); do
+              if ! printf '%s\n' "$refs" | grep -qx "$num"; then
+                echo "$num"
+              fi
+            done
           }
 
-          tmp=$(mktemp)
-          issues_of_pr "$PR_NUMBER" >> "$tmp"
+          issues_tmp=$(mktemp)
+          prs_tmp=$(mktemp)
+          echo "$PR_NUMBER" >> "$prs_tmp"
+          issues_of_pr "$PR_NUMBER" >> "$issues_tmp"
 
           if [ "$BASE_REF" = "main" ]; then
             gh api --paginate "repos/$REPO_OWNER/$REPO_NAME/pulls/$PR_NUMBER/commits" --jq '.[] | .commit.message' \
               | grep -oE 'Merge pull request #[0-9]+' | grep -oE '[0-9]+' | sort -u \
               | while read -r nested; do
                   [ "$nested" = "$PR_NUMBER" ] && continue
-                  issues_of_pr "$nested"
-                done >> "$tmp" || true
+                  echo "$nested" >> "$prs_tmp"
+                  issues_of_pr "$nested" >> "$issues_tmp"
+                done || true
           fi
 
-          nums=$(grep -E '^[0-9]+$' "$tmp" | sort -u | tr '\n' ' ' | sed 's/ *$//')
-          rm -f "$tmp"
-          echo "numbers=$nums"
-          echo "numbers=$nums" >> "$GITHUB_OUTPUT"
+          issues=$(grep -E '^[0-9]+$' "$issues_tmp" | sort -un | tr '\n' ' ' | sed 's/ *$//' || true)
+          prs=$(grep -E '^[0-9]+$' "$prs_tmp" | sort -un | tr '\n' ' ' | sed 's/ *$//' || true)
+          rm -f "$issues_tmp" "$prs_tmp"
+          echo "issues=$issues"
+          echo "prs=$prs"
+          {
+            echo "issues=$issues"
+            echo "prs=$prs"
+          } >> "$GITHUB_OUTPUT"
 
-      - name: Move the PR card if it is already on the project
+      - name: Upsert PRs and issues on the project and set status
+        env:
+          NUMBERS: ${{ steps.issues.outputs.prs }} ${{ steps.issues.outputs.issues }}
+          OPTION_ID: ${{ steps.target.outputs.option_id }}
         run: |
-          set -euo pipefail
-          ids=$(gh api graphql -f query='
-            query($owner:String!, $repo:String!, $number:Int!) {
-              repository(owner:$owner, name:$repo) {
-                pullRequest(number:$number) {
-                  projectItems(first: 20) { nodes { id project { id } } }
-                }
-              }
-            }' -f owner="$REPO_OWNER" -f repo="$REPO_NAME" -F number="$PR_NUMBER" \
-            --jq '[.data.repository.pullRequest.projectItems.nodes[] | select(.project.id == "'"$PROJECT_ID"'") | .id] | .[]')
-          for item_id in $ids; do
-            GH_TOKEN="$PROJECTS_TOKEN" gh api graphql -f query='
-              mutation($project:ID!, $item:ID!, $field:ID!, $option:String!) {
-                updateProjectV2ItemFieldValue(input: {
-                  projectId: $project, itemId: $item, fieldId: $field,
-                  value: { singleSelectOptionId: $option }
-                }) { projectV2Item { id } }
-              }' -f project="$PROJECT_ID" -f item="$item_id" -f field="$STATUS_FIELD_ID" -f option="${{ steps.target.outputs.option_id }}"
-          done
-
-      - name: Upsert each issue on the project and set status
-        if: steps.issues.outputs.numbers != ''
-        run: |
-          set -euo pipefail
-          for number in ${{ steps.issues.outputs.numbers }}; do
+          set -uo pipefail
+          failed=""
+          for number in $(printf '%s\n' $NUMBERS | sort -un); do
             content_id=$(gh api graphql -f query='
               query($owner:String!, $repo:String!, $number:Int!) {
-                repository(owner:$owner, name:$repo) { issue(number:$number) { id } }
+                repository(owner:$owner, name:$repo) {
+                  issueOrPullRequest(number:$number) {
+                    ... on Issue { id }
+                    ... on PullRequest { id }
+                  }
+                }
               }' -f owner="$REPO_OWNER" -f repo="$REPO_NAME" -F number="$number" \
-              --jq '.data.repository.issue.id // empty')
+              --jq '.data.repository.issueOrPullRequest.id // empty') || content_id=""
             if [ -z "$content_id" ]; then
-              echo "skip #$number (no es una issue)"
+              echo "skip #$number (no existe en el repo)"
               continue
             fi
+
             item_id=$(GH_TOKEN="$PROJECTS_TOKEN" gh api graphql -f query='
               mutation($project:ID!, $content:ID!) {
                 addProjectV2ItemById(input: {projectId: $project, contentId: $content}) { item { id } }
-              }' -f project="$PROJECT_ID" -f content="$content_id" --jq '.data.addProjectV2ItemById.item.id')
-            GH_TOKEN="$PROJECTS_TOKEN" gh api graphql -f query='
+              }' -f project="$PROJECT_ID" -f content="$content_id" --jq '.data.addProjectV2ItemById.item.id') || item_id=""
+            if [ -z "$item_id" ]; then
+              echo "::error::#$number: PROJECTS_TOKEN no pudo agregarlo al Project (¿el PAT tiene acceso de lectura a este repo?)"
+              failed="$failed #$number"
+              continue
+            fi
+
+            current=$(GH_TOKEN="$PROJECTS_TOKEN" gh api graphql -f query='
+              query($item:ID!) {
+                node(id:$item) {
+                  ... on ProjectV2Item {
+                    fieldValueByName(name:"Status") { ... on ProjectV2ItemFieldSingleSelectValue { optionId } }
+                  }
+                }
+              }' -f item="$item_id" --jq '.data.node.fieldValueByName.optionId // empty') || current=""
+            if [ "$current" = "$OPTION_ID" ]; then
+              echo "#$number ya está en el estado destino"
+              continue
+            fi
+            if [ "$current" = "$STATUS_DONE" ] && [ "$OPTION_ID" = "$STATUS_IN_STAGING" ]; then
+              echo "#$number ya está en Done, no vuelve a In staging"
+              continue
+            fi
+
+            if ! GH_TOKEN="$PROJECTS_TOKEN" gh api graphql -f query='
               mutation($project:ID!, $item:ID!, $field:ID!, $option:String!) {
                 updateProjectV2ItemFieldValue(input: {
                   projectId: $project, itemId: $item, fieldId: $field,
                   value: { singleSelectOptionId: $option }
                 }) { projectV2Item { id } }
-              }' -f project="$PROJECT_ID" -f item="$item_id" -f field="$STATUS_FIELD_ID" -f option="${{ steps.target.outputs.option_id }}"
-            echo "issue #$number -> ${{ steps.target.outputs.option_id }}"
+              }' -f project="$PROJECT_ID" -f item="$item_id" -f field="$STATUS_FIELD_ID" -f option="$OPTION_ID" > /dev/null; then
+              echo "::error::#$number: no se pudo cambiar el estado"
+              failed="$failed #$number"
+              continue
+            fi
+            echo "#$number -> $OPTION_ID"
           done
 
+          if [ -n "$failed" ]; then
+            echo "::error::Fallaron:$failed"
+            exit 1
+          fi
+
+      # Usa el GITHUB_TOKEN: cierra aunque haya fallado el paso del Project.
       - name: Close issues that reached main
-        if: steps.target.outputs.close_issues == 'true' && steps.issues.outputs.numbers != ''
+        if: ${{ !cancelled() && steps.issues.outcome == 'success' && steps.target.outputs.close_issues == 'true' && steps.issues.outputs.issues != '' }}
         env:
-          GH_TOKEN: ${{ github.token }}
+          ISSUES: ${{ steps.issues.outputs.issues }}
         run: |
           set -euo pipefail
-          for number in ${{ steps.issues.outputs.numbers }}; do
+          for number in $ISSUES; do
             state=$(gh issue view "$number" --repo "$REPO_OWNER/$REPO_NAME" --json state --jq '.state' 2>/dev/null || true)
             if [ "$state" != "OPEN" ]; then
               continue
