@@ -79,6 +79,7 @@ type TripResponse struct {
 	CollectUSD  *float64     `json:"collect_usd,omitempty"`
 	RequestedAt time.Time    `json:"requested_at"`
 	AcceptedAt  *time.Time   `json:"accepted_at,omitempty"`
+	StartedAt   *time.Time   `json:"started_at,omitempty"`
 	CompletedAt *time.Time   `json:"completed_at,omitempty"`
 	CancelledAt *time.Time   `json:"cancelled_at,omitempty"`
 	PickupCode  *string      `json:"pickup_code,omitempty"`
