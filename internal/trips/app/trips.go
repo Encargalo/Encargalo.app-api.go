@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -67,9 +68,62 @@ func NewTripsApp(
 	}
 }
 
-// RequestTrip nunca calcula el fare: usa el que EstimateFare ya congeló en la quote.
-// El viaje nace en payment_review y no se oferta a riders hasta que el staff apruebe el comprobante.
+// RequestTrip es idempotente por req.ID: si el cliente ya creó el viaje con ese id
+// (la respuesta se perdió y reintenta), lo devuelve sin volver a cobrar ni a ofertar.
 func (a *tripsApp) RequestTrip(ctx context.Context, customerID uuid.UUID, req dtos.CreateTripRequest) (dtos.TripResponse, error) {
+	if req.ID == uuid.Nil {
+		return a.createTrip(ctx, customerID, req)
+	}
+	existing, err := a.existingTrip(ctx, customerID, req.ID)
+	if err != nil {
+		return dtos.TripResponse{}, err
+	}
+	if existing != nil {
+		return *existing, nil
+	}
+
+	resp, err := a.createTrip(ctx, customerID, req)
+	if !errors.Is(err, errcustom.ErrQuoteNotFound) && !errors.Is(err, errcustom.ErrTripAlreadyExists) {
+		return resp, err
+	}
+	// Un intento simultáneo con el mismo id pudo consumir la cotización o insertar primero.
+	existing, lookupErr := a.existingTrip(ctx, customerID, req.ID)
+	if lookupErr != nil || existing == nil {
+		return resp, err
+	}
+	return *existing, nil
+}
+
+// existingTrip devuelve nil si no hay viaje con ese id. Un id de otro cliente no expone su viaje.
+func (a *tripsApp) existingTrip(ctx context.Context, customerID, tripID uuid.UUID) (*dtos.TripResponse, error) {
+	trip, err := a.repo.GetTripByID(ctx, tripID)
+	if errors.Is(err, errcustom.ErrNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if trip.CustomerID != customerID {
+		return nil, errcustom.ErrTripAlreadyExists
+	}
+	// Tasa congelada en el viaje, para responder el mismo fare_bs que la primera vez.
+	rate := 0.0
+	if trip.BcvRate != nil {
+		rate = *trip.BcvRate
+	}
+	if rate <= 0 {
+		rate = a.bcvRate(ctx)
+	}
+	resp, err := a.toResponse(ctx, trip, rate)
+	if err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// createTrip nunca calcula el fare: usa el que EstimateFare ya congeló en la quote.
+// Con Pago Móvil el viaje nace en payment_review y no se oferta hasta que el staff apruebe.
+func (a *tripsApp) createTrip(ctx context.Context, customerID uuid.UUID, req dtos.CreateTripRequest) (dtos.TripResponse, error) {
 	if req.BalanceAmountBs > 0 || req.CashAmountBs > 0 {
 		return a.requestTripSplit(ctx, customerID, req)
 	}
@@ -83,6 +137,9 @@ func (a *tripsApp) RequestTrip(ctx context.Context, customerID uuid.UUID, req dt
 		return dtos.TripResponse{}, fmt.Errorf("%w: method_payment y payment_proof_image son requeridos", errcustom.ErrInvalidStatus)
 	}
 
+	if _, err := a.quotes.Get(ctx, customerID, req.QuoteID); err != nil {
+		return dtos.TripResponse{}, err
+	}
 	proofUpload, err := a.upload.UploadImage(ctx, req.PaymentProofImage)
 	if err != nil || proofUpload == nil || proofUpload.SecureURL == "" {
 		return dtos.TripResponse{}, errcustom.ErrUploadingImage
@@ -101,6 +158,7 @@ func (a *tripsApp) RequestTrip(ctx context.Context, customerID uuid.UUID, req dt
 	fare := quote.FareUSD
 	rate := quote.BcvRate
 	trip := &models.Trip{
+		ID:               req.ID,
 		CustomerID:       customerID,
 		Status:           models.TripStatusPaymentReview,
 		PickupAddress:    quote.PickupAddress,
@@ -172,6 +230,7 @@ func (a *tripsApp) requestTripWithBalance(ctx context.Context, customerID uuid.U
 	fare := quote.FareUSD
 	rate := quote.BcvRate
 	trip := &models.Trip{
+		ID:               req.ID,
 		CustomerID:       customerID,
 		Status:           models.TripStatusSearching,
 		PickupAddress:    quote.PickupAddress,
@@ -222,6 +281,7 @@ func (a *tripsApp) requestTripCash(ctx context.Context, customerID uuid.UUID, re
 	fare := quote.FareUSD
 	rate := quote.BcvRate
 	trip := &models.Trip{
+		ID:               req.ID,
 		CustomerID:       customerID,
 		Status:           models.TripStatusSearching,
 		PickupAddress:    quote.PickupAddress,
@@ -308,6 +368,7 @@ func (a *tripsApp) requestTripSplit(ctx context.Context, customerID uuid.UUID, r
 		status = models.TripStatusPaymentReview
 	}
 	trip := &models.Trip{
+		ID:               req.ID,
 		CustomerID:       customerID,
 		Status:           status,
 		PickupAddress:    quote.PickupAddress,

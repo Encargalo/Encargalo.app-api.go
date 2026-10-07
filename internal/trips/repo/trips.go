@@ -11,11 +11,14 @@ import (
 	"Encargalo.app-api.go/internal/trips/domain/ports"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/driver/pgdriver"
 )
 
 type tripsRepo struct {
 	db *bun.DB
 }
+
+const pgUniqueViolation = "23505"
 
 // riderBusyStatuses son los estados en que el rider ya está ocupado con un viaje.
 var riderBusyStatuses = []models.TripStatus{
@@ -29,7 +32,12 @@ func NewTripsRepo(db *bun.DB) ports.TripsRepo {
 }
 
 func (r *tripsRepo) CreateTrip(ctx context.Context, trip *models.Trip) error {
-	if _, err := r.db.NewInsert().Model(trip).Exec(ctx); err != nil {
+	_, err := r.db.NewInsert().Model(trip).Exec(ctx)
+	var pgErr pgdriver.Error
+	if errors.As(err, &pgErr) && pgErr.Field('C') == pgUniqueViolation {
+		return errcustom.ErrTripAlreadyExists
+	}
+	if err != nil {
 		slog.Error("trips CreateTrip failed", "customerID", trip.CustomerID, "error", err)
 		return errcustom.Unexpected(err)
 	}
