@@ -6,12 +6,15 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"time"
 
 	"Encargalo.app-api.go/internal/maps/domain/models"
 	"Encargalo.app-api.go/internal/maps/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/cache"
+	"Encargalo.app-api.go/internal/pkg/geo"
 	"Encargalo.app-api.go/internal/shared/adapters/googlemaps"
+	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 )
 
@@ -125,6 +128,35 @@ func (r *mapsRepo) GetPlaceDetails(ctx context.Context, placeID, sessionToken st
 	}
 
 	return details, nil
+}
+
+// Directions is not cached: the rider-to-pickup origin moves with every refresh.
+// Outside production it returns a straight line to avoid spending Google quota.
+func (r *mapsRepo) Directions(ctx context.Context, originLat, originLng, destLat, destLng float64) (*models.Route, error) {
+	if !config.Get().IsProduction() {
+		return straightRoute(originLat, originLng, destLat, destLng), nil
+	}
+
+	raw, err := googlemaps.Directions(ctx, originLat, originLng, destLat, destLng)
+	if errors.Is(err, googlemaps.ErrNoResults) {
+		return nil, errcustom.ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", errcustom.ErrMapsUnavailable, err)
+	}
+
+	return &models.Route{
+		Polyline:       raw.Polyline,
+		DistanceMeters: raw.DistanceMeters,
+		DurationMin:    raw.DurationMin,
+	}, nil
+}
+
+func straightRoute(originLat, originLng, destLat, destLng float64) *models.Route {
+	return &models.Route{
+		Polyline:       geo.EncodePolyline([][2]float64{{originLat, originLng}, {destLat, destLng}}),
+		DistanceMeters: int64(math.Round(geo.HaversineKm(originLat, originLng, destLat, destLng) * 1000)),
+	}
 }
 
 func toDomainParts(src googlemaps.AddressParts) models.AddressParts {
