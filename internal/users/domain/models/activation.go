@@ -1,7 +1,8 @@
 package models
 
 import (
-	"math/rand"
+	"crypto/rand"
+	"math/big"
 	"strconv"
 	"time"
 
@@ -20,12 +21,21 @@ type ActivateAccount struct {
 	DeletedAt      *time.Time `bun:"deleted_at,nullzero"`
 }
 
-func (a *ActivateAccount) BuildActivateAccount(customerID uuid.UUID) {
+func (a *ActivateAccount) BuildActivateAccount(customerID uuid.UUID) error {
+	code, err := generateCode()
+	if err != nil {
+		return err
+	}
 	a.CustomerID = customerID
-	a.ActivationCode = strconv.Itoa(generateCode())
+	a.ActivationCode = code
+	return nil
 }
 
-func generateCode() int {
-	rand := rand.New(rand.NewSource(time.Now().Unix()))
-	return rand.Intn(900000) + 100000
+// generateCode devuelve un código de 6 dígitos (100000-999999) con crypto/rand.
+func generateCode() (string, error) {
+	n, err := rand.Int(rand.Reader, big.NewInt(900_000))
+	if err != nil {
+		return "", err
+	}
+	return strconv.FormatInt(n.Int64()+100_000, 10), nil
 }
