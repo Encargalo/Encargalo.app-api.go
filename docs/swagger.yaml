@@ -1634,6 +1634,11 @@ definitions:
       cash_amount_bs:
         example: 120
         type: number
+      id:
+        description: 'ID es la llave de idempotencia: un reintento con el mismo id
+          devuelve el viaje ya creado.'
+        example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        type: string
       method_payment:
         enum:
         - PagoMovil
@@ -5998,7 +6003,11 @@ paths:
         o Efectivo (el pasajero paga al rider, searching). También dos métodos con
         balance_amount_bs y/o cash_amount_bs: el resto lo cubre el method_payment.
         Los tres juntos se rechazan. Si hay Pago Móvil, el viaje no se oferta hasta
-        aprobar el comprobante.'
+        aprobar el comprobante. id (UUID v4, opcional) es la llave de idempotencia:
+        la app lo genera una vez por intento y lo reenvía igual si la respuesta se
+        pierde; un reintento con el mismo id devuelve el viaje ya creado (201, en
+        su estado actual) sin volver a cobrar, subir el comprobante ni ofertarlo.
+        Si el servidor respondió un error, el siguiente intento debe usar un id nuevo.'
       parameters:
       - description: quote_id y method_payment (PagoMovil con comprobante, Balance,
           o Efectivo)
@@ -6024,6 +6033,10 @@ paths:
             type: string
         "404":
           description: Cotización no encontrada, expirada o de otro cliente
+          schema:
+            type: string
+        "409":
+          description: El id ya lo usa un viaje de otro cliente
           schema:
             type: string
         "422":

@@ -161,6 +161,7 @@ func TestRequestTrip_UsesQuoteFareAndDoesNotStartMatching(t *testing.T) {
 	req := paidTripRequest(quote.QuoteID)
 	expectedBs := money.RoundBs(quote.FareUSD * quote.BcvRate)
 
+	d.quotes.On("Get", mock.Anything, customerID, quote.QuoteID).Return(quote, nil)
 	d.upload.On("UploadImage", mock.Anything, req.PaymentProofImage).
 		Return(&uploader.UploadResult{SecureURL: "https://cdn/proof.jpg"}, nil)
 	d.quotes.On("GetAndConsume", mock.Anything, customerID, quote.QuoteID).Return(quote, nil)
@@ -196,26 +197,27 @@ func TestRequestTrip_UsesQuoteFareAndDoesNotStartMatching(t *testing.T) {
 	d.matcher.AssertNotCalled(t, "OfferTrip", mock.Anything, mock.Anything)
 }
 
-func TestRequestTrip_QuoteNotFound(t *testing.T) {
+func TestRequestTrip_QuoteNotFoundSkipsProofUpload(t *testing.T) {
 	d := newTripsDeps(t)
 	customerID, quoteID := uuid.New(), uuid.New()
 	req := paidTripRequest(quoteID)
 
-	d.upload.On("UploadImage", mock.Anything, req.PaymentProofImage).
-		Return(&uploader.UploadResult{SecureURL: "https://cdn/proof.jpg"}, nil)
-	d.quotes.On("GetAndConsume", mock.Anything, customerID, quoteID).Return(nil, errcustom.ErrQuoteNotFound)
+	d.quotes.On("Get", mock.Anything, customerID, quoteID).Return(nil, errcustom.ErrQuoteNotFound)
 
 	_, err := d.svc.RequestTrip(context.Background(), customerID, req)
 
 	require.ErrorIs(t, err, errcustom.ErrQuoteNotFound)
+	d.upload.AssertNotCalled(t, "UploadImage", mock.Anything, mock.Anything)
 	d.repo.AssertNotCalled(t, "CreateTrip", mock.Anything, mock.Anything)
 }
 
 func TestRequestTrip_UploadFailureDoesNotConsumeQuote(t *testing.T) {
 	d := newTripsDeps(t)
 	customerID := uuid.New()
-	req := paidTripRequest(uuid.New())
+	quote := sampleTripQuote(customerID)
+	req := paidTripRequest(quote.QuoteID)
 
+	d.quotes.On("Get", mock.Anything, customerID, quote.QuoteID).Return(quote, nil)
 	d.upload.On("UploadImage", mock.Anything, req.PaymentProofImage).Return(nil, errcustom.ErrUploadingImage)
 
 	_, err := d.svc.RequestTrip(context.Background(), customerID, req)
@@ -233,13 +235,12 @@ func TestRequestTrip_QuoteScopedToRequester(t *testing.T) {
 
 	req := paidTripRequest(someQuoteID)
 	d := newTripsDeps(t)
-	d.upload.On("UploadImage", mock.Anything, req.PaymentProofImage).
-		Return(&uploader.UploadResult{SecureURL: "https://cdn/proof.jpg"}, nil)
-	d.quotes.On("GetAndConsume", mock.Anything, requesterID, someQuoteID).Return(nil, errcustom.ErrQuoteNotFound)
+	d.quotes.On("Get", mock.Anything, requesterID, someQuoteID).Return(nil, errcustom.ErrQuoteNotFound)
 
 	_, err := d.svc.RequestTrip(context.Background(), requesterID, req)
 
 	require.ErrorIs(t, err, errcustom.ErrQuoteNotFound)
+	d.upload.AssertNotCalled(t, "UploadImage", mock.Anything, mock.Anything)
 	d.repo.AssertNotCalled(t, "CreateTrip", mock.Anything, mock.Anything)
 }
 
@@ -250,6 +251,7 @@ func TestRequestTrip_ReviewFailureCancelsTrip(t *testing.T) {
 	req := paidTripRequest(quote.QuoteID)
 	tripID := uuid.New()
 
+	d.quotes.On("Get", mock.Anything, customerID, quote.QuoteID).Return(quote, nil)
 	d.upload.On("UploadImage", mock.Anything, req.PaymentProofImage).
 		Return(&uploader.UploadResult{SecureURL: "https://cdn/proof.jpg"}, nil)
 	d.quotes.On("GetAndConsume", mock.Anything, customerID, quote.QuoteID).Return(quote, nil)
@@ -425,6 +427,7 @@ func TestQuoteFlow_EndToEndFareNeverDrifts(t *testing.T) {
 	require.NotNil(t, saved)
 
 	req := paidTripRequest(estimate.QuoteID)
+	d.quotes.On("Get", mock.Anything, customerID, estimate.QuoteID).Return(saved, nil)
 	d.upload.On("UploadImage", mock.Anything, req.PaymentProofImage).
 		Return(&uploader.UploadResult{SecureURL: "https://cdn/proof.jpg"}, nil)
 	d.quotes.On("GetAndConsume", mock.Anything, customerID, estimate.QuoteID).Return(saved, nil)

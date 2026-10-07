@@ -74,6 +74,7 @@ var statusMap = map[error]int{
 	ErrInvalidTrackingType:      http.StatusBadRequest,
 	ErrTrackingParamsTooLarge:   http.StatusBadRequest,
 	ErrTripForbidden:            http.StatusForbidden,
+	ErrTripAlreadyExists:        http.StatusConflict,
 	ErrTripNotCancellable:       http.StatusUnprocessableEntity,
 	ErrTripPaymentReviewPending: http.StatusUnprocessableEntity,
 }
@@ -141,6 +142,7 @@ var codeMap = map[error]string{
 	ErrInvalidTrackingType:      "invalid_tracking_type",
 	ErrTrackingParamsTooLarge:   "tracking_params_too_large",
 	ErrTripForbidden:            "trip_forbidden",
+	ErrTripAlreadyExists:        "trip_already_exists",
 	ErrTripNotCancellable:       "trip_not_cancellable",
 	ErrTripPaymentReviewPending: "trip_payment_review_pending",
 }

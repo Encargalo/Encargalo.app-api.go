@@ -78,6 +78,48 @@ func TestRequestTrip_Success(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, tc.Res.Code)
 }
 
+func TestRequestTrip_PassesIdempotencyIDToApp(t *testing.T) {
+	h, svc := newTripsHandler(t)
+	customerID, tripID := uuid.New(), uuid.New()
+	req := dtos.CreateTripRequest{ID: tripID, QuoteID: uuid.New(), MethodPayment: "Efectivo"}
+	tc := buildhttptest.SetupControllerCase("/trips", http.MethodPost, buildBody(t, req))
+	tc = withSession(tc, authModels.ActiveSession{UserID: customerID})
+
+	svc.On("RequestTrip", tc.Req.Context(), customerID, req).Return(dtos.TripResponse{ID: tripID, CustomerID: customerID, Status: "searching"}, nil)
+
+	err := h.RequestTrip(tc.Ctx)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusCreated, tc.Res.Code)
+}
+
+func TestRequestTrip_RejectsNonV4ID(t *testing.T) {
+	h, _ := newTripsHandler(t)
+	v1, err := uuid.NewUUID()
+	assert.NoError(t, err)
+	req := dtos.CreateTripRequest{ID: v1, QuoteID: uuid.New(), MethodPayment: "Efectivo"}
+	tc := buildhttptest.SetupControllerCase("/trips", http.MethodPost, buildBody(t, req))
+	tc = withSession(tc, authModels.ActiveSession{UserID: uuid.New()})
+
+	err = h.RequestTrip(tc.Ctx)
+
+	assert.Equal(t, http.StatusBadRequest, httpCode(err))
+}
+
+func TestRequestTrip_IDOfAnotherCustomerIsConflict(t *testing.T) {
+	h, svc := newTripsHandler(t)
+	customerID := uuid.New()
+	req := dtos.CreateTripRequest{ID: uuid.New(), QuoteID: uuid.New(), MethodPayment: "Efectivo"}
+	tc := buildhttptest.SetupControllerCase("/trips", http.MethodPost, buildBody(t, req))
+	tc = withSession(tc, authModels.ActiveSession{UserID: customerID})
+
+	svc.On("RequestTrip", tc.Req.Context(), customerID, req).Return(dtos.TripResponse{}, errcustom.ErrTripAlreadyExists)
+
+	err := h.RequestTrip(tc.Ctx)
+
+	assert.Equal(t, http.StatusConflict, httpCode(err))
+}
+
 func sampleFareEstimateRequest() dtos.FareEstimateRequest {
 	return dtos.FareEstimateRequest{
 		PickupAddress:    "Av. Libertador, Caracas",

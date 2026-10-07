@@ -34,7 +34,7 @@ func NewTripsHandler(svc ports.TripsApp, live ports.CustomerTripLive) TripsHandl
 
 // RequestTrip godoc
 // @Summary      Solicitar un viaje
-// @Description  Crea un viaje a partir de una cotización vigente. Un método solo: PagoMovil (comprobante, payment_review), Balance (debita la tarifa, searching) o Efectivo (el pasajero paga al rider, searching). También dos métodos con balance_amount_bs y/o cash_amount_bs: el resto lo cubre el method_payment. Los tres juntos se rechazan. Si hay Pago Móvil, el viaje no se oferta hasta aprobar el comprobante.
+// @Description  Crea un viaje a partir de una cotización vigente. Un método solo: PagoMovil (comprobante, payment_review), Balance (debita la tarifa, searching) o Efectivo (el pasajero paga al rider, searching). También dos métodos con balance_amount_bs y/o cash_amount_bs: el resto lo cubre el method_payment. Los tres juntos se rechazan. Si hay Pago Móvil, el viaje no se oferta hasta aprobar el comprobante. id (UUID v4, opcional) es la llave de idempotencia: la app lo genera una vez por intento y lo reenvía igual si la respuesta se pierde; un reintento con el mismo id devuelve el viaje ya creado (201, en su estado actual) sin volver a cobrar, subir el comprobante ni ofertarlo. Si el servidor respondió un error, el siguiente intento debe usar un id nuevo.
 // @Tags         Trips
 // @Accept       json
 // @Produce      json
@@ -44,6 +44,7 @@ func NewTripsHandler(svc ports.TripsApp, live ports.CustomerTripLive) TripsHandl
 // @Failure      400  {string}  string  "payload inválido"
 // @Failure      401  {string}  string  "No autorizado"
 // @Failure      404  {string}  string  "Cotización no encontrada, expirada o de otro cliente"
+// @Failure      409  {string}  string  "El id ya lo usa un viaje de otro cliente"
 // @Failure      422  {string}  string  "No se pudo subir el comprobante o saldo insuficiente"
 // @Router       /trips [post]
 func (h *tripsHandler) RequestTrip(c echo.Context) error {
