@@ -57,13 +57,15 @@ func New(svc ridersPorts.RidersApp) RiderHandler {
 // → Guarda la ubicación en memoria (solo relevante en modo trips). En modo trips,
 // la primera ubicación de la conexión (o un cambio de celda H3) reenvía como
 // `trip_offer` los viajes que siguen buscando conductor dentro del radio de su
-// ronda actual, salvo los que el rider canceló.
+// ronda actual, salvo los que el rider canceló o si ya tiene un viaje en curso.
 //
 // **accept_trip**
 //
 //	{"type":"accept_trip","trip_id":"<uuid>"}
 //
-// → Intenta asignar el viaje al rider. Primer rider que acepta gana.
+// → Intenta asignar el viaje al rider. Primer rider que acepta gana. Si el rider ya
+// tiene un viaje en accepted, arriving o in_progress responde
+// `{"type":"error","message":"ya tienes un viaje en curso"}`.
 //
 // **advance_trip**
 //
@@ -319,6 +321,9 @@ func safeErrorMessage(err error) string {
 	}
 	if errors.Is(err, errcustom.ErrInvalidCode) {
 		return "código de confirmación inválido"
+	}
+	if errors.Is(err, errcustom.ErrRiderBusy) {
+		return "ya tienes un viaje en curso"
 	}
 	return "error interno"
 }

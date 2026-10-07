@@ -17,6 +17,13 @@ type tripsRepo struct {
 	db *bun.DB
 }
 
+// riderBusyStatuses son los estados en que el rider ya está ocupado con un viaje.
+var riderBusyStatuses = []models.TripStatus{
+	models.TripStatusAccepted,
+	models.TripStatusArriving,
+	models.TripStatusInProgress,
+}
+
 func NewTripsRepo(db *bun.DB) ports.TripsRepo {
 	return &tripsRepo{db: db}
 }
@@ -204,11 +211,7 @@ func (r *tripsRepo) ListActiveTripsByRider(ctx context.Context, riderID uuid.UUI
 	err := r.db.NewSelect().
 		Model(&trips).
 		Where("rider_id = ?", riderID).
-		Where("status IN (?)", bun.In([]models.TripStatus{
-			models.TripStatusAccepted,
-			models.TripStatusArriving,
-			models.TripStatusInProgress,
-		})).
+		Where("status IN (?)", bun.In(riderBusyStatuses)).
 		OrderExpr("requested_at DESC").
 		Scan(ctx)
 	if err != nil {
@@ -227,6 +230,8 @@ func (r *tripsRepo) AssignTripRider(ctx context.Context, tripID, riderID uuid.UU
 		Set("pickup_code = ?", pickupCode).
 		Set("updated_at = now()").
 		Where("id = ? AND status = ?", tripID, models.TripStatusSearching).
+		Where("NOT EXISTS (SELECT 1 FROM trips.trips busy WHERE busy.rider_id = ? AND busy.status IN (?))",
+			riderID, bun.In(riderBusyStatuses)).
 		Exec(ctx)
 	if err != nil {
 		slog.Error("trips AssignTripRider failed", "tripID", tripID, "riderID", riderID, "error", err)
