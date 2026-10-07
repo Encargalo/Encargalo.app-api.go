@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.3.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.2.0...v2.3.0) (2026-10-07)
+
+
+### Features
+
+* conductores ocupados, idempotencia en POST /trips, started_at, GET /maps/directions y código de activación seguro ([39de81a](https://github.com/Encargalo/Encargalo.app-api.go/commit/39de81a4a6727e4350458fc6b39ee1e0c751c895))
+* **maps:** agregar GET /maps/directions para trazar la ruta desde el backend ([fa046d8](https://github.com/Encargalo/Encargalo.app-api.go/commit/fa046d87562d718c6691f97e997e05099eb6bf8e))
+* **maps:** agregar GET /maps/directions para trazar la ruta desde el backend ([beaa20d](https://github.com/Encargalo/Encargalo.app-api.go/commit/beaa20dbd746a46ce3881b15c5db7ef8a130372a)), closes [#220](https://github.com/Encargalo/Encargalo.app-api.go/issues/220)
+* **trips:** exponer started_at en TripResponse ([9f2a075](https://github.com/Encargalo/Encargalo.app-api.go/commit/9f2a075cc10e1395d07a33465a8c6c38053559f6))
+* **trips:** exponer started_at en TripResponse ([0126e50](https://github.com/Encargalo/Encargalo.app-api.go/commit/0126e5039bd622d52325a248b45234b21174335e)), closes [#221](https://github.com/Encargalo/Encargalo.app-api.go/issues/221)
+* **trips:** idempotencia por id en POST /trips ([16b5bcf](https://github.com/Encargalo/Encargalo.app-api.go/commit/16b5bcfefda240c19d42011255a74b265055953d))
+* **trips:** idempotencia por id en POST /trips ([dfab2b9](https://github.com/Encargalo/Encargalo.app-api.go/commit/dfab2b917e670a389318947091a805546b723539)), closes [#206](https://github.com/Encargalo/Encargalo.app-api.go/issues/206)
+
+
+### Bug Fixes
+
+* **trips:** no ofertar ni asignar viajes a conductores ocupados ([fb1e2b5](https://github.com/Encargalo/Encargalo.app-api.go/commit/fb1e2b58015be502a4e4455a64515c60d35eec87))
+* **trips:** no ofertar ni asignar viajes a conductores ocupados ([0ce827f](https://github.com/Encargalo/Encargalo.app-api.go/commit/0ce827ffa5313e6b2649fc5328dd5fcc80aea334)), closes [#202](https://github.com/Encargalo/Encargalo.app-api.go/issues/202)
+* **users:** generar el código de activación con crypto/rand ([08e8645](https://github.com/Encargalo/Encargalo.app-api.go/commit/08e8645389e9ab60368300803eb665568f258e1d))
+* **users:** generar el código de activación con crypto/rand ([5fdaade](https://github.com/Encargalo/Encargalo.app-api.go/commit/5fdaaded716294a2ea7c7f024fd98fa9f575da29)), closes [#243](https://github.com/Encargalo/Encargalo.app-api.go/issues/243)
+
 ## [2.2.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.1.0...v2.2.0) (2026-10-05)
 
 
