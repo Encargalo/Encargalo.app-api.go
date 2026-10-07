@@ -44,6 +44,36 @@ func (_m *MapsApp) AutocompletePlaces(ctx context.Context, query string, biasLat
 	return r0, r1
 }
 
+// Directions provides a mock function with given fields: ctx, originLat, originLng, destLat, destLng
+func (_m *MapsApp) Directions(ctx context.Context, originLat float64, originLng float64, destLat float64, destLng float64) (*models.Route, error) {
+	ret := _m.Called(ctx, originLat, originLng, destLat, destLng)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Directions")
+	}
+
+	var r0 *models.Route
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, float64, float64, float64, float64) (*models.Route, error)); ok {
+		return rf(ctx, originLat, originLng, destLat, destLng)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, float64, float64, float64, float64) *models.Route); ok {
+		r0 = rf(ctx, originLat, originLng, destLat, destLng)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.Route)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, float64, float64, float64, float64) error); ok {
+		r1 = rf(ctx, originLat, originLng, destLat, destLng)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetPlaceDetails provides a mock function with given fields: ctx, placeID, sessionToken
 func (_m *MapsApp) GetPlaceDetails(ctx context.Context, placeID string, sessionToken string) (*models.PlaceDetails, error) {
 	ret := _m.Called(ctx, placeID, sessionToken)

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"sync"
 	"testing"
+	"time"
 
 	bcvmodels "Encargalo.app-api.go/internal/bcv/domain/models"
 	mockbcvports "Encargalo.app-api.go/internal/mocks/bcv/domain/ports"
@@ -473,13 +474,16 @@ func TestAcceptTrip_AlreadyTakenNotifiesTripTaken(t *testing.T) {
 	require.NoError(t, svc.UpdateLocation(context.Background(), riderID, 10.4806, -66.9036))
 
 	trip := samplePickupTrip(t)
-	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&tripsModels.Trip{ID: trip.ID, Status: tripsModels.TripStatusSearching}, nil)
+	otherRider := uuid.New()
+	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&tripsModels.Trip{ID: trip.ID, Status: tripsModels.TripStatusSearching}, nil).Once()
+	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&tripsModels.Trip{ID: trip.ID, Status: tripsModels.TripStatusAccepted, RiderID: &otherRider}, nil)
 	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything).Return(false, nil)
 	matcher.OfferTrip(context.Background(), trip)
 
 	err := svc.AcceptTrip(context.Background(), riderID, trip.ID, conn)
 
 	require.NoError(t, err)
+	conn.AssertCalled(t, "Send", mock.MatchedBy(func(raw []byte) bool { return messageType(t, raw) == "trip_taken" }))
 }
 
 func TestAcceptTrip_RejectsWhenNotSearching(t *testing.T) {
@@ -528,7 +532,10 @@ func TestAdvanceTrip_ArrivingMovesToInProgress(t *testing.T) {
 
 	riderID, tripID := uuid.New(), uuid.New()
 	conn := mocksriders.NewRiderConn(t)
-	conn.On("Send", mock.Anything).Return()
+	var sent []byte
+	conn.On("Send", mock.Anything).Run(func(args mock.Arguments) {
+		sent = args.Get(0).([]byte)
+	}).Return()
 
 	pickup := "1234"
 	tripsRepo.On("GetTripByID", mock.Anything, tripID).Return(&tripsModels.Trip{ID: tripID, RiderID: &riderID, Status: tripsModels.TripStatusArriving, PickupCode: &pickup}, nil)
@@ -537,6 +544,15 @@ func TestAdvanceTrip_ArrivingMovesToInProgress(t *testing.T) {
 	err := svc.AdvanceTrip(context.Background(), riderID, tripID, pickup, conn)
 
 	require.NoError(t, err)
+	var msg struct {
+		Trip struct {
+			Status    string     `json:"status"`
+			StartedAt *time.Time `json:"started_at"`
+		} `json:"trip"`
+	}
+	require.NoError(t, json.Unmarshal(sent, &msg))
+	assert.Equal(t, string(tripsModels.TripStatusInProgress), msg.Trip.Status)
+	assert.NotNil(t, msg.Trip.StartedAt)
 }
 
 func TestAdvanceTrip_InProgressCompletesAndRecordsEarning(t *testing.T) {

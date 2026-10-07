@@ -39,7 +39,10 @@ func (c *customersRepo) RegisterCustomer(ctx context.Context, customer *models.A
 		}
 
 		activationAccount := new(models.ActivateAccount)
-		activationAccount.BuildActivateAccount(customer.ID)
+		if err := activationAccount.BuildActivateAccount(customer.ID); err != nil {
+			slog.Error("error al generar el codigo de activación", "error", err)
+			return errcustom.ErrUnexpectedError
+		}
 
 		if _, err := tx.NewInsert().Model(activationAccount).Exec(ctx); err != nil {
 			slog.Error("error al registrar el codigo de activación", "error", err)

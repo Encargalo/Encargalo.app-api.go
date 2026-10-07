@@ -76,6 +76,7 @@ type Trip struct {
 	FareBs      *float64   `bun:"-"`
 	RequestedAt time.Time  `bun:"requested_at,notnull,default:current_timestamp"`
 	AcceptedAt  *time.Time `bun:"accepted_at,nullzero"`
+	StartedAt   *time.Time `bun:"started_at,nullzero"`
 	CompletedAt *time.Time `bun:"completed_at,nullzero"`
 	CancelledAt *time.Time `bun:"cancelled_at,nullzero"`
 	CreatedAt   time.Time  `bun:"created_at,notnull,default:current_timestamp"`
@@ -112,6 +113,7 @@ func (t *Trip) ToDTO() dtos.TripResponse {
 		MethodPayment:    t.MethodPayment,
 		RequestedAt:      t.RequestedAt,
 		AcceptedAt:       t.AcceptedAt,
+		StartedAt:        t.StartedAt,
 		CompletedAt:      t.CompletedAt,
 		CancelledAt:      t.CancelledAt,
 	}

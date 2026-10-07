@@ -11,10 +11,20 @@ import (
 	"Encargalo.app-api.go/internal/trips/domain/ports"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/driver/pgdriver"
 )
 
 type tripsRepo struct {
 	db *bun.DB
+}
+
+const pgUniqueViolation = "23505"
+
+// riderBusyStatuses son los estados en que el rider ya está ocupado con un viaje.
+var riderBusyStatuses = []models.TripStatus{
+	models.TripStatusAccepted,
+	models.TripStatusArriving,
+	models.TripStatusInProgress,
 }
 
 func NewTripsRepo(db *bun.DB) ports.TripsRepo {
@@ -22,7 +32,12 @@ func NewTripsRepo(db *bun.DB) ports.TripsRepo {
 }
 
 func (r *tripsRepo) CreateTrip(ctx context.Context, trip *models.Trip) error {
-	if _, err := r.db.NewInsert().Model(trip).Exec(ctx); err != nil {
+	_, err := r.db.NewInsert().Model(trip).Exec(ctx)
+	var pgErr pgdriver.Error
+	if errors.As(err, &pgErr) && pgErr.Field('C') == pgUniqueViolation {
+		return errcustom.ErrTripAlreadyExists
+	}
+	if err != nil {
 		slog.Error("trips CreateTrip failed", "customerID", trip.CustomerID, "error", err)
 		return errcustom.Unexpected(err)
 	}
@@ -68,6 +83,8 @@ func (r *tripsRepo) UpdateTripStatus(ctx context.Context, tripID uuid.UUID, from
 	switch toStatus {
 	case models.TripStatusAccepted:
 		q = q.Set("accepted_at = now()")
+	case models.TripStatusInProgress:
+		q = q.Set("started_at = now()")
 	case models.TripStatusCompleted:
 		q = q.Set("completed_at = now()")
 	case models.TripStatusCancelled:
@@ -158,6 +175,7 @@ func (r *tripsRepo) StartTripWithPickupCode(ctx context.Context, tripID, riderID
 		TableExpr("trips.trips").
 		Set("status = ?", models.TripStatusInProgress).
 		Set("pickup_code_used_at = now()").
+		Set("started_at = now()").
 		Set("dropoff_code = ?", dropoffCode).
 		Set("updated_at = now()").
 		Where("id = ? AND rider_id = ? AND status = ? AND pickup_code = ? AND pickup_code_used_at IS NULL",
@@ -201,11 +219,7 @@ func (r *tripsRepo) ListActiveTripsByRider(ctx context.Context, riderID uuid.UUI
 	err := r.db.NewSelect().
 		Model(&trips).
 		Where("rider_id = ?", riderID).
-		Where("status IN (?)", bun.In([]models.TripStatus{
-			models.TripStatusAccepted,
-			models.TripStatusArriving,
-			models.TripStatusInProgress,
-		})).
+		Where("status IN (?)", bun.In(riderBusyStatuses)).
 		OrderExpr("requested_at DESC").
 		Scan(ctx)
 	if err != nil {
@@ -224,6 +238,8 @@ func (r *tripsRepo) AssignTripRider(ctx context.Context, tripID, riderID uuid.UU
 		Set("pickup_code = ?", pickupCode).
 		Set("updated_at = now()").
 		Where("id = ? AND status = ?", tripID, models.TripStatusSearching).
+		Where("NOT EXISTS (SELECT 1 FROM trips.trips busy WHERE busy.rider_id = ? AND busy.status IN (?))",
+			riderID, bun.In(riderBusyStatuses)).
 		Exec(ctx)
 	if err != nil {
 		slog.Error("trips AssignTripRider failed", "tripID", tripID, "riderID", riderID, "error", err)

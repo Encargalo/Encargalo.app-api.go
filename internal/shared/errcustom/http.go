@@ -64,6 +64,8 @@ var statusMap = map[error]int{
 	ErrInvalidCoordinates:       http.StatusBadRequest,
 	ErrInvalidSearchQuery:       http.StatusBadRequest,
 	ErrAccountDisabled:          http.StatusForbidden,
+	ErrRiderBusy:                http.StatusConflict,
+	ErrMapsUnavailable:          http.StatusBadGateway,
 	ErrEmailAlreadyExist:        http.StatusConflict,
 	ErrInvalidCursor:            http.StatusBadRequest,
 	ErrInvalidFilter:            http.StatusBadRequest,
@@ -72,6 +74,7 @@ var statusMap = map[error]int{
 	ErrInvalidTrackingType:      http.StatusBadRequest,
 	ErrTrackingParamsTooLarge:   http.StatusBadRequest,
 	ErrTripForbidden:            http.StatusForbidden,
+	ErrTripAlreadyExists:        http.StatusConflict,
 	ErrTripNotCancellable:       http.StatusUnprocessableEntity,
 	ErrTripPaymentReviewPending: http.StatusUnprocessableEntity,
 }
@@ -129,6 +132,8 @@ var codeMap = map[error]string{
 	ErrInvalidCoordinates:       "invalid_coordinates",
 	ErrInvalidSearchQuery:       "invalid_search_query",
 	ErrAccountDisabled:          "account_disabled",
+	ErrRiderBusy:                "rider_busy",
+	ErrMapsUnavailable:          "maps_unavailable",
 	ErrEmailAlreadyExist:        "email_already_exist",
 	ErrInvalidCursor:            "invalid_cursor",
 	ErrInvalidFilter:            "invalid_filter",
@@ -137,6 +142,7 @@ var codeMap = map[error]string{
 	ErrInvalidTrackingType:      "invalid_tracking_type",
 	ErrTrackingParamsTooLarge:   "tracking_params_too_large",
 	ErrTripForbidden:            "trip_forbidden",
+	ErrTripAlreadyExists:        "trip_already_exists",
 	ErrTripNotCancellable:       "trip_not_cancellable",
 	ErrTripPaymentReviewPending: "trip_payment_review_pending",
 }

@@ -63,6 +63,8 @@ type appRidersManager struct {
 	// pasó el chequeo de status no puede volver a publicar la oferta.
 	tripWithdrawn   map[uuid.UUID]struct{}
 	completingTrips map[uuid.UUID]struct{}
+	// acceptingRiders evita que un rider acepte dos viajes a la vez antes de quedar en riderTrips.
+	acceptingRiders map[uuid.UUID]struct{}
 	repo            ridersPorts.RidersRepo
 	stream          ridersPorts.RidersStream
 	bcv             bcvPorts.BcvApp
@@ -94,6 +96,7 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 		tripTimers:         make(map[uuid.UUID]*time.Timer),
 		tripWithdrawn:      make(map[uuid.UUID]struct{}),
 		completingTrips:    make(map[uuid.UUID]struct{}),
+		acceptingRiders:    make(map[uuid.UUID]struct{}),
 		repo:               repo,
 		stream:             stream,
 		bcv:                bcv,
@@ -234,7 +237,7 @@ func (r *appRidersManager) UpdateLocation(ctx context.Context, riderID uuid.UUID
 func (r *appRidersManager) offerOpenTripsToRider(ctx context.Context, riderID uuid.UUID, cell string) {
 	r.mu.RLock()
 	conn, connected := r.availableRiders[riderID]
-	if !connected || len(r.tripOfferTrip) == 0 {
+	if !connected || len(r.tripOfferTrip) == 0 || r.riderBusyLocked(riderID) {
 		r.mu.RUnlock()
 		return
 	}
@@ -648,7 +651,38 @@ func (r *appRidersManager) offerExclusions(tripID uuid.UUID) map[uuid.UUID]struc
 	for id := range r.tripAlreadyOffered[tripID] {
 		out[id] = struct{}{}
 	}
+	for id := range r.riderTrips {
+		out[id] = struct{}{}
+	}
+	for id := range r.acceptingRiders {
+		out[id] = struct{}{}
+	}
 	return out
+}
+
+// riderBusyLocked requiere r.mu tomado.
+func (r *appRidersManager) riderBusyLocked(riderID uuid.UUID) bool {
+	if _, onTrip := r.riderTrips[riderID]; onTrip {
+		return true
+	}
+	_, accepting := r.acceptingRiders[riderID]
+	return accepting
+}
+
+func (r *appRidersManager) beginAccepting(riderID uuid.UUID) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.riderBusyLocked(riderID) {
+		return false
+	}
+	r.acceptingRiders[riderID] = struct{}{}
+	return true
+}
+
+func (r *appRidersManager) endAccepting(riderID uuid.UUID) {
+	r.mu.Lock()
+	delete(r.acceptingRiders, riderID)
+	r.mu.Unlock()
 }
 
 func (r *appRidersManager) expireTripIfStillSearching(tripID uuid.UUID) {
@@ -788,6 +822,10 @@ func (r *appRidersManager) AcceptTrip(ctx context.Context, riderID, tripID uuid.
 	if !r.wasOfferedTrip(tripID, riderID) {
 		return errcustom.ErrInvalidTransition
 	}
+	if !r.beginAccepting(riderID) {
+		return errcustom.ErrRiderBusy
+	}
+	defer r.endAccepting(riderID)
 
 	pickupCode, err := generateTripCode()
 	if err != nil {
@@ -798,9 +836,7 @@ func (r *appRidersManager) AcceptTrip(ctx context.Context, riderID, tripID uuid.
 		return err
 	}
 	if !ok {
-		msg, _ := json.Marshal(map[string]string{"type": "trip_taken", "trip_id": tripID.String()})
-		conn.Send(msg)
-		return nil
+		return r.rejectAssignment(ctx, tripID, conn)
 	}
 
 	r.clearTripOfferState(tripID)
@@ -815,6 +851,18 @@ func (r *appRidersManager) AcceptTrip(ctx context.Context, riderID, tripID uuid.
 	conn.Send(accepted)
 	r.notifyCustomer(ctx, trip)
 
+	return nil
+}
+
+// rejectAssignment distingue si otro rider ganó el viaje o si la BD rechazó al
+// rider por tener ya un viaje en curso (el viaje sigue en searching).
+func (r *appRidersManager) rejectAssignment(ctx context.Context, tripID uuid.UUID, conn ridersPorts.RiderConn) error {
+	current, err := r.tripsRepo.GetTripByID(ctx, tripID)
+	if err == nil && current.Status == tripsModels.TripStatusSearching {
+		return errcustom.ErrRiderBusy
+	}
+	msg, _ := json.Marshal(map[string]string{"type": "trip_taken", "trip_id": tripID.String()})
+	conn.Send(msg)
 	return nil
 }
 
@@ -929,6 +977,7 @@ func (r *appRidersManager) startTrip(ctx context.Context, trip *tripsModels.Trip
 	usedAt := time.Now()
 	trip.Status = tripsModels.TripStatusInProgress
 	trip.PickupCodeUsedAt = &usedAt
+	trip.StartedAt = &usedAt
 	trip.DropoffCode = &dropoffCode
 	data, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: r.riderTripDTO(ctx, trip)})
 	conn.Send(data)
