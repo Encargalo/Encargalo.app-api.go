@@ -50,6 +50,7 @@ func (m *mapsGroup) Resource(g *echo.Echo) {
 	group.GET("/geocode/reverse", m.handler.ReverseGeocode)
 	group.GET("/places/autocomplete", m.handler.AutocompletePlaces)
 	group.GET("/places/details", m.handler.GetPlaceDetails)
+	group.GET("/directions", m.handler.Directions)
 }
 
 // sessionUserIDKey lee el user_id de la sesión que Auth ya cargó en el

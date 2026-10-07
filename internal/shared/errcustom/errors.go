@@ -59,6 +59,7 @@ var (
 	ErrInvalidSearchQuery       = errors.New("término de búsqueda inválido")
 	ErrAccountDisabled          = errors.New("cuenta deshabilitada")
 	ErrRiderBusy                = errors.New("ya tienes un viaje en curso")
+	ErrMapsUnavailable          = errors.New("el servicio de mapas no respondió")
 	ErrEmailAlreadyExist        = errors.New("el email ya existe")
 	ErrInvalidCursor            = errors.New("cursor inválido")
 	ErrInvalidFilter            = errors.New("filtro inválido")

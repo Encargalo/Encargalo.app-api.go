@@ -82,3 +82,26 @@ func TestGetPlaceDetails_PassthroughError(t *testing.T) {
 
 	require.EqualError(t, err, "google timeout")
 }
+
+func TestDirections_InvalidCoordinates(t *testing.T) {
+	repo := mocksmaps.NewMapsRepo(t)
+	mapsApp := app.New(repo)
+
+	_, err := mapsApp.Directions(context.Background(), 10.48, -66.90, 95, -66.90)
+
+	require.ErrorIs(t, err, errcustom.ErrInvalidCoordinates)
+	repo.AssertNotCalled(t, "Directions", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestDirections_DelegatesToRepo(t *testing.T) {
+	repo := mocksmaps.NewMapsRepo(t)
+	mapsApp := app.New(repo)
+
+	route := &models.Route{Polyline: "abc", DistanceMeters: 1234, DurationMin: 5}
+	repo.On("Directions", mock.Anything, 10.48, -66.90, 10.49, -66.88).Return(route, nil)
+
+	got, err := mapsApp.Directions(context.Background(), 10.48, -66.90, 10.49, -66.88)
+
+	require.NoError(t, err)
+	require.Equal(t, route, got)
+}

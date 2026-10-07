@@ -45,6 +45,13 @@ func (a *mapsApp) GetPlaceDetails(ctx context.Context, placeID, sessionToken str
 	return a.repo.GetPlaceDetails(ctx, placeID, sessionToken)
 }
 
+func (a *mapsApp) Directions(ctx context.Context, originLat, originLng, destLat, destLng float64) (*models.Route, error) {
+	if !validCoordinates(originLat, originLng) || !validCoordinates(destLat, destLng) {
+		return nil, errcustom.ErrInvalidCoordinates
+	}
+	return a.repo.Directions(ctx, originLat, originLng, destLat, destLng)
+}
+
 func validCoordinates(lat, lng float64) bool {
 	return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
 }

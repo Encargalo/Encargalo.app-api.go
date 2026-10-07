@@ -14,6 +14,7 @@ type MapsHandler interface {
 	ReverseGeocode(e echo.Context) error
 	AutocompletePlaces(e echo.Context) error
 	GetPlaceDetails(e echo.Context) error
+	Directions(e echo.Context) error
 }
 
 type mapsHandler struct {
@@ -131,6 +132,43 @@ func (h *mapsHandler) GetPlaceDetails(e echo.Context) error {
 	}
 
 	return response.Send(e, http.StatusOK, details)
+}
+
+// Directions godoc
+// @Summary      Ruta en auto entre dos puntos
+// @Description  Devuelve la ruta en auto de origen a destino usando la Google Directions API, para dibujarla en el mapa. polyline usa el formato Encoded Polyline de Google; distance_meters y duration_min salen del primer tramo de la ruta. Fuera de producción no llama a Google: devuelve una línea recta entre los dos puntos con la distancia en línea recta y duration_min en 0.
+// @Tags         Maps
+// @Produce      json
+// @Security     SessionCookie
+// @Param        origin_lat  query     number  true  "Latitud de origen"
+// @Param        origin_lng  query     number  true  "Longitud de origen"
+// @Param        dest_lat    query     number  true  "Latitud de destino"
+// @Param        dest_lng    query     number  true  "Longitud de destino"
+// @Success      200         {object}  models.Route
+// @Failure      400         {string}  string  "Coordenadas requeridas o fuera de rango"
+// @Failure      401         {string}  string  "No autorizado"
+// @Failure      404         {string}  string  "Google no encontró una ruta entre los puntos"
+// @Failure      429         {string}  string  "Demasiadas solicitudes"
+// @Failure      502         {string}  string  "Google Directions falló o respondió con error"
+// @Router       /maps/directions [get]
+func (h *mapsHandler) Directions(e echo.Context) error {
+	ctx := e.Request().Context()
+
+	coords := make([]float64, 0, 4)
+	for _, name := range []string{"origin_lat", "origin_lng", "dest_lat", "dest_lng"} {
+		v, err := strconv.ParseFloat(e.QueryParam(name), 64)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, name+" es requerido y debe ser numérico")
+		}
+		coords = append(coords, v)
+	}
+
+	route, err := h.svc.Directions(ctx, coords[0], coords[1], coords[2], coords[3])
+	if err != nil {
+		return err
+	}
+
+	return response.Send(e, http.StatusOK, route)
 }
 
 // parseOptionalCoords reads lat/lng as an optional bias pair — absent or

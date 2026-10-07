@@ -209,3 +209,46 @@ func TestGetPlaceDetails_NotFoundPropagatesFromApp(t *testing.T) {
 
 	assert.ErrorIs(t, err, errcustom.ErrNotFound)
 }
+
+func TestDirections_Success(t *testing.T) {
+	h, svc := newHandler(t)
+
+	route := &mapsmodels.Route{Polyline: "abc", DistanceMeters: 1234, DurationMin: 5}
+	tc := buildhttptest.SetupControllerCase("/maps/directions?origin_lat=10.48&origin_lng=-66.9&dest_lat=10.49&dest_lng=-66.88", http.MethodGet, nil)
+	svc.On("Directions", tc.Req.Context(), 10.48, -66.9, 10.49, -66.88).Return(route, nil)
+
+	err := h.Directions(tc.Ctx)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, tc.Res.Code)
+	var got mapsmodels.Route
+	assert.NoError(t, json.Unmarshal(tc.Res.Body.Bytes(), &got))
+	assert.Equal(t, *route, got)
+}
+
+func TestDirections_MissingCoordinate(t *testing.T) {
+	h, _ := newHandler(t)
+	tc := buildhttptest.SetupControllerCase("/maps/directions?origin_lat=10.48&origin_lng=-66.9&dest_lat=10.49", http.MethodGet, nil)
+
+	err := h.Directions(tc.Ctx)
+
+	assert.Equal(t, http.StatusBadRequest, httpCode(err))
+}
+
+func TestDirections_ErrorsMapToContractStatus(t *testing.T) {
+	cases := map[error]int{
+		errcustom.ErrNotFound:           http.StatusNotFound,
+		errcustom.ErrMapsUnavailable:    http.StatusBadGateway,
+		errcustom.ErrInvalidCoordinates: http.StatusBadRequest,
+	}
+	for appErr, status := range cases {
+		h, svc := newHandler(t)
+		tc := buildhttptest.SetupControllerCase("/maps/directions?origin_lat=10.48&origin_lng=-66.9&dest_lat=10.49&dest_lng=-66.88", http.MethodGet, nil)
+		svc.On("Directions", tc.Req.Context(), 10.48, -66.9, 10.49, -66.88).Return(nil, appErr)
+
+		err := h.Directions(tc.Ctx)
+
+		assert.ErrorIs(t, err, appErr)
+		assert.Equal(t, status, errcustom.HTTPStatus(err))
+	}
+}

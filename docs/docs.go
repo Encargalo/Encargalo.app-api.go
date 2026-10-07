@@ -1935,6 +1935,91 @@ const docTemplate = `{
                 }
             }
         },
+        "/maps/directions": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Devuelve la ruta en auto de origen a destino usando la Google Directions API, para dibujarla en el mapa. polyline usa el formato Encoded Polyline de Google; distance_meters y duration_min salen del primer tramo de la ruta. Fuera de producción no llama a Google: devuelve una línea recta entre los dos puntos con la distancia en línea recta y duration_min en 0.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Maps"
+                ],
+                "summary": "Ruta en auto entre dos puntos",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "Latitud de origen",
+                        "name": "origin_lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Longitud de origen",
+                        "name": "origin_lng",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Latitud de destino",
+                        "name": "dest_lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Longitud de destino",
+                        "name": "dest_lng",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_maps_domain_models.Route"
+                        }
+                    },
+                    "400": {
+                        "description": "Coordenadas requeridas o fuera de rango",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Google no encontró una ruta entre los puntos",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "429": {
+                        "description": "Demasiadas solicitudes",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "502": {
+                        "description": "Google Directions falló o respondió con error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/maps/geocode/reverse": {
             "get": {
                 "security": [
@@ -7409,6 +7494,20 @@ const docTemplate = `{
                     "$ref": "#/definitions/Encargalo_app-api_go_internal_maps_domain_models.AddressParts"
                 },
                 "short_address": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_maps_domain_models.Route": {
+            "type": "object",
+            "properties": {
+                "distance_meters": {
+                    "type": "integer"
+                },
+                "duration_min": {
+                    "type": "integer"
+                },
+                "polyline": {
                     "type": "string"
                 }
             }

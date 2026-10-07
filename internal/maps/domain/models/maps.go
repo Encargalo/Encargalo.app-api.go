@@ -64,3 +64,11 @@ type PlaceDetails struct {
 	Parts             AddressParts       `json:"parts"`
 	AddressComponents []AddressComponent `json:"address_components"`
 }
+
+// Route is the driving route between two points; polyline uses Google's
+// encoded polyline format.
+type Route struct {
+	Polyline       string `json:"polyline"`
+	DistanceMeters int64  `json:"distance_meters"`
+	DurationMin    int64  `json:"duration_min"`
+}
