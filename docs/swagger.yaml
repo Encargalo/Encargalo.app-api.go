@@ -1798,6 +1798,8 @@ definitions:
         $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.RiderPublicInfo'
       rider_id:
         type: string
+      started_at:
+        type: string
       status:
         type: string
     type: object

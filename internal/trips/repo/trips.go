@@ -68,6 +68,8 @@ func (r *tripsRepo) UpdateTripStatus(ctx context.Context, tripID uuid.UUID, from
 	switch toStatus {
 	case models.TripStatusAccepted:
 		q = q.Set("accepted_at = now()")
+	case models.TripStatusInProgress:
+		q = q.Set("started_at = now()")
 	case models.TripStatusCompleted:
 		q = q.Set("completed_at = now()")
 	case models.TripStatusCancelled:
@@ -158,6 +160,7 @@ func (r *tripsRepo) StartTripWithPickupCode(ctx context.Context, tripID, riderID
 		TableExpr("trips.trips").
 		Set("status = ?", models.TripStatusInProgress).
 		Set("pickup_code_used_at = now()").
+		Set("started_at = now()").
 		Set("dropoff_code = ?", dropoffCode).
 		Set("updated_at = now()").
 		Where("id = ? AND rider_id = ? AND status = ? AND pickup_code = ? AND pickup_code_used_at IS NULL",

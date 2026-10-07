@@ -9796,6 +9796,9 @@ const docTemplate = `{
                 "rider_id": {
                     "type": "string"
                 },
+                "started_at": {
+                    "type": "string"
+                },
                 "status": {
                     "type": "string"
                 }

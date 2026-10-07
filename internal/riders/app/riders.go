@@ -929,6 +929,7 @@ func (r *appRidersManager) startTrip(ctx context.Context, trip *tripsModels.Trip
 	usedAt := time.Now()
 	trip.Status = tripsModels.TripStatusInProgress
 	trip.PickupCodeUsedAt = &usedAt
+	trip.StartedAt = &usedAt
 	trip.DropoffCode = &dropoffCode
 	data, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: r.riderTripDTO(ctx, trip)})
 	conn.Send(data)
