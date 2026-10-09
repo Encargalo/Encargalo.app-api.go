@@ -48,6 +48,8 @@ type OrdersRepo interface {
 	AssignRider(ctx context.Context, orderID uuid.UUID, riderID uuid.UUID) error
 	SearchActiveOrdersByRiderID(ctx context.Context, riderID uuid.UUID) ([]models.Order, error)
 	SearchOrderHistoryByCustomer(ctx context.Context, customerID uuid.UUID) ([]models.Order, error)
+	// ListStatusHistory devuelve las transiciones de estado por pedido, en orden cronológico.
+	ListStatusHistory(ctx context.Context, orderIDs []uuid.UUID) (map[uuid.UUID][]models.StatusChange, error)
 	UpdateOrderDetails(ctx context.Context, orderID uuid.UUID, details []byte) error
 	MarkPendingAt(ctx context.Context, orderID uuid.UUID, at time.Time) error
 	ListStalePending(ctx context.Context, olderThan time.Time) ([]models.Order, error)

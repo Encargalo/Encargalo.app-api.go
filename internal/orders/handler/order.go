@@ -229,7 +229,7 @@ func (o *orderHandler) ConfirmDelivery(c echo.Context) error {
 
 // GetOrderHistory godoc
 // @Summary      Historial de ordenes del customer
-// @Description  Devuelve todas las ordenes del customer autenticado, incluyendo activas y completadas, ordenadas de mas reciente a mas antigua.
+// @Description  Devuelve todas las ordenes del customer autenticado, incluyendo activas y completadas, ordenadas de mas reciente a mas antigua. Cada orden incluye el snapshot de la tienda (shop_name, shop_logo, coordenadas), items con adiciones y sabores, products_count (suma de amount de items + adiciones), status_history (transiciones con hora; null en ordenes anteriores al registro) y el bloque payment. No se exponen datos del cliente ni el telefono del local.
 // @Tags         Orders
 // @Produce      json
 // @Security     SessionCookie

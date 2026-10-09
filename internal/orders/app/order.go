@@ -1126,22 +1126,101 @@ func (o *orderApp) GetOrderHistory(ctx context.Context, customerID uuid.UUID) (d
 		return nil, err
 	}
 
+	ids := make([]uuid.UUID, len(orders))
+	for i := range orders {
+		ids[i] = orders[i].ID
+	}
+	changes, err := o.repo.ListStatusHistory(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
 	history := make(dtos.OrderHistoryResponse, len(orders))
 	for i, ord := range orders {
-		history[i] = dtos.OrderHistoryItem{
-			ID:            ord.ID,
-			Number:        ord.Number,
-			Status:        ord.Status,
-			TotalPrice:    ord.TotalPrice,
-			DeliveryFee:   ord.DeliveryFee,
-			MethodPayment: ord.MethodPayment,
-			Address:       ord.Address,
-			ShopID:        ord.ShopID,
-			CreatedAt:     ord.CreatedAt,
-		}
+		history[i] = buildHistoryItem(ord, changes[ord.ID])
 	}
 
 	return history, nil
+}
+
+func buildHistoryItem(ord models.Order, changes []models.StatusChange) dtos.OrderHistoryItem {
+	item := dtos.OrderHistoryItem{
+		ID:            ord.ID,
+		Number:        ord.Number,
+		Status:        ord.Status,
+		TotalPrice:    ord.TotalPrice,
+		DeliveryFee:   ord.DeliveryFee,
+		MethodPayment: ord.MethodPayment,
+		Address:       ord.Address,
+		ShopID:        ord.ShopID,
+		CreatedAt:     ord.CreatedAt,
+		IsLaunchPromo: ord.IsLaunchPromo,
+		Items:         []dtos.OrderHistoryProduct{},
+	}
+
+	if len(changes) > 0 {
+		item.StatusHistory = make([]dtos.OrderStatusChange, len(changes))
+		for i, c := range changes {
+			item.StatusHistory[i] = dtos.OrderStatusChange{Status: c.Status, At: c.At}
+		}
+	}
+
+	var details models.Details
+	if len(ord.Details) == 0 || json.Unmarshal(ord.Details, &details) != nil {
+		return item
+	}
+
+	item.ShopName = details.ShopDetails.Name
+	item.ShopLogo = details.ShopDetails.Logo
+	item.ShopLatitude = details.ShopDetails.Latitude
+	item.ShopLongitude = details.ShopDetails.Longitude
+	item.AddressInstructions = details.AddressDetails.Instructions
+
+	for _, it := range details.ItemsDetails {
+		p := dtos.OrderHistoryProduct{
+			ID: it.ID, Name: it.Name, Image: it.Image, Amount: it.Amount,
+			UnitPrice: it.UnitPrice, TotalPrice: it.TotalPrice,
+			UnitPriceBs: it.UnitPriceBs, TotalPriceBs: it.TotalPriceBs,
+			Observation: it.Observation,
+			Flavors:     make([]dtos.OrderHistoryFlavor, len(it.Flavors)),
+			Additions:   make([]dtos.OrderHistoryAddition, len(it.Additions)),
+		}
+		for j, f := range it.Flavors {
+			p.Flavors[j] = dtos.OrderHistoryFlavor{ID: f.ID, Name: f.Name, Amount: f.Amount}
+		}
+		item.ProductsCount += it.Amount
+		for j, a := range it.Additions {
+			p.Additions[j] = dtos.OrderHistoryAddition{
+				ID: a.ID, Name: a.Name, Amount: a.Amount,
+				UnitPrice: a.UnitPrice, TotalPrice: a.TotalPrice,
+				UnitPriceBs: a.UnitPriceBs, TotalPriceBs: a.TotalPriceBs,
+			}
+			item.ProductsCount += a.Amount
+		}
+		item.Items = append(item.Items, p)
+	}
+
+	if pd := details.PaymentDetails; pd != nil {
+		item.Payment = &dtos.OrderHistoryPayment{
+			Status:            string(pd.Status),
+			ExpectedAmountBs:  pd.ExpectedAmountBs,
+			ObservedAmountBs:  pd.ObservedAmountBs,
+			DifferenceBs:      pd.DifferenceBs,
+			RejectionReason:   pd.RejectionReason,
+			CreditedBs:        pd.CreditedBs,
+			BalanceAmountBs:   pd.BalanceAmountBs,
+			PagoMovilAmountBs: pd.PagoMovilAmountBs,
+			CashAmountBs:      pd.CashAmountBs,
+			BcvRate:           pd.BcvRate,
+		}
+		if pd.BcvRate > 0 {
+			total := money.RoundBs(ord.TotalPrice * pd.BcvRate)
+			fee := money.RoundBs(ord.DeliveryFee * pd.BcvRate)
+			item.TotalPriceBs, item.DeliveryFeeBs = &total, &fee
+		}
+	}
+
+	return item
 }
 
 // addSoldItemsAsync incrementa el contador "sold" de cada item vendido en segundo
