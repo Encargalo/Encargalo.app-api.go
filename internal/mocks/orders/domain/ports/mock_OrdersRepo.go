@@ -98,6 +98,36 @@ func (_m *OrdersRepo) ListPendingUnassignedForAlert(ctx context.Context, olderTh
 	return r0, r1
 }
 
+// ListStatusHistory provides a mock function with given fields: ctx, orderIDs
+func (_m *OrdersRepo) ListStatusHistory(ctx context.Context, orderIDs []uuid.UUID) (map[uuid.UUID][]models.StatusChange, error) {
+	ret := _m.Called(ctx, orderIDs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListStatusHistory")
+	}
+
+	var r0 map[uuid.UUID][]models.StatusChange
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []uuid.UUID) (map[uuid.UUID][]models.StatusChange, error)); ok {
+		return rf(ctx, orderIDs)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []uuid.UUID) map[uuid.UUID][]models.StatusChange); ok {
+		r0 = rf(ctx, orderIDs)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[uuid.UUID][]models.StatusChange)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []uuid.UUID) error); ok {
+		r1 = rf(ctx, orderIDs)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // ListStalePending provides a mock function with given fields: ctx, olderThan
 func (_m *OrdersRepo) ListStalePending(ctx context.Context, olderThan time.Time) ([]models.Order, error) {
 	ret := _m.Called(ctx, olderThan)
