@@ -130,10 +130,11 @@ func riderTripOfferDTO(trip *tripsModels.Trip) tripsDtos.TripResponse {
 }
 
 // riderTripDTO es la vista del viaje para el rider asignado. El nombre y el
-// teléfono del pasajero entran solo en accepted, arriving e in_progress.
+// apellido del pasajero salen siempre; el teléfono entra solo en accepted,
+// arriving e in_progress.
 func (r *appRidersManager) riderTripDTO(ctx context.Context, trip *tripsModels.Trip) tripsDtos.TripResponse {
 	resp := riderTripOfferDTO(trip)
-	if r.passengers == nil || !exposesPassengerContact(trip.Status) {
+	if r.passengers == nil {
 		return resp
 	}
 	contact, err := r.passengers.GetByCustomerID(ctx, trip.CustomerID)
@@ -141,7 +142,26 @@ func (r *appRidersManager) riderTripDTO(ctx context.Context, trip *tripsModels.T
 		slog.Error("error loading passenger contact for assigned rider", "tripID", trip.ID, "error", err)
 		return resp
 	}
+	if !exposesPassengerContact(trip.Status) {
+		contact.Phone = ""
+	}
 	resp.Customer = &contact
+	return resp
+}
+
+// tripOfferWithPassenger es la oferta de viaje con nombre y apellido del
+// pasajero, antes de que algún rider acepte. Nunca incluye el teléfono.
+func (r *appRidersManager) tripOfferWithPassenger(ctx context.Context, trip *tripsModels.Trip) tripsDtos.TripResponse {
+	resp := riderTripOfferDTO(trip)
+	if r.passengers == nil {
+		return resp
+	}
+	contact, err := r.passengers.GetByCustomerID(ctx, trip.CustomerID)
+	if err != nil {
+		slog.Error("error loading passenger name for trip offer", "tripID", trip.ID, "error", err)
+		return resp
+	}
+	resp.Customer = &tripsDtos.PassengerContact{Name: contact.Name, LastName: contact.LastName}
 	return resp
 }
 
@@ -347,7 +367,7 @@ func (r *appRidersManager) offerOpenTripsToRider(ctx context.Context, riderID uu
 		if current.Status != tripsModels.TripStatusSearching {
 			continue
 		}
-		data, err := json.Marshal(tripBroadcast{Type: "trip_offer", Trip: riderTripOfferDTO(&trip)})
+		data, err := json.Marshal(tripBroadcast{Type: "trip_offer", Trip: r.tripOfferWithPassenger(ctx, &trip)})
 		if err != nil {
 			slog.Error("error marshaling trip_offer for late rider", "error", err)
 			continue
@@ -644,7 +664,7 @@ func (r *appRidersManager) offerTripRound(trip tripsModels.Trip, round int) {
 		return
 	}
 
-	data, err := json.Marshal(tripBroadcast{Type: "trip_offer", Trip: riderTripOfferDTO(&trip)})
+	data, err := json.Marshal(tripBroadcast{Type: "trip_offer", Trip: r.tripOfferWithPassenger(context.Background(), &trip)})
 	if err != nil {
 		slog.Error("error marshaling trip_offer broadcast", "error", err)
 		return

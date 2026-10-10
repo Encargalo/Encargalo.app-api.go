@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestOfferTrip_OmitsPassengerContact(t *testing.T) {
+func TestOfferTrip_IncludesPassengerNameWithoutPhone(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
 	stream := mocksriders.NewRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
@@ -45,16 +45,55 @@ func TestOfferTrip_OmitsPassengerContact(t *testing.T) {
 
 	trip := samplePickupTrip(t)
 	trip.CustomerID = uuid.New()
+	passengers.On("GetByCustomerID", mock.Anything, trip.CustomerID).
+		Return(tripsDtos.PassengerContact{Name: "Ana", LastName: "Pérez", Phone: "04141234567"}, nil)
+	asMatcher(t, svc).OfferTrip(context.Background(), trip)
+
+	require.NotEmpty(t, offers)
+	for _, msg := range offers {
+		require.Contains(t, string(msg), `"customer":{"name":"Ana","last_name":"Pérez"}`)
+		require.NotContains(t, string(msg), "04141234567")
+		require.NotContains(t, string(msg), `"phone"`)
+	}
+}
+
+func TestOfferTrip_OmitsCustomerWhenPassengerLookupFails(t *testing.T) {
+	repo := mocksriders.NewRidersRepo(t)
+	stream := mocksriders.NewRidersStream(t)
+	bcv := mockbcvports.NewBcvApp(t)
+	tripsRepo := mockstrips.NewTripsRepo(t)
+	tripEarnings := mocksriders.NewTripEarningRecorder(t)
+	passengers := mocksriders.NewPassengerLookup(t)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, passengers)
+
+	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
+	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound)
+
+	riderID := uuid.New()
+	var offers [][]byte
+	conn := mocksriders.NewRiderConn(t)
+	conn.On("Send", mock.Anything).Run(func(args mock.Arguments) {
+		raw := args.Get(0).([]byte)
+		if messageType(t, raw) == "trip_offer" {
+			offers = append(offers, append([]byte(nil), raw...))
+		}
+	}).Return()
+	require.NoError(t, svc.Register(context.Background(), riderID, conn, riderModels.RiderModeTrips))
+	require.NoError(t, svc.UpdateLocation(context.Background(), riderID, 10.4806, -66.9036))
+
+	trip := samplePickupTrip(t)
+	trip.CustomerID = uuid.New()
+	passengers.On("GetByCustomerID", mock.Anything, trip.CustomerID).
+		Return(tripsDtos.PassengerContact{}, errcustom.ErrNotFound)
 	asMatcher(t, svc).OfferTrip(context.Background(), trip)
 
 	require.NotEmpty(t, offers)
 	for _, msg := range offers {
 		require.NotContains(t, string(msg), `"customer"`)
 	}
-	passengers.AssertNotCalled(t, "GetByCustomerID", mock.Anything, mock.Anything)
 }
 
-func TestAcceptTrip_SendsPassengerNameAndPhoneOnlyToAccepter(t *testing.T) {
+func TestAcceptTrip_SendsPassengerPhoneOnlyToAccepter(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
 	stream := mocksriders.NewRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
@@ -70,7 +109,7 @@ func TestAcceptTrip_SendsPassengerNameAndPhoneOnlyToAccepter(t *testing.T) {
 	other := uuid.New()
 	customerID := uuid.New()
 	passengers.On("GetByCustomerID", mock.Anything, customerID).
-		Return(tripsDtos.PassengerContact{Name: "Ana", Phone: "04141234567"}, nil).Once()
+		Return(tripsDtos.PassengerContact{Name: "Ana", LastName: "Pérez", Phone: "04141234567"}, nil)
 
 	var accepted [][]byte
 	connA := mocksriders.NewRiderConn(t)
@@ -83,7 +122,7 @@ func TestAcceptTrip_SendsPassengerNameAndPhoneOnlyToAccepter(t *testing.T) {
 	connB := mocksriders.NewRiderConn(t)
 	connB.On("Send", mock.Anything).Run(func(args mock.Arguments) {
 		require.NotEqual(t, "trip_accepted", messageType(t, args.Get(0).([]byte)))
-		require.NotContains(t, string(args.Get(0).([]byte)), `"customer"`)
+		require.NotContains(t, string(args.Get(0).([]byte)), "04141234567")
 	}).Return()
 
 	require.NoError(t, svc.Register(context.Background(), accepter, connA, riderModels.RiderModeTrips))
@@ -104,9 +143,7 @@ func TestAcceptTrip_SendsPassengerNameAndPhoneOnlyToAccepter(t *testing.T) {
 
 	require.Len(t, accepted, 1)
 	body := string(accepted[0])
-	require.Contains(t, body, `"customer":{"name":"Ana","phone":"04141234567"}`)
-	require.NotContains(t, body, "sur_name")
-	require.NotContains(t, body, "Pérez")
+	require.Contains(t, body, `"customer":{"name":"Ana","last_name":"Pérez","phone":"04141234567"}`)
 }
 
 func TestActiveTrips_IncludesPassengerWhileInProgress(t *testing.T) {
@@ -128,7 +165,7 @@ func TestActiveTrips_IncludesPassengerWhileInProgress(t *testing.T) {
 	tripsRepo.On("ListActiveTripsByRider", mock.Anything, riderID).Return([]tripsModels.Trip{trip}, nil)
 	bcv.On("GetRate", mock.Anything).Return(&bcvmodels.ExchangeRate{Rate: 40}, nil)
 	passengers.On("GetByCustomerID", mock.Anything, customerID).
-		Return(tripsDtos.PassengerContact{Name: "Ana", Phone: "04141234567"}, nil)
+		Return(tripsDtos.PassengerContact{Name: "Ana", LastName: "Pérez", Phone: "04141234567"}, nil)
 
 	got, err := svc.ActiveTrips(context.Background(), riderID)
 
@@ -136,10 +173,11 @@ func TestActiveTrips_IncludesPassengerWhileInProgress(t *testing.T) {
 	require.Len(t, got, 1)
 	require.NotNil(t, got[0].Customer)
 	require.Equal(t, "Ana", got[0].Customer.Name)
+	require.Equal(t, "Pérez", got[0].Customer.LastName)
 	require.Equal(t, "04141234567", got[0].Customer.Phone)
 }
 
-func TestCompleteTrip_DropsPassengerContact(t *testing.T) {
+func TestCompleteTrip_DropsPassengerPhoneKeepsName(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
 	stream := mocksriders.NewRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
@@ -157,6 +195,8 @@ func TestCompleteTrip_DropsPassengerContact(t *testing.T) {
 	tripsRepo.On("CompleteTrip", mock.Anything, tripID, fare, "5678").Return(true, nil)
 	bcv.On("GetRate", mock.Anything).Return(&bcvmodels.ExchangeRate{Rate: 40}, nil)
 	tripEarnings.On("RecordTripEarning", mock.Anything, riderID, tripID, fare, 40.0).Return(nil)
+	passengers.On("GetByCustomerID", mock.Anything, customerID).
+		Return(tripsDtos.PassengerContact{Name: "Ana", LastName: "Pérez", Phone: "04141234567"}, nil)
 
 	var sent [][]byte
 	conn := mocksriders.NewRiderConn(t)
@@ -168,6 +208,6 @@ func TestCompleteTrip_DropsPassengerContact(t *testing.T) {
 
 	require.Len(t, sent, 1)
 	require.Equal(t, "trip_status", messageType(t, sent[0]))
-	require.NotContains(t, string(sent[0]), `"customer"`)
-	passengers.AssertNotCalled(t, "GetByCustomerID", mock.Anything, mock.Anything)
+	require.Contains(t, string(sent[0]), `"customer":{"name":"Ana","last_name":"Pérez"}`)
+	require.NotContains(t, string(sent[0]), "04141234567")
 }

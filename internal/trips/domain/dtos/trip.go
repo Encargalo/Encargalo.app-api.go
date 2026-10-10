@@ -38,12 +38,14 @@ func (r *CreateTripRequest) Validate() error {
 	return nil
 }
 
-// PassengerContact es el nombre y el teléfono del pasajero.
-// Solo lo recibe el rider que aceptó el viaje, mientras sigue en curso
-// (accepted, arriving o in_progress). No incluye apellido.
+// PassengerContact es el nombre, el apellido y el teléfono del pasajero.
+// El nombre y el apellido llegan al rider desde la oferta; el teléfono solo
+// al rider que aceptó el viaje, mientras sigue en curso (accepted, arriving
+// o in_progress).
 type PassengerContact struct {
-	Name  string `json:"name"`
-	Phone string `json:"phone,omitempty"`
+	Name     string `json:"name"`
+	LastName string `json:"last_name,omitempty"`
+	Phone    string `json:"phone,omitempty"`
 }
 
 // RiderPublicInfo es lo que el cliente puede ver del rider asignado.
