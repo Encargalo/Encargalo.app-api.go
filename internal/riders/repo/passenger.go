@@ -16,12 +16,12 @@ func NewPassengerLookup(profiles ridersPorts.RiderProfileRepo) ridersPorts.Passe
 	return &passengerLookup{profiles: profiles}
 }
 
-// GetByCustomerID devuelve solo nombre y teléfono. El apellido y el email
-// de la cuenta se descartan aquí para no salir del puerto.
+// GetByCustomerID devuelve nombre, apellido y teléfono. El email
+// de la cuenta se descarta aquí para no salir del puerto.
 func (l *passengerLookup) GetByCustomerID(ctx context.Context, customerID uuid.UUID) (tripsDtos.PassengerContact, error) {
-	name, _, phone, _, err := l.profiles.GetAccountBasics(ctx, customerID)
+	name, lastName, phone, _, err := l.profiles.GetAccountBasics(ctx, customerID)
 	if err != nil {
 		return tripsDtos.PassengerContact{}, err
 	}
-	return tripsDtos.PassengerContact{Name: name, Phone: phone}, nil
+	return tripsDtos.PassengerContact{Name: name, LastName: lastName, Phone: phone}, nil
 }

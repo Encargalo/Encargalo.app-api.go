@@ -54,8 +54,8 @@ type OrderCustomerNotifierSetter interface {
 	SetOrderCustomerNotifier(n OrderCustomerNotifier)
 }
 
-// PassengerLookup lee el nombre y el teléfono de la cuenta del pasajero.
-// No devuelve apellido ni email. Lo usa el rider asignado mientras el viaje sigue en curso.
+// PassengerLookup lee el nombre, el apellido y el teléfono de la cuenta del pasajero.
+// No devuelve el email. El llamador decide si el teléfono sale al rider.
 type PassengerLookup interface {
 	GetByCustomerID(ctx context.Context, customerID uuid.UUID) (tripsDtos.PassengerContact, error)
 }
