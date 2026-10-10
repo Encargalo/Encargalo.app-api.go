@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"sync"
+	"time"
 
 	bcvPorts "Encargalo.app-api.go/internal/bcv/domain/ports"
 	"Encargalo.app-api.go/internal/orders/domain/models"
@@ -19,6 +21,7 @@ type appManagerOrder struct {
 	mu                  sync.RWMutex
 	shopConnections     map[uuid.UUID][]ports.ManagerConn
 	customerConnections map[uuid.UUID][]ports.ManagerConn
+	riderLocations      map[uuid.UUID][]byte // orderID → último rider_location, para reenviarlo al conectarse el cliente
 	svc                 ports.OrdersApp
 	bcv                 bcvPorts.BcvApp
 }
@@ -27,6 +30,7 @@ func NewManagerOrderApp(svc ports.OrdersApp, bcv bcvPorts.BcvApp) ports.AppManag
 	return &appManagerOrder{
 		shopConnections:     make(map[uuid.UUID][]ports.ManagerConn),
 		customerConnections: make(map[uuid.UUID][]ports.ManagerConn),
+		riderLocations:      make(map[uuid.UUID][]byte),
 		svc:                 svc,
 		bcv:                 bcv,
 	}
@@ -55,6 +59,14 @@ func (s *appManagerOrder) Register(
 		deliveryfee.ApplyBsToOrder(ctx, s.bcv, &order)
 		data, _ := json.Marshal(BuildOrderBroadcast("order_update", order, isShop))
 		conn.Send(data)
+		if !isShop {
+			s.mu.RLock()
+			last, ok := s.riderLocations[order.ID]
+			s.mu.RUnlock()
+			if ok {
+				conn.Send(last)
+			}
+		}
 	}
 
 	return nil
@@ -120,10 +132,13 @@ func (s *appManagerOrder) BroadcastOrder(order models.Order) error {
 		return err
 	}
 
-	s.mu.RLock()
+	s.mu.Lock()
 	shopClients := s.shopConnections[order.ShopID]
 	customerClients := s.customerConnections[order.CustomerID]
-	s.mu.RUnlock()
+	if isTerminalStatus(order.Status) {
+		delete(s.riderLocations, order.ID)
+	}
+	s.mu.Unlock()
 
 	for _, c := range shopClients {
 		c.Send(shopData)
@@ -141,9 +156,12 @@ func (s *appManagerOrder) BroadcastOrderToCustomer(order models.Order) error {
 		return err
 	}
 
-	s.mu.RLock()
+	s.mu.Lock()
 	customerClients := s.customerConnections[order.CustomerID]
-	s.mu.RUnlock()
+	if isTerminalStatus(order.Status) {
+		delete(s.riderLocations, order.ID)
+	}
+	s.mu.Unlock()
 
 	for _, c := range customerClients {
 		c.Send(customerData)
@@ -161,6 +179,40 @@ func (s *appManagerOrder) NotifyCustomer(customerID uuid.UUID, msg []byte) error
 		c.Send(msg)
 	}
 	return nil
+}
+
+// NotifyRiderOrderLocation envía {"type":"rider_location",...} a las conexiones del
+// cliente de la orden y guarda el último mensaje para reenviarlo cuando se conecte.
+func (s *appManagerOrder) NotifyRiderOrderLocation(_ context.Context, customerID, orderID uuid.UUID, lat, lng float64, updatedAt time.Time) {
+	payload, err := json.Marshal(models.RiderLocationBroadcast{
+		Type:      "rider_location",
+		OrderID:   orderID,
+		Latitude:  lat,
+		Longitude: lng,
+		UpdatedAt: updatedAt.UTC().Format(time.RFC3339),
+	})
+	if err != nil {
+		slog.Error("error marshaling rider_location", "orderID", orderID, "error", err)
+		return
+	}
+
+	s.mu.Lock()
+	s.riderLocations[orderID] = payload
+	clients := s.customerConnections[customerID]
+	s.mu.Unlock()
+
+	for _, c := range clients {
+		c.Send(payload)
+	}
+}
+
+func isTerminalStatus(status string) bool {
+	switch models.OrderStatus(status) {
+	case models.StatusCompleted, models.StatusCancelled, models.StatusRejected:
+		return true
+	default:
+		return false
+	}
 }
 
 // BuildOrderBroadcast arma el payload WS de actualización de pedido. Para el

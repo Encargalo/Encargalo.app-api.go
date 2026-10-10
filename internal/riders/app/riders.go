@@ -51,6 +51,7 @@ type appRidersManager struct {
 	mu                 sync.RWMutex
 	availableRiders    map[uuid.UUID]ridersPorts.RiderConn
 	assignedOrders     map[uuid.UUID][]uuid.UUID // riderID → []orderID
+	orderCustomer      map[uuid.UUID]uuid.UUID   // orderID → customerID, para avisarle la ubicación del rider
 	riderMode          map[uuid.UUID]riderModels.RiderMode
 	riderLocation      map[uuid.UUID]riderModels.RiderLocation
 	ridersByCell       map[string]map[uuid.UUID]struct{}
@@ -75,6 +76,7 @@ type appRidersManager struct {
 	balance         paymentsPorts.CustomerBalanceCreditor
 	passengers      ridersPorts.PassengerLookup
 	riderTrips      map[uuid.UUID]riderAssignment
+	orderNotifier   ridersPorts.OrderCustomerNotifier
 }
 
 type riderAssignment struct {
@@ -86,6 +88,7 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 	return &appRidersManager{
 		availableRiders:    make(map[uuid.UUID]ridersPorts.RiderConn),
 		assignedOrders:     make(map[uuid.UUID][]uuid.UUID),
+		orderCustomer:      make(map[uuid.UUID]uuid.UUID),
 		riderMode:          make(map[uuid.UUID]riderModels.RiderMode),
 		riderLocation:      make(map[uuid.UUID]riderModels.RiderLocation),
 		ridersByCell:       make(map[string]map[uuid.UUID]struct{}),
@@ -174,6 +177,7 @@ func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn
 	orderIDs := make([]uuid.UUID, 0, len(activeOrders))
 	for _, order := range activeOrders {
 		orderIDs = append(orderIDs, order.ID)
+		r.orderCustomer[order.ID] = order.CustomerID
 	}
 	r.assignedOrders[riderID] = append(r.assignedOrders[riderID], orderIDs...)
 	r.mu.Unlock()
@@ -239,10 +243,67 @@ func (r *appRidersManager) UpdateLocation(ctx context.Context, riderID uuid.UUID
 	if onTrip && r.customers != nil {
 		r.customers.NotifyRiderLocation(ctx, assignment.customerID, assignment.tripID, lat, lng)
 	}
+	r.notifyOrderLocations(ctx, riderID, lat, lng, time.Now())
 	if inTripsMode && (!hadLocation || prev.H3Cell != cell) {
 		r.offerOpenTripsToRider(ctx, riderID, cell)
 	}
 	return nil
+}
+
+// SetOrderCustomerNotifier enlaza el manager WS de orders, que no se puede inyectar
+// en New sin crear un ciclo de DI.
+func (r *appRidersManager) SetOrderCustomerNotifier(n ridersPorts.OrderCustomerNotifier) {
+	r.mu.Lock()
+	r.orderNotifier = n
+	r.mu.Unlock()
+}
+
+// notifyOrderLocations envía la ubicación del rider al cliente de cada orden que
+// tiene asignada (un mensaje por orden). Solo hay órdenes asignadas una vez que
+// el rider las aceptó, así que nunca se emite antes de eso.
+func (r *appRidersManager) notifyOrderLocations(ctx context.Context, riderID uuid.UUID, lat, lng float64, at time.Time) {
+	r.mu.RLock()
+	notifier := r.orderNotifier
+	targets := make(map[uuid.UUID]uuid.UUID, len(r.assignedOrders[riderID]))
+	for _, orderID := range r.assignedOrders[riderID] {
+		if customerID, ok := r.orderCustomer[orderID]; ok {
+			targets[orderID] = customerID
+		}
+	}
+	r.mu.RUnlock()
+
+	if notifier == nil {
+		return
+	}
+	for orderID, customerID := range targets {
+		notifier.NotifyRiderOrderLocation(ctx, customerID, orderID, lat, lng, at)
+	}
+}
+
+// forgetOrderLocked saca una orden terminada de assignedOrders y orderCustomer.
+// Debe llamarse con r.mu tomado para escritura.
+func (r *appRidersManager) forgetOrderLocked(orderID uuid.UUID) {
+	delete(r.orderCustomer, orderID)
+	for riderID, ids := range r.assignedOrders {
+		if !slices.Contains(ids, orderID) {
+			continue
+		}
+		ids = slices.DeleteFunc(slices.Clone(ids), func(id uuid.UUID) bool { return id == orderID })
+		if len(ids) == 0 {
+			delete(r.assignedOrders, riderID)
+		} else {
+			r.assignedOrders[riderID] = ids
+		}
+	}
+}
+
+func isTerminalOrderStatus(status string) bool {
+	switch ordersModels.OrderStatus(status) {
+	case ordersModels.StatusCompleted, ordersModels.StatusCancelled, ordersModels.StatusRejected:
+		return true
+	default:
+		return false
+	}
 }
 
 // offerOpenTripsToRider le reenvía a un rider que llega tarde (primera ubicación
@@ -422,8 +483,8 @@ func (r *appRidersManager) BroadcastOrderUpdate(ctx context.Context, order order
 		return
 	}
 
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
 	for riderID, orderIDs := range r.assignedOrders {
 		if slices.Contains(orderIDs, order.ID) {
@@ -431,6 +492,9 @@ func (r *appRidersManager) BroadcastOrderUpdate(ctx context.Context, order order
 				c.Send(data)
 			}
 		}
+	}
+	if isTerminalOrderStatus(order.Status) {
+		r.forgetOrderLocked(order.ID)
 	}
 }
 
@@ -462,11 +526,19 @@ func (r *appRidersManager) AcceptOrder(ctx context.Context, riderID uuid.UUID, o
 
 	r.mu.Lock()
 	r.assignedOrders[riderID] = append(r.assignedOrders[riderID], orderID)
+	r.orderCustomer[orderID] = order.CustomerID
+	loc, hasLoc := r.riderLocation[riderID]
+	notifier := r.orderNotifier
 	r.mu.Unlock()
 
 	deliveryfee.ApplyBsToOrder(ctx, r.bcv, order)
 	accepted, _ := json.Marshal(r.orderBroadcast(ctx, "order_accepted", *order, true))
 	conn.Send(accepted)
+
+	// El pin del rider aparece en el cliente apenas acepta, sin esperar al siguiente tick de ubicación.
+	if hasLoc && notifier != nil {
+		notifier.NotifyRiderOrderLocation(ctx, order.CustomerID, orderID, loc.Latitude, loc.Longitude, loc.UpdatedAt)
+	}
 
 	return nil
 }

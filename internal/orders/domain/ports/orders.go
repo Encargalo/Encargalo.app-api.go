@@ -117,4 +117,7 @@ type AppManagerOrder interface {
 	BroadcastShopStatus(shopID uuid.UUID, open bool) error
 	// NotifyCustomer envía un payload arbitrario a las conexiones del customer (p. ej. refund_request_update).
 	NotifyCustomer(customerID uuid.UUID, msg []byte) error
+	// NotifyRiderOrderLocation envía {"type":"rider_location",...} al cliente de la orden
+	// y guarda la última ubicación para reenviarla cuando el cliente se conecta.
+	NotifyRiderOrderLocation(ctx context.Context, customerID, orderID uuid.UUID, lat, lng float64, updatedAt time.Time)
 }

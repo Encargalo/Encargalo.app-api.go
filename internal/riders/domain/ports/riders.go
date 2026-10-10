@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	riderModels "Encargalo.app-api.go/internal/riders/domain/models"
 	tripsDtos "Encargalo.app-api.go/internal/trips/domain/dtos"
@@ -39,6 +40,18 @@ type RidersApp interface {
 	SendActiveTrips(ctx context.Context, riderID uuid.UUID, conn RiderConn) error
 	// ActiveTrips devuelve esos mismos viajes por REST, sin códigos de subida/bajada.
 	ActiveTrips(ctx context.Context, riderID uuid.UUID) ([]tripsDtos.TripResponse, error)
+}
+
+// OrderCustomerNotifier entrega al cliente de una orden la ubicación en vivo de su rider.
+// Lo implementa el manager WS de orders; se define aquí para no importar orders/app.
+type OrderCustomerNotifier interface {
+	NotifyRiderOrderLocation(ctx context.Context, customerID, orderID uuid.UUID, lat, lng float64, updatedAt time.Time)
+}
+
+// OrderCustomerNotifierSetter permite enlazar el notificador después de construir
+// el manager (evita el ciclo de DI manager → OrdersApp → riders).
+type OrderCustomerNotifierSetter interface {
+	SetOrderCustomerNotifier(n OrderCustomerNotifier)
 }
 
 // PassengerLookup lee el nombre y el teléfono de la cuenta del pasajero.
