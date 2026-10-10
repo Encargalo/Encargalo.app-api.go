@@ -3,6 +3,7 @@ package app_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -283,12 +284,40 @@ func TestGetOrderHistory_Success(t *testing.T) {
 	m.repo.On("SearchOrderHistoryByCustomer", mock.Anything, customerID).Return([]ordermodels.Order{
 		{ID: orderID, Number: 1, Status: string(ordermodels.StatusCompleted), TotalPrice: 22},
 	}, nil)
+	m.repo.On("ListStatusHistory", mock.Anything, []uuid.UUID{orderID}).Return(map[uuid.UUID][]ordermodels.StatusChange{}, nil)
 
 	history, err := svc.GetOrderHistory(context.Background(), customerID)
 
 	require.NoError(t, err)
 	require.Len(t, history, 1)
 	assert.Equal(t, orderID, history[0].ID)
+	assert.Nil(t, history[0].StatusHistory)
+	assert.Empty(t, history[0].Items)
+}
+
+func TestGetOrderHistory_EnrichedFromDetails(t *testing.T) {
+	svc, m := newOrderAppFixture(t)
+	customerID, orderID, itemID, addID := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	details := fmt.Sprintf(`{"shop":{"name":"Pizzeria","logo":"l.png","phone":"0414"},"items":[{"id":%q,"name":"Pizza","amount":2,"additions":[{"id":%q,"name":"Queso","amount":3}],"flavors":[]}],"payment":{"status":"approved","bcv_rate":10}}`, itemID, addID)
+	at := time.Now()
+	m.repo.On("SearchOrderHistoryByCustomer", mock.Anything, customerID).Return([]ordermodels.Order{
+		{ID: orderID, TotalPrice: 5, DeliveryFee: 1, Details: json.RawMessage(details)},
+	}, nil)
+	m.repo.On("ListStatusHistory", mock.Anything, []uuid.UUID{orderID}).Return(map[uuid.UUID][]ordermodels.StatusChange{
+		orderID: {{OrderID: orderID, Status: "Pending", At: at}},
+	}, nil)
+
+	history, err := svc.GetOrderHistory(context.Background(), customerID)
+
+	require.NoError(t, err)
+	require.Len(t, history, 1)
+	assert.Equal(t, "Pizzeria", history[0].ShopName)
+	assert.Equal(t, 5, history[0].ProductsCount)
+	require.Len(t, history[0].Items, 1)
+	require.Len(t, history[0].Items[0].Additions, 1)
+	require.Len(t, history[0].StatusHistory, 1)
+	require.NotNil(t, history[0].TotalPriceBs)
+	assert.Equal(t, 50.0, *history[0].TotalPriceBs)
 }
 
 func TestGetOrderHistory_RepoError(t *testing.T) {

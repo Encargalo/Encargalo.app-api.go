@@ -370,6 +370,27 @@ func (o *orders) SearchOrderHistoryByCustomer(ctx context.Context, customerID uu
 	return result, nil
 }
 
+func (o *orders) ListStatusHistory(ctx context.Context, orderIDs []uuid.UUID) (map[uuid.UUID][]models.StatusChange, error) {
+	result := make(map[uuid.UUID][]models.StatusChange, len(orderIDs))
+	if len(orderIDs) == 0 {
+		return result, nil
+	}
+	var rows []models.StatusChange
+	err := o.db.NewSelect().
+		Model(&rows).
+		Where("order_id IN (?)", bun.In(orderIDs)).
+		OrderExpr("at ASC, id ASC").
+		Scan(ctx)
+	if err != nil {
+		slog.Error("ListStatusHistory failed", "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+	for _, r := range rows {
+		result[r.OrderID] = append(result[r.OrderID], r)
+	}
+	return result, nil
+}
+
 func (o *orders) UpdateOrderDetails(ctx context.Context, orderID uuid.UUID, details []byte) error {
 	// []byte se enlaza como bytea; jsonb rechaza ese formato. json.RawMessage
 	// se escribe como texto JSON.

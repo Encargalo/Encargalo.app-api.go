@@ -1,6 +1,11 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/uptrace/bun"
+)
 
 type OrderStatus string
 
@@ -29,3 +34,12 @@ const (
 	PendingUnassignedFirstAlertMinute = 4
 	PendingUnassignedMaxAlertMinute   = 8
 )
+
+// StatusChange es una transición de estado registrada para el timeline del historial.
+type StatusChange struct {
+	bun.BaseModel `bun:"table:orders.order_status_history"`
+
+	OrderID uuid.UUID `bun:"order_id"`
+	Status  string    `bun:"status"`
+	At      time.Time `bun:"at"`
+}

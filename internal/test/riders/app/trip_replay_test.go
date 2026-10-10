@@ -186,7 +186,7 @@ func TestSendActiveTrips_ResendsAssignedTripWithoutCodesAndRelinksLocation(t *te
 	require.Len(t, sent, 1)
 	require.Equal(t, "trip_status", messageType(t, sent[0]))
 	require.NotContains(t, string(sent[0]), "pickup_code")
-	require.Contains(t, string(sent[0]), `"fare_bs":100`)
+	require.Contains(t, string(sent[0]), `"fare_usd":2,"fare_bs":80`)
 
 	// El cliente vuelve a recibir la ubicación del conductor tras reconectar.
 	require.NoError(t, svc.UpdateLocation(context.Background(), riderID, 10.4806, -66.9036))
@@ -257,7 +257,7 @@ func TestActiveTrips_ReturnsTripsWithBsFareAndNoCodes(t *testing.T) {
 	require.Equal(t, trip.ID, out[0].ID)
 	require.Equal(t, "in_progress", out[0].Status)
 	require.NotNil(t, out[0].FareBs)
-	require.InDelta(t, 100, *out[0].FareBs, 0.001)
+	require.InDelta(t, 80, *out[0].FareBs, 0.001)
 	require.Nil(t, out[0].PickupCode)
 	require.Nil(t, out[0].DropoffCode)
 }
