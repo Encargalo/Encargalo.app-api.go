@@ -15,6 +15,7 @@ import (
 	ordersModels "Encargalo.app-api.go/internal/orders/domain/models"
 	paymentsPorts "Encargalo.app-api.go/internal/payments/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/geo"
+	"Encargalo.app-api.go/internal/pkg/money"
 	riderModels "Encargalo.app-api.go/internal/riders/domain/models"
 	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/deliveryfee"
@@ -109,11 +110,26 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 	}
 }
 
+// riderTripOfferDTO es el viaje como lo ve el rider: fare_usd/fare_bs son su
+// ganancia (RiderShare), igual que delivery_fee en los pedidos. collect_usd
+// sigue siendo el total que cobra en efectivo.
+func riderTripOfferDTO(trip *tripsModels.Trip) tripsDtos.TripResponse {
+	resp := trip.ToDTO()
+	if resp.FareUSD != nil {
+		usd := money.RoundUSD(riderModels.RiderPayUSD(*resp.FareUSD))
+		resp.FareUSD = &usd
+	}
+	if resp.FareBs != nil {
+		bs := money.RoundBs(riderModels.RiderPayUSD(*resp.FareBs))
+		resp.FareBs = &bs
+	}
+	return resp
+}
+
 // riderTripDTO es la vista del viaje para el rider asignado. El nombre y el
 // teléfono del pasajero entran solo en accepted, arriving e in_progress.
-// trip_offer sigue usando ToDTO y no llama este método.
 func (r *appRidersManager) riderTripDTO(ctx context.Context, trip *tripsModels.Trip) tripsDtos.TripResponse {
-	resp := trip.ToDTO()
+	resp := riderTripOfferDTO(trip)
 	if r.passengers == nil || !exposesPassengerContact(trip.Status) {
 		return resp
 	}
@@ -270,7 +286,7 @@ func (r *appRidersManager) offerOpenTripsToRider(ctx context.Context, riderID uu
 		if current.Status != tripsModels.TripStatusSearching {
 			continue
 		}
-		data, err := json.Marshal(tripBroadcast{Type: "trip_offer", Trip: trip.ToDTO()})
+		data, err := json.Marshal(tripBroadcast{Type: "trip_offer", Trip: riderTripOfferDTO(&trip)})
 		if err != nil {
 			slog.Error("error marshaling trip_offer for late rider", "error", err)
 			continue
@@ -556,7 +572,7 @@ func (r *appRidersManager) offerTripRound(trip tripsModels.Trip, round int) {
 		return
 	}
 
-	data, err := json.Marshal(tripBroadcast{Type: "trip_offer", Trip: trip.ToDTO()})
+	data, err := json.Marshal(tripBroadcast{Type: "trip_offer", Trip: riderTripOfferDTO(&trip)})
 	if err != nil {
 		slog.Error("error marshaling trip_offer broadcast", "error", err)
 		return
