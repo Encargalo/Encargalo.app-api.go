@@ -815,6 +815,18 @@ func (r *appRidersManager) expireTripIfStillSearching(tripID uuid.UUID) {
 	}
 	tripsApp.CreditUnservedPagoMovil(ctx, r.balance, trip, r.tripsRepo.SaveTripPayment)
 	r.notifyCustomer(ctx, trip)
+	r.publishTripNoDriver(ctx, trip)
+}
+
+func (r *appRidersManager) publishTripNoDriver(ctx context.Context, trip *tripsModels.Trip) {
+	if r.stream == nil {
+		return
+	}
+	event := tripsModels.DataEventTrip{}
+	event.BuildFromTrip(tripsModels.EventTripNoDriver, *trip)
+	if err := r.stream.PublisherEvent(ctx, event); err != nil {
+		slog.Error("error publishing trip_no_driver event", "tripID", trip.ID, "error", err)
+	}
 }
 
 func (r *appRidersManager) clearTripOfferState(tripID uuid.UUID) {

@@ -36,6 +36,7 @@ type tripsApp struct {
 	customers   ports.CustomerTripNotifier
 	nearby      ports.NearbyRidersLookup
 	riderNotify ports.TripRiderNotifier
+	events      ports.TripEventPublisher
 }
 
 func NewTripsApp(
@@ -51,6 +52,7 @@ func NewTripsApp(
 	customers ports.CustomerTripNotifier,
 	nearby ports.NearbyRidersLookup,
 	riderNotify ports.TripRiderNotifier,
+	events ports.TripEventPublisher,
 ) ports.TripsApp {
 	return &tripsApp{
 		repo:        repo,
@@ -65,6 +67,7 @@ func NewTripsApp(
 		customers:   customers,
 		nearby:      nearby,
 		riderNotify: riderNotify,
+		events:      events,
 	}
 }
 
@@ -196,10 +199,12 @@ func (a *tripsApp) createTrip(ctx context.Context, customerID uuid.UUID, req dto
 	if a.hub != nil && review != nil {
 		_ = a.hub.BroadcastReview(broadcastFromTrip(review, trip))
 	}
+	a.publishPaymentProofPending(ctx, trip.ID, review)
 
 	// Tasa de la quote, no la vigente: FareBs debe coincidir con lo ya mostrado.
 	trip.ApplyBsFare(quote.BcvRate)
 	a.notifyCustomer(ctx, trip)
+	a.publishTripEvent(ctx, models.EventTripCreated, trip)
 	return trip.ToCustomerDTO(), nil
 }
 
@@ -267,6 +272,7 @@ func (a *tripsApp) requestTripWithBalance(ctx context.Context, customerID uuid.U
 	}
 	trip.ApplyBsFare(quote.BcvRate)
 	a.notifyCustomer(ctx, trip)
+	a.publishTripEvent(ctx, models.EventTripCreated, trip)
 	return trip.ToCustomerDTO(), nil
 }
 
@@ -311,6 +317,7 @@ func (a *tripsApp) requestTripCash(ctx context.Context, customerID uuid.UUID, re
 	}
 	trip.ApplyBsFare(quote.BcvRate)
 	a.notifyCustomer(ctx, trip)
+	a.publishTripEvent(ctx, models.EventTripCreated, trip)
 	return trip.ToCustomerDTO(), nil
 }
 
@@ -425,12 +432,14 @@ func (a *tripsApp) requestTripSplit(ctx context.Context, customerID uuid.UUID, r
 		if a.hub != nil && review != nil {
 			_ = a.hub.BroadcastReview(broadcastFromTrip(review, trip))
 		}
+		a.publishPaymentProofPending(ctx, trip.ID, review)
 	}
 	if split.PagoMovilBs <= 0.01 && a.matcher != nil {
 		a.matcher.OfferTrip(ctx, *trip)
 	}
 	trip.ApplyBsFare(quote.BcvRate)
 	a.notifyCustomer(ctx, trip)
+	a.publishTripEvent(ctx, models.EventTripCreated, trip)
 	return trip.ToCustomerDTO(), nil
 }
 
@@ -541,6 +550,28 @@ func (a *tripsApp) notifyCustomer(ctx context.Context, trip *models.Trip) {
 		return
 	}
 	a.customers.NotifyTrip(ctx, *trip)
+}
+
+func (a *tripsApp) publishTripEvent(ctx context.Context, messageType string, trip *models.Trip) {
+	if a.events == nil {
+		return
+	}
+	event := models.DataEventTrip{}
+	event.BuildFromTrip(messageType, *trip)
+	if err := a.events.PublisherEvent(ctx, event); err != nil {
+		slog.Error("error publishing trip event", "type", messageType, "tripID", trip.ID, "error", err)
+	}
+}
+
+func (a *tripsApp) publishPaymentProofPending(ctx context.Context, tripID uuid.UUID, review *paymentsModels.PaymentReview) {
+	if a.events == nil || review == nil {
+		return
+	}
+	event := models.DataEventTripPaymentProofPending{}
+	event.BuildFrom(tripID, review.ID, review.ExpectedAmountBs, review.ProofURL, 0)
+	if err := a.events.PublisherEvent(ctx, event); err != nil {
+		slog.Error("error publishing trip payment_proof_pending", "tripID", tripID, "error", err)
+	}
 }
 
 func (a *tripsApp) notifyRidersCancelled(ctx context.Context, trip *models.Trip) {

@@ -168,5 +168,5 @@ func insertPagoMovilTrip(t *testing.T, customerID uuid.UUID, status tripsmodels.
 
 func newTripsSvc() tripsports.TripsApp {
 	repo := tripsrepo.NewTripsRepo(db)
-	return tripsapp.NewTripsApp(repo, nil, fixedBCV{}, nil, nil, nil, nil, nil, reviewsApp, nil, nil, nil)
+	return tripsapp.NewTripsApp(repo, nil, fixedBCV{}, nil, nil, nil, nil, nil, reviewsApp, nil, nil, nil, nil)
 }

@@ -17,7 +17,7 @@ import (
 func TestCancelTrip_NotifiesRidersWithCancelledTrip(t *testing.T) {
 	d := newTripsDeps(t)
 	notifier := mockstrips.NewTripRiderNotifier(t)
-	svc := app.NewTripsApp(d.repo, d.matcher, d.bcv, d.quotes, d.upload, d.reviews, d.hub, d.riders, d.balance, nil, nil, notifier)
+	svc := app.NewTripsApp(d.repo, d.matcher, d.bcv, d.quotes, d.upload, d.reviews, d.hub, d.riders, d.balance, nil, nil, notifier, nil)
 
 	tripID, customerID, riderID := uuid.New(), uuid.New(), uuid.New()
 	d.repo.On("GetTripByID", mock.Anything, tripID).Return(&models.Trip{
@@ -39,7 +39,7 @@ func TestCancelTrip_NotifiesRidersWithCancelledTrip(t *testing.T) {
 func TestCancelTrip_DoesNotNotifyRidersWhenNotCancellable(t *testing.T) {
 	d := newTripsDeps(t)
 	notifier := mockstrips.NewTripRiderNotifier(t)
-	svc := app.NewTripsApp(d.repo, d.matcher, d.bcv, d.quotes, d.upload, d.reviews, d.hub, d.riders, d.balance, nil, nil, notifier)
+	svc := app.NewTripsApp(d.repo, d.matcher, d.bcv, d.quotes, d.upload, d.reviews, d.hub, d.riders, d.balance, nil, nil, notifier, nil)
 
 	tripID, customerID := uuid.New(), uuid.New()
 	d.repo.On("GetTripByID", mock.Anything, tripID).Return(&models.Trip{

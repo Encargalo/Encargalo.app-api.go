@@ -36,6 +36,9 @@ func TestExpireTripIfStillSearching_CreditsPagoMovil(t *testing.T) {
 	balance.On("CreditOrderRejected", mock.Anything, customerID, tripID, tripsModels.ReferenceTypeTrip, 200.0, 200.0, 40.0).
 		Return(txID, time.Now(), nil)
 	tripsRepo.On("SaveTripPayment", mock.Anything, tripID, mock.Anything).Return(nil)
+	stream.On("PublisherEvent", mock.Anything, mock.MatchedBy(func(e tripsModels.DataEventTrip) bool {
+		return e.MessageType == tripsModels.EventTripNoDriver && e.TripID == tripID.String() && e.FareUSD == fare
+	})).Return(nil)
 
 	mgr.expireTripIfStillSearching(tripID)
 

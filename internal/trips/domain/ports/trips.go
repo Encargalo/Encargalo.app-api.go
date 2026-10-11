@@ -92,3 +92,8 @@ type TripQuotesRepo interface {
 	// customerID, así un quote_id ajeno nunca matchea (ni se borra) la de otro cliente.
 	GetAndConsume(ctx context.Context, customerID, quoteID uuid.UUID) (*models.TripQuote, error)
 }
+
+// TripEventPublisher publica eventos de viaje al stream del servicio de notificaciones.
+type TripEventPublisher interface {
+	PublisherEvent(ctx context.Context, data any) error
+}
