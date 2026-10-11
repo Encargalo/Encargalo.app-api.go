@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.4.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.3.0...v2.4.0) (2026-10-11)
+
+
+### Features
+
+* **orders:** enriquecer GET /orders/history ([d7a1f0a](https://github.com/Encargalo/Encargalo.app-api.go/commit/d7a1f0a51135dc0ab792ca0fbd7bd6535d804ce3))
+* **orders:** enriquecer GET /orders/history con tienda, items, pagos y status_history ([47316f1](https://github.com/Encargalo/Encargalo.app-api.go/commit/47316f14d6ac65bda6d93fb6ac2f193dc2b32d22))
+* **riders:** enviar al cliente la ubicación en vivo del rider en las órdenes ([508d5a4](https://github.com/Encargalo/Encargalo.app-api.go/commit/508d5a4892655e7fb27474a402267a9cff15398f))
+* **riders:** enviar al cliente la ubicación en vivo del rider en las órdenes ([29f73d9](https://github.com/Encargalo/Encargalo.app-api.go/commit/29f73d92a40b115750ec7d98a436f867d772876a)), closes [#273](https://github.com/Encargalo/Encargalo.app-api.go/issues/273)
+* **riders:** incluir nombre y apellido del pasajero en la oferta de viaje ([6f17390](https://github.com/Encargalo/Encargalo.app-api.go/commit/6f173908a47f138ea54e1ec2af339ef7cb942b41))
+* **riders:** incluir nombre y apellido del pasajero en la oferta de viaje ([13af36f](https://github.com/Encargalo/Encargalo.app-api.go/commit/13af36f0254db80a12a725bf27713606b549b05c))
+* **riders:** reducir la comisión de la plataforma al rider a 10% ([afb29f1](https://github.com/Encargalo/Encargalo.app-api.go/commit/afb29f1bb63e968e701723ad1755781c8a663c5f))
+* **trips:** publicar eventos de viaje para el servicio de notificaciones ([dc1bdc0](https://github.com/Encargalo/Encargalo.app-api.go/commit/dc1bdc00f46c548f11d9ff0a57d37b83f316a47c))
+
+
+### Bug Fixes
+
+* **riders:** enviar fare_bs y collect_bs al rider con la tasa congelada del viaje ([32b330c](https://github.com/Encargalo/Encargalo.app-api.go/commit/32b330cee44aea68458eb2fe5d537d48c5440363))
+* **riders:** mostrar al rider su ganancia en la tarifa del viaje ([065b049](https://github.com/Encargalo/Encargalo.app-api.go/commit/065b04958863c51ba3d83f4f7b5513a974640a6d))
+
 ## [2.3.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.2.0...v2.3.0) (2026-10-07)
 
 
