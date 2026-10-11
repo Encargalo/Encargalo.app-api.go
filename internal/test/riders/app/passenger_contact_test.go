@@ -163,7 +163,6 @@ func TestActiveTrips_IncludesPassengerWhileInProgress(t *testing.T) {
 		Status: tripsModels.TripStatusInProgress, Fare: &fare,
 	}
 	tripsRepo.On("ListActiveTripsByRider", mock.Anything, riderID).Return([]tripsModels.Trip{trip}, nil)
-	bcv.On("GetRate", mock.Anything).Return(&bcvmodels.ExchangeRate{Rate: 40}, nil)
 	passengers.On("GetByCustomerID", mock.Anything, customerID).
 		Return(tripsDtos.PassengerContact{Name: "Ana", LastName: "Pérez", Phone: "04141234567"}, nil)
 

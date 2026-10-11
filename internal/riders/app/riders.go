@@ -114,10 +114,13 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 }
 
 // riderTripOfferDTO es el viaje como lo ve el rider: fare_usd/fare_bs son su
-// ganancia (RiderShare), igual que delivery_fee en los pedidos. collect_usd
-// sigue siendo el total que cobra en efectivo.
+// ganancia (RiderShare), igual que delivery_fee en los pedidos. collect_usd/
+// collect_bs siguen siendo el total que cobra en efectivo. Bs siempre con la
+// tasa congelada del viaje.
 func riderTripOfferDTO(trip *tripsModels.Trip) tripsDtos.TripResponse {
-	resp := trip.ToDTO()
+	frozen := *trip
+	frozen.ApplyFrozenBsFare()
+	resp := frozen.ToDTO()
 	if resp.FareUSD != nil {
 		usd := money.RoundUSD(riderModels.RiderPayUSD(*resp.FareUSD))
 		resp.FareUSD = &usd
@@ -412,9 +415,7 @@ func (r *appRidersManager) SendActiveTrips(ctx context.Context, riderID uuid.UUI
 		return nil
 	}
 
-	rate := r.bcvRate(ctx)
 	for i := range trips {
-		trips[i].ApplyBsFare(rate)
 		data, err := json.Marshal(tripBroadcast{Type: "trip_status", Trip: r.riderTripDTO(ctx, &trips[i])})
 		if err != nil {
 			slog.Error("error marshaling active trip for rider", "tripID", trips[i].ID, "error", err)
@@ -436,10 +437,8 @@ func (r *appRidersManager) ActiveTrips(ctx context.Context, riderID uuid.UUID) (
 		return []tripsDtos.TripResponse{}, nil
 	}
 
-	rate := r.bcvRate(ctx)
 	out := make([]tripsDtos.TripResponse, len(trips))
 	for i := range trips {
-		trips[i].ApplyBsFare(rate)
 		out[i] = r.riderTripDTO(ctx, &trips[i])
 	}
 	return out, nil
@@ -1120,7 +1119,7 @@ func (r *appRidersManager) completeTrip(ctx context.Context, trip *tripsModels.T
 	trip.Status = tripsModels.TripStatusCompleted
 	trip.CompletedAt = &completedAt
 	trip.DropoffCodeUsedAt = &completedAt
-	trip.ApplyBsFare(r.bcvRate(ctx))
+	trip.ApplyFrozenBsFare()
 	data, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: r.riderTripDTO(ctx, trip)})
 	conn.Send(data)
 	if trip.RiderID != nil {

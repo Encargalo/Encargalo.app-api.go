@@ -96,6 +96,14 @@ func (t *Trip) ApplyBsFare(rate float64) {
 	t.FareBs = &bs
 }
 
+// ApplyFrozenBsFare convierte con la tasa congelada en la cotización, la misma que vio el pasajero.
+func (t *Trip) ApplyFrozenBsFare() {
+	if t.BcvRate == nil {
+		return
+	}
+	t.ApplyBsFare(*t.BcvRate)
+}
+
 func (t *Trip) ToDTO() dtos.TripResponse {
 	resp := dtos.TripResponse{
 		ID:               t.ID,
@@ -124,6 +132,14 @@ func (t *Trip) ToDTO() dtos.TripResponse {
 	if resp.CollectUSD == nil && t.MethodPayment == MethodEfectivo && t.Fare != nil {
 		fare := *t.Fare
 		resp.CollectUSD = &fare
+	}
+	if t.CashAmountBs != nil && *t.CashAmountBs > 0 {
+		bs := *t.CashAmountBs
+		resp.CollectBs = &bs
+	}
+	if resp.CollectBs == nil && t.MethodPayment == MethodEfectivo && t.Fare != nil && t.BcvRate != nil && *t.BcvRate > 0 {
+		bs := money.RoundBs(*t.Fare * *t.BcvRate)
+		resp.CollectBs = &bs
 	}
 	return resp
 }

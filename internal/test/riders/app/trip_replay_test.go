@@ -5,7 +5,6 @@ import (
 	"sync"
 	"testing"
 
-	bcvmodels "Encargalo.app-api.go/internal/bcv/domain/models"
 	mockbcvports "Encargalo.app-api.go/internal/mocks/bcv/domain/ports"
 	mocksriders "Encargalo.app-api.go/internal/mocks/riders/domain/ports"
 	mockstrips "Encargalo.app-api.go/internal/mocks/trips/domain/ports"
@@ -161,16 +160,17 @@ func TestSendActiveTrips_ResendsAssignedTripWithoutCodesAndRelinksLocation(t *te
 	customerID := uuid.New()
 	pickupCode := "1234"
 	fare := 2.5
+	frozenRate := 40.0
 	trip := tripsModels.Trip{
 		ID:         uuid.New(),
 		CustomerID: customerID,
 		RiderID:    &riderID,
 		Status:     tripsModels.TripStatusAccepted,
 		Fare:       &fare,
+		BcvRate:    &frozenRate,
 		PickupCode: &pickupCode,
 	}
 	tripsRepo.On("ListActiveTripsByRider", mock.Anything, riderID).Return([]tripsModels.Trip{trip}, nil)
-	bcv.On("GetRate", mock.Anything).Return(&bcvmodels.ExchangeRate{Rate: 40}, nil)
 
 	var mu sync.Mutex
 	var sent [][]byte
@@ -239,16 +239,17 @@ func TestActiveTrips_ReturnsTripsWithBsFareAndNoCodes(t *testing.T) {
 	riderID := uuid.New()
 	pickupCode, dropoffCode := "1234", "5678"
 	fare := 2.5
+	frozenRate := 40.0
 	trip := tripsModels.Trip{
 		ID:          uuid.New(),
 		RiderID:     &riderID,
 		Status:      tripsModels.TripStatusInProgress,
 		Fare:        &fare,
+		BcvRate:     &frozenRate,
 		PickupCode:  &pickupCode,
 		DropoffCode: &dropoffCode,
 	}
 	tripsRepo.On("ListActiveTripsByRider", mock.Anything, riderID).Return([]tripsModels.Trip{trip}, nil)
-	bcv.On("GetRate", mock.Anything).Return(&bcvmodels.ExchangeRate{Rate: 40}, nil)
 
 	out, err := svc.ActiveTrips(context.Background(), riderID)
 

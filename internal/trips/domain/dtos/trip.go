@@ -80,7 +80,9 @@ type TripResponse struct {
 	MethodPayment    string            `json:"method_payment,omitempty"`
 	// CollectUSD es lo que el rider cobra en efectivo al pasajero. Su pago ya
 	// va dentro de ese monto; el resto queda como deuda en su balance.
-	CollectUSD  *float64     `json:"collect_usd,omitempty"`
+	CollectUSD *float64 `json:"collect_usd,omitempty"`
+	// CollectBs es CollectUSD en bolívares con la tasa congelada del viaje.
+	CollectBs   *float64     `json:"collect_bs,omitempty"`
 	RequestedAt time.Time    `json:"requested_at"`
 	AcceptedAt  *time.Time   `json:"accepted_at,omitempty"`
 	StartedAt   *time.Time   `json:"started_at,omitempty"`
