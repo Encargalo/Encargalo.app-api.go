@@ -31,9 +31,9 @@ El rider confirma la recogida usando el **código de recogida**. Al validarlo:
 **5. Completed**
 El cliente confirma que recibió la orden usando el **código de entrega**. En este momento se registran los pagos:
 
-- **Rider** → 80 % de la tarifa de domicilio
+- **Rider** → 90 % de la tarifa de domicilio
 - **Local** → 90 % del total de productos (total − domicilio)
-- **Plataforma** → 20 % del domicilio + 10 % de productos
+- **Plataforma** → 10 % del domicilio + 10 % de productos
 
 *Ejemplo: orden de $12, domicilio $2 → Rider $1.60 · Local $9.00 · Plataforma $1.40*
 
@@ -52,7 +52,7 @@ El local rechaza la orden. No genera movimientos financieros.
 **Balance**
 
 **Rider**
-- Acumula saldo positivo con cada entrega completada (+80 % del domicilio)
+- Acumula saldo positivo con cada entrega completada (+90 % del domicilio)
 - Puede solicitar retiro cuando su saldo supera **$15**, máximo una vez cada **24 horas**
 - Al procesar el pago su saldo vuelve a $0
 
@@ -61,7 +61,7 @@ El local rechaza la orden. No genera movimientos financieros.
 - Puede consultar su balance e historial de movimientos desde la app
 
 **Plataforma**
-- Retiene el 20 % del domicilio y el 10 % del valor de productos en cada orden completada
+- Retiene el 10 % del domicilio y el 10 % del valor de productos en cada orden completada
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
