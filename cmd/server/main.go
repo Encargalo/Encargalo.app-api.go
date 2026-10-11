@@ -78,6 +78,7 @@ func run() error {
 		staffSnapshot appOrders.OrderStaffSnapshot,
 		pendingWorker *appOrders.PendingAcceptWorker,
 		paymentProofAlertWorker *appOrders.PaymentProofAlertWorker,
+		tripPaymentProofAlertWorker *appTrips.TripPaymentProofAlertWorker,
 		batchCloseWorker *appShops.BatchCloseWorker,
 		refundHub *appCustomer.StaffRefundHubImpl,
 		finance usersPorts.CustomerFinanceApp,
@@ -101,6 +102,7 @@ func run() error {
 		bcv.Start(context.Background())
 		pendingWorker.Start(context.Background())
 		paymentProofAlertWorker.Start(context.Background())
+		tripPaymentProofAlertWorker.Start(context.Background())
 		batchCloseWorker.Start(context.Background())
 		refundAlertWorker.Start(context.Background())
 		accountDeletionWorker.Start(context.Background())

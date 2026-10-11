@@ -146,6 +146,10 @@ func BuildContainer() *dig.Container {
 		return h
 	})
 	_ = Container.Provide(appTrips.NewTripsApp)
+	_ = Container.Provide(func(s ordersPorts.RedisStream) tripsPorts.TripEventPublisher {
+		return s
+	})
+	_ = Container.Provide(appTrips.NewTripPaymentProofAlertWorker)
 	_ = Container.Provide(appTrips.NewTripPaymentSubject)
 	_ = Container.Provide(appTrips.NewTripStaffSnapshot)
 	_ = Container.Provide(repoTrips.NewTripsRepo)
