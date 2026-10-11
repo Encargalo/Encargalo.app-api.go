@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPassengerLookup_ReturnsNameAndPhoneOnly(t *testing.T) {
+func TestPassengerLookup_ReturnsNameLastNameAndPhone(t *testing.T) {
 	profiles := mockriders.NewRiderProfileRepo(t)
 	lookup := repo.NewPassengerLookup(profiles)
 	customerID := uuid.New()
@@ -23,5 +23,6 @@ func TestPassengerLookup_ReturnsNameAndPhoneOnly(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, "Ana", contact.Name)
+	require.Equal(t, "Pérez", contact.LastName)
 	require.Equal(t, "04141234567", contact.Phone)
 }

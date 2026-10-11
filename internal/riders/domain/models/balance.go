@@ -33,7 +33,7 @@ const (
 	// el poder adquisitivo del piso no se erosione con la tasa.
 	WithdrawalMinUSD   float64 = 15.0
 	WithdrawalCooldown         = 24 * time.Hour
-	RiderShare         float64 = 0.80
+	RiderShare         float64 = 0.90
 
 	// CurrencyVES es la moneda nativa del balance de riders: cada movimiento
 	// se registra ya convertido a bolívares con la tasa BCV vigente al
@@ -81,7 +81,7 @@ type Transaction struct {
 	CreatedAt     time.Time  `bun:"created_at,nullzero"`
 }
 
-// RiderPayUSD es la parte del rider (80%) de una tarifa de envío o de viaje.
+// RiderPayUSD es la parte del rider (90%) de una tarifa de envío o de viaje.
 func RiderPayUSD(fee float64) float64 {
 	return fee * RiderShare
 }

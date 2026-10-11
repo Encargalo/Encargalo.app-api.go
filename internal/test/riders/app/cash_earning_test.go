@@ -19,7 +19,7 @@ func TestRecordRideEarning_CashDebitsRemainderAfterRiderPay(t *testing.T) {
 
 	riderID := uuid.New()
 	orderID := uuid.New()
-	// Cobra $10. Su pago es el 80% de un envío de $2.50 = $2. Nos debe $8.
+	// Cobra $10. Su pago es el 90% de un envío de $2.50 = $2.25. Nos debe $7.75.
 	const total = 10.0
 	const delivery = 2.5
 	const rate = 36.0
@@ -33,8 +33,8 @@ func TestRecordRideEarning_CashDebitsRemainderAfterRiderPay(t *testing.T) {
 	err := svc.RecordRideEarning(context.Background(), riderID, orderID, delivery, total, rate, models.PaymentMethodEfectivo)
 
 	require.NoError(t, err)
-	require.Equal(t, 8.0, models.CashOwedUSD(total, models.RiderPayUSD(delivery)))
-	require.Equal(t, -288.0, owedBs)
+	require.Equal(t, 7.75, models.CashOwedUSD(total, models.RiderPayUSD(delivery)))
+	require.Equal(t, -279.0, owedBs)
 }
 
 func TestRecordTripCash_DebitsPlatformShare(t *testing.T) {
@@ -55,5 +55,5 @@ func TestRecordTripCash_DebitsPlatformShare(t *testing.T) {
 	err := svc.RecordTripCash(context.Background(), riderID, tripID, fare, rate)
 
 	require.NoError(t, err)
-	require.Equal(t, -72.0, owedBs)
+	require.Equal(t, -36.0, owedBs)
 }

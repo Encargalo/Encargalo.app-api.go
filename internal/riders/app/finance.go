@@ -25,7 +25,7 @@ func NewFinanceApp(repo ports.FinanceRepo, bcv bcvPorts.BcvApp) ports.FinanceApp
 }
 
 // RecordRideEarning liquida el domicilio al completar. En Pago Móvil acredita
-// el 80% del delivery fee: la plataforma tiene el dinero y le debe su pago.
+// el 90% del delivery fee: la plataforma tiene el dinero y le debe su pago.
 // En efectivo debita lo que cobró y no es suyo (total − pago). bcvRate es la
 // tasa que el caller resolvió para este movimiento (ver orders/app al
 // completar la entrega). Falla en vez de mover Bs=0 si no hay tasa.
@@ -92,7 +92,7 @@ func (f *financeApp) RecordTripEarning(ctx context.Context, riderID uuid.UUID, t
 	if bcvRate <= 0 {
 		return errcustom.ErrBcvRateUnavailable
 	}
-	deltaBs := money.RoundBs(fare * models.RiderShare * bcvRate)
+	deltaBs := money.RoundBs(models.RiderPayUSD(fare) * bcvRate)
 	rate := bcvRate
 	serviceType := models.ServiceTypeTrip
 
@@ -111,7 +111,7 @@ func (f *financeApp) RecordTripEarning(ctx context.Context, riderID uuid.UUID, t
 }
 
 // RecordTripCash debita la parte de la tarifa que el rider cobró y no es su
-// pago (20%). El 80% ya lo tiene en el efectivo del pasajero.
+// pago (10%). El 90% ya lo tiene en el efectivo del pasajero.
 func (f *financeApp) RecordTripCash(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare, bcvRate float64) error {
 	if bcvRate <= 0 {
 		return errcustom.ErrBcvRateUnavailable
@@ -255,7 +255,7 @@ func getZone(balance, withdrawalMinBs float64) models.Zone {
 	return models.ZoneNormal
 }
 
-// RiderEarning returns the rider's net earning from a delivery fee (80%).
+// RiderEarning returns the rider's net earning from a delivery fee (90%).
 func RiderEarning(deliveryFee float64) float64 {
 	return deliveryFee * models.RiderShare
 }

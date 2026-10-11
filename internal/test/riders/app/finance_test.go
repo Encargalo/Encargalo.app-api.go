@@ -17,14 +17,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRecordRideEarning_CreditsEightyPercentInBs(t *testing.T) {
+func TestRecordRideEarning_CreditsNinetyPercentInBs(t *testing.T) {
 	repo := mocksriders.NewFinanceRepo(t)
 	svc := app.NewFinanceApp(repo, mockbcvports.NewBcvApp(t))
 
 	riderID := uuid.New()
 	orderID := uuid.New()
 
-	repo.On("RecordMovement", mock.Anything, riderID, "rider", 40*0.80*36.0, 0.0, mock.MatchedBy(func(tx models.Transaction) bool {
+	repo.On("RecordMovement", mock.Anything, riderID, "rider", 40*0.90*36.0, 0.0, mock.MatchedBy(func(tx models.Transaction) bool {
 		return tx.MovementType == string(models.MovementTypeRideBank) && tx.OrderID != nil && *tx.OrderID == orderID
 	})).Return(0.0, nil)
 
@@ -42,14 +42,14 @@ func TestRecordRideEarning_NoRate_Fails(t *testing.T) {
 	assert.ErrorIs(t, err, errcustom.ErrBcvRateUnavailable)
 }
 
-func TestRecordTripEarning_CreditsEightyPercentInBs(t *testing.T) {
+func TestRecordTripEarning_CreditsNinetyPercentInBs(t *testing.T) {
 	repo := mocksriders.NewFinanceRepo(t)
 	svc := app.NewFinanceApp(repo, mockbcvports.NewBcvApp(t))
 
 	riderID := uuid.New()
 	tripID := uuid.New()
 
-	repo.On("RecordMovement", mock.Anything, riderID, "rider", 10*0.80*36.0, 0.0, mock.MatchedBy(func(tx models.Transaction) bool {
+	repo.On("RecordMovement", mock.Anything, riderID, "rider", 10*0.90*36.0, 0.0, mock.MatchedBy(func(tx models.Transaction) bool {
 		return tx.MovementType == string(models.MovementTypeTripBank) &&
 			tx.TripID != nil && *tx.TripID == tripID &&
 			tx.ServiceType != nil && *tx.ServiceType == models.ServiceTypeTrip
@@ -174,6 +174,6 @@ func TestListTransactions_RepoError(t *testing.T) {
 	assert.ErrorIs(t, err, errcustom.ErrUnexpectedError)
 }
 
-func TestRiderEarning_EightyPercentOfDeliveryFee(t *testing.T) {
-	assert.InDelta(t, 32.0, app.RiderEarning(40), 0.0001)
+func TestRiderEarning_NinetyPercentOfDeliveryFee(t *testing.T) {
+	assert.InDelta(t, 36.0, app.RiderEarning(40), 0.0001)
 }

@@ -117,6 +117,19 @@ curl http://localhost:3000/business/products \
 
 Sin ambos headers (`X-Encargalo-Session` y `X-Internal-Gateway-Secret`), cualquier ruta protegida por `Auth`/`Require` responde `401`, aunque la cookie de sesión sea válida — la cookie solo sirve ya para el paso 2. En Postman conviene automatizar los pasos 1-2 con un pre-request script que guarde el resultado en variables de colección.
 
+## WebSocket `/orders/manager`: ubicación del rider
+
+Además de `order_update`, el cliente recibe la ubicación en vivo de su rider mientras la orden está en curso:
+
+```json
+{"type":"rider_location","order_id":"<uuid>","latitude":10.48,"longitude":-66.9,"updated_at":"2026-10-10T14:03:22Z"}
+```
+
+- Un mensaje por `order_id`: si el rider tiene varias órdenes, el cliente de cada una recibe solo la suya.
+- Se emite desde que el rider acepta la orden hasta que termina (`Completed`, `Cancelled` o `Rejected`); nunca antes de aceptar.
+- Al aceptar se envía la última ubicación conocida del rider, y al conectarse el cliente recibe la última de cada orden activa (después de su `order_update`).
+- `updated_at` va en RFC3339 UTC. Solo lo reciben los clientes (no los locales).
+
 ## Documentación Swagger
 
 Con el servidor corriendo, abre en el navegador:

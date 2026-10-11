@@ -16,6 +16,7 @@ import (
 	appPayments "Encargalo.app-api.go/internal/payments/app"
 	paymentsModels "Encargalo.app-api.go/internal/payments/domain/models"
 	paymentsPorts "Encargalo.app-api.go/internal/payments/domain/ports"
+	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/adapters/redis"
 	"Encargalo.app-api.go/internal/shared/applog"
 	"Encargalo.app-api.go/internal/shared/config"
@@ -83,6 +84,7 @@ func run() error {
 		refundAlertWorker *appCustomer.RefundAlertWorker,
 		accountDeletionWorker *appCustomer.AccountDeletionWorker,
 		orderMgr ordersPorts.AppManagerOrder,
+		ridersMgr ridersPorts.RidersApp,
 		streamTrimWorker *redis.StreamTrimWorker,
 	) error {
 		registry.Register(paymentsModels.ReferenceTypeOrder, orderSubject)
@@ -92,6 +94,9 @@ func run() error {
 		hub.SetSnapshotProvider(tripSnapshot)
 		refundHub.SetFinanceApp(finance)
 		finance.SetCustomerNotifier(orderMgr)
+		if setter, ok := ridersMgr.(ridersPorts.OrderCustomerNotifierSetter); ok {
+			setter.SetOrderCustomerNotifier(orderMgr)
+		}
 
 		bcv.Start(context.Background())
 		pendingWorker.Start(context.Background())

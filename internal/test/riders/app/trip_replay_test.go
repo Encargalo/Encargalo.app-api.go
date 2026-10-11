@@ -5,7 +5,6 @@ import (
 	"sync"
 	"testing"
 
-	bcvmodels "Encargalo.app-api.go/internal/bcv/domain/models"
 	mockbcvports "Encargalo.app-api.go/internal/mocks/bcv/domain/ports"
 	mocksriders "Encargalo.app-api.go/internal/mocks/riders/domain/ports"
 	mockstrips "Encargalo.app-api.go/internal/mocks/trips/domain/ports"
@@ -161,16 +160,17 @@ func TestSendActiveTrips_ResendsAssignedTripWithoutCodesAndRelinksLocation(t *te
 	customerID := uuid.New()
 	pickupCode := "1234"
 	fare := 2.5
+	frozenRate := 40.0
 	trip := tripsModels.Trip{
 		ID:         uuid.New(),
 		CustomerID: customerID,
 		RiderID:    &riderID,
 		Status:     tripsModels.TripStatusAccepted,
 		Fare:       &fare,
+		BcvRate:    &frozenRate,
 		PickupCode: &pickupCode,
 	}
 	tripsRepo.On("ListActiveTripsByRider", mock.Anything, riderID).Return([]tripsModels.Trip{trip}, nil)
-	bcv.On("GetRate", mock.Anything).Return(&bcvmodels.ExchangeRate{Rate: 40}, nil)
 
 	var mu sync.Mutex
 	var sent [][]byte
@@ -186,7 +186,7 @@ func TestSendActiveTrips_ResendsAssignedTripWithoutCodesAndRelinksLocation(t *te
 	require.Len(t, sent, 1)
 	require.Equal(t, "trip_status", messageType(t, sent[0]))
 	require.NotContains(t, string(sent[0]), "pickup_code")
-	require.Contains(t, string(sent[0]), `"fare_usd":2,"fare_bs":80`)
+	require.Contains(t, string(sent[0]), `"fare_usd":2.25,"fare_bs":90`)
 
 	// El cliente vuelve a recibir la ubicación del conductor tras reconectar.
 	require.NoError(t, svc.UpdateLocation(context.Background(), riderID, 10.4806, -66.9036))
@@ -239,16 +239,17 @@ func TestActiveTrips_ReturnsTripsWithBsFareAndNoCodes(t *testing.T) {
 	riderID := uuid.New()
 	pickupCode, dropoffCode := "1234", "5678"
 	fare := 2.5
+	frozenRate := 40.0
 	trip := tripsModels.Trip{
 		ID:          uuid.New(),
 		RiderID:     &riderID,
 		Status:      tripsModels.TripStatusInProgress,
 		Fare:        &fare,
+		BcvRate:     &frozenRate,
 		PickupCode:  &pickupCode,
 		DropoffCode: &dropoffCode,
 	}
 	tripsRepo.On("ListActiveTripsByRider", mock.Anything, riderID).Return([]tripsModels.Trip{trip}, nil)
-	bcv.On("GetRate", mock.Anything).Return(&bcvmodels.ExchangeRate{Rate: 40}, nil)
 
 	out, err := svc.ActiveTrips(context.Background(), riderID)
 
@@ -257,7 +258,7 @@ func TestActiveTrips_ReturnsTripsWithBsFareAndNoCodes(t *testing.T) {
 	require.Equal(t, trip.ID, out[0].ID)
 	require.Equal(t, "in_progress", out[0].Status)
 	require.NotNil(t, out[0].FareBs)
-	require.InDelta(t, 80, *out[0].FareBs, 0.001)
+	require.InDelta(t, 90, *out[0].FareBs, 0.001)
 	require.Nil(t, out[0].PickupCode)
 	require.Nil(t, out[0].DropoffCode)
 }

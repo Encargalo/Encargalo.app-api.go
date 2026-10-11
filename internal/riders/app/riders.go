@@ -51,6 +51,7 @@ type appRidersManager struct {
 	mu                 sync.RWMutex
 	availableRiders    map[uuid.UUID]ridersPorts.RiderConn
 	assignedOrders     map[uuid.UUID][]uuid.UUID // riderID → []orderID
+	orderCustomer      map[uuid.UUID]uuid.UUID   // orderID → customerID, para avisarle la ubicación del rider
 	riderMode          map[uuid.UUID]riderModels.RiderMode
 	riderLocation      map[uuid.UUID]riderModels.RiderLocation
 	ridersByCell       map[string]map[uuid.UUID]struct{}
@@ -75,6 +76,7 @@ type appRidersManager struct {
 	balance         paymentsPorts.CustomerBalanceCreditor
 	passengers      ridersPorts.PassengerLookup
 	riderTrips      map[uuid.UUID]riderAssignment
+	orderNotifier   ridersPorts.OrderCustomerNotifier
 }
 
 type riderAssignment struct {
@@ -86,6 +88,7 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 	return &appRidersManager{
 		availableRiders:    make(map[uuid.UUID]ridersPorts.RiderConn),
 		assignedOrders:     make(map[uuid.UUID][]uuid.UUID),
+		orderCustomer:      make(map[uuid.UUID]uuid.UUID),
 		riderMode:          make(map[uuid.UUID]riderModels.RiderMode),
 		riderLocation:      make(map[uuid.UUID]riderModels.RiderLocation),
 		ridersByCell:       make(map[string]map[uuid.UUID]struct{}),
@@ -111,10 +114,13 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 }
 
 // riderTripOfferDTO es el viaje como lo ve el rider: fare_usd/fare_bs son su
-// ganancia (RiderShare), igual que delivery_fee en los pedidos. collect_usd
-// sigue siendo el total que cobra en efectivo.
+// ganancia (RiderShare), igual que delivery_fee en los pedidos. collect_usd/
+// collect_bs siguen siendo el total que cobra en efectivo. Bs siempre con la
+// tasa congelada del viaje.
 func riderTripOfferDTO(trip *tripsModels.Trip) tripsDtos.TripResponse {
-	resp := trip.ToDTO()
+	frozen := *trip
+	frozen.ApplyFrozenBsFare()
+	resp := frozen.ToDTO()
 	if resp.FareUSD != nil {
 		usd := money.RoundUSD(riderModels.RiderPayUSD(*resp.FareUSD))
 		resp.FareUSD = &usd
@@ -127,10 +133,11 @@ func riderTripOfferDTO(trip *tripsModels.Trip) tripsDtos.TripResponse {
 }
 
 // riderTripDTO es la vista del viaje para el rider asignado. El nombre y el
-// teléfono del pasajero entran solo en accepted, arriving e in_progress.
+// apellido del pasajero salen siempre; el teléfono entra solo en accepted,
+// arriving e in_progress.
 func (r *appRidersManager) riderTripDTO(ctx context.Context, trip *tripsModels.Trip) tripsDtos.TripResponse {
 	resp := riderTripOfferDTO(trip)
-	if r.passengers == nil || !exposesPassengerContact(trip.Status) {
+	if r.passengers == nil {
 		return resp
 	}
 	contact, err := r.passengers.GetByCustomerID(ctx, trip.CustomerID)
@@ -138,7 +145,26 @@ func (r *appRidersManager) riderTripDTO(ctx context.Context, trip *tripsModels.T
 		slog.Error("error loading passenger contact for assigned rider", "tripID", trip.ID, "error", err)
 		return resp
 	}
+	if !exposesPassengerContact(trip.Status) {
+		contact.Phone = ""
+	}
 	resp.Customer = &contact
+	return resp
+}
+
+// tripOfferWithPassenger es la oferta de viaje con nombre y apellido del
+// pasajero, antes de que algún rider acepte. Nunca incluye el teléfono.
+func (r *appRidersManager) tripOfferWithPassenger(ctx context.Context, trip *tripsModels.Trip) tripsDtos.TripResponse {
+	resp := riderTripOfferDTO(trip)
+	if r.passengers == nil {
+		return resp
+	}
+	contact, err := r.passengers.GetByCustomerID(ctx, trip.CustomerID)
+	if err != nil {
+		slog.Error("error loading passenger name for trip offer", "tripID", trip.ID, "error", err)
+		return resp
+	}
+	resp.Customer = &tripsDtos.PassengerContact{Name: contact.Name, LastName: contact.LastName}
 	return resp
 }
 
@@ -174,6 +200,7 @@ func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn
 	orderIDs := make([]uuid.UUID, 0, len(activeOrders))
 	for _, order := range activeOrders {
 		orderIDs = append(orderIDs, order.ID)
+		r.orderCustomer[order.ID] = order.CustomerID
 	}
 	r.assignedOrders[riderID] = append(r.assignedOrders[riderID], orderIDs...)
 	r.mu.Unlock()
@@ -239,10 +266,67 @@ func (r *appRidersManager) UpdateLocation(ctx context.Context, riderID uuid.UUID
 	if onTrip && r.customers != nil {
 		r.customers.NotifyRiderLocation(ctx, assignment.customerID, assignment.tripID, lat, lng)
 	}
+	r.notifyOrderLocations(ctx, riderID, lat, lng, time.Now())
 	if inTripsMode && (!hadLocation || prev.H3Cell != cell) {
 		r.offerOpenTripsToRider(ctx, riderID, cell)
 	}
 	return nil
+}
+
+// SetOrderCustomerNotifier enlaza el manager WS de orders, que no se puede inyectar
+// en New sin crear un ciclo de DI.
+func (r *appRidersManager) SetOrderCustomerNotifier(n ridersPorts.OrderCustomerNotifier) {
+	r.mu.Lock()
+	r.orderNotifier = n
+	r.mu.Unlock()
+}
+
+// notifyOrderLocations envía la ubicación del rider al cliente de cada orden que
+// tiene asignada (un mensaje por orden). Solo hay órdenes asignadas una vez que
+// el rider las aceptó, así que nunca se emite antes de eso.
+func (r *appRidersManager) notifyOrderLocations(ctx context.Context, riderID uuid.UUID, lat, lng float64, at time.Time) {
+	r.mu.RLock()
+	notifier := r.orderNotifier
+	targets := make(map[uuid.UUID]uuid.UUID, len(r.assignedOrders[riderID]))
+	for _, orderID := range r.assignedOrders[riderID] {
+		if customerID, ok := r.orderCustomer[orderID]; ok {
+			targets[orderID] = customerID
+		}
+	}
+	r.mu.RUnlock()
+
+	if notifier == nil {
+		return
+	}
+	for orderID, customerID := range targets {
+		notifier.NotifyRiderOrderLocation(ctx, customerID, orderID, lat, lng, at)
+	}
+}
+
+// forgetOrderLocked saca una orden terminada de assignedOrders y orderCustomer.
+// Debe llamarse con r.mu tomado para escritura.
+func (r *appRidersManager) forgetOrderLocked(orderID uuid.UUID) {
+	delete(r.orderCustomer, orderID)
+	for riderID, ids := range r.assignedOrders {
+		if !slices.Contains(ids, orderID) {
+			continue
+		}
+		ids = slices.DeleteFunc(slices.Clone(ids), func(id uuid.UUID) bool { return id == orderID })
+		if len(ids) == 0 {
+			delete(r.assignedOrders, riderID)
+		} else {
+			r.assignedOrders[riderID] = ids
+		}
+	}
+}
+
+func isTerminalOrderStatus(status string) bool {
+	switch ordersModels.OrderStatus(status) {
+	case ordersModels.StatusCompleted, ordersModels.StatusCancelled, ordersModels.StatusRejected:
+		return true
+	default:
+		return false
+	}
 }
 
 // offerOpenTripsToRider le reenvía a un rider que llega tarde (primera ubicación
@@ -286,7 +370,7 @@ func (r *appRidersManager) offerOpenTripsToRider(ctx context.Context, riderID uu
 		if current.Status != tripsModels.TripStatusSearching {
 			continue
 		}
-		data, err := json.Marshal(tripBroadcast{Type: "trip_offer", Trip: riderTripOfferDTO(&trip)})
+		data, err := json.Marshal(tripBroadcast{Type: "trip_offer", Trip: r.tripOfferWithPassenger(ctx, &trip)})
 		if err != nil {
 			slog.Error("error marshaling trip_offer for late rider", "error", err)
 			continue
@@ -331,9 +415,7 @@ func (r *appRidersManager) SendActiveTrips(ctx context.Context, riderID uuid.UUI
 		return nil
 	}
 
-	rate := r.bcvRate(ctx)
 	for i := range trips {
-		trips[i].ApplyBsFare(rate)
 		data, err := json.Marshal(tripBroadcast{Type: "trip_status", Trip: r.riderTripDTO(ctx, &trips[i])})
 		if err != nil {
 			slog.Error("error marshaling active trip for rider", "tripID", trips[i].ID, "error", err)
@@ -355,10 +437,8 @@ func (r *appRidersManager) ActiveTrips(ctx context.Context, riderID uuid.UUID) (
 		return []tripsDtos.TripResponse{}, nil
 	}
 
-	rate := r.bcvRate(ctx)
 	out := make([]tripsDtos.TripResponse, len(trips))
 	for i := range trips {
-		trips[i].ApplyBsFare(rate)
 		out[i] = r.riderTripDTO(ctx, &trips[i])
 	}
 	return out, nil
@@ -422,8 +502,8 @@ func (r *appRidersManager) BroadcastOrderUpdate(ctx context.Context, order order
 		return
 	}
 
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
 	for riderID, orderIDs := range r.assignedOrders {
 		if slices.Contains(orderIDs, order.ID) {
@@ -431,6 +511,9 @@ func (r *appRidersManager) BroadcastOrderUpdate(ctx context.Context, order order
 				c.Send(data)
 			}
 		}
+	}
+	if isTerminalOrderStatus(order.Status) {
+		r.forgetOrderLocked(order.ID)
 	}
 }
 
@@ -462,11 +545,19 @@ func (r *appRidersManager) AcceptOrder(ctx context.Context, riderID uuid.UUID, o
 
 	r.mu.Lock()
 	r.assignedOrders[riderID] = append(r.assignedOrders[riderID], orderID)
+	r.orderCustomer[orderID] = order.CustomerID
+	loc, hasLoc := r.riderLocation[riderID]
+	notifier := r.orderNotifier
 	r.mu.Unlock()
 
 	deliveryfee.ApplyBsToOrder(ctx, r.bcv, order)
 	accepted, _ := json.Marshal(r.orderBroadcast(ctx, "order_accepted", *order, true))
 	conn.Send(accepted)
+
+	// El pin del rider aparece en el cliente apenas acepta, sin esperar al siguiente tick de ubicación.
+	if hasLoc && notifier != nil {
+		notifier.NotifyRiderOrderLocation(ctx, order.CustomerID, orderID, loc.Latitude, loc.Longitude, loc.UpdatedAt)
+	}
 
 	return nil
 }
@@ -572,7 +663,7 @@ func (r *appRidersManager) offerTripRound(trip tripsModels.Trip, round int) {
 		return
 	}
 
-	data, err := json.Marshal(tripBroadcast{Type: "trip_offer", Trip: riderTripOfferDTO(&trip)})
+	data, err := json.Marshal(tripBroadcast{Type: "trip_offer", Trip: r.tripOfferWithPassenger(context.Background(), &trip)})
 	if err != nil {
 		slog.Error("error marshaling trip_offer broadcast", "error", err)
 		return
@@ -1028,7 +1119,7 @@ func (r *appRidersManager) completeTrip(ctx context.Context, trip *tripsModels.T
 	trip.Status = tripsModels.TripStatusCompleted
 	trip.CompletedAt = &completedAt
 	trip.DropoffCodeUsedAt = &completedAt
-	trip.ApplyBsFare(r.bcvRate(ctx))
+	trip.ApplyFrozenBsFare()
 	data, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: r.riderTripDTO(ctx, trip)})
 	conn.Send(data)
 	if trip.RiderID != nil {
