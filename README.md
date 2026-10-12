@@ -138,10 +138,16 @@ Con el servidor corriendo, abre en el navegador:
 http://localhost:3000/docs/index.html
 ```
 
-Para regenerar la documentación después de modificar un handler:
+Para regenerar la documentación después de modificar un handler, compila `swag` con el mismo Go del proyecto. Un binario instalado con un Go anterior no parsea la librería estándar actual y `swag init` aborta.
 
 ```bash
-swag init -g cmd/server/main.go --parseDependency --parseInternal
+go run github.com/swaggo/swag/cmd/swag@v1.16.4 init -g cmd/server/main.go --parseDependency --parseInternal
+```
+
+Para dejar el binario en `~/go/bin`, el `go install` tiene que usar ese mismo toolchain:
+
+```bash
+go install github.com/swaggo/swag/cmd/swag@v1.16.4
 ```
 
 ## Postman

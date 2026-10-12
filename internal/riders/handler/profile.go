@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	authModels "Encargalo.app-api.go/internal/auth/domain/models"
+	"Encargalo.app-api.go/internal/riders/domain/dtos"
 	"Encargalo.app-api.go/internal/riders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shared/response"
@@ -40,6 +41,7 @@ func (h *riderProfileHandler) GetProfile(c echo.Context) error {
 	ctx := c.Request().Context()
 	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
 
+	var resp dtos.RiderSelfProfileResponse
 	resp, err := h.svc.GetOwnProfile(ctx, session.UserID)
 	if err != nil {
 		return errcustom.ToHTTPError(err)

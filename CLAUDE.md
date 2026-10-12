@@ -32,8 +32,9 @@ go test ./internal/path/to/package -run TestName
 # Generate mocks (uses .mockery.yaml config)
 mockery
 
-# Generate Swagger docs
-swag init -g cmd/server/main.go --parseDependency --parseInternal
+# Generate Swagger docs. Compile swag with the same Go as this repo.
+# A binary built with an older Go fails to parse the current stdlib.
+go run github.com/swaggo/swag/cmd/swag@v1.16.4 init -g cmd/server/main.go --parseDependency --parseInternal
 
 # Run database migrations (goose)
 goose -dir internal/shared/adapters/postgres/migrations postgres "<DSN>" up

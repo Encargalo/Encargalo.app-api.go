@@ -2027,7 +2027,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Resuelve una dirección a partir de una coordenada, usando la Google Geocoding API. Incluye formatted_address, parts (locality=ciudad, administrative_area_level_1=estado, administrative_area_level_2=municipio/provincia) y address_components crudos de Google para que el cliente arme la dirección. Cacheado por el servidor por coordenadas redondeadas.",
+                "description": "Resuelve una dirección a partir de una coordenada, usando la Google Geocoding API. Incluye formatted_address, parts (locality=ciudad, administrative_area_level_1=estado, administrative_area_level_2=municipio/provincia) y address_components crudos de Google del primer resultado, y en results todos los candidatos que devolvió Google (el primero a menudo no trae street_number y uno posterior sí) para que el cliente elija y arme la dirección. Cacheado por el servidor por coordenadas redondeadas.",
                 "produces": [
                     "application/json"
                 ],
@@ -2324,7 +2324,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Devuelve todas las ordenes del customer autenticado, incluyendo activas y completadas, ordenadas de mas reciente a mas antigua.",
+                "description": "Devuelve todas las ordenes del customer autenticado, incluyendo activas y completadas, ordenadas de mas reciente a mas antigua. Cada orden incluye el snapshot de la tienda (shop_name, shop_logo, coordenadas), items con adiciones y sabores, products_count (suma de amount de items + adiciones), status_history (transiciones con hora; null en ordenes anteriores al registro) y el bloque payment. No se exponen datos del cliente ni el telefono del local.",
                 "produces": [
                     "application/json"
                 ],
@@ -2751,7 +2751,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna productos agrupados por categoría para clientes. Excluye categorías ` + "`" + `hidden` + "`" + `, items ` + "`" + `hidden` + "`" + `, sabores/adiciones no disponibles, y aplica horario de categoría (America/Caracas). Items con ` + "`" + `effective_status: out_of_stock` + "`" + ` o ` + "`" + `can_order: false` + "`" + ` se muestran pero no se pueden pedir (p. ej. cuando los sabores activos son menos que ` + "`" + `min_selection` + "`" + `).",
+                "description": "Retorna productos agrupados por categoría para clientes. Excluye categorías ` + "`" + `hidden` + "`" + `, items ` + "`" + `hidden` + "`" + `, sabores/adiciones no disponibles, y aplica horario de categoría (America/Caracas). Items con ` + "`" + `effective_status: out_of_stock` + "`" + ` o ` + "`" + `can_order: false` + "`" + ` se muestran pero no se pueden pedir (p. ej. cuando los sabores activos son menos que ` + "`" + `min_selection` + "`" + `). Cada categoría incluye ` + "`" + `macro_category` + "`" + ` (id, name, slug, shop_type) para agrupar el catálogo en dos niveles (macro → categoría).",
                 "produces": [
                     "application/json"
                 ],
@@ -3146,6 +3146,58 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/profile": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Devuelve los datos del propio conductor (` + "`" + `driver` + "`" + `: id, nombre, apellido y foto de perfil) y su vehículo (` + "`" + `vehicle` + "`" + `: tipo, placa, marca, modelo y color). Solo incluye lo necesario para el panel de conductor activo: no expone contacto, notas ni fotos de documentos. Los campos sin dato se omiten; si el rider aún no tiene perfil, ` + "`" + `vehicle` + "`" + ` es un objeto vacío.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders"
+                ],
+                "summary": "Perfil del conductor autenticado",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderSelfProfileResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Sesión no encontrada o inválida",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Cuenta no encontrada",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
                         "schema": {
                             "type": "string"
                         }
@@ -3816,7 +3868,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Devuelve los viajes que el rider ya tiene asignados y siguen en curso (accepted, arriving o in_progress), sin códigos de subida/bajada. Cada viaje incluye ` + "`" + `customer` + "`" + ` con el nombre y el teléfono del pasajero (sin apellido); ese bloque no se envía en la oferta ni cuando el viaje ya finalizó. Sirve para recuperar el viaje al abrir la app sin depender del WebSocket. Lista vacía si no tiene ninguno.",
+                "description": "Devuelve los viajes que el rider ya tiene asignados y siguen en curso (accepted, arriving o in_progress), sin códigos de subida/bajada. ` + "`" + `fare_usd` + "`" + `/` + "`" + `fare_bs` + "`" + ` son la ganancia del rider (90% de la tarifa), no lo que paga el pasajero; ` + "`" + `collect_usd` + "`" + `/` + "`" + `collect_bs` + "`" + ` son el total a cobrar en efectivo. Los Bs usan la tasa BCV congelada en la cotización del viaje. Cada viaje incluye ` + "`" + `customer` + "`" + ` con el nombre, el apellido y el teléfono del pasajero. En la oferta solo van nombre y apellido, y cuando el viaje ya finalizó se quita el teléfono. Sirve para recuperar el viaje al abrir la app sin depender del WebSocket. Lista vacía si no tiene ninguno.",
                 "consumes": [
                     "application/json"
                 ],
@@ -7447,6 +7499,41 @@ const docTemplate = `{
                 }
             }
         },
+        "Encargalo_app-api_go_internal_maps_domain_models.GeocodeCandidate": {
+            "type": "object",
+            "properties": {
+                "address_components": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_maps_domain_models.AddressComponent"
+                    }
+                },
+                "formatted_address": {
+                    "type": "string"
+                },
+                "lat": {
+                    "type": "number"
+                },
+                "lng": {
+                    "type": "number"
+                },
+                "location_type": {
+                    "type": "string"
+                },
+                "parts": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_maps_domain_models.AddressParts"
+                },
+                "place_id": {
+                    "type": "string"
+                },
+                "types": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_maps_domain_models.PlaceDetails": {
             "type": "object",
             "properties": {
@@ -7498,6 +7585,12 @@ const docTemplate = `{
                 },
                 "parts": {
                     "$ref": "#/definitions/Encargalo_app-api_go_internal_maps_domain_models.AddressParts"
+                },
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_maps_domain_models.GeocodeCandidate"
+                    }
                 },
                 "short_address": {
                     "type": "string"
@@ -7702,10 +7795,53 @@ const docTemplate = `{
                 }
             }
         },
+        "Encargalo_app-api_go_internal_orders_domain_dtos.OrderHistoryAddition": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "total_price": {
+                    "type": "number"
+                },
+                "total_price_bs": {
+                    "type": "number"
+                },
+                "unit_price": {
+                    "type": "number"
+                },
+                "unit_price_bs": {
+                    "type": "number"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_orders_domain_dtos.OrderHistoryFlavor": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_orders_domain_dtos.OrderHistoryItem": {
             "type": "object",
             "properties": {
                 "address": {
+                    "type": "string"
+                },
+                "address_instructions": {
                     "type": "string"
                 },
                 "created_at": {
@@ -7714,8 +7850,20 @@ const docTemplate = `{
                 "delivery_fee": {
                     "type": "number"
                 },
+                "delivery_fee_bs": {
+                    "type": "number"
+                },
                 "id": {
                     "type": "string"
+                },
+                "is_launch_promo": {
+                    "type": "boolean"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.OrderHistoryProduct"
+                    }
                 },
                 "method_payment": {
                     "type": "string"
@@ -7723,14 +7871,134 @@ const docTemplate = `{
                 "number": {
                     "type": "integer"
                 },
+                "payment": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.OrderHistoryPayment"
+                },
+                "products_count": {
+                    "description": "ProductsCount = suma de amount de items + suma de amount de adiciones.",
+                    "type": "integer"
+                },
                 "shop_id": {
+                    "type": "string"
+                },
+                "shop_latitude": {
+                    "type": "number"
+                },
+                "shop_logo": {
+                    "type": "string"
+                },
+                "shop_longitude": {
+                    "type": "number"
+                },
+                "shop_name": {
                     "type": "string"
                 },
                 "status": {
                     "type": "string"
                 },
+                "status_history": {
+                    "description": "StatusHistory es null en pedidos anteriores al registro de transiciones.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.OrderStatusChange"
+                    }
+                },
                 "total_price": {
                     "type": "number"
+                },
+                "total_price_bs": {
+                    "description": "TotalPriceBs y DeliveryFeeBs son null en pedidos sin tasa BCV congelada.",
+                    "type": "number"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_orders_domain_dtos.OrderHistoryPayment": {
+            "type": "object",
+            "properties": {
+                "balance_amount_bs": {
+                    "type": "number"
+                },
+                "bcv_rate": {
+                    "type": "number"
+                },
+                "cash_amount_bs": {
+                    "type": "number"
+                },
+                "credited_bs": {
+                    "type": "number"
+                },
+                "difference_bs": {
+                    "type": "number"
+                },
+                "expected_amount_bs": {
+                    "type": "number"
+                },
+                "observed_amount_bs": {
+                    "type": "number"
+                },
+                "pago_movil_amount_bs": {
+                    "type": "number"
+                },
+                "rejection_reason": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_orders_domain_dtos.OrderHistoryProduct": {
+            "type": "object",
+            "properties": {
+                "additions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.OrderHistoryAddition"
+                    }
+                },
+                "amount": {
+                    "type": "integer"
+                },
+                "flavors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.OrderHistoryFlavor"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "image": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "observation": {
+                    "type": "string"
+                },
+                "total_price": {
+                    "type": "number"
+                },
+                "total_price_bs": {
+                    "type": "number"
+                },
+                "unit_price": {
+                    "type": "number"
+                },
+                "unit_price_bs": {
+                    "type": "number"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_orders_domain_dtos.OrderStatusChange": {
+            "type": "object",
+            "properties": {
+                "at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
                 }
             }
         },
@@ -7747,10 +8015,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "total_price": {
-                    "type": "integer"
+                    "type": "number"
                 },
                 "unit_price": {
-                    "type": "integer"
+                    "type": "number"
                 }
             }
         },
@@ -7898,6 +8166,9 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.ItemResponse"
                     }
+                },
+                "macro_category": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.MacroCategoryResponse"
                 },
                 "macro_category_id": {
                     "type": "string"
@@ -8254,8 +8525,8 @@ const docTemplate = `{
                     "example": "Pizza Hawaiana Mediana"
                 },
                 "price": {
-                    "type": "integer",
-                    "example": 32000
+                    "type": "number",
+                    "example": 1.43
                 }
             }
         },
@@ -8546,8 +8817,8 @@ const docTemplate = `{
                     "example": "Pizza Hawaiana Mediana"
                 },
                 "price": {
-                    "type": "integer",
-                    "example": 32000
+                    "type": "number",
+                    "example": 1.43
                 }
             }
         },
@@ -8764,6 +9035,54 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "vehicle_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.RiderSelfDriver": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "profile_photo_url": {
+                    "type": "string"
+                },
+                "sur_name": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.RiderSelfProfileResponse": {
+            "type": "object",
+            "properties": {
+                "driver": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderSelfDriver"
+                },
+                "vehicle": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderSelfVehicle"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.RiderSelfVehicle": {
+            "type": "object",
+            "properties": {
+                "brand": {
+                    "type": "string"
+                },
+                "color": {
+                    "type": "string"
+                },
+                "model": {
+                    "type": "string"
+                },
+                "plate": {
+                    "type": "string"
+                },
+                "type": {
                     "type": "string"
                 }
             }
@@ -9718,6 +10037,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "bcv_rate": {
+                    "description": "BcvRate es la tasa congelada en la cotización; fare_bs = fare_usd * BcvRate.",
                     "type": "number"
                 },
                 "distance_meters": {
@@ -9765,6 +10085,9 @@ const docTemplate = `{
         "Encargalo_app-api_go_internal_trips_domain_dtos.PassengerContact": {
             "type": "object",
             "properties": {
+                "last_name": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string"
                 },
@@ -9847,6 +10170,10 @@ const docTemplate = `{
                 },
                 "cancelled_at": {
                     "type": "string"
+                },
+                "collect_bs": {
+                    "description": "CollectBs es CollectUSD en bolívares con la tasa congelada del viaje.",
+                    "type": "number"
                 },
                 "collect_usd": {
                     "description": "CollectUSD es lo que el rider cobra en efectivo al pasajero. Su pago ya\nva dentro de ese monto; el resto queda como deuda en su balance.",
