@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 
+	"Encargalo.app-api.go/internal/pkg/id"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/trips/domain/models"
 	"Encargalo.app-api.go/internal/trips/domain/ports"
@@ -32,6 +33,7 @@ func NewTripsRepo(db *bun.DB) ports.TripsRepo {
 }
 
 func (r *tripsRepo) CreateTrip(ctx context.Context, trip *models.Trip) error {
+	trip.ID = id.Ensure(trip.ID)
 	_, err := r.db.NewInsert().Model(trip).Exec(ctx)
 	var pgErr pgdriver.Error
 	if errors.As(err, &pgErr) && pgErr.Field('C') == pgUniqueViolation {

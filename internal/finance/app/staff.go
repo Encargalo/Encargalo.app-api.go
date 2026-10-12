@@ -1,6 +1,7 @@
 package app
 
 import (
+	"Encargalo.app-api.go/internal/pkg/id"
 	"context"
 	"strings"
 	"time"
@@ -91,7 +92,7 @@ func (a *staffFinanceApp) RecordPayout(ctx context.Context, entityID, staffID uu
 
 	proofURL := upload.SecureURL
 	tx := financeModels.Transaction{
-		ID:           uuid.New(),
+		ID:           id.New(),
 		MovementType: string(financeModels.MovementTypeStaffPayout),
 		Currency:     nativeCurrency,
 		BcvRate:      frozenRate,
@@ -140,7 +141,7 @@ func (a *staffFinanceApp) RecordAdjustment(ctx context.Context, entityID, staffI
 	}
 	notesCopy := strings.TrimSpace(notes)
 	tx := financeModels.Transaction{
-		ID:           uuid.New(),
+		ID:           id.New(),
 		MovementType: string(movementType),
 		Currency:     nativeCurrency,
 		BcvRate:      frozenRate,

@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"Encargalo.app-api.go/internal/pkg/id"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -687,7 +688,7 @@ func ensureOpenBatch(ctx context.Context, tx bun.Tx, shopID uuid.UUID) error {
 	}
 
 	batch := &shopsModels.Batch{
-		ID:        uuid.New(),
+		ID:        id.New(),
 		ShopID:    shopID,
 		Batch:     lastNum + 1,
 		Opened:    true,

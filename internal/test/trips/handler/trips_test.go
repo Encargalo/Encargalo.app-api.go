@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func httpCode(err error) int {
@@ -93,17 +94,21 @@ func TestRequestTrip_PassesIdempotencyIDToApp(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, tc.Res.Code)
 }
 
-func TestRequestTrip_RejectsNonV4ID(t *testing.T) {
-	h, _ := newTripsHandler(t)
-	v1, err := uuid.NewUUID()
-	assert.NoError(t, err)
-	req := dtos.CreateTripRequest{ID: v1, QuoteID: uuid.New(), MethodPayment: "Efectivo"}
+func TestRequestTrip_AcceptsV7ID(t *testing.T) {
+	h, svc := newTripsHandler(t)
+	customerID := uuid.New()
+	tripID, err := uuid.NewV7()
+	require.NoError(t, err)
+	req := dtos.CreateTripRequest{ID: tripID, QuoteID: uuid.New(), MethodPayment: "Efectivo"}
 	tc := buildhttptest.SetupControllerCase("/trips", http.MethodPost, buildBody(t, req))
-	tc = withSession(tc, authModels.ActiveSession{UserID: uuid.New()})
+	tc = withSession(tc, authModels.ActiveSession{UserID: customerID})
+
+	svc.On("RequestTrip", tc.Req.Context(), customerID, req).Return(dtos.TripResponse{ID: tripID, CustomerID: customerID, Status: "searching"}, nil)
 
 	err = h.RequestTrip(tc.Ctx)
 
-	assert.Equal(t, http.StatusBadRequest, httpCode(err))
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusCreated, tc.Res.Code)
 }
 
 func TestRequestTrip_IDOfAnotherCustomerIsConflict(t *testing.T) {

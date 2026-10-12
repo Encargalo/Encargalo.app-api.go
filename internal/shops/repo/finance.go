@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"time"
 
+	"Encargalo.app-api.go/internal/pkg/id"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shops/domain/models"
 	"Encargalo.app-api.go/internal/shops/domain/ports"
@@ -80,6 +81,9 @@ func (r *shopFinanceRepo) RecordMovement(ctx context.Context, entityID uuid.UUID
 		movement.EntityID = entityID
 		movement.EntityType = entityType
 		movement.Amount = delta
+		if movement.ID == uuid.Nil {
+			movement.ID = id.New()
+		}
 		if movement.Currency == "" {
 			movement.Currency = models.CurrencyUSD
 		}

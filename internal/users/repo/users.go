@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"time"
 
+	"Encargalo.app-api.go/internal/pkg/id"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/users/domain/dto"
 	"Encargalo.app-api.go/internal/users/domain/models"
@@ -33,6 +34,7 @@ func (c *customersRepo) RegisterCustomer(ctx context.Context, customer *models.A
 
 	if err := c.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 
+		customer.ID = id.Ensure(customer.ID)
 		if _, err := tx.NewInsert().Model(customer).Exec(ctx); err != nil {
 			slog.Error("error al insertar el customer", "error", err)
 			return errcustom.ErrUnexpectedError
@@ -50,9 +52,9 @@ func (c *customersRepo) RegisterCustomer(ctx context.Context, customer *models.A
 		}
 
 		if _, err := tx.NewRaw(`
-			INSERT INTO users.user_roles (user_id, role_id)
-			SELECT ?, id FROM users.roles WHERE name = 'Customer'
-		`, customer.ID).Exec(ctx); err != nil {
+			INSERT INTO users.user_roles (id, user_id, role_id)
+			SELECT ?, ?, id FROM users.roles WHERE name = 'Customer'
+		`, id.New(), customer.ID).Exec(ctx); err != nil {
 			slog.Error("error al asignar rol Customer", "error", err)
 			return errcustom.ErrUnexpectedError
 		}
@@ -72,15 +74,16 @@ func (c *customersRepo) RegisterCustomerFromGoogle(ctx context.Context, customer
 
 	if err := c.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 
+		customer.ID = id.Ensure(customer.ID)
 		if _, err := tx.NewInsert().Model(customer).Exec(ctx); err != nil {
 			slog.Error("error al insertar el customer de google", "error", err)
 			return errcustom.ErrUnexpectedError
 		}
 
 		if _, err := tx.NewRaw(`
-			INSERT INTO users.user_roles (user_id, role_id)
-			SELECT ?, id FROM users.roles WHERE name = 'Customer'
-		`, customer.ID).Exec(ctx); err != nil {
+			INSERT INTO users.user_roles (id, user_id, role_id)
+			SELECT ?, ?, id FROM users.roles WHERE name = 'Customer'
+		`, id.New(), customer.ID).Exec(ctx); err != nil {
 			slog.Error("error al asignar rol Customer", "error", err)
 			return errcustom.ErrUnexpectedError
 		}

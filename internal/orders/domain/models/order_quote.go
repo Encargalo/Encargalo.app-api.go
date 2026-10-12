@@ -1,6 +1,7 @@
 package models
 
 import (
+	"Encargalo.app-api.go/internal/pkg/id"
 	"encoding/json"
 	"time"
 
@@ -124,7 +125,7 @@ func ApplyQuoteSnapshot(order *Order, quote *OrderQuote) {
 	order.ItemsOrders = make([]ItemsOrder, len(quote.Lines))
 	for i := range quote.Lines {
 		line := quote.Lines[i]
-		itemID := uuid.New()
+		itemID := id.New()
 		order.ItemsOrders[i] = ItemsOrder{
 			ID:             itemID,
 			OrderID:        order.ID,
@@ -142,7 +143,7 @@ func ApplyQuoteSnapshot(order *Order, quote *OrderQuote) {
 			order.ItemsOrders[i].Additions = make([]AdditionsOrder, len(line.Additions))
 			for j := range line.Additions {
 				order.ItemsOrders[i].Additions[j] = AdditionsOrder{
-					ID:          uuid.New(),
+					ID:          id.New(),
 					OrderItemID: itemID,
 					AdditionID:  line.Additions[j].AdditionID,
 					Name:        line.Additions[j].Name,

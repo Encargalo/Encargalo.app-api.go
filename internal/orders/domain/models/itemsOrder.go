@@ -1,6 +1,7 @@
 package models
 
 import (
+	"Encargalo.app-api.go/internal/pkg/id"
 	"encoding/json"
 
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
@@ -81,7 +82,7 @@ func (io *ItemsOrder) GetFlavorIDs() []uuid.UUID {
 }
 
 func (io *ItemsOrder) BuildDtoToModel(dto dtos.CreateItemsOrder, orderID uuid.UUID) {
-	io.ID = uuid.New()
+	io.ID = id.New()
 	io.OrderID = orderID
 	io.ItemID = dto.ItemID
 	io.Amount = dto.Amount

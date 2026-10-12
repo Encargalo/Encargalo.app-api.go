@@ -1,6 +1,7 @@
 package app
 
 import (
+	"Encargalo.app-api.go/internal/pkg/id"
 	"context"
 	"crypto/rand"
 	"encoding/json"
@@ -184,7 +185,7 @@ func (o *orderApp) CreateQuote(ctx context.Context, req *dtos.CreateQuote) (*dto
 	}
 
 	priced, err := o.priceOrderDraft(ctx, &dtos.CreateOrder{
-		ID:               uuid.New(),
+		ID:               id.New(),
 		ShopID:           req.ShopID,
 		CustomerID:       req.CustomerID,
 		MethodPayment:    "PagoMovil",
@@ -196,7 +197,7 @@ func (o *orderApp) CreateQuote(ctx context.Context, req *dtos.CreateQuote) (*dto
 	}
 
 	now := time.Now()
-	quoteID := uuid.New()
+	quoteID := id.New()
 	quote := &models.OrderQuote{
 		QuoteID:            quoteID,
 		CustomerID:         req.CustomerID,
@@ -620,7 +621,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 		expectedBs := pagoMovilBs
 		nowReview := time.Now()
 		review := &paymentsModels.PaymentReview{
-			ID:               uuid.New(),
+			ID:               id.New(),
 			ReferenceID:      orderDB.ID,
 			ReferenceType:    paymentsModels.ReferenceTypeOrder,
 			ProofURL:         proofURL,

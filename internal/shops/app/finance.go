@@ -1,6 +1,7 @@
 package app
 
 import (
+	"Encargalo.app-api.go/internal/pkg/id"
 	"context"
 	"log/slog"
 	"time"
@@ -37,7 +38,7 @@ func (f *shopFinanceApp) RecordSaleCommission(ctx context.Context, shopID uuid.U
 	}
 
 	tx := models.ShopTransaction{
-		ID:            uuid.New(),
+		ID:            id.New(),
 		OrderID:       &orderID,
 		MovementType:  string(movement),
 		PaymentMethod: &method,
@@ -50,7 +51,7 @@ func (f *shopFinanceApp) RecordSaleCommission(ctx context.Context, shopID uuid.U
 
 	if isLaunchPromo && promoSubsidyAmount > 0 {
 		subsidyTx := models.ShopTransaction{
-			ID:            uuid.New(),
+			ID:            id.New(),
 			OrderID:       &orderID,
 			MovementType:  string(models.MovementTypeLaunchPromoSubsidy),
 			PaymentMethod: &method,

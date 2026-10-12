@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"Encargalo.app-api.go/internal/pkg/cache"
+	"Encargalo.app-api.go/internal/pkg/id"
 	"Encargalo.app-api.go/internal/pkg/money"
 	"Encargalo.app-api.go/internal/products/domain/dtos"
 	"Encargalo.app-api.go/internal/products/domain/models"
@@ -64,6 +65,7 @@ func NewProductsRepo(db *bun.DB, cache cache.Cache) productPorts.ProductsRepo {
 }
 
 func (p *productsRepo) RegisterItem(ctx context.Context, item *models.Item) error {
+	item.ID = id.Ensure(item.ID)
 	_, err := p.db.NewInsert().Model(item).Exec(ctx)
 	if err != nil {
 		slog.Error("Error al registrar producto", "error", err)
@@ -103,6 +105,7 @@ func (p *productsRepo) SearchItemByID(ctx context.Context, id uuid.UUID) (*model
 }
 
 func (p *productsRepo) RegisterCategory(ctx context.Context, category *models.Category) error {
+	category.ID = id.Ensure(category.ID)
 	_, err := p.db.NewInsert().Model(category).Exec(ctx)
 	if err != nil {
 		slog.Error("error al registrar categoría", "error", err)
@@ -155,6 +158,9 @@ func (p *productsRepo) ReplaceCategorySchedules(ctx context.Context, categoryID,
 
 		if len(schedules) == 0 {
 			return nil
+		}
+		for i := range schedules {
+			schedules[i].ID = id.Ensure(schedules[i].ID)
 		}
 
 		_, err := tx.NewInsert().Model(&schedules).Exec(ctx)
@@ -1046,6 +1052,7 @@ func (p *productsRepo) SearchMicroCategories(ctx context.Context, shopType strin
 }
 
 func (p *productsRepo) RegisterItemDiscount(ctx context.Context, discount *models.ItemDiscount) error {
+	discount.ID = id.Ensure(discount.ID)
 	_, err := p.db.NewInsert().Model(discount).Exec(ctx)
 	if err != nil {
 		slog.Error("error al registrar el descuento del producto", "error", err)

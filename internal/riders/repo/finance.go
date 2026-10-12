@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"time"
 
+	"Encargalo.app-api.go/internal/pkg/id"
 	"Encargalo.app-api.go/internal/riders/domain/models"
 	"Encargalo.app-api.go/internal/riders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
@@ -85,6 +86,9 @@ func (r *financeRepo) RecordMovement(ctx context.Context, entityID uuid.UUID, en
 		movement.EntityID = entityID
 		movement.EntityType = entityType
 		movement.Amount = delta
+		if movement.ID == uuid.Nil {
+			movement.ID = id.New()
+		}
 		if movement.CreatedAt.IsZero() {
 			movement.CreatedAt = time.Now()
 		}
