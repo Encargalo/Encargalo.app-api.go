@@ -141,6 +141,8 @@ func TestEstimateFare_SavesQuoteAndReturnsFare(t *testing.T) {
 	require.WithinDuration(t, time.Now().Add(models.TripQuoteTTL), resp.ExpiresAt, 2*time.Second)
 	require.NotNil(t, saved)
 	require.Equal(t, resp.QuoteID, saved.QuoteID)
+	require.Equal(t, saved.BcvRate, resp.BcvRate)
+	require.Equal(t, 40.0, resp.BcvRate)
 }
 
 func TestEstimateFare_FailsWhenBcvRateUnavailable(t *testing.T) {

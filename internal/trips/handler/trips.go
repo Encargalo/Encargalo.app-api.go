@@ -68,7 +68,7 @@ func (h *tripsHandler) RequestTrip(c echo.Context) error {
 
 // EstimateFare godoc
 // @Summary      Cotizar tarifa de un viaje
-// @Description  Calcula distancia, tiempo estimado y tarifa (USD/Bs) entre pickup y destino, y la congela por 10 minutos en una cotización. El quote_id devuelto es obligatorio para crear el viaje (POST /trips): el precio mostrado acá es el que queda fijado, no se recalcula.
+// @Description  Calcula distancia, tiempo estimado y tarifa (USD/Bs) entre pickup y destino, y la congela por 10 minutos en una cotización. La respuesta incluye bcv_rate, la tasa BCV usada para fare_bs. El quote_id devuelto es obligatorio para crear el viaje (POST /trips): el precio mostrado acá es el que queda fijado, no se recalcula.
 // @Tags         Trips
 // @Accept       json
 // @Produce      json
