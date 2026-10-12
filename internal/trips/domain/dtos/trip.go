@@ -139,5 +139,7 @@ type FareEstimateResponse struct {
 	DurationMin    int64     `json:"duration_min"`
 	FareUSD        float64   `json:"fare_usd"`
 	FareBs         float64   `json:"fare_bs"`
-	ExpiresAt      time.Time `json:"expires_at"`
+	// BcvRate es la tasa congelada en la cotización; fare_bs = fare_usd * BcvRate.
+	BcvRate   float64   `json:"bcv_rate"`
+	ExpiresAt time.Time `json:"expires_at"`
 }

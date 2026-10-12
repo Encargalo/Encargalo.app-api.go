@@ -620,6 +620,7 @@ func (a *tripsApp) EstimateFare(ctx context.Context, req dtos.FareEstimateReques
 		DurationMin:    quote.DurationMin,
 		FareUSD:        quote.FareUSD,
 		FareBs:         quote.FareBs,
+		BcvRate:        quote.BcvRate,
 		ExpiresAt:      quote.ExpiresAt,
 	}, nil
 }
