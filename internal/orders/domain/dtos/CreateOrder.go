@@ -15,7 +15,7 @@ var (
 )
 
 type CreateOrder struct {
-	ID         uuid.UUID `json:"id" validate:"required,uuid4" example:"3fa85f64-5717-4562-b3fc-2c963f66afa6"`
+	ID         uuid.UUID `json:"id" validate:"required,uuid" example:"3fa85f64-5717-4562-b3fc-2c963f66afa6"`
 	CustomerID uuid.UUID `json:"customer_id" swaggerignore:"true"`
 	// QuoteID congela el total en el servidor (POST /orders/quote). Si viene,
 	// shop/address/items/expected_total_price se toman del quote (pueden omitirse).

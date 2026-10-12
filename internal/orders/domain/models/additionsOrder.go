@@ -2,6 +2,7 @@ package models
 
 import (
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
+	"Encargalo.app-api.go/internal/pkg/id"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
@@ -19,6 +20,7 @@ type AdditionsOrder struct {
 }
 
 func (ao *AdditionsOrder) BuildDtoToModel(dto dtos.CreateAdditionsOrders, orderItemID uuid.UUID, amount int) {
+	ao.ID = id.New()
 	ao.OrderItemID = orderItemID
 	ao.AdditionID = dto.AdditionID
 	ao.Amount = amount

@@ -9,6 +9,7 @@ import (
 
 	"Encargalo.app-api.go/internal/finance/domain/models"
 	"Encargalo.app-api.go/internal/finance/domain/ports"
+	"Encargalo.app-api.go/internal/pkg/id"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
@@ -84,6 +85,9 @@ func (r *staffFinanceRepo) RecordMovement(ctx context.Context, entityID uuid.UUI
 		movement.EntityID = entityID
 		movement.EntityType = entityType
 		movement.Amount = delta
+		if movement.ID == uuid.Nil {
+			movement.ID = id.New()
+		}
 		if movement.Currency == "" {
 			movement.Currency = currency
 		}

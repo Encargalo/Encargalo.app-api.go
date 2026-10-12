@@ -1,6 +1,7 @@
 package app
 
 import (
+	"Encargalo.app-api.go/internal/pkg/id"
 	"context"
 	"errors"
 	"fmt"
@@ -594,7 +595,7 @@ func (a *tripsApp) EstimateFare(ctx context.Context, req dtos.FareEstimateReques
 
 	now := time.Now()
 	quote := &models.TripQuote{
-		QuoteID:          uuid.New(),
+		QuoteID:          id.New(),
 		CustomerID:       req.CustomerID,
 		PickupAddress:    req.PickupAddress,
 		PickupLatitude:   req.PickupLatitude,

@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"Encargalo.app-api.go/internal/pkg/id"
 	"context"
 	"database/sql"
 	"errors"
@@ -101,7 +102,7 @@ func (r *customerFinanceRepo) RecordMovement(ctx context.Context, entityID uuid.
 		movement.EntityType = entityType
 		movement.Amount = delta
 		if movement.ID == uuid.Nil {
-			movement.ID = uuid.New()
+			movement.ID = id.New()
 		}
 		// bun inserta CreatedAt=zero y pisa el DEFAULT now() de Postgres.
 		if movement.CreatedAt.IsZero() {
@@ -221,7 +222,7 @@ func (r *customerFinanceRepo) UpsertPagoMovil(ctx context.Context, pm *models.Cu
 
 func (r *customerFinanceRepo) CreateRefundRequest(ctx context.Context, req *models.BalanceRefundRequest) error {
 	if req.ID == uuid.Nil {
-		req.ID = uuid.New()
+		req.ID = id.New()
 	}
 	_, err := r.db.NewInsert().Model(req).Exec(ctx)
 	if err != nil {
@@ -234,7 +235,7 @@ func (r *customerFinanceRepo) CreateRefundRequest(ctx context.Context, req *mode
 // CreateRefundRequestWithDebit inserta la solicitud y debita el balance en una sola tx.
 func (r *customerFinanceRepo) CreateRefundRequestWithDebit(ctx context.Context, req *models.BalanceRefundRequest) error {
 	if req.ID == uuid.Nil {
-		req.ID = uuid.New()
+		req.ID = id.New()
 	}
 	if req.CreatedAt.IsZero() {
 		req.CreatedAt = time.Now()
@@ -278,7 +279,7 @@ func (r *customerFinanceRepo) CreateRefundRequestWithDebit(ctx context.Context, 
 
 		rid := req.ID
 		movement := models.Transaction{
-			ID:              uuid.New(),
+			ID:              id.New(),
 			EntityID:        req.CustomerID,
 			EntityType:      models.EntityTypeCustomer,
 			ReferenceID:     req.ReferenceID,
@@ -397,13 +398,13 @@ func (r *customerFinanceRepo) AcceptPending(ctx context.Context, id, staffID uui
 	return accepted, nil
 }
 
-func (r *customerFinanceRepo) RejectPendingWithRestore(ctx context.Context, id, staffID uuid.UUID, reason string) (bool, error) {
+func (r *customerFinanceRepo) RejectPendingWithRestore(ctx context.Context, requestID, staffID uuid.UUID, reason string) (bool, error) {
 	var rejected bool
 	err := r.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 		var req models.BalanceRefundRequest
 		err := tx.NewSelect().
 			Model(&req).
-			Where("id = ? AND status = ?", id, models.RefundPending).
+			Where("id = ? AND status = ?", requestID, models.RefundPending).
 			For("UPDATE").
 			Scan(ctx)
 		if err != nil {
@@ -411,7 +412,7 @@ func (r *customerFinanceRepo) RejectPendingWithRestore(ctx context.Context, id, 
 				rejected = false
 				return nil
 			}
-			slog.Error("RejectPendingWithRestore select failed", "id", id, "error", err)
+			slog.Error("RejectPendingWithRestore select failed", "id", requestID, "error", err)
 			return errcustom.ErrUnexpectedError
 		}
 
@@ -421,13 +422,13 @@ func (r *customerFinanceRepo) RejectPendingWithRestore(ctx context.Context, id, 
 			Set("status = ?", models.RefundRejected).
 			Set("staff_id = ?", staffID).
 			Set("resolved_at = ?", now).
-			Where("id = ? AND status = ?", id, models.RefundPending)
+			Where("id = ? AND status = ?", requestID, models.RefundPending)
 		if reason != "" {
 			q = q.Set("rejection_reason = ?", reason)
 		}
 		res, err := q.Exec(ctx)
 		if err != nil {
-			slog.Error("RejectPendingWithRestore update failed", "id", id, "error", err)
+			slog.Error("RejectPendingWithRestore update failed", "id", requestID, "error", err)
 			return errcustom.ErrUnexpectedError
 		}
 		n, _ := res.RowsAffected()
@@ -465,7 +466,7 @@ func (r *customerFinanceRepo) RejectPendingWithRestore(ctx context.Context, id, 
 
 		rid := req.ID
 		movement := models.Transaction{
-			ID:              uuid.New(),
+			ID:              id.New(),
 			EntityID:        req.CustomerID,
 			EntityType:      models.EntityTypeCustomer,
 			ReferenceID:     req.ReferenceID,
@@ -477,7 +478,7 @@ func (r *customerFinanceRepo) RejectPendingWithRestore(ctx context.Context, id, 
 			CreatedAt:       now,
 		}
 		if _, err = tx.NewInsert().Model(&movement).Exec(ctx); err != nil {
-			slog.Error("RejectPendingWithRestore movement insert failed", "id", id, "error", err)
+			slog.Error("RejectPendingWithRestore movement insert failed", "id", requestID, "error", err)
 			return errcustom.ErrUnexpectedError
 		}
 

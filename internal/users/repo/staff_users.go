@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"Encargalo.app-api.go/internal/pkg/cursor"
+	"Encargalo.app-api.go/internal/pkg/id"
 	"Encargalo.app-api.go/internal/pkg/sqlutil"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/users/domain/models"
@@ -205,9 +206,9 @@ func (r *staffUsersRepo) EnsureStaffRole(ctx context.Context, userID, createdBy 
 		return nil
 	}
 	_, err = r.db.NewRaw(`
-		INSERT INTO users.user_roles (user_id, role_id, enabled, created_by)
-		SELECT ?, id, TRUE, ? FROM users.roles WHERE name = 'Staff'
-	`, userID, createdBy).Exec(ctx)
+		INSERT INTO users.user_roles (id, user_id, role_id, enabled, created_by)
+		SELECT ?, ?, id, TRUE, ? FROM users.roles WHERE name = 'Staff'
+	`, id.New(), userID, createdBy).Exec(ctx)
 	if err != nil {
 		slog.Error("staffUsers EnsureStaffRole insert failed", "userID", userID, "error", err)
 		return errcustom.ErrUnexpectedError

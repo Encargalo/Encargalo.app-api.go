@@ -34,7 +34,7 @@ func NewTripsHandler(svc ports.TripsApp, live ports.CustomerTripLive) TripsHandl
 
 // RequestTrip godoc
 // @Summary      Solicitar un viaje
-// @Description  Crea un viaje a partir de una cotización vigente. Un método solo: PagoMovil (comprobante, payment_review), Balance (debita la tarifa, searching) o Efectivo (el pasajero paga al rider, searching). También dos métodos con balance_amount_bs y/o cash_amount_bs: el resto lo cubre el method_payment. Los tres juntos se rechazan. Si hay Pago Móvil, el viaje no se oferta hasta aprobar el comprobante. id (UUID v4, opcional) es la llave de idempotencia: la app lo genera una vez por intento y lo reenvía igual si la respuesta se pierde; un reintento con el mismo id devuelve el viaje ya creado (201, en su estado actual) sin volver a cobrar, subir el comprobante ni ofertarlo. Si el servidor respondió un error, el siguiente intento debe usar un id nuevo.
+// @Description  Crea un viaje a partir de una cotización vigente. Un método solo: PagoMovil (comprobante, payment_review), Balance (debita la tarifa, searching) o Efectivo (el pasajero paga al rider, searching). También dos métodos con balance_amount_bs y/o cash_amount_bs: el resto lo cubre el method_payment. Los tres juntos se rechazan. Si hay Pago Móvil, el viaje no se oferta hasta aprobar el comprobante. id (UUID, opcional) es la llave de idempotencia: la app lo genera una vez por intento y lo reenvía igual si la respuesta se pierde; un reintento con el mismo id devuelve el viaje ya creado (201, en su estado actual) sin volver a cobrar, subir el comprobante ni ofertarlo. Si el servidor respondió un error, el siguiente intento debe usar un id nuevo.
 // @Tags         Trips
 // @Accept       json
 // @Produce      json

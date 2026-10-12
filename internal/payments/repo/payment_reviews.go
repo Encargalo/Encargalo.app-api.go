@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"Encargalo.app-api.go/internal/pkg/id"
 	"context"
 	"database/sql"
 	"errors"
@@ -24,7 +25,7 @@ func NewPaymentReviewsRepo(db *bun.DB) ports.PaymentReviewsRepo {
 
 func (r *paymentReviewsRepo) Create(ctx context.Context, review *models.PaymentReview) error {
 	if review.ID == uuid.Nil {
-		review.ID = uuid.New()
+		review.ID = id.New()
 	}
 	if review.CreatedAt.IsZero() {
 		review.CreatedAt = time.Now()

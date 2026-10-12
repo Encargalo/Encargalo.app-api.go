@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 
+	"Encargalo.app-api.go/internal/pkg/id"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/users/domain/models"
 	"Encargalo.app-api.go/internal/users/domain/ports"
@@ -21,6 +22,7 @@ func NewUsersAddressRepo(db *bun.DB) ports.UsersAddressRepo {
 
 func (c *customersAddressRepo) RegisterAddress(ctx context.Context, address models.Address) error {
 
+	address.ID = id.Ensure(address.ID)
 	if _, err := c.db.NewInsert().Model(&address).Exec(ctx); err != nil {
 		slog.Error("error al insertar la dirección del cliente", "error", err)
 		return errcustom.ErrUnexpectedError

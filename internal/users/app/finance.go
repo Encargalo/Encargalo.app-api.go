@@ -1,6 +1,7 @@
 package app
 
 import (
+	"Encargalo.app-api.go/internal/pkg/id"
 	"context"
 	"encoding/json"
 	"errors"
@@ -173,7 +174,7 @@ func (f *customerFinanceApp) creditWithRefundable(ctx context.Context, customerI
 	createdAt := time.Now()
 	rate := bcvRate
 	tx := models.Transaction{
-		ID:            uuid.New(),
+		ID:            id.New(),
 		ReferenceID:   &refID,
 		ReferenceType: &refType,
 		MovementType:  string(movementType),
@@ -214,7 +215,7 @@ func (f *customerFinanceApp) DebitForReference(ctx context.Context, customerID, 
 	refID := referenceID
 	refType := referenceType
 	_, err := f.repo.RecordMovement(ctx, customerID, models.EntityTypeCustomer, -amountBs, amountBs, models.Transaction{
-		ID:            uuid.New(),
+		ID:            id.New(),
 		ReferenceID:   &refID,
 		ReferenceType: &refType,
 		MovementType:  string(models.MovementTypeBalancePayment),
@@ -230,7 +231,7 @@ func (f *customerFinanceApp) RefundBalancePayment(ctx context.Context, customerI
 	refID := referenceID
 	refType := referenceType
 	_, err := f.repo.RecordMovement(ctx, customerID, models.EntityTypeCustomer, amountBs, 0, models.Transaction{
-		ID:            uuid.New(),
+		ID:            id.New(),
 		ReferenceID:   &refID,
 		ReferenceType: &refType,
 		MovementType:  string(models.MovementTypeBalancePaymentRefund),
@@ -311,7 +312,7 @@ func (f *customerFinanceApp) CreateRefundRequest(ctx context.Context, customerID
 	}
 
 	req := &models.BalanceRefundRequest{
-		ID:            uuid.New(),
+		ID:            id.New(),
 		CustomerID:    customerID,
 		TransactionID: transactionID,
 		ReferenceID:   tx.ReferenceID,

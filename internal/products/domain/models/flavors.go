@@ -1,6 +1,7 @@
 package models
 
 import (
+	"Encargalo.app-api.go/internal/pkg/id"
 	"Encargalo.app-api.go/internal/products/domain/dtos"
 	"github.com/google/uuid"
 )
@@ -23,7 +24,7 @@ func (f *CatalogFlavor) ToDomainDTO() dtos.FlavorResponse {
 
 func BuildCatalogFlavorFromDTO(flavor dtos.RegisterFlavor) CatalogFlavor {
 	entry := FlavorEntry{
-		ID:        uuid.New(),
+		ID:        id.New(),
 		Name:      flavor.Name,
 		Available: new(true),
 	}

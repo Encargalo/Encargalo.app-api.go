@@ -1,6 +1,7 @@
 package app
 
 import (
+	"Encargalo.app-api.go/internal/pkg/id"
 	"context"
 	"fmt"
 	"log/slog"
@@ -46,7 +47,7 @@ func (a *paymentReviewsApp) CreateReview(ctx context.Context, referenceType stri
 	}
 	now := time.Now()
 	review := &models.PaymentReview{
-		ID:               uuid.New(),
+		ID:               id.New(),
 		ReferenceID:      referenceID,
 		ReferenceType:    referenceType,
 		ProofURL:         proofURL,
