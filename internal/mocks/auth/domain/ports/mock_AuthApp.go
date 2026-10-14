@@ -70,6 +70,34 @@ func (_m *AuthApp) EnsureAccountEnabled(ctx context.Context, userID uuid.UUID) e
 	return r0
 }
 
+// IdentifyRiderPhone provides a mock function with given fields: ctx, phone
+func (_m *AuthApp) IdentifyRiderPhone(ctx context.Context, phone string) (models.RiderPhoneNext, error) {
+	ret := _m.Called(ctx, phone)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IdentifyRiderPhone")
+	}
+
+	var r0 models.RiderPhoneNext
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (models.RiderPhoneNext, error)); ok {
+		return rf(ctx, phone)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) models.RiderPhoneNext); ok {
+		r0 = rf(ctx, phone)
+	} else {
+		r0 = ret.Get(0).(models.RiderPhoneNext)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, phone)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // SearchSessions provides a mock function with given fields: ctx, session_id
 func (_m *AuthApp) SearchSessions(ctx context.Context, session_id uuid.UUID) (*models.ActiveSession, error) {
 	ret := _m.Called(ctx, session_id)

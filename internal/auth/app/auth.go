@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"slices"
 
 	requestinfo "Encargalo.app-api.go/internal/auth/domain/middleware/requestInfo"
 	"Encargalo.app-api.go/internal/auth/domain/models"
@@ -152,6 +153,29 @@ func (a *appAuth) SignInRider(ctx context.Context, phone, password string) (uuid
 	}
 
 	return session.ID, nil
+}
+
+// IdentifyRiderPhone dice qué pantalla sigue en la app de riders.
+// No abre sesión ni revela datos de la cuenta.
+func (a *appAuth) IdentifyRiderPhone(ctx context.Context, phone string) (models.RiderPhoneNext, error) {
+	account, err := a.svc.SearchCustomerBy(ctx, dto.SearchCustomerBy{Phone: phone})
+	if errors.Is(err, errcustom.ErrNotFound) {
+		return models.RiderPhoneNextRegister, nil
+	}
+	if err != nil {
+		return "", errcustom.ErrUnexpectedError
+	}
+
+	roles, err := a.svc.GetUserRoles(ctx, account.ID)
+	if err != nil {
+		return "", errcustom.ErrUnexpectedError
+	}
+
+	if slices.Contains(roles, string(models.Rider)) {
+		return models.RiderPhoneNextSignIn, nil
+	}
+
+	return models.RiderPhoneNextOnboarding, nil
 }
 
 func (a *appAuth) SignInStaff(ctx context.Context, phone, password string) (uuid.UUID, error) {
