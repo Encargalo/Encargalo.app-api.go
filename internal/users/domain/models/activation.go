@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"Encargalo.app-api.go/internal/pkg/id"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
@@ -26,6 +27,7 @@ func (a *ActivateAccount) BuildActivateAccount(customerID uuid.UUID) error {
 	if err != nil {
 		return err
 	}
+	a.ID = id.New()
 	a.CustomerID = customerID
 	a.ActivationCode = code
 	return nil

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"Encargalo.app-api.go/internal/pkg/id"
 	"context"
 	"time"
 
@@ -46,7 +47,7 @@ func (f *financeApp) RecordRideEarning(ctx context.Context, riderID uuid.UUID, o
 	deltaBs := money.RoundBs(deltaUSD * bcvRate)
 
 	tx := models.Transaction{
-		ID:            uuid.New(),
+		ID:            id.New(),
 		OrderID:       &orderID,
 		MovementType:  string(movement),
 		ServiceType:   &serviceType,
@@ -71,7 +72,7 @@ func (f *financeApp) RecordRideCashCollected(ctx context.Context, riderID uuid.U
 	serviceType := models.ServiceTypeDelivery
 	method := models.PaymentMethodEfectivo
 	tx := models.Transaction{
-		ID:            uuid.New(),
+		ID:            id.New(),
 		OrderID:       &orderID,
 		MovementType:  string(models.MovementTypeRideCash),
 		ServiceType:   &serviceType,
@@ -97,7 +98,7 @@ func (f *financeApp) RecordTripEarning(ctx context.Context, riderID uuid.UUID, t
 	serviceType := models.ServiceTypeTrip
 
 	tx := models.Transaction{
-		ID:           uuid.New(),
+		ID:           id.New(),
 		TripID:       &tripID,
 		MovementType: string(models.MovementTypeTripBank),
 		ServiceType:  &serviceType,
@@ -122,7 +123,7 @@ func (f *financeApp) RecordTripCash(ctx context.Context, riderID uuid.UUID, trip
 	method := models.PaymentMethodEfectivo
 
 	tx := models.Transaction{
-		ID:            uuid.New(),
+		ID:            id.New(),
 		TripID:        &tripID,
 		MovementType:  string(models.MovementTypeTripCash),
 		ServiceType:   &serviceType,
@@ -147,7 +148,7 @@ func (f *financeApp) RecordTripCashCollected(ctx context.Context, riderID uuid.U
 	serviceType := models.ServiceTypeTrip
 	method := models.PaymentMethodEfectivo
 	tx := models.Transaction{
-		ID:            uuid.New(),
+		ID:            id.New(),
 		TripID:        &tripID,
 		MovementType:  string(models.MovementTypeTripCash),
 		ServiceType:   &serviceType,
@@ -218,7 +219,7 @@ func (f *financeApp) RequestWithdrawal(ctx context.Context, riderID uuid.UUID) (
 	balance := balanceRec.Amount
 
 	tx := models.Transaction{
-		ID:           uuid.New(),
+		ID:           id.New(),
 		MovementType: string(models.MovementTypeWithdraw),
 		Currency:     models.CurrencyVES,
 		CreatedAt:    time.Now(),

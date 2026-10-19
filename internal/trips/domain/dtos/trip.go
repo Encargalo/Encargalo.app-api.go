@@ -15,8 +15,8 @@ var tripValidate = validator.New()
 // Pickup, dropoff y fare salen de la cotización; no se recalculan.
 type CreateTripRequest struct {
 	// ID es la llave de idempotencia: un reintento con el mismo id devuelve el viaje ya creado.
-	ID                uuid.UUID `json:"id" validate:"omitempty,uuid4" example:"3fa85f64-5717-4562-b3fc-2c963f66afa6"`
-	QuoteID           uuid.UUID `json:"quote_id" validate:"required,uuid4"`
+	ID                uuid.UUID `json:"id" validate:"omitempty,uuid" example:"3fa85f64-5717-4562-b3fc-2c963f66afa6"`
+	QuoteID           uuid.UUID `json:"quote_id" validate:"required,uuid"`
 	MethodPayment     string    `json:"method_payment" validate:"required,oneof=PagoMovil Balance Efectivo" example:"PagoMovil"`
 	PaymentProofImage string    `json:"payment_proof_image" validate:"max=7000000" example:"data:image/jpeg;base64,/9j/4AAQ..."`
 	// BalanceAmountBs y CashAmountBs parten la tarifa. Cero en ambos deja el
@@ -139,5 +139,7 @@ type FareEstimateResponse struct {
 	DurationMin    int64     `json:"duration_min"`
 	FareUSD        float64   `json:"fare_usd"`
 	FareBs         float64   `json:"fare_bs"`
-	ExpiresAt      time.Time `json:"expires_at"`
+	// BcvRate es la tasa congelada en la cotización; fare_bs = fare_usd * BcvRate.
+	BcvRate   float64   `json:"bcv_rate"`
+	ExpiresAt time.Time `json:"expires_at"`
 }

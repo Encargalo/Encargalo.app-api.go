@@ -15,8 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func strPtr(s string) *string { return &s }
-
 func TestGetOwnProfile_ReturnsDriverAndVehicleOnly(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
 	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
@@ -25,14 +23,14 @@ func TestGetOwnProfile_ReturnsDriverAndVehicleOnly(t *testing.T) {
 	repo.On("GetAccountBasics", mock.Anything, userID).Return("Ada", "Lovelace", "0414", "a@b.c", nil)
 	repo.On("GetByUserID", mock.Anything, userID).Return(&models.RiderProfile{
 		UserID:          userID,
-		ProfilePhotoURL: strPtr("https://img/profile.jpg"),
-		VehicleType:     strPtr("moto"),
-		VehiclePlate:    strPtr("ABCD123"),
-		VehicleBrand:    strPtr("Yamaha"),
-		VehicleModel:    strPtr("FZ"),
-		VehicleColor:    strPtr("Amarillo"),
-		IDPhotoURL:      strPtr("https://img/id.jpg"),
-		Notes:           strPtr("interno"),
+		ProfilePhotoURL: new("https://img/profile.jpg"),
+		VehicleType:     new("moto"),
+		VehiclePlate:    new("ABCD123"),
+		VehicleBrand:    new("Yamaha"),
+		VehicleModel:    new("FZ"),
+		VehicleColor:    new("Amarillo"),
+		IDPhotoURL:      new("https://img/id.jpg"),
+		Notes:           new("interno"),
 	}, nil)
 
 	resp, err := svc.GetOwnProfile(context.Background(), userID)
@@ -71,7 +69,7 @@ func TestGetOwnProfile_BikeWithoutPlate(t *testing.T) {
 
 	userID := uuid.New()
 	repo.On("GetAccountBasics", mock.Anything, userID).Return("Ada", "Lovelace", "0414", "a@b.c", nil)
-	repo.On("GetByUserID", mock.Anything, userID).Return(&models.RiderProfile{UserID: userID, VehicleType: strPtr(models.VehicleTypeBike)}, nil)
+	repo.On("GetByUserID", mock.Anything, userID).Return(&models.RiderProfile{UserID: userID, VehicleType: new(models.VehicleTypeBike)}, nil)
 
 	resp, err := svc.GetOwnProfile(context.Background(), userID)
 

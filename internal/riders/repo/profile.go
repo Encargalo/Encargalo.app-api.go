@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"Encargalo.app-api.go/internal/pkg/id"
 	"Encargalo.app-api.go/internal/riders/domain/models"
 	"Encargalo.app-api.go/internal/riders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
@@ -206,9 +207,9 @@ func (r *riderProfileRepo) EnsureRiderRole(ctx context.Context, userID uuid.UUID
 		return nil
 	}
 	_, err = r.db.NewRaw(`
-		INSERT INTO users.user_roles (user_id, role_id, enabled)
-		SELECT ?, id, TRUE FROM users.roles WHERE name = 'Rider'
-	`, userID).Exec(ctx)
+		INSERT INTO users.user_roles (id, user_id, role_id, enabled)
+		SELECT ?, ?, id, TRUE FROM users.roles WHERE name = 'Rider'
+	`, id.New(), userID).Exec(ctx)
 	if err != nil {
 		slog.Error("rider EnsureRiderRole insert failed", "userID", userID, "error", err)
 		return errcustom.Unexpected(err)

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"Encargalo.app-api.go/internal/pkg/id"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	shopsmodels "Encargalo.app-api.go/internal/shops/domain/models/shops"
 	"Encargalo.app-api.go/internal/shops/domain/ports"
@@ -72,10 +73,10 @@ func (r *staffShopRepo) HasAnyOwnerRole(ctx context.Context, userID uuid.UUID) (
 // shop_id), así que una misma cuenta puede ser Owner de varios shops.
 func (r *staffShopRepo) EnsureOwnerRole(ctx context.Context, userID, shopID uuid.UUID) error {
 	_, err := r.db.NewRaw(`
-		INSERT INTO users.user_roles (user_id, role_id, shop_id, enabled)
-		SELECT ?, id, ?, TRUE FROM users.roles WHERE name = 'Owner'
+		INSERT INTO users.user_roles (id, user_id, role_id, shop_id, enabled)
+		SELECT ?, ?, id, ?, TRUE FROM users.roles WHERE name = 'Owner'
 		ON CONFLICT (user_id, role_id, shop_id) DO UPDATE SET enabled = TRUE
-	`, userID, shopID).Exec(ctx)
+	`, id.New(), userID, shopID).Exec(ctx)
 	if err != nil {
 		slog.Error("staffShop EnsureOwnerRole failed", "userID", userID, "shopID", shopID, "error", err)
 		return errcustom.Unexpected(err)
@@ -84,6 +85,7 @@ func (r *staffShopRepo) EnsureOwnerRole(ctx context.Context, userID, shopID uuid
 }
 
 func (r *staffShopRepo) CreateDraftShop(ctx context.Context, shop *shopsmodels.Shop) error {
+	shop.ID = id.Ensure(shop.ID)
 	shop.Status = shopsmodels.ShopStatusDraft
 	if _, err := r.db.NewInsert().Model(shop).Exec(ctx); err != nil {
 		slog.Error("staffShop CreateDraftShop failed", "error", err)

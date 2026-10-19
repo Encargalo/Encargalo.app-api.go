@@ -8,7 +8,7 @@ import (
 )
 
 type CreateQuote struct {
-	ShopID     uuid.UUID          `json:"shop_id" validate:"required,uuid4"`
+	ShopID     uuid.UUID          `json:"shop_id" validate:"required,uuid"`
 	CustomerID uuid.UUID          `json:"customer_id" swaggerignore:"true"`
 	Address    Address            `json:"address" validate:"required"`
 	Items      []CreateItemsOrder `json:"items" validate:"required,dive,required"`

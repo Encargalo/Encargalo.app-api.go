@@ -1,6 +1,7 @@
 package app
 
 import (
+	"Encargalo.app-api.go/internal/pkg/id"
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
@@ -532,7 +533,7 @@ func (p *productsApp) RegisterCategory(ctx context.Context, category dtos.Regist
 			}
 			seen[input.Name] = struct{}{}
 			flavors = append(flavors, models.FlavorEntry{
-				ID:          uuid.New(),
+				ID:          id.New(),
 				Name:        input.Name,
 				Description: input.Description,
 				Available:   models.BoolPtr(true),
