@@ -1,5 +1,24 @@
 # Changelog
 
+## [2.5.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.4.0...v2.5.0) (2026-10-19)
+
+
+### Features
+
+* **trips:** exponer bcv_rate en la cotización de viaje ([f89bb5a](https://github.com/Encargalo/Encargalo.app-api.go/commit/f89bb5aeff9749427dc5d0c1716645edd586499a))
+
+
+### Performance
+
+* **db:** generar las PK nuevas como UUID v7 ([4d241ac](https://github.com/Encargalo/Encargalo.app-api.go/commit/4d241ac311bc60057dd869516e7386b2e08c60ff))
+* **db:** generar las PK nuevas como UUID v7 ([917e519](https://github.com/Encargalo/Encargalo.app-api.go/commit/917e51998fb757a076f7d63e1d7d1fcbc4e34f89))
+
+
+### Documentation
+
+* **swagger:** regenerar los docs y hacer que swag init termine ([bffe978](https://github.com/Encargalo/Encargalo.app-api.go/commit/bffe97844246ea700c1bcb5f156c2c7374c76ac9))
+* **swagger:** regenerar los docs y hacer que swag init termine ([a7f4bb4](https://github.com/Encargalo/Encargalo.app-api.go/commit/a7f4bb4ab38f29f016ac6c9cccf20bcf124bd3a2))
+
 ## [2.4.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.3.0...v2.4.0) (2026-10-11)
 
 
