@@ -18,6 +18,14 @@ const (
 	signInRateLimitWindow = time.Minute
 )
 
+// identify dice si un teléfono es rider sin OTP, así que se limita más que el sign-in para frenar la enumeración.
+const (
+	identifyRateLimitCount       = 5
+	identifyRateLimitWindow      = time.Minute
+	identifyDailyRateLimitCount  = 100
+	identifyDailyRateLimitWindow = 24 * time.Hour
+)
+
 type AuthGroup interface {
 	Resource(g *echo.Echo)
 }
@@ -44,7 +52,10 @@ func (a *authGroup) Resource(g *echo.Echo) {
 	group.POST("/sign-in/users", a.handAuth.SignInCustomer, rateLimit("users"), a.requestInfo.GetRequestInfo)
 	group.POST("/sign-in/employees", a.handAuth.SignInEmployee, rateLimit("employees"), a.requestInfo.GetRequestInfo)
 	group.POST("/sign-in/riders", a.handAuth.SignInRider, rateLimit("riders"), a.requestInfo.GetRequestInfo)
-	group.POST("/riders/identify", a.handAuth.IdentifyRiderPhone, rateLimit("riders-identify"))
+	group.POST("/riders/identify", a.handAuth.IdentifyRiderPhone,
+		a.rateLimiter.LimitByIP("auth:riders-identify:day", identifyDailyRateLimitCount, identifyDailyRateLimitWindow),
+		a.rateLimiter.LimitByIP("auth:riders-identify:minute", identifyRateLimitCount, identifyRateLimitWindow),
+	)
 	group.POST("/sign-in/staff", a.handAuth.SignInStaff, rateLimit("staff"), a.requestInfo.GetRequestInfo)
 	group.POST("/sign-in/google", a.handAuth.SignInGoogle, rateLimit("google"), a.requestInfo.GetRequestInfo)
 	group.DELETE("/logout", a.handAuth.Logout, a.middleAuth.Auth, a.middleAuth.Require(models.Customer, models.OrderManager, models.Owner, models.Rider, models.Staff))
