@@ -1,4 +1,18 @@
 definitions:
+  Encargalo_app-api_go_internal_auth_handler_request.IdentifyRiderPhoneRequest:
+    properties:
+      phone_number:
+        example: "+573001112233"
+        type: string
+    required:
+    - phone_number
+    type: object
+  Encargalo_app-api_go_internal_auth_handler_request.IdentifyRiderPhoneResponse:
+    properties:
+      next:
+        example: sign_in
+        type: string
+    type: object
   Encargalo_app-api_go_internal_auth_handler_request.SignInGoogleRequest:
     properties:
       id_token:
@@ -1121,6 +1135,108 @@ definitions:
       user_id:
         type: string
     type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.RiderApplicationRequest:
+    properties:
+      carnet_photo:
+        maxLength: 7000000
+        type: string
+      circulation_card:
+        maxLength: 7000000
+        type: string
+      id_photo:
+        maxLength: 7000000
+        type: string
+      license_photo:
+        maxLength: 7000000
+        type: string
+      profile_photo:
+        maxLength: 7000000
+        type: string
+      vehicle_brand:
+        example: Yamaha
+        maxLength: 50
+        type: string
+      vehicle_color:
+        example: Negro
+        maxLength: 30
+        type: string
+      vehicle_model:
+        example: FZ
+        maxLength: 50
+        type: string
+      vehicle_photo_1:
+        maxLength: 7000000
+        type: string
+      vehicle_photo_2:
+        maxLength: 7000000
+        type: string
+      vehicle_photo_3:
+        maxLength: 7000000
+        type: string
+      vehicle_photo_4:
+        maxLength: 7000000
+        type: string
+      vehicle_plate:
+        example: AB123CD
+        maxLength: 15
+        type: string
+      vehicle_type:
+        enum:
+        - moto
+        - bici
+        - carro
+        example: moto
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.RiderApplicationResponse:
+    properties:
+      can_edit:
+        type: boolean
+      carnet_photo_url:
+        type: string
+      circulation_card_url:
+        type: string
+      completion:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderCompletionDTO'
+      id_photo_url:
+        type: string
+      license_photo_url:
+        type: string
+      profile_photo_url:
+        type: string
+      review_reason:
+        type: string
+      status:
+        enum:
+        - draft
+        - pending_review
+        - changes_requested
+        - rejected
+        - active
+        - suspended
+        example: draft
+        type: string
+      submitted_at:
+        type: string
+      vehicle_brand:
+        type: string
+      vehicle_color:
+        type: string
+      vehicle_model:
+        type: string
+      vehicle_photo_1_url:
+        type: string
+      vehicle_photo_2_url:
+        type: string
+      vehicle_photo_3_url:
+        type: string
+      vehicle_photo_4_url:
+        type: string
+      vehicle_plate:
+        type: string
+      vehicle_type:
+        type: string
+    type: object
   Encargalo_app-api_go_internal_riders_domain_dtos.RiderCompletionDTO:
     properties:
       filled_count:
@@ -1164,7 +1280,13 @@ definitions:
         type: string
       profile_photo_url:
         type: string
+      review_reason:
+        type: string
+      reviewed_at:
+        type: string
       status:
+        type: string
+      submitted_at:
         type: string
       sur_name:
         type: string
@@ -2428,6 +2550,48 @@ paths:
       security:
       - SessionCookie: []
       summary: Cerrar sesión
+      tags:
+      - Auth
+  /auth/riders/identify:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Recibe solo el teléfono y dice si la app debe pedir la contraseña, abrir el formulario de solicitud o el registro.
+        No crea sesión ni devuelve datos de la cuenta. `sign_in` sigue en POST /auth/sign-in/riders.
+      parameters:
+      - description: Teléfono
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_auth_handler_request.IdentifyRiderPhoneRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_auth_handler_request.IdentifyRiderPhoneResponse'
+        "400":
+          description: Solicitud inválida (validación o JSON incorrecto)
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "429":
+          description: Demasiados intentos, intenta de nuevo más tarde
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error inesperado del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Identificar el siguiente paso de un teléfono en la app de riders
       tags:
       - Auth
   /auth/sign-in/employees:
@@ -4509,6 +4673,137 @@ paths:
       summary: Productos más vendidos cerca del usuario
       tags:
       - Products
+  /riders/application:
+    get:
+      description: |-
+        Devuelve la solicitud del customer autenticado: estado, datos del vehículo, fotos subidas y `completion` con lo que falta. Si aún no tiene solicitud, responde una vacía en `draft`.
+        `can_edit` indica si puede guardar y enviar (`draft` o `changes_requested`). `review_reason` trae el motivo cuando el staff rechaza o pide cambios.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderApplicationResponse'
+        "401":
+          description: Sesión no encontrada o inválida
+          schema:
+            type: string
+        "403":
+          description: Acceso denegado
+          schema:
+            type: string
+        "409":
+          description: La cuenta ya es rider (already_rider)
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Ver la propia solicitud para ser conductor
+      tags:
+      - Riders Application
+    put:
+      consumes:
+      - application/json
+      description: |-
+        Crea o actualiza parcialmente la solicitud del customer autenticado: los campos omitidos no se tocan. Las fotos van como data-URL/base64 y se suben a Cloudinary.
+        No la envía a revisión, no asigna el rol Rider y no cambia el estado. Solo se puede guardar en `draft` o `changes_requested`.
+        Límites: body de 16MB, cada foto de hasta 7MB en base64 y 30 guardados por hora por cuenta. Una foto reemplazada se borra de Cloudinary.
+      parameters:
+      - description: Campos parciales
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderApplicationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderApplicationResponse'
+        "400":
+          description: 'Payload inválido: vehicle_type fuera de moto|bici|carro, texto
+            o foto demasiado largos'
+          schema:
+            type: string
+        "401":
+          description: Sesión no encontrada o inválida
+          schema:
+            type: string
+        "403":
+          description: Acceso denegado
+          schema:
+            type: string
+        "409":
+          description: La cuenta ya es rider (already_rider) o la solicitud no se
+            puede modificar (rider_application_locked)
+          schema:
+            type: string
+        "413":
+          description: El body supera 16MB
+          schema:
+            type: string
+        "422":
+          description: No se pudo subir una imagen
+          schema:
+            type: string
+        "429":
+          description: Demasiados guardados seguidos
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Guardar la propia solicitud para ser conductor
+      tags:
+      - Riders Application
+  /riders/application/submit:
+    post:
+      description: |-
+        Pasa la solicitud a `pending_review` para que el staff la revise. Exige que esté completa; si no, responde 422 con `missing`.
+        No asigna el rol Rider: `POST /auth/sign-in/riders` sigue rechazando la cuenta hasta que el staff apruebe.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderApplicationResponse'
+        "401":
+          description: Sesión no encontrada o inválida
+          schema:
+            type: string
+        "403":
+          description: Acceso denegado
+          schema:
+            type: string
+        "409":
+          description: La cuenta ya es rider (already_rider) o la solicitud no se
+            puede enviar (rider_application_locked)
+          schema:
+            type: string
+        "422":
+          description: Solicitud incompleta
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.ActivateErrorResponse'
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Enviar a revisión la propia solicitud para ser conductor
+      tags:
+      - Riders Application
   /riders/balance:
     get:
       description: Retorna balance_bs y balance_usd (tasa BCV vigente en bcv_rate),
@@ -4781,11 +5076,19 @@ paths:
       - Riders Staff Finance
   /riders/staff/profiles:
     get:
-      description: Lista perfiles por status (default draft). Incluye completion para
-        follow-up.
+      description: 'Lista perfiles por status. Sin status trae `pending_review`: las
+        solicitudes que los conductores enviaron desde la app. Incluye completion
+        para follow-up.'
       parameters:
-      - default: draft
-        description: draft|active|suspended
+      - default: pending_review
+        description: Estado del expediente
+        enum:
+        - draft
+        - pending_review
+        - changes_requested
+        - rejected
+        - active
+        - suspended
         in: query
         name: status
         type: string
@@ -4798,6 +5101,10 @@ paths:
             items:
               $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse'
             type: array
+        "400":
+          description: status inválido
+          schema:
+            type: string
       security:
       - SessionCookie: []
       summary: Listar expedientes rider
@@ -6238,11 +6545,11 @@ paths:
         o Efectivo (el pasajero paga al rider, searching). También dos métodos con
         balance_amount_bs y/o cash_amount_bs: el resto lo cubre el method_payment.
         Los tres juntos se rechazan. Si hay Pago Móvil, el viaje no se oferta hasta
-        aprobar el comprobante. id (UUID, opcional) es la llave de idempotencia:
-        la app lo genera una vez por intento y lo reenvía igual si la respuesta se
-        pierde; un reintento con el mismo id devuelve el viaje ya creado (201, en
-        su estado actual) sin volver a cobrar, subir el comprobante ni ofertarlo.
-        Si el servidor respondió un error, el siguiente intento debe usar un id nuevo.'
+        aprobar el comprobante. id (UUID, opcional) es la llave de idempotencia: la
+        app lo genera una vez por intento y lo reenvía igual si la respuesta se pierde;
+        un reintento con el mismo id devuelve el viaje ya creado (201, en su estado
+        actual) sin volver a cobrar, subir el comprobante ni ofertarlo. Si el servidor
+        respondió un error, el siguiente intento debe usar un id nuevo.'
       parameters:
       - description: quote_id y method_payment (PagoMovil con comprobante, Balance,
           o Efectivo)

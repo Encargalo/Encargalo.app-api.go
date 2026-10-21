@@ -47,6 +47,8 @@ var (
 	ErrFinanceNotesRequired     = errors.New("notes es requerido")
 	ErrRiderProfileIncomplete   = errors.New("expediente de rider incompleto")
 	ErrRiderNotActive           = errors.New("cuenta de rider no activa")
+	ErrRiderApplicationLocked   = errors.New("la solicitud de rider no se puede modificar en su estado actual")
+	ErrAlreadyRider             = errors.New("la cuenta ya es rider")
 	ErrInvalidDateRange         = errors.New("rango de fechas inválido")
 	ErrUnknownETLEntity         = errors.New("entidad ETL desconocida")
 	ErrTurboOutOfCoverage       = errors.New("la dirección está fuera de la cobertura Turbo (2 km)")

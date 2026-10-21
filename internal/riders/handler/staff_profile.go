@@ -59,18 +59,17 @@ func (h *staffRiderHandler) FindCandidate(c echo.Context) error {
 
 // ListProfiles godoc
 // @Summary      Listar expedientes rider
-// @Description  Lista perfiles por status (default draft). Incluye completion para follow-up.
+// @Description  Lista perfiles por status. Sin status trae `pending_review`: las solicitudes que los conductores enviaron desde la app. Incluye completion para follow-up.
 // @Tags         Riders Staff
 // @Produce      json
 // @Security     SessionCookie
-// @Param        status  query  string  false  "draft|active|suspended"  default(draft)
+// @Param        status  query  string  false  "Estado del expediente"  Enums(draft, pending_review, changes_requested, rejected, active, suspended)  default(pending_review)
 // @Success      200  {array}  dtos.RiderProfileResponse
+// @Failure      400  {string}  string  "status inválido"
 // @Router       /riders/staff/profiles [get]
 func (h *staffRiderHandler) ListProfiles(c echo.Context) error {
 	status := models.RiderProfileStatus(strings.TrimSpace(c.QueryParam("status")))
-	switch status {
-	case "", models.RiderProfileDraft, models.RiderProfileActive, models.RiderProfileSuspended:
-	default:
+	if status != "" && !models.ValidRiderProfileStatus(status) {
 		return echo.NewHTTPError(http.StatusBadRequest, "status inválido")
 	}
 	list, err := h.svc.ListProfiles(c.Request().Context(), status)
