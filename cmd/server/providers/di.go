@@ -201,6 +201,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(handRiders.New)
 	_ = Container.Provide(handRiders.NewFinanceHandler)
 	_ = Container.Provide(handRiders.NewRiderProfileHandler)
+	_ = Container.Provide(handRiders.NewRiderApplicationHandler)
 	_ = Container.Provide(handRiders.NewStaffRiderHandler)
 	_ = Container.Provide(handRiders.NewStaffFinanceHandler)
 	_ = Container.Provide(repoRiders.NewRidersRepo)

@@ -99,7 +99,7 @@ func (a *riderProfileApp) GetOwnProfile(ctx context.Context, userID uuid.UUID) (
 
 func (a *riderProfileApp) ListProfiles(ctx context.Context, status models.RiderProfileStatus) ([]dtos.RiderProfileResponse, error) {
 	if status == "" {
-		status = models.RiderProfileDraft
+		status = models.RiderProfilePendingReview
 	}
 	list, err := a.repo.ListByStatus(ctx, status)
 	if err != nil {
@@ -140,6 +140,29 @@ func (a *riderProfileApp) UpsertProfile(ctx context.Context, userID uuid.UUID, r
 		}
 	}
 
+	photos, err := a.applyChanges(ctx, profile, req)
+	if err != nil {
+		return dtos.RiderProfileResponse{}, err
+	}
+
+	// Para upsert parcial vía COALESCE en SQL: enviamos solo campos tocados.
+	// Si el perfil ya existía, reescribimos todo el struct (valores actuales + cambios).
+	if err := a.repo.Upsert(ctx, profile); err != nil {
+		a.deleteImages(ctx, profile.UserID, photos.uploaded)
+		return dtos.RiderProfileResponse{}, err
+	}
+	a.deleteImages(ctx, profile.UserID, photos.replaced)
+	return a.GetProfile(ctx, userID)
+}
+
+// photoChanges son las URLs que applyChanges subió y las que quedan reemplazadas al guardar.
+type photoChanges struct {
+	uploaded []string
+	replaced []string
+}
+
+// applyChanges copia al perfil los campos enviados y sube a Cloudinary las fotos nuevas.
+func (a *riderProfileApp) applyChanges(ctx context.Context, profile *models.RiderProfile, req dtos.UpsertRiderProfileRequest) (photoChanges, error) {
 	if req.VehicleType != nil {
 		v := strings.TrimSpace(*req.VehicleType)
 		profile.VehicleType = &v
@@ -186,33 +209,52 @@ func (a *riderProfileApp) UpsertProfile(ctx context.Context, userID uuid.UUID, r
 	addJob(req.VehiclePhoto3, &profile.VehiclePhoto3URL)
 	addJob(req.VehiclePhoto4, &profile.VehiclePhoto4URL)
 
-	if len(jobs) > 0 {
-		urls := make([]string, len(jobs))
-		g, gctx := errgroup.WithContext(ctx)
-		for i := range jobs {
-			g.Go(func() error {
-				url, err := a.upload(gctx, jobs[i].raw)
-				if err != nil {
-					return err
-				}
-				urls[i] = url
-				return nil
-			})
-		}
-		if err := g.Wait(); err != nil {
-			return dtos.RiderProfileResponse{}, err
-		}
-		for i := range jobs {
-			*jobs[i].dst = &urls[i]
-		}
+	var changes photoChanges
+	if len(jobs) == 0 {
+		return changes, nil
 	}
 
-	// Para upsert parcial vía COALESCE en SQL: enviamos solo campos tocados.
-	// Si el perfil ya existía, reescribimos todo el struct (valores actuales + cambios).
-	if err := a.repo.Upsert(ctx, profile); err != nil {
-		return dtos.RiderProfileResponse{}, err
+	urls := make([]string, len(jobs))
+	g, gctx := errgroup.WithContext(ctx)
+	for i := range jobs {
+		g.Go(func() error {
+			url, err := a.upload(gctx, jobs[i].raw)
+			if err != nil {
+				return err
+			}
+			urls[i] = url
+			return nil
+		})
 	}
-	return a.GetProfile(ctx, userID)
+	err := g.Wait()
+	for i := range jobs {
+		if urls[i] != "" {
+			changes.uploaded = append(changes.uploaded, urls[i])
+		}
+	}
+	if err != nil {
+		a.deleteImages(ctx, profile.UserID, changes.uploaded)
+		return photoChanges{}, err
+	}
+	for i := range jobs {
+		if strSet(*jobs[i].dst) {
+			changes.replaced = append(changes.replaced, **jobs[i].dst)
+		}
+		*jobs[i].dst = &urls[i]
+	}
+	return changes, nil
+}
+
+// deleteImages es best-effort: un asset que no se pudo borrar no debe fallar la operación.
+func (a *riderProfileApp) deleteImages(ctx context.Context, userID uuid.UUID, urls []string) {
+	if a.uploader == nil {
+		return
+	}
+	for _, url := range urls {
+		if err := a.uploader.DeleteImage(ctx, url); err != nil {
+			slog.Warn("rider deleteImages cloudinary", "userID", userID, "url", url, "error", err)
+		}
+	}
 }
 
 func (a *riderProfileApp) DeletePhoto(ctx context.Context, userID uuid.UUID, field string) (dtos.RiderProfileResponse, error) {
@@ -353,5 +395,14 @@ func (a *riderProfileApp) toResponse(
 		s := p.ActivatedAt.Format(time.RFC3339)
 		out.ActivatedAt = &s
 	}
+	if p.SubmittedAt != nil {
+		s := p.SubmittedAt.Format(time.RFC3339)
+		out.SubmittedAt = &s
+	}
+	if p.ReviewedAt != nil {
+		s := p.ReviewedAt.Format(time.RFC3339)
+		out.ReviewedAt = &s
+	}
+	out.ReviewReason = p.ReviewReason
 	return out
 }

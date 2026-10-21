@@ -73,15 +73,15 @@ func TestGetProfile_AccountBasicsError(t *testing.T) {
 	assert.ErrorIs(t, err, errcustom.ErrUnexpectedError)
 }
 
-func TestListProfiles_DefaultsToDraftAndSkipsBrokenAccounts(t *testing.T) {
+func TestListProfiles_DefaultsToPendingReviewAndSkipsBrokenAccounts(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
 	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
 
 	ok := uuid.New()
 	broken := uuid.New()
-	repo.On("ListByStatus", mock.Anything, models.RiderProfileDraft).Return([]models.RiderProfile{
-		{UserID: ok, Status: models.RiderProfileDraft},
-		{UserID: broken, Status: models.RiderProfileDraft},
+	repo.On("ListByStatus", mock.Anything, models.RiderProfilePendingReview).Return([]models.RiderProfile{
+		{UserID: ok, Status: models.RiderProfilePendingReview},
+		{UserID: broken, Status: models.RiderProfilePendingReview},
 	}, nil)
 	repo.On("GetAccountBasics", mock.Anything, ok).Return("Ada", "Lovelace", "0414", "a@b.c", nil)
 	repo.On("HasRiderRole", mock.Anything, ok).Return(true, nil)
@@ -154,6 +154,29 @@ func TestUpsertProfile_UploadsPhotosConcurrently(t *testing.T) {
 
 	photo := "base64photo"
 	_, err := svc.UpsertProfile(context.Background(), userID, dtos.UpsertRiderProfileRequest{ProfilePhoto: &photo})
+
+	require.NoError(t, err)
+}
+
+func TestUpsertProfile_ReplacedPhotoIsDeletedAfterSave(t *testing.T) {
+	repo := mocksriders.NewRiderProfileRepo(t)
+	uploader_ := mockuploadimage.NewUploadImage(t)
+	svc := app.NewRiderProfileApp(repo, uploader_)
+
+	userID := uuid.New()
+	repo.On("GetAccountBasics", mock.Anything, userID).Return("Ada", "Lovelace", "0414", "a@b.c", nil).Twice()
+	repo.On("GetByUserID", mock.Anything, userID).Return(&models.RiderProfile{
+		UserID:          userID,
+		Status:          models.RiderProfileActive,
+		ProfilePhotoURL: new("https://cdn/old.jpg"),
+	}, nil).Once()
+	uploader_.On("UploadImage", mock.Anything, "base64photo").Return(&uploader.UploadResult{SecureURL: "https://cdn/new.jpg"}, nil)
+	repo.On("Upsert", mock.Anything, mock.Anything).Return(nil)
+	uploader_.On("DeleteImage", mock.Anything, "https://cdn/old.jpg").Return(nil).Once()
+	repo.On("GetByUserID", mock.Anything, userID).Return(&models.RiderProfile{UserID: userID, Status: models.RiderProfileActive}, nil).Once()
+	repo.On("HasRiderRole", mock.Anything, userID).Return(true, nil)
+
+	_, err := svc.UpsertProfile(context.Background(), userID, dtos.UpsertRiderProfileRequest{ProfilePhoto: new("base64photo")})
 
 	require.NoError(t, err)
 }

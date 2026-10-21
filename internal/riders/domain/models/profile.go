@@ -1,6 +1,7 @@
 package models
 
 import (
+	"slices"
 	"strings"
 	"time"
 
@@ -11,11 +12,16 @@ import (
 type RiderProfileStatus string
 
 const (
-	RiderProfileDraft     RiderProfileStatus = "draft"
-	RiderProfileActive    RiderProfileStatus = "active"
-	RiderProfileSuspended RiderProfileStatus = "suspended"
+	RiderProfileDraft            RiderProfileStatus = "draft"
+	RiderProfilePendingReview    RiderProfileStatus = "pending_review"
+	RiderProfileChangesRequested RiderProfileStatus = "changes_requested"
+	RiderProfileRejected         RiderProfileStatus = "rejected"
+	RiderProfileActive           RiderProfileStatus = "active"
+	RiderProfileSuspended        RiderProfileStatus = "suspended"
 
+	VehicleTypeMoto = "moto"
 	VehicleTypeBike = "bici"
+	VehicleTypeCar  = "carro"
 )
 
 type RiderProfile struct {
@@ -41,8 +47,28 @@ type RiderProfile struct {
 	LastContactedAt    *time.Time         `bun:"last_contacted_at,nullzero"`
 	ActivatedAt        *time.Time         `bun:"activated_at,nullzero"`
 	ActivatedBy        *uuid.UUID         `bun:"activated_by,nullzero,type:uuid"`
+	SubmittedAt        *time.Time         `bun:"submitted_at,nullzero"`
+	ReviewedAt         *time.Time         `bun:"reviewed_at,nullzero"`
+	ReviewedBy         *uuid.UUID         `bun:"reviewed_by,nullzero,type:uuid"`
+	ReviewReason       *string            `bun:"review_reason,nullzero"`
 	CreatedAt          time.Time          `bun:"created_at,nullzero"`
 	UpdatedAt          time.Time          `bun:"updated_at,nullzero"`
+}
+
+// ApplicantEditableStatuses son los estados en que el propio solicitante puede editar o enviar su solicitud.
+var ApplicantEditableStatuses = []RiderProfileStatus{RiderProfileDraft, RiderProfileChangesRequested}
+
+func ValidRiderProfileStatus(status RiderProfileStatus) bool {
+	switch status {
+	case RiderProfileDraft, RiderProfilePendingReview, RiderProfileChangesRequested,
+		RiderProfileRejected, RiderProfileActive, RiderProfileSuspended:
+		return true
+	}
+	return false
+}
+
+func (p *RiderProfile) ApplicantCanEdit() bool {
+	return slices.Contains(ApplicantEditableStatuses, p.Status)
 }
 
 type RiderCompletion struct {

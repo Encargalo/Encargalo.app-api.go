@@ -47,6 +47,67 @@
                 }
             }
         },
+        "/auth/riders/identify": {
+            "post": {
+                "description": "Recibe solo el teléfono y dice si la app debe pedir la contraseña, abrir el formulario de solicitud o el registro.\nNo crea sesión ni devuelve datos de la cuenta. `sign_in` sigue en POST /auth/sign-in/riders.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Identificar el siguiente paso de un teléfono en la app de riders",
+                "parameters": [
+                    {
+                        "description": "Teléfono",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_auth_handler_request.IdentifyRiderPhoneRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_auth_handler_request.IdentifyRiderPhoneResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Solicitud inválida (validación o JSON incorrecto)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Demasiados intentos, intenta de nuevo más tarde",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error inesperado del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/auth/sign-in/employees": {
             "post": {
                 "description": "Autentica a un empleado usando su número de teléfono y contraseña.\nSi las credenciales son correctas, se crea una sesión y se devuelve una cookie con un JWT.",
@@ -3105,6 +3166,195 @@
                 }
             }
         },
+        "/riders/application": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Devuelve la solicitud del customer autenticado: estado, datos del vehículo, fotos subidas y `completion` con lo que falta. Si aún no tiene solicitud, responde una vacía en `draft`.\n`can_edit` indica si puede guardar y enviar (`draft` o `changes_requested`). `review_reason` trae el motivo cuando el staff rechaza o pide cambios.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Application"
+                ],
+                "summary": "Ver la propia solicitud para ser conductor",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderApplicationResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Sesión no encontrada o inválida",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "La cuenta ya es rider (already_rider)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Crea o actualiza parcialmente la solicitud del customer autenticado: los campos omitidos no se tocan. Las fotos van como data-URL/base64 y se suben a Cloudinary.\nNo la envía a revisión, no asigna el rol Rider y no cambia el estado. Solo se puede guardar en `draft` o `changes_requested`.\nLímites: body de 16MB, cada foto de hasta 7MB en base64 y 30 guardados por hora por cuenta. Una foto reemplazada se borra de Cloudinary.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Application"
+                ],
+                "summary": "Guardar la propia solicitud para ser conductor",
+                "parameters": [
+                    {
+                        "description": "Campos parciales",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderApplicationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderApplicationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Payload inválido: vehicle_type fuera de moto|bici|carro, texto o foto demasiado largos",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Sesión no encontrada o inválida",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "La cuenta ya es rider (already_rider) o la solicitud no se puede modificar (rider_application_locked)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "413": {
+                        "description": "El body supera 16MB",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "No se pudo subir una imagen",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "429": {
+                        "description": "Demasiados guardados seguidos",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/application/submit": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Pasa la solicitud a `pending_review` para que el staff la revise. Exige que esté completa; si no, responde 422 con `missing`.\nNo asigna el rol Rider: `POST /auth/sign-in/riders` sigue rechazando la cuenta hasta que el staff apruebe.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Application"
+                ],
+                "summary": "Enviar a revisión la propia solicitud para ser conductor",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderApplicationResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Sesión no encontrada o inválida",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "La cuenta ya es rider (already_rider) o la solicitud no se puede enviar (rider_application_locked)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "Solicitud incompleta",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.ActivateErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/riders/balance": {
             "get": {
                 "security": [
@@ -3522,7 +3772,7 @@
                         "SessionCookie": []
                     }
                 ],
-                "description": "Lista perfiles por status (default draft). Incluye completion para follow-up.",
+                "description": "Lista perfiles por status. Sin status trae `pending_review`: las solicitudes que los conductores enviaron desde la app. Incluye completion para follow-up.",
                 "produces": [
                     "application/json"
                 ],
@@ -3532,9 +3782,17 @@
                 "summary": "Listar expedientes rider",
                 "parameters": [
                     {
+                        "enum": [
+                            "draft",
+                            "pending_review",
+                            "changes_requested",
+                            "rejected",
+                            "active",
+                            "suspended"
+                        ],
                         "type": "string",
-                        "default": "draft",
-                        "description": "draft|active|suspended",
+                        "default": "pending_review",
+                        "description": "Estado del expediente",
                         "name": "status",
                         "in": "query"
                     }
@@ -3547,6 +3805,12 @@
                             "items": {
                                 "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse"
                             }
+                        }
+                    },
+                    "400": {
+                        "description": "status inválido",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 }
@@ -7308,6 +7572,27 @@
         }
     },
     "definitions": {
+        "Encargalo_app-api_go_internal_auth_handler_request.IdentifyRiderPhoneRequest": {
+            "type": "object",
+            "required": [
+                "phone_number"
+            ],
+            "properties": {
+                "phone_number": {
+                    "type": "string",
+                    "example": "+573001112233"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_auth_handler_request.IdentifyRiderPhoneResponse": {
+            "type": "object",
+            "properties": {
+                "next": {
+                    "type": "string",
+                    "example": "sign_in"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_auth_handler_request.SignInGoogleRequest": {
             "type": "object",
             "required": [
@@ -8922,6 +9207,147 @@
                 }
             }
         },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.RiderApplicationRequest": {
+            "type": "object",
+            "properties": {
+                "carnet_photo": {
+                    "type": "string",
+                    "maxLength": 7000000
+                },
+                "circulation_card": {
+                    "type": "string",
+                    "maxLength": 7000000
+                },
+                "id_photo": {
+                    "type": "string",
+                    "maxLength": 7000000
+                },
+                "license_photo": {
+                    "type": "string",
+                    "maxLength": 7000000
+                },
+                "profile_photo": {
+                    "type": "string",
+                    "maxLength": 7000000
+                },
+                "vehicle_brand": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "example": "Yamaha"
+                },
+                "vehicle_color": {
+                    "type": "string",
+                    "maxLength": 30,
+                    "example": "Negro"
+                },
+                "vehicle_model": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "example": "FZ"
+                },
+                "vehicle_photo_1": {
+                    "type": "string",
+                    "maxLength": 7000000
+                },
+                "vehicle_photo_2": {
+                    "type": "string",
+                    "maxLength": 7000000
+                },
+                "vehicle_photo_3": {
+                    "type": "string",
+                    "maxLength": 7000000
+                },
+                "vehicle_photo_4": {
+                    "type": "string",
+                    "maxLength": 7000000
+                },
+                "vehicle_plate": {
+                    "type": "string",
+                    "maxLength": 15,
+                    "example": "AB123CD"
+                },
+                "vehicle_type": {
+                    "type": "string",
+                    "enum": [
+                        "moto",
+                        "bici",
+                        "carro"
+                    ],
+                    "example": "moto"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.RiderApplicationResponse": {
+            "type": "object",
+            "properties": {
+                "can_edit": {
+                    "type": "boolean"
+                },
+                "carnet_photo_url": {
+                    "type": "string"
+                },
+                "circulation_card_url": {
+                    "type": "string"
+                },
+                "completion": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderCompletionDTO"
+                },
+                "id_photo_url": {
+                    "type": "string"
+                },
+                "license_photo_url": {
+                    "type": "string"
+                },
+                "profile_photo_url": {
+                    "type": "string"
+                },
+                "review_reason": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "draft",
+                        "pending_review",
+                        "changes_requested",
+                        "rejected",
+                        "active",
+                        "suspended"
+                    ],
+                    "example": "draft"
+                },
+                "submitted_at": {
+                    "type": "string"
+                },
+                "vehicle_brand": {
+                    "type": "string"
+                },
+                "vehicle_color": {
+                    "type": "string"
+                },
+                "vehicle_model": {
+                    "type": "string"
+                },
+                "vehicle_photo_1_url": {
+                    "type": "string"
+                },
+                "vehicle_photo_2_url": {
+                    "type": "string"
+                },
+                "vehicle_photo_3_url": {
+                    "type": "string"
+                },
+                "vehicle_photo_4_url": {
+                    "type": "string"
+                },
+                "vehicle_plate": {
+                    "type": "string"
+                },
+                "vehicle_type": {
+                    "type": "string"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_riders_domain_dtos.RiderCompletionDTO": {
             "type": "object",
             "properties": {
@@ -8987,7 +9413,16 @@
                 "profile_photo_url": {
                     "type": "string"
                 },
+                "review_reason": {
+                    "type": "string"
+                },
+                "reviewed_at": {
+                    "type": "string"
+                },
                 "status": {
+                    "type": "string"
+                },
+                "submitted_at": {
                     "type": "string"
                 },
                 "sur_name": {
