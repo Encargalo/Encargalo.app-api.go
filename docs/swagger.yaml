@@ -1135,6 +1135,16 @@ definitions:
       user_id:
         type: string
     type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.ReviewApplicationRequest:
+    properties:
+      reason:
+        example: La foto de la licencia está borrosa, vuelve a tomarla con buena luz
+        maxLength: 500
+        minLength: 5
+        type: string
+    required:
+    - reason
+    type: object
   Encargalo_app-api_go_internal_riders_domain_dtos.RiderApplicationRequest:
     properties:
       carnet_photo:
@@ -5217,6 +5227,92 @@ paths:
       security:
       - SessionCookie: []
       summary: Eliminar foto del expediente rider
+      tags:
+      - Riders Staff
+  /riders/staff/profiles/{userId}/reject:
+    post:
+      consumes:
+      - application/json
+      description: 'Cierra una solicitud en `pending_review`: la deja en `rejected`
+        con el motivo, que el conductor ve en su app. No puede reenviarla y no se
+        le asigna el rol Rider.'
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Motivo que leerá el conductor
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.ReviewApplicationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse'
+        "400":
+          description: userId inválido o motivo faltante (rider_review_reason_required)
+          schema:
+            type: string
+        "404":
+          description: El expediente no existe
+          schema:
+            type: string
+        "409":
+          description: La solicitud no está en revisión (rider_application_not_pending)
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Rechazar una solicitud de rider
+      tags:
+      - Riders Staff
+  /riders/staff/profiles/{userId}/request-changes:
+    post:
+      consumes:
+      - application/json
+      description: 'Devuelve al conductor una solicitud en `pending_review` para que
+        la corrija: la deja en `changes_requested` con el motivo, que él ve en su
+        app y lo habilita a editar y reenviar. No asigna el rol Rider.'
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Motivo que leerá el conductor
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.ReviewApplicationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse'
+        "400":
+          description: userId inválido o motivo faltante (rider_review_reason_required)
+          schema:
+            type: string
+        "404":
+          description: El expediente no existe
+          schema:
+            type: string
+        "409":
+          description: La solicitud no está en revisión (rider_application_not_pending)
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Pedir cambios en una solicitud de rider
       tags:
       - Riders Staff
   /riders/staff/profiles/{userId}/suspend:

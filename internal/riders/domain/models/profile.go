@@ -58,6 +58,14 @@ type RiderProfile struct {
 // ApplicantEditableStatuses son los estados en que el propio solicitante puede editar o enviar su solicitud.
 var ApplicantEditableStatuses = []RiderProfileStatus{RiderProfileDraft, RiderProfileChangesRequested}
 
+// StaffReviewDecisions son los estados a los que el staff puede mover una solicitud enviada.
+var StaffReviewDecisions = []RiderProfileStatus{RiderProfileChangesRequested, RiderProfileRejected}
+
+// IsReviewDecision dice si el estado es una decisión válida del staff sobre una solicitud en revisión.
+func IsReviewDecision(status RiderProfileStatus) bool {
+	return slices.Contains(StaffReviewDecisions, status)
+}
+
 func ValidRiderProfileStatus(status RiderProfileStatus) bool {
 	switch status {
 	case RiderProfileDraft, RiderProfilePendingReview, RiderProfileChangesRequested,
@@ -69,6 +77,11 @@ func ValidRiderProfileStatus(status RiderProfileStatus) bool {
 
 func (p *RiderProfile) ApplicantCanEdit() bool {
 	return slices.Contains(ApplicantEditableStatuses, p.Status)
+}
+
+// AwaitsReview dice si la solicitud está enviada y esperando decisión del staff.
+func (p *RiderProfile) AwaitsReview() bool {
+	return p.Status == RiderProfilePendingReview
 }
 
 type RiderCompletion struct {

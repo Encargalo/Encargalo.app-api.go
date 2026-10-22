@@ -134,6 +134,7 @@ func (r *riderProfileRepo) SubmitApplication(ctx context.Context, userID uuid.UU
 		Model((*models.RiderProfile)(nil)).
 		Set("status = ?", models.RiderProfilePendingReview).
 		Set("submitted_at = ?", submittedAt).
+		Set("review_reason = NULL").
 		Set("updated_at = ?", submittedAt).
 		Where("user_id = ?", userID).
 		Where("status IN (?)", bun.In(models.ApplicantEditableStatuses)).
@@ -145,6 +146,36 @@ func (r *riderProfileRepo) SubmitApplication(ctx context.Context, userID uuid.UU
 	n, _ := res.RowsAffected()
 	if n == 0 {
 		return errcustom.ErrRiderApplicationLocked
+	}
+	return nil
+}
+
+// ReviewApplication solo mueve solicitudes en pending_review: si el staff decide dos veces,
+// o el conductor alcanzó a reenviar, la segunda decisión no pisa el estado.
+func (r *riderProfileRepo) ReviewApplication(
+	ctx context.Context,
+	userID, staffID uuid.UUID,
+	status models.RiderProfileStatus,
+	reason string,
+	reviewedAt time.Time,
+) error {
+	res, err := r.db.NewUpdate().
+		Model((*models.RiderProfile)(nil)).
+		Set("status = ?", status).
+		Set("review_reason = ?", reason).
+		Set("reviewed_at = ?", reviewedAt).
+		Set("reviewed_by = ?", staffID).
+		Set("updated_at = ?", reviewedAt).
+		Where("user_id = ?", userID).
+		Where("status = ?", models.RiderProfilePendingReview).
+		Exec(ctx)
+	if err != nil {
+		slog.Error("rider ReviewApplication failed", "userID", userID, "status", status, "error", err)
+		return errcustom.Unexpected(err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return errcustom.ErrRiderReviewNotPending
 	}
 	return nil
 }

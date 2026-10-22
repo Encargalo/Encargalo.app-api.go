@@ -285,6 +285,24 @@ func (_m *RiderProfileRepo) ListByStatus(ctx context.Context, status models.Ride
 	return r0, r1
 }
 
+// ReviewApplication provides a mock function with given fields: ctx, userID, staffID, status, reason, reviewedAt
+func (_m *RiderProfileRepo) ReviewApplication(ctx context.Context, userID uuid.UUID, staffID uuid.UUID, status models.RiderProfileStatus, reason string, reviewedAt time.Time) error {
+	ret := _m.Called(ctx, userID, staffID, status, reason, reviewedAt)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReviewApplication")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, models.RiderProfileStatus, string, time.Time) error); ok {
+		r0 = rf(ctx, userID, staffID, status, reason, reviewedAt)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // SaveApplication provides a mock function with given fields: ctx, profile
 func (_m *RiderProfileRepo) SaveApplication(ctx context.Context, profile *models.RiderProfile) error {
 	ret := _m.Called(ctx, profile)

@@ -23,6 +23,9 @@ type RiderProfileRepo interface {
 	SaveApplication(ctx context.Context, profile *models.RiderProfile) error
 	// SubmitApplication pasa la solicitud a pending_review; ErrRiderApplicationLocked si ya no es editable.
 	SubmitApplication(ctx context.Context, userID uuid.UUID, submittedAt time.Time) error
+	// ReviewApplication registra la decisión del staff (changes_requested o rejected) sobre una solicitud
+	// en pending_review; ErrRiderReviewNotPending si entre tanto dejó de estarlo.
+	ReviewApplication(ctx context.Context, userID, staffID uuid.UUID, status models.RiderProfileStatus, reason string, reviewedAt time.Time) error
 	HasRiderRole(ctx context.Context, userID uuid.UUID) (bool, error)
 	EnsureRiderRole(ctx context.Context, userID uuid.UUID) error
 	DisableRiderRole(ctx context.Context, userID uuid.UUID) error
@@ -50,6 +53,10 @@ type RiderProfileApp interface {
 	// SubmitOwnApplication envía a revisión una solicitud completa. No asigna el rol Rider.
 	// Con ErrRiderProfileIncomplete también devuelve la solicitud, para leer qué falta en Completion.
 	SubmitOwnApplication(ctx context.Context, userID uuid.UUID) (dtos.RiderApplicationResponse, error)
+	// RequestApplicationChanges devuelve la solicitud al conductor con un motivo para que la corrija y la reenvíe.
+	RequestApplicationChanges(ctx context.Context, userID, staffID uuid.UUID, reason string) (dtos.RiderProfileResponse, error)
+	// RejectApplication cierra la solicitud con un motivo. No asigna ni retira el rol Rider.
+	RejectApplication(ctx context.Context, userID, staffID uuid.UUID, reason string) (dtos.RiderProfileResponse, error)
 	// IsActiveRider used by auth SignInRider gate.
 	IsActiveRider(ctx context.Context, userID uuid.UUID) (bool, error)
 }

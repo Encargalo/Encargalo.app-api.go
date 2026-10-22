@@ -3997,6 +3997,134 @@ const docTemplate = `{
                 }
             }
         },
+        "/riders/staff/profiles/{userId}/reject": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Cierra una solicitud en ` + "`" + `pending_review` + "`" + `: la deja en ` + "`" + `rejected` + "`" + ` con el motivo, que el conductor ve en su app. No puede reenviarla y no se le asigna el rol Rider.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff"
+                ],
+                "summary": "Rechazar una solicitud de rider",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Motivo que leerá el conductor",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.ReviewApplicationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "userId inválido o motivo faltante (rider_review_reason_required)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "El expediente no existe",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "La solicitud no está en revisión (rider_application_not_pending)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/staff/profiles/{userId}/request-changes": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Devuelve al conductor una solicitud en ` + "`" + `pending_review` + "`" + ` para que la corrija: la deja en ` + "`" + `changes_requested` + "`" + ` con el motivo, que él ve en su app y lo habilita a editar y reenviar. No asigna el rol Rider.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff"
+                ],
+                "summary": "Pedir cambios en una solicitud de rider",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Motivo que leerá el conductor",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.ReviewApplicationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.RiderProfileResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "userId inválido o motivo faltante (rider_review_reason_required)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "El expediente no existe",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "La solicitud no está en revisión (rider_application_not_pending)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/riders/staff/profiles/{userId}/suspend": {
             "post": {
                 "security": [
@@ -9215,6 +9343,20 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.ReviewApplicationRequest": {
+            "type": "object",
+            "required": [
+                "reason"
+            ],
+            "properties": {
+                "reason": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "minLength": 5,
+                    "example": "La foto de la licencia está borrosa, vuelve a tomarla con buena luz"
                 }
             }
         },
