@@ -244,6 +244,62 @@ func (_m *RiderProfileApp) ListProfiles(ctx context.Context, status models.Rider
 	return r0, r1
 }
 
+// RejectApplication provides a mock function with given fields: ctx, userID, staffID, reason
+func (_m *RiderProfileApp) RejectApplication(ctx context.Context, userID uuid.UUID, staffID uuid.UUID, reason string) (dtos.RiderProfileResponse, error) {
+	ret := _m.Called(ctx, userID, staffID, reason)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RejectApplication")
+	}
+
+	var r0 dtos.RiderProfileResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string) (dtos.RiderProfileResponse, error)); ok {
+		return rf(ctx, userID, staffID, reason)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string) dtos.RiderProfileResponse); ok {
+		r0 = rf(ctx, userID, staffID, reason)
+	} else {
+		r0 = ret.Get(0).(dtos.RiderProfileResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, string) error); ok {
+		r1 = rf(ctx, userID, staffID, reason)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RequestApplicationChanges provides a mock function with given fields: ctx, userID, staffID, reason
+func (_m *RiderProfileApp) RequestApplicationChanges(ctx context.Context, userID uuid.UUID, staffID uuid.UUID, reason string) (dtos.RiderProfileResponse, error) {
+	ret := _m.Called(ctx, userID, staffID, reason)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RequestApplicationChanges")
+	}
+
+	var r0 dtos.RiderProfileResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string) (dtos.RiderProfileResponse, error)); ok {
+		return rf(ctx, userID, staffID, reason)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string) dtos.RiderProfileResponse); ok {
+		r0 = rf(ctx, userID, staffID, reason)
+	} else {
+		r0 = ret.Get(0).(dtos.RiderProfileResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, string) error); ok {
+		r1 = rf(ctx, userID, staffID, reason)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // SaveOwnApplication provides a mock function with given fields: ctx, userID, req
 func (_m *RiderProfileApp) SaveOwnApplication(ctx context.Context, userID uuid.UUID, req dtos.RiderApplicationRequest) (dtos.RiderApplicationResponse, error) {
 	ret := _m.Called(ctx, userID, req)

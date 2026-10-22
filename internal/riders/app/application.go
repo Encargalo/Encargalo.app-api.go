@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"Encargalo.app-api.go/internal/riders/domain/dtos"
@@ -84,6 +85,47 @@ func (a *riderProfileApp) ensureNotRider(ctx context.Context, userID uuid.UUID) 
 		return errcustom.ErrAlreadyRider
 	}
 	return nil
+}
+
+func (a *riderProfileApp) RequestApplicationChanges(ctx context.Context, userID, staffID uuid.UUID, reason string) (dtos.RiderProfileResponse, error) {
+	return a.review(ctx, userID, staffID, models.RiderProfileChangesRequested, reason)
+}
+
+func (a *riderProfileApp) RejectApplication(ctx context.Context, userID, staffID uuid.UUID, reason string) (dtos.RiderProfileResponse, error) {
+	return a.review(ctx, userID, staffID, models.RiderProfileRejected, reason)
+}
+
+// review deja por escrito la decisión del staff sobre una solicitud enviada. El motivo lo lee el
+// conductor en su app, así que se exige en los dos casos: con changes_requested es lo único que le
+// dice qué corregir antes de reenviar.
+func (a *riderProfileApp) review(
+	ctx context.Context,
+	userID, staffID uuid.UUID,
+	status models.RiderProfileStatus,
+	reason string,
+) (dtos.RiderProfileResponse, error) {
+	if !models.IsReviewDecision(status) {
+		return dtos.RiderProfileResponse{}, errcustom.ErrRiderReviewNotPending
+	}
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		return dtos.RiderProfileResponse{}, errcustom.ErrReviewReasonRequired
+	}
+
+	profile, err := a.repo.GetByUserID(ctx, userID)
+	if err != nil {
+		return dtos.RiderProfileResponse{}, err
+	}
+	// Se comprueba aquí para distinguir "no existe" de "ya no está en revisión"; el repo lo
+	// vuelve a condicionar en el UPDATE por si alguien decidió en paralelo.
+	if !profile.AwaitsReview() {
+		return dtos.RiderProfileResponse{}, errcustom.ErrRiderReviewNotPending
+	}
+
+	if err := a.repo.ReviewApplication(ctx, userID, staffID, status, reason, time.Now()); err != nil {
+		return dtos.RiderProfileResponse{}, err
+	}
+	return a.GetProfile(ctx, userID)
 }
 
 func (a *riderProfileApp) ownApplication(ctx context.Context, userID uuid.UUID) (*models.RiderProfile, error) {

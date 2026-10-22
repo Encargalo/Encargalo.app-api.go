@@ -75,6 +75,8 @@ func (r *ridersGroup) Resource(g *echo.Echo) {
 	staffRiders.PUT("/profiles/:userId", r.handlerStaffRiders.UpsertProfile)
 	staffRiders.DELETE("/profiles/:userId/photos/:field", r.handlerStaffRiders.DeletePhoto)
 	staffRiders.POST("/profiles/:userId/activate", r.handlerStaffRiders.Activate)
+	staffRiders.POST("/profiles/:userId/request-changes", r.handlerStaffRiders.RequestChanges)
+	staffRiders.POST("/profiles/:userId/reject", r.handlerStaffRiders.Reject)
 	staffRiders.POST("/profiles/:userId/suspend", r.handlerStaffRiders.Suspend)
 	staffRiders.POST("/profiles/:userId/touch-contact", r.handlerStaffRiders.TouchContact)
 

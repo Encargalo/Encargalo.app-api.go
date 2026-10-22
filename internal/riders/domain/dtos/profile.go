@@ -169,6 +169,16 @@ type RiderApplicationResponse struct {
 	Completion         RiderCompletionDTO `json:"completion"`
 }
 
+// ReviewApplicationRequest es la decisión del staff sobre una solicitud enviada.
+// El motivo se le muestra al conductor en su app, así que es obligatorio.
+type ReviewApplicationRequest struct {
+	Reason string `json:"reason" validate:"required,min=5,max=500" example:"La foto de la licencia está borrosa, vuelve a tomarla con buena luz"`
+}
+
+func (r *ReviewApplicationRequest) Validate() error {
+	return applicationValidate.StructCtx(context.Background(), r)
+}
+
 type TouchContactRequest struct {
 	Notes *string `json:"notes"`
 }

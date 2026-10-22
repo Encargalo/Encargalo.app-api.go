@@ -48,6 +48,8 @@ var (
 	ErrRiderProfileIncomplete   = errors.New("expediente de rider incompleto")
 	ErrRiderNotActive           = errors.New("cuenta de rider no activa")
 	ErrRiderApplicationLocked   = errors.New("la solicitud de rider no se puede modificar en su estado actual")
+	ErrRiderReviewNotPending    = errors.New("la solicitud de rider no está en revisión")
+	ErrReviewReasonRequired     = errors.New("el motivo de la revisión es requerido")
 	ErrAlreadyRider             = errors.New("la cuenta ya es rider")
 	ErrInvalidDateRange         = errors.New("rango de fechas inválido")
 	ErrUnknownETLEntity         = errors.New("entidad ETL desconocida")
