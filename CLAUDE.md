@@ -20,6 +20,9 @@ go run ./cmd/server
 # Run the ETL / OLAP worker
 go run ./cmd/etl
 
+# Run the notifications consumer (Redis Stream -> Slack/Discord + Grafana webhook)
+go run ./cmd/notifications
+
 # Build
 go build -v ./...
 
@@ -58,12 +61,12 @@ internal/<domain>/
   repo/        # Data access (implements ports.XxxRepo)
 ```
 
-Domains: `auth`, `customers`, `orders`, `products`, `shops`, `employee`, `health`, `analytics` (ETL → OLAP).
+Domains: `auth`, `customers`, `orders`, `products`, `shops`, `employee`, `health`, `analytics` (ETL → OLAP), `notifications` (consumer del stream).
 
 Shared infrastructure lives in `internal/shared/`:
 - `config/` — env-based config loaded via `gosuite`, read with `config.Get()`
 - `adapters/postgres/` — bun ORM + goose migrations (OLTP en `migrations/`, OLAP en `migrations_olap/`)
-- `adapters/redis/` — Redis cache client + stream producer
+- `adapters/redis/` — Redis cache client + stream producer/consumer
 - `jwt/` — JWT sign/validate
 - `errcustom/` — sentinel errors (`ErrNotFound`, `ErrUnautorized`, `ErrUnexpectedError`, etc.)
 
@@ -124,6 +127,14 @@ A credit commission (10% of `totalPrice - deliveryFee`) is sent via HTTP to the 
 
 This is a deliberate split, not an oversight: rider-driven transitions need the same in-memory rider connection/offer state (`appRidersManager`) that `accept_trip` already uses for the "first to accept wins" CAS pattern, so keeping them together avoids threading that state across a domain boundary. `riders/app` reaches `trips` persistence through a narrow `ridersPorts.TripsStore` port (a subset of `tripsPorts.TripsRepo`: `GetTripByID`, `UpdateTripStatus`, `AssignTripRider`, `CompleteTrip`), not through `tripsPorts.TripsApp` — so `trips/app`'s own business rules (e.g. `IsCancellable`) never see these transitions. Keep this split in mind before adding new `Trip` invariants: a rule added only to `trips/app` will not apply to rider-driven transitions.
 
+## Notifications Service
+
+`cmd/notifications` is the consumer of the Redis Stream the API publishes to (`redsumer`, same stream as `internal/orders/repo/redis_stream.go`). It has no Echo server: it reads each `type` field off the stream message and dispatches to `internal/notifications/handler`, which maps the event to a `models.NotificationMessage` in `app` and sends it through `notifier.Fanout` (Slack today; Discord is opt-in via `DISCORD_ENABLED`). Only one plain `net/http` route is exposed, `POST /webhooks/grafana`, which receives Grafana alerts (shared secret + rate limit) and routes them to the prod or dev channel depending on `deployment_environment_name`.
+
+It shares the monorepo's infrastructure: `postgres.NewNotificationsConnection` (OLTP read-only, no migrations), `redis.NewConsumerRedisStreamConnection`, `otelsetup` and `applog` with `reqctx.ServiceNameNotifications`. Its read model lives in `internal/notifications/domain/models` with its own bun structs — it queries the OLTP tables directly instead of going through the other domains' repos.
+
+Deploy: [Dockerfile.notifications](Dockerfile.notifications) (`go build ./cmd/notifications`).
+
 ## Testing
 
 - Handler tests use `buildhttptest.SetupControllerCase` from [internal/shared/buildhttptest/](internal/shared/buildhttptest/) to build an Echo context.
@@ -133,3 +144,5 @@ This is a deliberate split, not an oversight: rider-driven transitions need the 
 ## Environment
 
 Configuration is loaded from env vars at startup via `config.Environments()`. Required groups: `server`, `postgres`, `redis`, `redis_stream`, `jwt`, `environment`, `google`, `cloudinary`, `internal_gateway`. See [internal/shared/config/config.go](internal/shared/config/config.go) for all fields.
+
+Each binary loads only what it needs: `cmd/etl` uses `config.ETLEnvironments()` / `ETLConfig` ([etl_config.go](internal/shared/config/etl_config.go)) and `cmd/notifications` uses `config.NotificationsEnvironments()` / `NotificationsConfig` ([notifications_config.go](internal/shared/config/notifications_config.go)), which adds the `discord`, `slack` and `grafana` groups plus `redis_stream`'s `group_name` / `consumer_name`.
