@@ -103,7 +103,7 @@ Every time a handler is created or modified, you **must** update the following â
 
 Do **not** regenerate or rewrite documentation for endpoints that were not touched.
 
-> **Postman base URL**: always use `http://localhost:3000` as the default server URL in the `variable.base_url` field of every Postman collection.
+> **Postman base URL**: every request URL uses `{{base_url}}`. Do **not** define `base_url` in the collections (`variable`); it lives only in the environments under `environments/` (Local = `http://localhost:3000`).
 
 ## Orders & Event Streaming
 
