@@ -16,8 +16,9 @@ import (
 )
 
 const (
-	apiServiceName = "encargalo-api"
-	etlServiceName = "encargalo-etl"
+	apiServiceName           = "encargalo-api"
+	etlServiceName           = "encargalo-etl"
+	notificationsServiceName = "encargalo-consumer-notifications"
 )
 
 const (
@@ -93,4 +94,16 @@ func migrate(instance *sql.DB) {
 	if err := goose.Up(instance, "migrations"); err != nil {
 		log.Fatalf("Failed to apply migrations: %v", err)
 	}
+}
+
+// NewNotificationsConnection abre OLTP sin migraciones (consumer: solo lectura).
+func NewNotificationsConnection(cfg config.NotificationsConfig) *bun.DB {
+	p := cfg.Postgres
+	return connect(pgOptions{
+		host:     p.Host,
+		port:     p.Port,
+		user:     p.User,
+		password: p.Password,
+		database: p.Database,
+	}, notificationsServiceName)
 }

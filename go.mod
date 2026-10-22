@@ -3,6 +3,7 @@ module Encargalo.app-api.go
 go 1.26.4
 
 require (
+	github.com/AndresXLP/ravenTree v1.1.0
 	github.com/PuerkitoBio/goquery v1.12.0
 	github.com/andresxlp/redsumer v1.1.5
 	github.com/charmbracelet/log v0.4.2
@@ -175,7 +176,7 @@ require (
 	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
-	golang.org/x/time v0.15.0 // indirect
+	golang.org/x/time v0.15.0
 	golang.org/x/tools v0.48.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
