@@ -49,6 +49,14 @@ var allowedImageMIMEs = map[string]struct{}{
 // real de estos formatos, el upload se rechaza allá aunque el data-URL dijera lo contrario.
 var allowedUploadFormats = api.CldAPIArray{"jpg", "jpeg", "png", "webp", "heic", "heif"}
 
+// storedImageFormat: Cloudinary convierte al subir, así el asset guardado pesa menos sin que
+// el cliente tenga que encodear WebP ni nosotros decodificar la imagen en el servidor.
+const storedImageFormat = "webp"
+
+// incomingTransformation acota la foto de teléfono antes de guardarla; q_auto:good no degrada
+// la referencia bancaria de un comprobante, que es evidencia que el staff tiene que leer.
+const incomingTransformation = "c_limit,w_1600,q_auto:good"
+
 // ValidateImageDataURL exige un data-URL base64 de imagen. Es obligatorio antes de llamar a
 // Cloudinary: el SDK decide por el formato del string, así que una URL la descargaría Cloudinary
 // y cualquier otro string lo trataría como una ruta del filesystem del servidor.
@@ -108,6 +116,8 @@ func (repo uploadImage) UploadImage(ctx context.Context, imageB64 string) (*uplo
 		Folder:         folder,
 		ResourceType:   "image",
 		AllowedFormats: allowedUploadFormats,
+		Format:         storedImageFormat,
+		Transformation: incomingTransformation,
 	})
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
