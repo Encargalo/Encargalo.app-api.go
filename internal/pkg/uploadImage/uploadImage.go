@@ -2,7 +2,9 @@ package uploadimage
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/url"
 	"path"
@@ -12,6 +14,7 @@ import (
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shared/reqctx"
 	"github.com/cloudinary/cloudinary-go/v2"
+	"github.com/cloudinary/cloudinary-go/v2/api"
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -32,13 +35,80 @@ func NewUploadImage(cld *cloudinary.Cloudinary) UploadImage {
 	return &uploadImage{cld}
 }
 
+// allowedImageMIMEs son los únicos media types que se aceptan en el data-URL.
+var allowedImageMIMEs = map[string]struct{}{
+	"image/jpeg": {},
+	"image/jpg":  {},
+	"image/png":  {},
+	"image/webp": {},
+	"image/heic": {},
+	"image/heif": {},
+}
+
+// allowedUploadFormats repite la lista del lado de Cloudinary: si el payload no es una imagen
+// real de estos formatos, el upload se rechaza allá aunque el data-URL dijera lo contrario.
+var allowedUploadFormats = api.CldAPIArray{"jpg", "jpeg", "png", "webp", "heic", "heif"}
+
+// ValidateImageDataURL exige un data-URL base64 de imagen. Es obligatorio antes de llamar a
+// Cloudinary: el SDK decide por el formato del string, así que una URL la descargaría Cloudinary
+// y cualquier otro string lo trataría como una ruta del filesystem del servidor.
+func ValidateImageDataURL(raw string) error {
+	s := strings.TrimSpace(raw)
+
+	comma := strings.IndexByte(s, ',')
+	if comma < 0 {
+		return errcustom.ErrUploadingImage
+	}
+
+	meta := strings.ToLower(s[:comma])
+	if !strings.HasPrefix(meta, "data:") || !strings.HasSuffix(meta, ";base64") {
+		return errcustom.ErrUploadingImage
+	}
+
+	mime := strings.TrimSpace(strings.Split(strings.TrimSuffix(meta[len("data:"):], ";base64"), ";")[0])
+	if _, ok := allowedImageMIMEs[mime]; !ok {
+		return errcustom.ErrUploadingImage
+	}
+
+	return validateBase64Payload(s[comma+1:])
+}
+
+// validateBase64Payload decodifica en streaming para no duplicar en memoria un comprobante
+// que puede pesar megas; los decoders ignoran los saltos de línea que meten algunos clientes.
+func validateBase64Payload(payload string) error {
+	if strings.TrimSpace(payload) == "" {
+		return errcustom.ErrUploadingImage
+	}
+
+	if _, err := io.Copy(io.Discard, base64.NewDecoder(base64.StdEncoding, strings.NewReader(payload))); err == nil {
+		return nil
+	}
+
+	// Algunos clientes mandan el base64 sin padding.
+	if _, err := io.Copy(io.Discard, base64.NewDecoder(base64.RawStdEncoding, strings.NewReader(payload))); err == nil {
+		return nil
+	}
+
+	return errcustom.ErrUploadingImage
+}
+
 func (repo uploadImage) UploadImage(ctx context.Context, imageB64 string) (*uploader.UploadResult, error) {
 	ctx, span := otel.Tracer(reqctx.ServiceName).Start(ctx, "cloudinary.Upload")
 	span.SetAttributes(attribute.Int("image_bytes", len(imageB64)))
 	defer span.End()
 
+	if err := ValidateImageDataURL(imageB64); err != nil {
+		span.SetStatus(codes.Error, "formato de imagen inválido")
+		slog.Error("imagen rechazada antes de subir a Cloudinary")
+		return nil, err
+	}
+
 	folder := config.Get().Cloudinary.Folder
-	resp, err := repo.cld.Upload.Upload(ctx, imageB64, uploader.UploadParams{Folder: folder})
+	resp, err := repo.cld.Upload.Upload(ctx, imageB64, uploader.UploadParams{
+		Folder:         folder,
+		ResourceType:   "image",
+		AllowedFormats: allowedUploadFormats,
+	})
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		slog.Error("error uploading image", "error", err)
