@@ -1,5 +1,30 @@
 # Changelog
 
+## [2.6.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.5.0...v2.6.0) (2026-10-22)
+
+
+### Features
+
+* **auth:** identificar por teléfono el siguiente paso en la app de riders ([3d687ad](https://github.com/Encargalo/Encargalo.app-api.go/commit/3d687add5976ea6ddb3165a42d611cf3c1493fd2))
+* **notifications:** integrar el consumer de notificaciones al monorepo ([b733adf](https://github.com/Encargalo/Encargalo.app-api.go/commit/b733adf7a23b1ed373249988eb9c27eb54508321))
+* **notifications:** integrar el consumer de notificaciones al monorepo ([85a37b7](https://github.com/Encargalo/Encargalo.app-api.go/commit/85a37b7dc561115aada3eb38f418921305018e00))
+* **riders:** el conductor envía su solicitud con los datos del vehículo ([4415421](https://github.com/Encargalo/Encargalo.app-api.go/commit/44154212e633e9deab74ca9d4be0f279fbc8bf54))
+* **riders:** el conductor envía su solicitud con los datos del vehículo ([41c0f68](https://github.com/Encargalo/Encargalo.app-api.go/commit/41c0f68cb8ba7db3e981216aee8fbeef87ef3067)), closes [#284](https://github.com/Encargalo/Encargalo.app-api.go/issues/284)
+* **riders:** el staff pide cambios o rechaza la solicitud del conductor ([cf54add](https://github.com/Encargalo/Encargalo.app-api.go/commit/cf54add210339a31484a38add86cb092aa23334a))
+* **riders:** el staff pide cambios o rechaza la solicitud del conductor ([84db9f8](https://github.com/Encargalo/Encargalo.app-api.go/commit/84db9f81d7b80040201ab1f57d2e4096bbaf6689)), closes [#286](https://github.com/Encargalo/Encargalo.app-api.go/issues/286)
+
+
+### Bug Fixes
+
+* **auth:** limitar por minuto y por día la identificación de riders ([05b5727](https://github.com/Encargalo/Encargalo.app-api.go/commit/05b57278327320174f930fe6c6530c288b044877))
+* **auth:** limitar por minuto y por día la identificación de riders ([51aa6f1](https://github.com/Encargalo/Encargalo.app-api.go/commit/51aa6f1fa96878ca428f393aaba11879383be1e5))
+
+
+### Documentation
+
+* agregar skills de agentes y alinear la base url de postman ([ce09c7c](https://github.com/Encargalo/Encargalo.app-api.go/commit/ce09c7c22081ce7770fcdf9c2a0ed298aace697b))
+* agregar skills de agentes y alinear la base url de postman ([e132ad6](https://github.com/Encargalo/Encargalo.app-api.go/commit/e132ad6e167f642196c967b25bf4164e263acee8))
+
 ## [2.5.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.4.0...v2.5.0) (2026-10-19)
 
 
