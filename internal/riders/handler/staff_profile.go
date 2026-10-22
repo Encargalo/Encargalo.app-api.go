@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -23,6 +24,8 @@ type StaffRiderHandler interface {
 	UpsertProfile(c echo.Context) error
 	DeletePhoto(c echo.Context) error
 	Activate(c echo.Context) error
+	RequestChanges(c echo.Context) error
+	Reject(c echo.Context) error
 	Suspend(c echo.Context) error
 	TouchContact(c echo.Context) error
 }
@@ -59,18 +62,17 @@ func (h *staffRiderHandler) FindCandidate(c echo.Context) error {
 
 // ListProfiles godoc
 // @Summary      Listar expedientes rider
-// @Description  Lista perfiles por status (default draft). Incluye completion para follow-up.
+// @Description  Lista perfiles por status. Sin status trae `pending_review`: las solicitudes que los conductores enviaron desde la app. Incluye completion para follow-up.
 // @Tags         Riders Staff
 // @Produce      json
 // @Security     SessionCookie
-// @Param        status  query  string  false  "draft|active|suspended"  default(draft)
+// @Param        status  query  string  false  "Estado del expediente"  Enums(draft, pending_review, changes_requested, rejected, active, suspended)  default(pending_review)
 // @Success      200  {array}  dtos.RiderProfileResponse
+// @Failure      400  {string}  string  "status inválido"
 // @Router       /riders/staff/profiles [get]
 func (h *staffRiderHandler) ListProfiles(c echo.Context) error {
 	status := models.RiderProfileStatus(strings.TrimSpace(c.QueryParam("status")))
-	switch status {
-	case "", models.RiderProfileDraft, models.RiderProfileActive, models.RiderProfileSuspended:
-	default:
+	if status != "" && !models.ValidRiderProfileStatus(status) {
 		return echo.NewHTTPError(http.StatusBadRequest, "status inválido")
 	}
 	list, err := h.svc.ListProfiles(c.Request().Context(), status)
@@ -190,6 +192,69 @@ func (h *staffRiderHandler) Activate(c echo.Context) error {
 				map[string]any{"missing": missing},
 			)
 		}
+		return errcustom.ToHTTPError(err)
+	}
+	return response.Send(c, http.StatusOK, resp)
+}
+
+// RequestChanges godoc
+// @Summary      Pedir cambios en una solicitud de rider
+// @Description  Devuelve al conductor una solicitud en `pending_review` para que la corrija: la deja en `changes_requested` con el motivo, que él ve en su app y lo habilita a editar y reenviar. No asigna el rol Rider.
+// @Tags         Riders Staff
+// @Accept       json
+// @Produce      json
+// @Security     SessionCookie
+// @Param        userId  path  string                         true  "User ID"
+// @Param        body    body  dtos.ReviewApplicationRequest  true  "Motivo que leerá el conductor"
+// @Success      200  {object}  dtos.RiderProfileResponse
+// @Failure      400  {string}  string  "userId inválido o motivo faltante (rider_review_reason_required)"
+// @Failure      404  {string}  string  "El expediente no existe"
+// @Failure      409  {string}  string  "La solicitud no está en revisión (rider_application_not_pending)"
+// @Router       /riders/staff/profiles/{userId}/request-changes [post]
+func (h *staffRiderHandler) RequestChanges(c echo.Context) error {
+	return h.review(c, h.svc.RequestApplicationChanges)
+}
+
+// Reject godoc
+// @Summary      Rechazar una solicitud de rider
+// @Description  Cierra una solicitud en `pending_review`: la deja en `rejected` con el motivo, que el conductor ve en su app. No puede reenviarla y no se le asigna el rol Rider.
+// @Tags         Riders Staff
+// @Accept       json
+// @Produce      json
+// @Security     SessionCookie
+// @Param        userId  path  string                         true  "User ID"
+// @Param        body    body  dtos.ReviewApplicationRequest  true  "Motivo que leerá el conductor"
+// @Success      200  {object}  dtos.RiderProfileResponse
+// @Failure      400  {string}  string  "userId inválido o motivo faltante (rider_review_reason_required)"
+// @Failure      404  {string}  string  "El expediente no existe"
+// @Failure      409  {string}  string  "La solicitud no está en revisión (rider_application_not_pending)"
+// @Router       /riders/staff/profiles/{userId}/reject [post]
+func (h *staffRiderHandler) Reject(c echo.Context) error {
+	return h.review(c, h.svc.RejectApplication)
+}
+
+// review resuelve lo común a las dos decisiones: userId, motivo y quién revisó.
+func (h *staffRiderHandler) review(
+	c echo.Context,
+	decide func(ctx context.Context, userID, staffID uuid.UUID, reason string) (dtos.RiderProfileResponse, error),
+) error {
+	ctx := c.Request().Context()
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
+
+	userID, err := uuid.Parse(c.Param("userId"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "userId inválido")
+	}
+	var body dtos.ReviewApplicationRequest
+	if err := c.Bind(&body); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "payload inválido")
+	}
+	if err := body.Validate(); err != nil {
+		return errcustom.ToHTTPError(errcustom.ErrReviewReasonRequired)
+	}
+
+	resp, err := decide(ctx, userID, session.UserID, body.Reason)
+	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}
 	return response.Send(c, http.StatusOK, resp)

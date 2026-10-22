@@ -285,6 +285,60 @@ func (_m *RiderProfileRepo) ListByStatus(ctx context.Context, status models.Ride
 	return r0, r1
 }
 
+// ReviewApplication provides a mock function with given fields: ctx, userID, staffID, status, reason, reviewedAt
+func (_m *RiderProfileRepo) ReviewApplication(ctx context.Context, userID uuid.UUID, staffID uuid.UUID, status models.RiderProfileStatus, reason string, reviewedAt time.Time) error {
+	ret := _m.Called(ctx, userID, staffID, status, reason, reviewedAt)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReviewApplication")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, models.RiderProfileStatus, string, time.Time) error); ok {
+		r0 = rf(ctx, userID, staffID, status, reason, reviewedAt)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SaveApplication provides a mock function with given fields: ctx, profile
+func (_m *RiderProfileRepo) SaveApplication(ctx context.Context, profile *models.RiderProfile) error {
+	ret := _m.Called(ctx, profile)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SaveApplication")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *models.RiderProfile) error); ok {
+		r0 = rf(ctx, profile)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SubmitApplication provides a mock function with given fields: ctx, userID, submittedAt
+func (_m *RiderProfileRepo) SubmitApplication(ctx context.Context, userID uuid.UUID, submittedAt time.Time) error {
+	ret := _m.Called(ctx, userID, submittedAt)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SubmitApplication")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, time.Time) error); ok {
+		r0 = rf(ctx, userID, submittedAt)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // Suspend provides a mock function with given fields: ctx, userID
 func (_m *RiderProfileRepo) Suspend(ctx context.Context, userID uuid.UUID) error {
 	ret := _m.Called(ctx, userID)

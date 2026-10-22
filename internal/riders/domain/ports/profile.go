@@ -18,6 +18,14 @@ type RiderProfileRepo interface {
 	Activate(ctx context.Context, userID, staffID uuid.UUID, activatedAt time.Time) error
 	Suspend(ctx context.Context, userID uuid.UUID) error
 	TouchContact(ctx context.Context, userID uuid.UUID, contactedAt time.Time, notes *string) error
+	// SaveApplication guarda la solicitud solo si no existe o está en un estado editable por el solicitante;
+	// si no, devuelve ErrRiderApplicationLocked.
+	SaveApplication(ctx context.Context, profile *models.RiderProfile) error
+	// SubmitApplication pasa la solicitud a pending_review; ErrRiderApplicationLocked si ya no es editable.
+	SubmitApplication(ctx context.Context, userID uuid.UUID, submittedAt time.Time) error
+	// ReviewApplication registra la decisión del staff (changes_requested o rejected) sobre una solicitud
+	// en pending_review; ErrRiderReviewNotPending si entre tanto dejó de estarlo.
+	ReviewApplication(ctx context.Context, userID, staffID uuid.UUID, status models.RiderProfileStatus, reason string, reviewedAt time.Time) error
 	HasRiderRole(ctx context.Context, userID uuid.UUID) (bool, error)
 	EnsureRiderRole(ctx context.Context, userID uuid.UUID) error
 	DisableRiderRole(ctx context.Context, userID uuid.UUID) error
@@ -38,6 +46,17 @@ type RiderProfileApp interface {
 	Activate(ctx context.Context, userID, staffID uuid.UUID) (dtos.RiderProfileResponse, error)
 	Suspend(ctx context.Context, userID uuid.UUID) (dtos.RiderProfileResponse, error)
 	TouchContact(ctx context.Context, userID uuid.UUID, notes *string) (dtos.RiderProfileResponse, error)
+	// GetOwnApplication devuelve la solicitud del propio solicitante; si no existe, una vacía en draft.
+	GetOwnApplication(ctx context.Context, userID uuid.UUID) (dtos.RiderApplicationResponse, error)
+	// SaveOwnApplication guarda la solicitud sin enviarla. No asigna el rol Rider ni cambia el estado.
+	SaveOwnApplication(ctx context.Context, userID uuid.UUID, req dtos.RiderApplicationRequest) (dtos.RiderApplicationResponse, error)
+	// SubmitOwnApplication envía a revisión una solicitud completa. No asigna el rol Rider.
+	// Con ErrRiderProfileIncomplete también devuelve la solicitud, para leer qué falta en Completion.
+	SubmitOwnApplication(ctx context.Context, userID uuid.UUID) (dtos.RiderApplicationResponse, error)
+	// RequestApplicationChanges devuelve la solicitud al conductor con un motivo para que la corrija y la reenvíe.
+	RequestApplicationChanges(ctx context.Context, userID, staffID uuid.UUID, reason string) (dtos.RiderProfileResponse, error)
+	// RejectApplication cierra la solicitud con un motivo. No asigna ni retira el rol Rider.
+	RejectApplication(ctx context.Context, userID, staffID uuid.UUID, reason string) (dtos.RiderProfileResponse, error)
 	// IsActiveRider used by auth SignInRider gate.
 	IsActiveRider(ctx context.Context, userID uuid.UUID) (bool, error)
 }

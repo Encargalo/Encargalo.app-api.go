@@ -72,6 +72,10 @@ go run ./cmd/server
 
 # Correr ETL (config mínima: SERVER/POSTGRES/OLAP_POSTGRES/ENVIRONMENT)
 go run ./cmd/etl
+
+# Correr el consumer de notificaciones
+# (config mínima: SERVER/POSTGRES/REDIS/REDIS_STREAM/ENVIRONMENT/GRAFANA + SLACK)
+go run ./cmd/notifications
 ```
 
 Migraciones OLAP viven en `internal/shared/adapters/postgres/migrations_olap/` y se aplican al arrancar `cmd/etl`. Docs: [docs/etl-railway.md](docs/etl-railway.md), [docs/grafana-olap-queries.md](docs/grafana-olap-queries.md).

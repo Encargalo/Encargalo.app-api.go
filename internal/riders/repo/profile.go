@@ -63,22 +63,55 @@ func (r *riderProfileRepo) ClearPhoto(ctx context.Context, userID uuid.UUID, fie
 }
 
 func (r *riderProfileRepo) Upsert(ctx context.Context, profile *models.RiderProfile) error {
+	if profile.Status == "" {
+		profile.Status = models.RiderProfileDraft
+	}
+
+	_, err := r.upsertQuery(profile).
+		Set("status = EXCLUDED.status").
+		Set("notes = COALESCE(EXCLUDED.notes, p.notes)").
+		Exec(ctx)
+	if err != nil {
+		slog.Error("rider Upsert failed", "userID", profile.UserID, "error", err)
+		return errcustom.Unexpected(err)
+	}
+	return nil
+}
+
+func (r *riderProfileRepo) SaveApplication(ctx context.Context, profile *models.RiderProfile) error {
+	if profile.Status == "" {
+		profile.Status = models.RiderProfileDraft
+	}
+
+	// El WHERE del ON CONFLICT evita pisar una solicitud que el staff movió mientras se subían las fotos.
+	res, err := r.upsertQuery(profile).
+		Where("p.status IN (?)", bun.In(models.ApplicantEditableStatuses)).
+		Exec(ctx)
+	if err != nil {
+		slog.Error("rider SaveApplication failed", "userID", profile.UserID, "error", err)
+		return errcustom.Unexpected(err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return errcustom.ErrRiderApplicationLocked
+	}
+	return nil
+}
+
+// upsertQuery arma el upsert parcial de los datos del expediente; status y notes los decide cada caller.
+func (r *riderProfileRepo) upsertQuery(profile *models.RiderProfile) *bun.InsertQuery {
 	now := time.Now()
 	if profile.CreatedAt.IsZero() {
 		profile.CreatedAt = now
 	}
 	profile.UpdatedAt = now
-	if profile.Status == "" {
-		profile.Status = models.RiderProfileDraft
-	}
 
 	// Bun inserta en "riders"."profiles" sin alias usable en ON CONFLICT.
 	// Sin "AS p", Postgres no resuelve ni "profiles.col" ni refs schema-qualified.
-	_, err := r.db.NewInsert().
+	return r.db.NewInsert().
 		Model(profile).
 		ModelTableExpr("riders.profiles AS p").
 		On("CONFLICT (user_id) DO UPDATE").
-		Set("status = EXCLUDED.status").
 		Set("profile_photo_url = COALESCE(EXCLUDED.profile_photo_url, p.profile_photo_url)").
 		Set("vehicle_type = COALESCE(EXCLUDED.vehicle_type, p.vehicle_type)").
 		Set("vehicle_plate = COALESCE(EXCLUDED.vehicle_plate, p.vehicle_plate)").
@@ -93,12 +126,56 @@ func (r *riderProfileRepo) Upsert(ctx context.Context, profile *models.RiderProf
 		Set("vehicle_photo_2_url = COALESCE(EXCLUDED.vehicle_photo_2_url, p.vehicle_photo_2_url)").
 		Set("vehicle_photo_3_url = COALESCE(EXCLUDED.vehicle_photo_3_url, p.vehicle_photo_3_url)").
 		Set("vehicle_photo_4_url = COALESCE(EXCLUDED.vehicle_photo_4_url, p.vehicle_photo_4_url)").
-		Set("notes = COALESCE(EXCLUDED.notes, p.notes)").
-		Set("updated_at = EXCLUDED.updated_at").
+		Set("updated_at = EXCLUDED.updated_at")
+}
+
+func (r *riderProfileRepo) SubmitApplication(ctx context.Context, userID uuid.UUID, submittedAt time.Time) error {
+	res, err := r.db.NewUpdate().
+		Model((*models.RiderProfile)(nil)).
+		Set("status = ?", models.RiderProfilePendingReview).
+		Set("submitted_at = ?", submittedAt).
+		Set("review_reason = NULL").
+		Set("updated_at = ?", submittedAt).
+		Where("user_id = ?", userID).
+		Where("status IN (?)", bun.In(models.ApplicantEditableStatuses)).
 		Exec(ctx)
 	if err != nil {
-		slog.Error("rider Upsert failed", "userID", profile.UserID, "error", err)
+		slog.Error("rider SubmitApplication failed", "userID", userID, "error", err)
 		return errcustom.Unexpected(err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return errcustom.ErrRiderApplicationLocked
+	}
+	return nil
+}
+
+// ReviewApplication solo mueve solicitudes en pending_review: si el staff decide dos veces,
+// o el conductor alcanzó a reenviar, la segunda decisión no pisa el estado.
+func (r *riderProfileRepo) ReviewApplication(
+	ctx context.Context,
+	userID, staffID uuid.UUID,
+	status models.RiderProfileStatus,
+	reason string,
+	reviewedAt time.Time,
+) error {
+	res, err := r.db.NewUpdate().
+		Model((*models.RiderProfile)(nil)).
+		Set("status = ?", status).
+		Set("review_reason = ?", reason).
+		Set("reviewed_at = ?", reviewedAt).
+		Set("reviewed_by = ?", staffID).
+		Set("updated_at = ?", reviewedAt).
+		Where("user_id = ?", userID).
+		Where("status = ?", models.RiderProfilePendingReview).
+		Exec(ctx)
+	if err != nil {
+		slog.Error("rider ReviewApplication failed", "userID", userID, "status", status, "error", err)
+		return errcustom.Unexpected(err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return errcustom.ErrRiderReviewNotPending
 	}
 	return nil
 }

@@ -21,6 +21,7 @@ type Auth interface {
 	SignInCustomer(e echo.Context) error
 	SignInEmployee(e echo.Context) error
 	SignInRider(e echo.Context) error
+	IdentifyRiderPhone(e echo.Context) error
 	SignInStaff(e echo.Context) error
 	SignInGoogle(e echo.Context) error
 	Logout(e echo.Context) error
@@ -163,6 +164,38 @@ func (a *auth) SignInRider(e echo.Context) error {
 	e.SetCookie(a.cookie.CreateCookieSession(jwtSession))
 
 	return response.Send(e, http.StatusCreated, "session created")
+}
+
+// IdentifyRiderPhone godoc
+// @Summary      Identificar el siguiente paso de un teléfono en la app de riders
+// @Description  Recibe solo el teléfono y dice si la app debe pedir la contraseña, abrir el formulario de solicitud o el registro.
+// @Description  No crea sesión ni devuelve datos de la cuenta. `sign_in` sigue en POST /auth/sign-in/riders.
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        body  body  request.IdentifyRiderPhoneRequest  true  "Teléfono"
+// @Success      200    {object}  request.IdentifyRiderPhoneResponse
+// @Failure      400    {object}  map[string]string  "Solicitud inválida (validación o JSON incorrecto)"
+// @Failure      429    {object}  map[string]string  "Demasiados intentos, intenta de nuevo más tarde"
+// @Failure      500    {object}  map[string]string  "Error inesperado del servidor"
+// @Router       /auth/riders/identify [post]
+func (a *auth) IdentifyRiderPhone(e echo.Context) error {
+	var body request.IdentifyRiderPhoneRequest
+
+	if err := e.Bind(&body); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := body.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	next, err := a.svc.IdentifyRiderPhone(e.Request().Context(), body.Phone)
+	if err != nil {
+		return errcustom.ToHTTPError(err)
+	}
+
+	return response.Send(e, http.StatusOK, request.IdentifyRiderPhoneResponse{Next: string(next)})
 }
 
 // SignInStaff godoc

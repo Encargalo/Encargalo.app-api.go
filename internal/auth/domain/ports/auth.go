@@ -11,6 +11,7 @@ type AuthApp interface {
 	SignInCustomer(ctx context.Context, phone, password string) (uuid.UUID, error)
 	SignInEmployee(ctx context.Context, phone, password string) (uuid.UUID, error)
 	SignInRider(ctx context.Context, phone, password string) (uuid.UUID, error)
+	IdentifyRiderPhone(ctx context.Context, phone string) (models.RiderPhoneNext, error)
 	SignInStaff(ctx context.Context, phone, password string) (uuid.UUID, error)
 	SignInGoogle(ctx context.Context, idToken string) (uuid.UUID, error)
 	SearchSessions(ctx context.Context, session_id uuid.UUID) (*models.ActiveSession, error)

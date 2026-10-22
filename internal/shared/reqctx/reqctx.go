@@ -14,6 +14,7 @@ const RequestIDKey ctxKey = "request_id"
 
 const ServiceName = "encargalo-api"
 const ServiceNameETL = "encargalo-etl"
+const ServiceNameNotifications = "encargalo-consumer-notifications"
 
 func WithRequestID(ctx context.Context, requestID string) context.Context {
 	return context.WithValue(ctx, RequestIDKey, requestID)

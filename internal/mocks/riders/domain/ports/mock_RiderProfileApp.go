@@ -102,6 +102,34 @@ func (_m *RiderProfileApp) FindCandidate(ctx context.Context, phone string) (dto
 	return r0, r1
 }
 
+// GetOwnApplication provides a mock function with given fields: ctx, userID
+func (_m *RiderProfileApp) GetOwnApplication(ctx context.Context, userID uuid.UUID) (dtos.RiderApplicationResponse, error) {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetOwnApplication")
+	}
+
+	var r0 dtos.RiderApplicationResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (dtos.RiderApplicationResponse, error)); ok {
+		return rf(ctx, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) dtos.RiderApplicationResponse); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		r0 = ret.Get(0).(dtos.RiderApplicationResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetOwnProfile provides a mock function with given fields: ctx, userID
 func (_m *RiderProfileApp) GetOwnProfile(ctx context.Context, userID uuid.UUID) (dtos.RiderSelfProfileResponse, error) {
 	ret := _m.Called(ctx, userID)
@@ -209,6 +237,118 @@ func (_m *RiderProfileApp) ListProfiles(ctx context.Context, status models.Rider
 
 	if rf, ok := ret.Get(1).(func(context.Context, models.RiderProfileStatus) error); ok {
 		r1 = rf(ctx, status)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RejectApplication provides a mock function with given fields: ctx, userID, staffID, reason
+func (_m *RiderProfileApp) RejectApplication(ctx context.Context, userID uuid.UUID, staffID uuid.UUID, reason string) (dtos.RiderProfileResponse, error) {
+	ret := _m.Called(ctx, userID, staffID, reason)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RejectApplication")
+	}
+
+	var r0 dtos.RiderProfileResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string) (dtos.RiderProfileResponse, error)); ok {
+		return rf(ctx, userID, staffID, reason)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string) dtos.RiderProfileResponse); ok {
+		r0 = rf(ctx, userID, staffID, reason)
+	} else {
+		r0 = ret.Get(0).(dtos.RiderProfileResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, string) error); ok {
+		r1 = rf(ctx, userID, staffID, reason)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RequestApplicationChanges provides a mock function with given fields: ctx, userID, staffID, reason
+func (_m *RiderProfileApp) RequestApplicationChanges(ctx context.Context, userID uuid.UUID, staffID uuid.UUID, reason string) (dtos.RiderProfileResponse, error) {
+	ret := _m.Called(ctx, userID, staffID, reason)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RequestApplicationChanges")
+	}
+
+	var r0 dtos.RiderProfileResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string) (dtos.RiderProfileResponse, error)); ok {
+		return rf(ctx, userID, staffID, reason)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string) dtos.RiderProfileResponse); ok {
+		r0 = rf(ctx, userID, staffID, reason)
+	} else {
+		r0 = ret.Get(0).(dtos.RiderProfileResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, string) error); ok {
+		r1 = rf(ctx, userID, staffID, reason)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SaveOwnApplication provides a mock function with given fields: ctx, userID, req
+func (_m *RiderProfileApp) SaveOwnApplication(ctx context.Context, userID uuid.UUID, req dtos.RiderApplicationRequest) (dtos.RiderApplicationResponse, error) {
+	ret := _m.Called(ctx, userID, req)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SaveOwnApplication")
+	}
+
+	var r0 dtos.RiderApplicationResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, dtos.RiderApplicationRequest) (dtos.RiderApplicationResponse, error)); ok {
+		return rf(ctx, userID, req)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, dtos.RiderApplicationRequest) dtos.RiderApplicationResponse); ok {
+		r0 = rf(ctx, userID, req)
+	} else {
+		r0 = ret.Get(0).(dtos.RiderApplicationResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, dtos.RiderApplicationRequest) error); ok {
+		r1 = rf(ctx, userID, req)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SubmitOwnApplication provides a mock function with given fields: ctx, userID
+func (_m *RiderProfileApp) SubmitOwnApplication(ctx context.Context, userID uuid.UUID) (dtos.RiderApplicationResponse, error) {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SubmitOwnApplication")
+	}
+
+	var r0 dtos.RiderApplicationResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (dtos.RiderApplicationResponse, error)); ok {
+		return rf(ctx, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) dtos.RiderApplicationResponse); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		r0 = ret.Get(0).(dtos.RiderApplicationResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, userID)
 	} else {
 		r1 = ret.Error(1)
 	}
