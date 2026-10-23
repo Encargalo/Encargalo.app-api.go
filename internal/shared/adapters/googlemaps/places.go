@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"Encargalo.app-api.go/internal/shared/config"
 )
@@ -33,9 +34,15 @@ type PlaceDetailsResult struct {
 // guidance. ctx is propagated so the call is canceled if the caller
 // disconnects, and is bounded by httpClient's timeout either way.
 func AutocompletePlaces(ctx context.Context, query string, biasLat, biasLng *float64, sessionToken string) ([]PlacePrediction, error) {
+	region := regionCode()
+
 	params := url.Values{}
 	params.Set("input", query)
 	params.Set("sessiontoken", sessionToken)
+	// components=country es la única restricción dura de país que ofrece Autocomplete: Google no devuelve predicciones de otros países.
+	params.Set("components", "country:"+strings.ToLower(region))
+	params.Set("language", languageCode())
+	params.Set("region", strings.ToLower(region))
 	params.Set("key", config.Get().Google.ServerKey)
 	if biasLat != nil && biasLng != nil {
 		params.Set("location", fmt.Sprintf("%f,%f", *biasLat, *biasLng))
@@ -99,6 +106,7 @@ func PlaceDetails(ctx context.Context, placeID, sessionToken string) (*PlaceDeta
 	params := url.Values{}
 	params.Set("place_id", placeID)
 	params.Set("fields", "geometry,formatted_address,address_component")
+	params.Set("language", languageCode())
 	params.Set("sessiontoken", sessionToken)
 	params.Set("key", config.Get().Google.ServerKey)
 
@@ -149,6 +157,11 @@ func PlaceDetails(ctx context.Context, placeID, sessionToken string) (*PlaceDeta
 	}
 
 	components, parts := parseAddressComponents(data.Result.AddressComponents)
+
+	// Place Details no acepta filtro de país, así que un place_id de fuera del área de servicio se descarta con la respuesta en mano.
+	if !matchesRegion(parts.CountryCode) {
+		return nil, ErrNoResults
+	}
 
 	return &PlaceDetailsResult{
 		Address:           data.Result.FormattedAddress,

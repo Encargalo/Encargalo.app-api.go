@@ -28,13 +28,24 @@ func TestReverseGeocode_ValidCoordinates(t *testing.T) {
 	repo := mocksmaps.NewMapsRepo(t)
 	mapsApp := app.New(repo)
 
-	result := &models.ReverseGeocodeResult{FormattedAddress: "Calle 100, Bogotá"}
-	repo.On("ReverseGeocode", context.Background(), 4.60971, -74.08175).Return(result, nil)
+	result := &models.ReverseGeocodeResult{FormattedAddress: "Av. Francisco de Miranda, Caracas"}
+	repo.On("ReverseGeocode", context.Background(), 10.48801, -66.87919).Return(result, nil)
 
-	got, err := mapsApp.ReverseGeocode(context.Background(), 4.60971, -74.08175)
+	got, err := mapsApp.ReverseGeocode(context.Background(), 10.48801, -66.87919)
 
 	require.NoError(t, err)
 	require.Equal(t, result, got)
+}
+
+func TestReverseGeocode_CoordinatesOutsideVenezuela(t *testing.T) {
+	repo := mocksmaps.NewMapsRepo(t)
+	mapsApp := app.New(repo)
+
+	// Bogotá: coordenada válida a nivel global pero fuera del área de servicio.
+	_, err := mapsApp.ReverseGeocode(context.Background(), 4.60971, -74.08175)
+
+	require.ErrorIs(t, err, errcustom.ErrInvalidCoordinates)
+	repo.AssertNotCalled(t, "ReverseGeocode", mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestAutocompletePlaces_QueryTooShort(t *testing.T) {
