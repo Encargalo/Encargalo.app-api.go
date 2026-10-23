@@ -12,6 +12,7 @@ const (
 	KindOrderAutoRejected      NotificationKind = "order_auto_rejected"
 	KindPaymentProofPending    NotificationKind = "payment_proof_pending"
 	KindBalanceRefundPending   NotificationKind = "balance_refund_pending"
+	KindWithdrawalRequested    NotificationKind = "withdrawal_requested"
 	KindOrderNoRider           NotificationKind = "order_no_rider"
 	KindTripCreated            NotificationKind = "trip_created"
 	KindTripNoDriver           NotificationKind = "trip_no_driver"

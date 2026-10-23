@@ -15,7 +15,7 @@ import (
 
 func TestRecordRideEarning_CashDebitsRemainderAfterRiderPay(t *testing.T) {
 	repo := mocksriders.NewFinanceRepo(t)
-	svc := app.NewFinanceApp(repo, nil)
+	svc := app.NewFinanceApp(repo, nil, nil, nil, nil)
 
 	riderID := uuid.New()
 	orderID := uuid.New()
@@ -39,7 +39,7 @@ func TestRecordRideEarning_CashDebitsRemainderAfterRiderPay(t *testing.T) {
 
 func TestRecordTripCash_DebitsPlatformShare(t *testing.T) {
 	repo := mocksriders.NewFinanceRepo(t)
-	svc := app.NewFinanceApp(repo, nil)
+	svc := app.NewFinanceApp(repo, nil, nil, nil, nil)
 
 	riderID := uuid.New()
 	tripID := uuid.New()

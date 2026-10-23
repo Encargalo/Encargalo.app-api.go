@@ -85,7 +85,7 @@ func TestAdvanceTrip_DiscountedBankTripPaysOnGrossFare(t *testing.T) {
 
 func TestRecordTripCashCollected_CreditsWhenCashIsBelowRiderPay(t *testing.T) {
 	repo := mocksriders.NewFinanceRepo(t)
-	svc := app.NewFinanceApp(repo, nil)
+	svc := app.NewFinanceApp(repo, nil, nil, nil, nil)
 
 	riderID, tripID := uuid.New(), uuid.New()
 	// Pago $7.20 - efectivo $4 = $3.20 a favor del rider.

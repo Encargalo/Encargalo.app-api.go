@@ -54,6 +54,7 @@ import (
 	appFinance "Encargalo.app-api.go/internal/finance/app"
 	repoFinance "Encargalo.app-api.go/internal/finance/repo"
 
+	financePorts "Encargalo.app-api.go/internal/finance/domain/ports"
 	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
 	usersPorts "Encargalo.app-api.go/internal/users/domain/ports"
 
@@ -170,6 +171,8 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(handShops.NewStaffShopFinanceHandler)
 	_ = Container.Provide(repoFinance.NewStaffFinanceRepo)
 	_ = Container.Provide(appFinance.NewStaffFinanceApp)
+	_ = Container.Provide(repoFinance.NewWithdrawalRepo)
+	_ = Container.Provide(appFinance.NewWithdrawalApp)
 
 	_ = Container.Provide(repoShops.NewShopFinanceRepo)
 	_ = Container.Provide(repoShops.NewShopStatsRepo)
@@ -205,8 +208,10 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(handRiders.NewRiderApplicationHandler)
 	_ = Container.Provide(handRiders.NewStaffRiderHandler)
 	_ = Container.Provide(handRiders.NewStaffFinanceHandler)
+	_ = Container.Provide(handRiders.NewStaffWithdrawalHandler)
 	_ = Container.Provide(repoRiders.NewRidersRepo)
 	_ = Container.Provide(repoRiders.NewFinanceRepo)
+	_ = Container.Provide(repoRiders.NewWithdrawalPublisher)
 	_ = Container.Provide(repoRiders.NewRidersStream)
 	_ = Container.Provide(repoRiders.NewRiderProfileRepo)
 	_ = Container.Provide(repoRiders.NewRiderPublicInfoLookup)
@@ -225,6 +230,12 @@ func BuildContainer() *dig.Container {
 		return mgr.(tripsPorts.NearbyRidersLookup)
 	})
 	_ = Container.Provide(func(repo tripsPorts.TripsRepo) ridersPorts.TripsStore {
+		return repo
+	})
+	_ = Container.Provide(func(repo financePorts.WithdrawalRepo) ridersPorts.WithdrawalStore {
+		return repo
+	})
+	_ = Container.Provide(func(repo usersPorts.CustomerFinanceRepo) ridersPorts.PaymentDetailsStore {
 		return repo
 	})
 	_ = Container.Provide(func(fa ridersPorts.FinanceApp) ridersPorts.TripEarningRecorder {

@@ -17,6 +17,7 @@ type Notification interface {
 	BalanceRefundPending(msg redis.XMessage) error
 	TripCreated(msg redis.XMessage) error
 	TripNoDriver(msg redis.XMessage) error
+	WithdrawalRequested(msg redis.XMessage) error
 }
 
 type notification struct {
@@ -88,4 +89,10 @@ func (n *notification) OrderNoRider(msg redis.XMessage) error {
 	var data models.DataEventOrderNoRider
 	data.BuildFromXMessage(msg)
 	return n.svc.OrderNoRider(data.OrderID)
+}
+
+func (n *notification) WithdrawalRequested(msg redis.XMessage) error {
+	var data models.DataEventWithdrawalRequested
+	data.BuildFromXMessage(msg)
+	return n.svc.WithdrawalRequested(data.RequestID)
 }

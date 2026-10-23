@@ -31,7 +31,7 @@ const (
 	// unidad estable de referencia. El mínimo real en Bs se recalcula en cada
 	// consulta con la tasa BCV vigente (ver riders/app/finance.go), para que
 	// el poder adquisitivo del piso no se erosione con la tasa.
-	WithdrawalMinUSD   float64 = 15.0
+	WithdrawalMinUSD   float64 = 3.0
 	WithdrawalCooldown         = 24 * time.Hour
 	RiderShare         float64 = 0.90
 

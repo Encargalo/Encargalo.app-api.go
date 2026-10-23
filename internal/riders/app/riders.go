@@ -37,7 +37,10 @@ const orderAcceptTimeout = 10 * time.Minute
 
 const (
 	tripOfferCandidateCount = 3
-	tripSearchMaxRings      = 3
+	// tripSearchMaxRings es el tope de anillos H3 (res 8) de la primera ronda.
+	// En 7 el disco cubre ~125 km²: garantiza 5 km en toda dirección y alcanza
+	// 7 km en las esquinas. Cada ronda posterior suma un anillo.
+	tripSearchMaxRings = 7
 	// tripAcceptTimeout es lo que dura una ronda con candidatos ofertados.
 	tripAcceptTimeout = 10 * time.Minute
 	// tripEmptyRoundTimeout es lo que dura una ronda sin riders elegibles, antes
@@ -1287,6 +1290,10 @@ func AdvanceTripOfferTimeout(svc ridersPorts.RidersApp, trip tripsModels.Trip) {
 	mgr.mu.Unlock()
 	mgr.onTripOfferTimeout(trip)
 }
+
+// TripSearchMaxRingsForTest expone el tope de anillos de la primera ronda, para
+// que los tests ubiquen riders dentro o fuera del radio sin fijar el número.
+const TripSearchMaxRingsForTest = tripSearchMaxRings
 
 // StopTripOfferTimerForTest detiene el timer de oferta para que no dispare
 // después de que el test ya terminó.

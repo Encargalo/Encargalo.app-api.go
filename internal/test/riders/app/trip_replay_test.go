@@ -88,10 +88,24 @@ func TestUpdateLocation_DoesNotOfferOutsideCurrentRoundRadius(t *testing.T) {
 	svc, _, trip := newOpenTripSvc(t)
 	riderID, offersReceived := registerWatchedRider(t, svc, riderModels.RiderModeTrips)
 
-	farLat, farLng := latLngAtRing(t, *trip.PickupH3Cell, 4)
+	// Un anillo más allá del tope de la primera ronda: fuera del radio sea cual
+	// sea el valor de la constante.
+	farLat, farLng := latLngAtRing(t, *trip.PickupH3Cell, app.TripSearchMaxRingsForTest+1)
 	require.NoError(t, svc.UpdateLocation(context.Background(), riderID, farLat, farLng))
 
 	require.Zero(t, offersReceived())
+}
+
+// El borde de adentro: el último anillo que la primera ronda alcanza sí oferta.
+// Junto con el test de arriba fija el radio en el valor de la constante.
+func TestUpdateLocation_OffersAtMaxRingOfFirstRound(t *testing.T) {
+	svc, _, trip := newOpenTripSvc(t)
+	riderID, offersReceived := registerWatchedRider(t, svc, riderModels.RiderModeTrips)
+
+	lat, lng := latLngAtRing(t, *trip.PickupH3Cell, app.TripSearchMaxRingsForTest)
+	require.NoError(t, svc.UpdateLocation(context.Background(), riderID, lat, lng))
+
+	require.Equal(t, 1, offersReceived())
 }
 
 func TestUpdateLocation_DoesNotOfferToRidersInOrdersMode(t *testing.T) {
