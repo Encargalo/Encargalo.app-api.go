@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"math"
 	"time"
 
 	"Encargalo.app-api.go/internal/orders/domain/dtos"
@@ -48,8 +49,36 @@ type Order struct {
 	IsZeroCommission bool `bun:"is_zero_commission" json:"-"`
 	// PromoSubsidyAmount es lo que puso la plataforma para cubrir el 50% del día 1 (0 el resto de los días).
 	PromoSubsidyAmount float64 `bun:"promo_subsidy_amount" json:"promo_subsidy_amount"`
+	// DeliverySubsidyUSD es el envío que pone la plataforma en el primer pedido. DeliveryFee ya lo trae restado; el rider cobra sobre ambos.
+	DeliverySubsidyUSD float64 `bun:"delivery_subsidy_usd,notnull,default:0" json:"delivery_subsidy_usd,omitempty"`
+	DeliverySubsidyBs  float64 `bun:"-" json:"delivery_subsidy_bs,omitempty"`
 
 	ItemsOrders []ItemsOrder `bun:"rel:has-many,join:id=order_id" json:"-"`
+}
+
+// El primer pedido lleva el envío gratis hasta $3, absorbido por la plataforma.
+const FirstOrderDeliverySubsidyCapUSD = 3.0
+
+// FirstOrderDeliverySubsidyUSD es lo que la plataforma cubre del envío del primer pedido.
+func FirstOrderDeliverySubsidyUSD(deliveryFee float64) float64 {
+	if deliveryFee <= 0 {
+		return 0
+	}
+	return money.RoundUSD(math.Min(deliveryFee, FirstOrderDeliverySubsidyCapUSD))
+}
+
+// ApplyFirstOrderDeliverySubsidy debe llamarse antes de SetPrices, que suma DeliveryFee al total.
+func (o *Order) ApplyFirstOrderDeliverySubsidy(eligible bool) {
+	if !eligible {
+		return
+	}
+	o.DeliverySubsidyUSD = FirstOrderDeliverySubsidyUSD(o.DeliveryFee)
+	o.DeliveryFee = money.RoundUSD(o.DeliveryFee - o.DeliverySubsidyUSD)
+}
+
+// RiderDeliveryFee es el envío completo antes del subsidio, la base del pago del rider.
+func (o *Order) RiderDeliveryFee() float64 {
+	return money.RoundUSD(o.DeliveryFee + o.DeliverySubsidyUSD)
 }
 
 func (o *Order) BuildDtoToModel(dto dtos.CreateOrder, batchID uuid.UUID) {
@@ -202,6 +231,7 @@ func (o *Order) SetAdditionalsName(additions []Addition) {
 
 func (o *Order) ApplyBsPrice(rate float64) {
 	o.DeliveryFeeBs = money.RoundBs(o.DeliveryFee * rate)
+	o.DeliverySubsidyBs = money.RoundBs(o.DeliverySubsidyUSD * rate)
 	o.TotalPriceBs = money.RoundBs(o.TotalPrice * rate)
 }
 

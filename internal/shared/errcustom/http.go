@@ -81,6 +81,7 @@ var statusMap = map[error]int{
 	ErrTripAlreadyExists:        http.StatusConflict,
 	ErrTripNotCancellable:       http.StatusUnprocessableEntity,
 	ErrTripPaymentReviewPending: http.StatusUnprocessableEntity,
+	ErrFirstOrderDeliveryUsed:   http.StatusConflict,
 	ErrFirstTripDiscountUsed:    http.StatusConflict,
 }
 
@@ -154,6 +155,7 @@ var codeMap = map[error]string{
 	ErrTripAlreadyExists:        "trip_already_exists",
 	ErrTripNotCancellable:       "trip_not_cancellable",
 	ErrTripPaymentReviewPending: "trip_payment_review_pending",
+	ErrFirstOrderDeliveryUsed:   "first_order_delivery_used",
 	ErrFirstTripDiscountUsed:    "first_trip_discount_used",
 }
 

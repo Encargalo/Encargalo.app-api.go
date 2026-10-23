@@ -35,7 +35,7 @@ func NewOrderHandler(svc ports.OrdersApp, svc2 ports.AppManagerOrder, employee e
 
 // CreateQuote godoc
 // @Summary      Crear cotización de orden (precio congelado)
-// @Description  Calcula y congela el total (descuentos, promo, delivery, BCV) en Redis con TTL. El cliente debe pagar contra este quote y luego crear la orden con `quote_id`. `expires_at` = 30m; `proof_grace_until` = +15m si al crear ya envía comprobante.
+// @Description  Calcula y congela el total (descuentos, promo, delivery, BCV) en Redis con TTL. El cliente debe pagar contra este quote y luego crear la orden con `quote_id`. `expires_at` = 30m; `proof_grace_until` = +15m si al crear ya envía comprobante. Primer pedido: si el cliente no tiene pedidos fuera de Cancelled/Rejected, la plataforma cubre el envío hasta 3 USD; `delivery_fee_usd`/`delivery_fee_bs` y `total_usd`/`total_bs` ya lo traen restado, y vienen `delivery_fee_original_usd` y `delivery_subsidy_usd` para mostrar el envío tachado.
 // @Tags         Orders
 // @Accept       json
 // @Produce      json
@@ -79,7 +79,7 @@ func (o *orderHandler) CreateQuote(c echo.Context) error {
 // @Success      201    {object}  dtos.CreateOrderResponse  "Orden creada"
 // @Failure      400    {object}  dtos.ErrorResponse        "Body invalido o validacion fallida"
 // @Failure      401    {string}  string                    "No autorizado"
-// @Failure      409    {object}  dtos.ErrorResponse        "La orden ya existe, precio cambió, o quote ya usado"
+// @Failure      409    {object}  dtos.ErrorResponse        "La orden ya existe, precio cambió, quote ya usado, o el envío gratis de primer pedido ya se usó en otro pedido (first_order_delivery_used: volver a cotizar)"
 // @Failure      410    {object}  dtos.ErrorResponse        "Quote expirado"
 // @Failure      422    {object}  dtos.ErrorResponse        "Local cerrado o productos/adiciones no encontrados"
 // @Failure      500    {object}  dtos.ErrorResponse        "Error interno del servidor"

@@ -53,6 +53,7 @@ func TestCreateQuote_Success(t *testing.T) {
 
 	m.quotes.On("GetActiveID", mock.Anything, customerID).Return(uuid.Nil, nil)
 	wireNoQuoteItemCatalog(m, shopID, itemID, 10)
+	m.repo.On("HasBillableOrder", mock.Anything, customerID).Return(true, nil)
 	m.quotes.On("Save", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	m.quotes.On("SetActiveID", mock.Anything, customerID, mock.Anything, mock.Anything).Return(nil)
 
@@ -139,6 +140,7 @@ func TestCreateOrder_PriceMismatch(t *testing.T) {
 
 	m.repo.On("SearchOrdersByID", mock.Anything, orderID).Return(nil, errcustom.ErrNotFound)
 	wireNoQuoteItemCatalog(m, shopID, itemID, 10)
+	m.repo.On("HasBillableOrder", mock.Anything, customerID).Return(true, nil)
 
 	order := &dtos.CreateOrder{
 		ID:                 orderID,
