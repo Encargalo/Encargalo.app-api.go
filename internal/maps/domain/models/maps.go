@@ -72,3 +72,13 @@ type Route struct {
 	DistanceMeters int64  `json:"distance_meters"`
 	DurationMin    int64  `json:"duration_min"`
 }
+
+type PopularPlace struct {
+	PlaceID    string  `json:"place_id"`
+	Name       string  `json:"name"`
+	Category   string  `json:"category"`
+	Address    string  `json:"address"`
+	Lat        float64 `json:"lat"`
+	Lng        float64 `json:"lng"`
+	DistanceKm float64 `json:"distance_km"`
+}

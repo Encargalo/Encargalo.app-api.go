@@ -86,6 +86,9 @@ func (c *Config) IsProduction() bool {
 type Google struct {
 	ServerKey string `validate:"required" env:"server_key"`
 	ClientID  string `validate:"required" env:"client_id"`
+	// LanguageCode/RegionCode fijan el idioma y el país que se le piden a Places API; vacíos usan los defaults del adapter (es/VE).
+	LanguageCode string `env:"language_code"`
+	RegionCode   string `env:"region_code"`
 }
 
 type Cloudinary struct {
