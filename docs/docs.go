@@ -2420,7 +2420,7 @@ const docTemplate = `{
                         }
                     },
                     "409": {
-                        "description": "La orden ya existe, precio cambió, o quote ya usado",
+                        "description": "La orden ya existe, precio cambió, quote ya usado, o el envío gratis de primer pedido ya se usó en otro pedido (first_order_delivery_used: volver a cotizar)",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
@@ -2538,7 +2538,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Calcula y congela el total (descuentos, promo, delivery, BCV) en Redis con TTL. El cliente debe pagar contra este quote y luego crear la orden con ` + "`" + `quote_id` + "`" + `. ` + "`" + `expires_at` + "`" + ` = 30m; ` + "`" + `proof_grace_until` + "`" + ` = +15m si al crear ya envía comprobante.",
+                "description": "Calcula y congela el total (descuentos, promo, delivery, BCV) en Redis con TTL. El cliente debe pagar contra este quote y luego crear la orden con ` + "`" + `quote_id` + "`" + `. ` + "`" + `expires_at` + "`" + ` = 30m; ` + "`" + `proof_grace_until` + "`" + ` = +15m si al crear ya envía comprobante. Primer pedido: si el cliente no tiene pedidos fuera de Cancelled/Rejected, la plataforma cubre el envío hasta 3 USD; ` + "`" + `delivery_fee_usd` + "`" + `/` + "`" + `delivery_fee_bs` + "`" + ` y ` + "`" + `total_usd` + "`" + `/` + "`" + `total_bs` + "`" + ` ya lo traen restado, y vienen ` + "`" + `delivery_fee_original_usd` + "`" + ` y ` + "`" + `delivery_subsidy_usd` + "`" + ` para mostrar el envío tachado.",
                 "consumes": [
                     "application/json"
                 ],
@@ -8544,7 +8544,14 @@ const docTemplate = `{
                 "delivery_fee_bs": {
                     "type": "number"
                 },
+                "delivery_fee_original_usd": {
+                    "description": "DeliveryFeeOriginalUSD y DeliverySubsidyUSD solo vienen con el envío gratis de primer pedido; delivery_fee_usd ya lo trae restado.",
+                    "type": "number"
+                },
                 "delivery_fee_usd": {
+                    "type": "number"
+                },
+                "delivery_subsidy_usd": {
                     "type": "number"
                 },
                 "expires_at": {

@@ -48,6 +48,8 @@ type OrdersRepo interface {
 	AssignRider(ctx context.Context, orderID uuid.UUID, riderID uuid.UUID) error
 	SearchActiveOrdersByRiderID(ctx context.Context, riderID uuid.UUID) ([]models.Order, error)
 	SearchOrderHistoryByCustomer(ctx context.Context, customerID uuid.UUID) ([]models.Order, error)
+	// HasBillableOrder dice si el cliente tiene algún pedido fuera de Cancelled/Rejected.
+	HasBillableOrder(ctx context.Context, customerID uuid.UUID) (bool, error)
 	// ListStatusHistory devuelve las transiciones de estado por pedido, en orden cronológico.
 	ListStatusHistory(ctx context.Context, orderIDs []uuid.UUID) (map[uuid.UUID][]models.StatusChange, error)
 	UpdateOrderDetails(ctx context.Context, orderID uuid.UUID, details []byte) error

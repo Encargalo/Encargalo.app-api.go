@@ -18,24 +18,26 @@ const (
 
 // OrderQuote is the server-frozen checkout snapshot stored in Redis.
 type OrderQuote struct {
-	QuoteID            uuid.UUID               `json:"quote_id"`
-	CustomerID         uuid.UUID               `json:"customer_id"`
-	ShopID             uuid.UUID               `json:"shop_id"`
-	Address            dtos.Address            `json:"address"`
-	Items              []dtos.CreateItemsOrder `json:"items"`
-	TotalUSD           float64                 `json:"total_usd"`
-	TotalBs            float64                 `json:"total_bs"`
-	DeliveryFeeUSD     float64                 `json:"delivery_fee_usd"`
-	DeliveryFeeBs      float64                 `json:"delivery_fee_bs"`
-	BcvRate            float64                 `json:"bcv_rate"`
-	IsLaunchPromo      bool                    `json:"is_launch_promo"`
-	PromoSubsidyAmount float64                 `json:"promo_subsidy_amount"`
-	IsZeroCommission   bool                    `json:"is_zero_commission"`
-	Lines              []QuoteLineSnapshot     `json:"lines"`
-	CartFingerprint    string                  `json:"cart_fingerprint"`
-	CreatedAt          time.Time               `json:"created_at"`
-	ExpiresAt          time.Time               `json:"expires_at"`
-	ProofGraceUntil    time.Time               `json:"proof_grace_until"`
+	QuoteID        uuid.UUID               `json:"quote_id"`
+	CustomerID     uuid.UUID               `json:"customer_id"`
+	ShopID         uuid.UUID               `json:"shop_id"`
+	Address        dtos.Address            `json:"address"`
+	Items          []dtos.CreateItemsOrder `json:"items"`
+	TotalUSD       float64                 `json:"total_usd"`
+	TotalBs        float64                 `json:"total_bs"`
+	DeliveryFeeUSD float64                 `json:"delivery_fee_usd"`
+	DeliveryFeeBs  float64                 `json:"delivery_fee_bs"`
+	// DeliverySubsidyUSD es el envío gratis del primer pedido; DeliveryFeeUSD ya lo trae restado.
+	DeliverySubsidyUSD float64             `json:"delivery_subsidy_usd,omitempty"`
+	BcvRate            float64             `json:"bcv_rate"`
+	IsLaunchPromo      bool                `json:"is_launch_promo"`
+	PromoSubsidyAmount float64             `json:"promo_subsidy_amount"`
+	IsZeroCommission   bool                `json:"is_zero_commission"`
+	Lines              []QuoteLineSnapshot `json:"lines"`
+	CartFingerprint    string              `json:"cart_fingerprint"`
+	CreatedAt          time.Time           `json:"created_at"`
+	ExpiresAt          time.Time           `json:"expires_at"`
+	ProofGraceUntil    time.Time           `json:"proof_grace_until"`
 }
 
 type QuoteLineSnapshot struct {
@@ -117,6 +119,7 @@ func ApplyQuoteSnapshot(order *Order, quote *OrderQuote) {
 	order.Latitude = quote.Address.Latitude
 	order.Longitude = quote.Address.Longitude
 	order.DeliveryFee = quote.DeliveryFeeUSD
+	order.DeliverySubsidyUSD = quote.DeliverySubsidyUSD
 	order.TotalPrice = quote.TotalUSD
 	order.IsLaunchPromo = quote.IsLaunchPromo
 	order.PromoSubsidyAmount = quote.PromoSubsidyAmount
