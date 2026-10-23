@@ -22,6 +22,7 @@ type Notifications interface {
 	OrderNoRider(orderID string) error
 	PaymentProofPending(reviewID string, minutesPending int) error
 	BalanceRefundPending(requestID string, minutesPending int) error
+	WithdrawalRequested(requestID string) error
 	TripCreated(tripID string) error
 	TripNoDriver(tripID string) error
 	GrafanaAlert(payload models.GrafanaWebhookPayload) error
@@ -517,4 +518,51 @@ func formatBsAndUSD(bs, bcvRate float64) string {
 		return fmt.Sprintf("Bs %.2f (≈ $%.2f)", bs, usd)
 	}
 	return fmt.Sprintf("Bs %.2f", bs)
+}
+
+// WithdrawalRequested avisa que un rider espera una transferencia. Sin este
+// aviso la solicitud depende de que alguien esté mirando el CRM.
+func (n *notifications) WithdrawalRequested(requestID string) error {
+	req, err := n.repo.SearchWithdrawalRequestByID(context.Background(), requestID)
+	if err != nil {
+		slog.Error("Error searching withdrawal request by ID", "error", err)
+		return err
+	}
+	if req.ID == (uuid.UUID{}) {
+		slog.Error("Withdrawal request not found", "requestID", requestID)
+		return fmt.Errorf("withdrawal request not found: %s", requestID)
+	}
+
+	riderName := req.Rider.FullName()
+	if riderName == "" {
+		riderName = "—"
+	}
+	phone := "—"
+	if req.PMPhone != nil && *req.PMPhone != "" {
+		phone = *req.PMPhone
+	}
+	bank := "—"
+	if req.PMBankCode != nil && *req.PMBankCode != "" {
+		bank = *req.PMBankCode
+	}
+
+	msg := models.NotificationMessage{
+		Kind:  models.KindWithdrawalRequested,
+		Title: "🏍️ Retiro solicitado por un rider",
+		Color: 3447003, // blue
+		Fields: []models.NotificationField{
+			{Name: "Rider", Value: riderName, Inline: true},
+			{Name: "Monto solicitado", Value: fmt.Sprintf("Bs %.2f", req.Amount), Inline: true},
+			{Name: "Pago Móvil", Value: phone, Inline: true},
+			{Name: "Banco", Value: bank, Inline: true},
+		},
+		Footer: "Encargalo.app · reclamar en el CRM antes de transferir",
+	}
+
+	if err := n.dest.Send(context.Background(), []models.NotificationMessage{msg}); err != nil {
+		slog.Error("Error sending notification", "error", err)
+		return err
+	}
+
+	return nil
 }

@@ -9,8 +9,19 @@ type BalanceResponse struct {
 	Zone       models.Zone `json:"zone"`
 	// WithdrawalMinBs es el mínimo de retiro vigente, ya convertido a Bs con
 	// la tasa BCV actual (equivalente dinámico a WithdrawalMinUSD).
-	WithdrawalMinBs float64          `json:"withdrawal_min_bs"`
-	Transactions    []TransactionDTO `json:"transactions"`
+	WithdrawalMinBs float64 `json:"withdrawal_min_bs"`
+	// ActiveWithdrawal distingue un balance en 0 por retiro en curso de un
+	// balance en 0 por no haber ganado nada.
+	ActiveWithdrawal *ActiveWithdrawalDTO `json:"active_withdrawal"`
+	Transactions     []TransactionDTO     `json:"transactions"`
+}
+
+type ActiveWithdrawalDTO struct {
+	ID        string  `json:"id"`
+	AmountBs  float64 `json:"amount_bs"`
+	AmountUSD float64 `json:"amount_usd"`
+	Status    string  `json:"status"`
+	CreatedAt string  `json:"created_at"`
 }
 
 type TransactionDTO struct {
@@ -37,6 +48,15 @@ type TransactionsResponse struct {
 	Limit        int              `json:"limit"`
 }
 
+// WithdrawalResponse es la solicitud creada, no un pago. El monto es lo que
+// la plataforma debe al momento de solicitar; lo que se transfiera se congela
+// recién cuando staff reclama la solicitud.
 type WithdrawalResponse struct {
-	AmountWithdrawn float64 `json:"amount_withdrawn"`
+	ID        string  `json:"id"`
+	AmountBs  float64 `json:"amount_bs"`
+	AmountUSD float64 `json:"amount_usd"`
+	BcvRate   float64 `json:"bcv_rate,omitempty"`
+	Status    string  `json:"status"`
+	PMPhone   string  `json:"pm_phone"`
+	CreatedAt string  `json:"created_at"`
 }

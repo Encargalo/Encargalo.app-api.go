@@ -3447,7 +3447,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna balance_bs y balance_usd (tasa BCV vigente en bcv_rate), zona de control, mínimo de retiro (withdrawal_min_bs) y los últimos 10 movimientos (amount_bs y amount_usd).",
+                "description": "Retorna balance_bs y balance_usd (tasa BCV vigente en bcv_rate), zona de control, mínimo de retiro (withdrawal_min_bs), la solicitud de retiro en curso si existe (active_withdrawal, que distingue un saldo en 0 por retiro pendiente de uno por no haber ganado nada) y los últimos 10 movimientos (amount_bs y amount_usd).",
                 "produces": [
                     "application/json"
                 ],
@@ -3599,6 +3599,273 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/staff/finance/withdrawals": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Lista las solicitudes de retiro. Sin parámetro status devuelve las activas (pending y processing), que son las que requieren acción. Cada ítem trae amount_bs (lo solicitado) y payable_bs (lo que hay que transferir hoy): difieren cuando el rider cobró efectivo después de pedir el retiro, y el que manda es payable_bs. payable_frozen indica si ya quedó congelado por un reclamo.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff Finance"
+                ],
+                "summary": "Solicitudes de retiro de riders (staff)",
+                "parameters": [
+                    {
+                        "enum": [
+                            "pending",
+                            "processing",
+                            "completed",
+                            "rejected"
+                        ],
+                        "type": "string",
+                        "description": "Filtro por estado",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_finance_domain_dtos.WithdrawalsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/staff/finance/withdrawals/{id}/claim": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Reclama la solicitud antes de transferir y congela el monto pagable: ese es el valor exacto a transferir. El reclamo es obligatorio porque la transferencia ocurre fuera del sistema, y congelar acá evita que un movimiento del rider durante la transferencia descuadre lo que se registra. Si el monto pagable neto resulta cero o negativo (el efectivo cobrado consumió el retiro), la solicitud se anula y no hay nada que transferir.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff Finance"
+                ],
+                "summary": "Reclamar una solicitud de retiro (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID de la solicitud",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "monto congelado a transferir",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_finance_domain_dtos.ClaimResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Solicitud no encontrada",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "La solicitud ya fue reclamada o resuelta",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "No hay monto por transferir",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/staff/finance/withdrawals/{id}/complete": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Cierra la solicitud registrando la transferencia. El comprobante es obligatorio. El monto registrado es el congelado al reclamar y no se recalcula: la transferencia ya ocurrió por ese valor. Si lo transferido difiere del congelado, la corrección va por un ajuste de saldo aparte.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff Finance"
+                ],
+                "summary": "Registrar el pago de un retiro (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID de la solicitud",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Comprobante de la transferencia",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_finance_domain_dtos.CompleteWithdrawalRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_finance_domain_dtos.WithdrawalItem"
+                        }
+                    },
+                    "400": {
+                        "description": "Comprobante requerido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Solicitud no encontrada",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "La solicitud no fue reclamada o ya está resuelta",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/staff/finance/withdrawals/{id}/reject": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Rechaza la solicitud devolviendo el saldo retenido al rider. El motivo es obligatorio y queda visible para el rider. Un rechazo no activa el cooldown de 24h: el rider puede volver a solicitar de inmediato, porque no se le pagó nada.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders Staff Finance"
+                ],
+                "summary": "Rechazar una solicitud de retiro (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID de la solicitud",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Motivo del rechazo",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_finance_domain_dtos.RejectWithdrawalRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_finance_domain_dtos.WithdrawalItem"
+                        }
+                    },
+                    "400": {
+                        "description": "Motivo requerido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Solicitud no encontrada",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "La solicitud ya está resuelta",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
                         "schema": {
                             "type": "string"
                         }
@@ -4380,7 +4647,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "El rider solicita retirar su balance acumulado en Bs. Requiere balance \u003e= al equivalente dinámico de $15 según la tasa BCV vigente (ver withdrawal_min_bs en GET /riders/balance).",
+                "description": "Crea una solicitud de retiro, no un pago: retiene el saldo y queda pendiente hasta que staff transfiera y cargue el comprobante. Requiere balance \u003e= al equivalente dinámico de $3 según la tasa BCV vigente (ver withdrawal_min_bs en GET /riders/balance), Pago Móvil registrado, no tener otra solicitud en curso, y que hayan pasado 24h desde el último retiro pagado.",
                 "produces": [
                     "application/json"
                 ],
@@ -4389,8 +4656,8 @@ const docTemplate = `{
                 ],
                 "summary": "Solicitar retiro de balance",
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "201": {
+                        "description": "solicitud creada",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.WithdrawalResponse"
                         }
@@ -4401,8 +4668,20 @@ const docTemplate = `{
                             "type": "string"
                         }
                     },
+                    "409": {
+                        "description": "Ya existe una solicitud de retiro en curso",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
                     "422": {
-                        "description": "Balance insuficiente para retiro",
+                        "description": "Balance insuficiente para retiro o Pago Móvil no registrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "429": {
+                        "description": "Debe esperar 24h desde el último retiro pagado",
                         "schema": {
                             "type": "string"
                         }
@@ -7907,6 +8186,52 @@ const docTemplate = `{
                 }
             }
         },
+        "Encargalo_app-api_go_internal_finance_domain_dtos.ClaimResponse": {
+            "type": "object",
+            "properties": {
+                "bcv_rate": {
+                    "type": "number"
+                },
+                "claimed_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payable_bs": {
+                    "type": "number"
+                },
+                "payable_usd": {
+                    "type": "number"
+                },
+                "pm_bank_code": {
+                    "type": "string"
+                },
+                "pm_national_id": {
+                    "type": "string"
+                },
+                "pm_phone": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_finance_domain_dtos.CompleteWithdrawalRequest": {
+            "type": "object",
+            "required": [
+                "proof_image"
+            ],
+            "properties": {
+                "notes": {
+                    "type": "string"
+                },
+                "proof_image": {
+                    "type": "string"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_finance_domain_dtos.PayoutRequest": {
             "type": "object",
             "required": [
@@ -7922,6 +8247,103 @@ const docTemplate = `{
                 },
                 "proof_image": {
                     "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_finance_domain_dtos.RejectWithdrawalRequest": {
+            "type": "object",
+            "required": [
+                "reason"
+            ],
+            "properties": {
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_finance_domain_dtos.WithdrawalItem": {
+            "type": "object",
+            "properties": {
+                "amount_bs": {
+                    "type": "number"
+                },
+                "amount_usd": {
+                    "type": "number"
+                },
+                "bcv_rate": {
+                    "type": "number"
+                },
+                "completed_at": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "entity_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "payable_bs": {
+                    "type": "number"
+                },
+                "payable_frozen": {
+                    "description": "PayableFrozen indica si PayableBs ya está congelado (solicitud\nreclamada) o si todavía se recalcula en cada consulta.",
+                    "type": "boolean"
+                },
+                "payable_usd": {
+                    "type": "number"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "pm_bank_code": {
+                    "type": "string"
+                },
+                "pm_national_id": {
+                    "type": "string"
+                },
+                "pm_phone": {
+                    "type": "string"
+                },
+                "processing_at": {
+                    "type": "string"
+                },
+                "proof_url": {
+                    "type": "string"
+                },
+                "rejection_reason": {
+                    "type": "string"
+                },
+                "resolved_at": {
+                    "type": "string"
+                },
+                "staff_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "sur_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_finance_domain_dtos.WithdrawalsResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_finance_domain_dtos.WithdrawalItem"
+                    }
+                },
+                "total": {
+                    "type": "integer"
                 }
             }
         },
@@ -9400,9 +9822,37 @@ const docTemplate = `{
                 }
             }
         },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.ActiveWithdrawalDTO": {
+            "type": "object",
+            "properties": {
+                "amount_bs": {
+                    "type": "number"
+                },
+                "amount_usd": {
+                    "type": "number"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_riders_domain_dtos.BalanceResponse": {
             "type": "object",
             "properties": {
+                "active_withdrawal": {
+                    "description": "ActiveWithdrawal distingue un balance en 0 por retiro en curso de un\nbalance en 0 por no haber ganado nada.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.ActiveWithdrawalDTO"
+                        }
+                    ]
+                },
                 "balance_bs": {
                     "type": "number"
                 },
@@ -9899,8 +10349,26 @@ const docTemplate = `{
         "Encargalo_app-api_go_internal_riders_domain_dtos.WithdrawalResponse": {
             "type": "object",
             "properties": {
-                "amount_withdrawn": {
+                "amount_bs": {
                     "type": "number"
+                },
+                "amount_usd": {
+                    "type": "number"
+                },
+                "bcv_rate": {
+                    "type": "number"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "pm_phone": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
                 }
             }
         },

@@ -29,7 +29,7 @@ func NewFinanceHandler(svc ridersPorts.FinanceApp) FinanceHandler {
 // GetBalance godoc
 //
 // @Summary      Balance del rider
-// @Description  Retorna balance_bs y balance_usd (tasa BCV vigente en bcv_rate), zona de control, mínimo de retiro (withdrawal_min_bs) y los últimos 10 movimientos (amount_bs y amount_usd).
+// @Description  Retorna balance_bs y balance_usd (tasa BCV vigente en bcv_rate), zona de control, mínimo de retiro (withdrawal_min_bs), la solicitud de retiro en curso si existe (active_withdrawal, que distingue un saldo en 0 por retiro pendiente de uno por no haber ganado nada) y los últimos 10 movimientos (amount_bs y amount_usd).
 // @Tags         Riders Finance
 // @Produce      json
 // @Security     SessionCookie
@@ -52,13 +52,15 @@ func (h *financeHandler) GetBalance(c echo.Context) error {
 // RequestWithdrawal godoc
 //
 // @Summary      Solicitar retiro de balance
-// @Description  El rider solicita retirar su balance acumulado en Bs. Requiere balance >= al equivalente dinámico de $15 según la tasa BCV vigente (ver withdrawal_min_bs en GET /riders/balance).
+// @Description  Crea una solicitud de retiro, no un pago: retiene el saldo y queda pendiente hasta que staff transfiera y cargue el comprobante. Requiere balance >= al equivalente dinámico de $3 según la tasa BCV vigente (ver withdrawal_min_bs en GET /riders/balance), Pago Móvil registrado, no tener otra solicitud en curso, y que hayan pasado 24h desde el último retiro pagado.
 // @Tags         Riders Finance
 // @Produce      json
 // @Security     SessionCookie
-// @Success      200  {object}  dtos.WithdrawalResponse
+// @Success      201  {object}  dtos.WithdrawalResponse  "solicitud creada"
 // @Failure      401  {string}  string  "No autorizado"
-// @Failure      422  {string}  string  "Balance insuficiente para retiro"
+// @Failure      409  {string}  string  "Ya existe una solicitud de retiro en curso"
+// @Failure      422  {string}  string  "Balance insuficiente para retiro o Pago Móvil no registrado"
+// @Failure      429  {string}  string  "Debe esperar 24h desde el último retiro pagado"
 // @Failure      503  {string}  string  "Tasa BCV no disponible"
 // @Failure      500  {string}  string  "Error interno"
 // @Router       /riders/withdrawal [post]
@@ -71,7 +73,7 @@ func (h *financeHandler) RequestWithdrawal(c echo.Context) error {
 		return errcustom.ToHTTPError(err)
 	}
 
-	return response.Send(c, http.StatusOK, resp)
+	return response.Send(c, http.StatusCreated, resp)
 }
 
 // ListTransactions godoc

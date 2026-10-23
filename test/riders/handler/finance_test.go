@@ -79,7 +79,12 @@ func TestRequestWithdrawal_Success(t *testing.T) {
 	h, svc := newFinanceHandler(t)
 	riderID := uuid.New()
 
-	resp := dtos.WithdrawalResponse{AmountWithdrawn: 20.0}
+	resp := dtos.WithdrawalResponse{
+		ID:       uuid.New().String(),
+		AmountBs: 800.0,
+		Status:   "pending",
+		PMPhone:  "04121234567",
+	}
 	svc.On("RequestWithdrawal", mock.Anything, riderID).Return(resp, nil)
 
 	tc := buildhttptest.SetupControllerCase("/riders/withdrawal", http.MethodPost, nil)
@@ -88,7 +93,8 @@ func TestRequestWithdrawal_Success(t *testing.T) {
 	err := h.RequestWithdrawal(tc.Ctx)
 
 	assert.NoError(t, err)
-	assert.Equal(t, http.StatusOK, tc.Res.Code)
+	// La solicitud se crea, no se paga: 201, no 200.
+	assert.Equal(t, http.StatusCreated, tc.Res.Code)
 }
 
 func TestRequestWithdrawal_InsufficientBalance(t *testing.T) {

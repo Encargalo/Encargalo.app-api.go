@@ -135,6 +135,11 @@ func processMessage(msg redis.XMessage, notificationHand handler.Notification) e
 			slog.Error("error de notificación", "msg_id", msg.ID, "error", err)
 			return err
 		}
+	case "withdrawal_requested":
+		if err := notificationHand.WithdrawalRequested(msg); err != nil {
+			slog.Error("error de notificación", "msg_id", msg.ID, "error", err)
+			return err
+		}
 	case "trip_created":
 		if err := notificationHand.TripCreated(msg); err != nil {
 			slog.Error("error de notificación", "msg_id", msg.ID, "error", err)

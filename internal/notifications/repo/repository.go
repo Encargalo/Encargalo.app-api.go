@@ -13,6 +13,7 @@ type Repository interface {
 	SearchBalanceRefundRequestByID(ctx context.Context, requestID string) (models.BalanceRefundRequest, string, error)
 	SearchPaymentReviewByID(ctx context.Context, reviewID string) (models.PaymentReview, error)
 	SearchTripByID(ctx context.Context, tripID string) (models.Trip, error)
+	SearchWithdrawalRequestByID(ctx context.Context, requestID string) (models.WithdrawalRequest, error)
 }
 
 type repository struct {
@@ -101,4 +102,20 @@ func (r *repository) SearchTripByID(ctx context.Context, tripID string) (models.
 		return models.Trip{}, err
 	}
 	return trip, nil
+}
+
+func (r *repository) SearchWithdrawalRequestByID(ctx context.Context, requestID string) (models.WithdrawalRequest, error) {
+	var req models.WithdrawalRequest
+	if err := r.db.NewSelect().
+		Model(&req).
+		Relation("Rider").
+		Where("?TableAlias.id = ?", requestID).
+		Scan(ctx); err != nil {
+		if err == sql.ErrNoRows {
+			return models.WithdrawalRequest{}, nil
+		}
+		return models.WithdrawalRequest{}, err
+	}
+
+	return req, nil
 }
