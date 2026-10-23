@@ -264,6 +264,7 @@ func TestRequestTrip_ReviewFailureCancelsTrip(t *testing.T) {
 	d.reviews.On("CreateReview", mock.Anything, models.ReferenceTypeTrip, tripID, "https://cdn/proof.jpg", mock.AnythingOfType("float64"), quote.BcvRate).
 		Return(nil, errcustom.ErrUnexpectedError)
 	d.repo.On("UpdateTripStatus", mock.Anything, tripID, models.TripStatusPaymentReview, models.TripStatusCancelled).Return(true, nil)
+	d.repo.On("SaveTripCancelReason", mock.Anything, tripID, mock.Anything).Return(nil).Maybe()
 
 	_, err := d.svc.RequestTrip(context.Background(), customerID, req)
 
@@ -404,6 +405,7 @@ func TestCancelTrip_Success(t *testing.T) {
 
 	repo.On("GetTripByID", mock.Anything, tripID).Return(&models.Trip{ID: tripID, CustomerID: customerID, Status: models.TripStatusSearching}, nil)
 	repo.On("UpdateTripStatus", mock.Anything, tripID, models.TripStatusSearching, models.TripStatusCancelled).Return(true, nil)
+	repo.On("SaveTripCancelReason", mock.Anything, tripID, mock.Anything).Return(nil).Maybe()
 	mockBcvRate(bcv, 40)
 
 	resp, err := svc.CancelTrip(context.Background(), tripID, customerID)

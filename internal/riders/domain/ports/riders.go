@@ -71,6 +71,7 @@ type TripsStore interface {
 	GetTripByID(ctx context.Context, tripID uuid.UUID) (*tripsModels.Trip, error)
 	UpdateTripStatus(ctx context.Context, tripID uuid.UUID, fromStatus, toStatus tripsModels.TripStatus) (bool, error)
 	SaveTripPayment(ctx context.Context, tripID uuid.UUID, payment *tripsModels.TripPayment) error
+	SaveTripCancelReason(ctx context.Context, tripID uuid.UUID, reason tripsModels.CancelReason) error
 	AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID, pickupCode string) (bool, error)
 	StartTripWithPickupCode(ctx context.Context, tripID, riderID uuid.UUID, pickupCode, dropoffCode string) (bool, error)
 	ReleaseTripRider(ctx context.Context, tripID, riderID uuid.UUID) (bool, error)

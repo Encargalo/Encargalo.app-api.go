@@ -24,6 +24,7 @@ func TestCancelTrip_NotifiesRidersWithCancelledTrip(t *testing.T) {
 		ID: tripID, CustomerID: customerID, RiderID: &riderID, Status: models.TripStatusAccepted,
 	}, nil)
 	d.repo.On("UpdateTripStatus", mock.Anything, tripID, models.TripStatusAccepted, models.TripStatusCancelled).Return(true, nil)
+	d.repo.On("SaveTripCancelReason", mock.Anything, tripID, mock.Anything).Return(nil).Maybe()
 	d.riders.On("GetByRiderID", mock.Anything, riderID).Return(dtos.RiderPublicInfo{}, nil)
 	mockBcvRate(d.bcv, 40)
 	notifier.On("NotifyTripCancelled", mock.Anything, mock.MatchedBy(func(trip models.Trip) bool {

@@ -156,6 +156,7 @@ func TestRequestTrip_FailureAfterCreateIsNotMaskedAsRetry(t *testing.T) {
 	d.repo.On("CreateTrip", mock.Anything, mock.Anything).Return(nil)
 	d.balance.On("DebitForReference", mock.Anything, customerID, tripID, models.ReferenceTypeTrip, expectedBs).Return(errcustom.ErrInsufficientBalance)
 	d.repo.On("UpdateTripStatus", mock.Anything, tripID, models.TripStatusSearching, models.TripStatusCancelled).Return(true, nil)
+	d.repo.On("SaveTripCancelReason", mock.Anything, tripID, mock.Anything).Return(nil).Maybe()
 
 	_, err := d.svc.RequestTrip(context.Background(), customerID, req)
 

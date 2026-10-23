@@ -32,6 +32,7 @@ func TestCancelTrip_CreditsVerifiedPagoMovilOnce(t *testing.T) {
 
 	d.repo.On("GetTripByID", mock.Anything, trip.ID).Return(trip, nil)
 	d.repo.On("UpdateTripStatus", mock.Anything, trip.ID, models.TripStatusSearching, models.TripStatusCancelled).Return(true, nil)
+	d.repo.On("SaveTripCancelReason", mock.Anything, trip.ID, mock.Anything).Return(nil).Maybe()
 	d.balance.On("CreditOrderRejected", mock.Anything, trip.CustomerID, trip.ID, models.ReferenceTypeTrip, 200.0, 200.0, 40.0).
 		Return(txID, created, nil).Once()
 	d.repo.On("SaveTripPayment", mock.Anything, trip.ID, mock.MatchedBy(func(p *models.TripPayment) bool {
@@ -71,6 +72,7 @@ func TestCancelTrip_BalanceStillRefundsDebit(t *testing.T) {
 
 	d.repo.On("GetTripByID", mock.Anything, trip.ID).Return(trip, nil)
 	d.repo.On("UpdateTripStatus", mock.Anything, trip.ID, models.TripStatusSearching, models.TripStatusCancelled).Return(true, nil)
+	d.repo.On("SaveTripCancelReason", mock.Anything, trip.ID, mock.Anything).Return(nil).Maybe()
 	d.balance.On("RefundBalancePayment", mock.Anything, trip.CustomerID, trip.ID, models.ReferenceTypeTrip, paid).Return(nil)
 	mockBcvRate(d.bcv, 40)
 
@@ -94,6 +96,7 @@ func TestCancelTrip_MixedBalancePagoMovilRefundsBothLegs(t *testing.T) {
 
 	d.repo.On("GetTripByID", mock.Anything, trip.ID).Return(trip, nil)
 	d.repo.On("UpdateTripStatus", mock.Anything, trip.ID, models.TripStatusSearching, models.TripStatusCancelled).Return(true, nil)
+	d.repo.On("SaveTripCancelReason", mock.Anything, trip.ID, mock.Anything).Return(nil).Maybe()
 	d.balance.On("CreditOrderRejected", mock.Anything, trip.CustomerID, trip.ID, models.ReferenceTypeTrip, 545.0, 545.0, rate).
 		Return(txID, time.Now(), nil).Once()
 	d.balance.On("RefundBalancePayment", mock.Anything, trip.CustomerID, trip.ID, models.ReferenceTypeTrip, paid).Return(nil).Once()
@@ -112,6 +115,7 @@ func TestCancelTrip_CashTripDoesNotCredit(t *testing.T) {
 
 	d.repo.On("GetTripByID", mock.Anything, trip.ID).Return(trip, nil)
 	d.repo.On("UpdateTripStatus", mock.Anything, trip.ID, models.TripStatusSearching, models.TripStatusCancelled).Return(true, nil)
+	d.repo.On("SaveTripCancelReason", mock.Anything, trip.ID, mock.Anything).Return(nil).Maybe()
 	mockBcvRate(d.bcv, 40)
 
 	_, err := d.svc.CancelTrip(context.Background(), trip.ID, trip.CustomerID)

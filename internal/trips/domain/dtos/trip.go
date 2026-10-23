@@ -91,11 +91,23 @@ type TripResponse struct {
 	PickupCode  *string      `json:"pickup_code,omitempty"`
 	DropoffCode *string      `json:"dropoff_code,omitempty"`
 	Payment     *TripPayment `json:"payment,omitempty"`
+	// CancelReason es un código: payment_rejected, payment_underpaid,
+	// customer_cancelled o no_driver. La app lo traduce; no dice quién canceló.
+	CancelReason string `json:"cancel_reason,omitempty" example:"no_driver"`
 }
 
-// TripPayment es el crédito a la cartera cuando un Pago Móvil aprobado no se prestó.
+// TripPayment es lo que el cliente necesita saber de su dinero: el estado de la
+// revisión del comprobante y el crédito a la cartera si el viaje no se prestó.
 type TripPayment struct {
-	ExpectedAmountBs    float64    `json:"expected_amount_bs,omitempty"`
+	// Status es el estado de la revisión: approved, overpaid,
+	// rejected_underpaid o rejected_invalid. Vacío si no hubo revisión.
+	Status           string   `json:"status,omitempty" example:"rejected_underpaid"`
+	ExpectedAmountBs float64  `json:"expected_amount_bs,omitempty"`
+	ObservedAmountBs *float64 `json:"observed_amount_bs,omitempty"`
+	DifferenceBs     *float64 `json:"difference_bs,omitempty"`
+	// RejectionReason solo se llena en rejected_underpaid. El motivo que
+	// escribe el staff en rejected_invalid nunca sale hacia el cliente.
+	RejectionReason     *string    `json:"rejection_reason,omitempty"`
 	TransactionID       *uuid.UUID `json:"transaction_id,omitempty"`
 	CreditedBs          *float64   `json:"credited_bs,omitempty"`
 	RefundablePMBs      *float64   `json:"refundable_pm_bs,omitempty"`

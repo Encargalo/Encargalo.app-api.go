@@ -8,10 +8,15 @@ import (
 	"github.com/google/uuid"
 )
 
-// TripPayment congela el crédito a la cartera cuando un Pago Móvil aprobado
+// TripPayment congela lo que el cliente necesita saber de su dinero: el estado
+// de la revisión del comprobante y el crédito a la cartera cuando un Pago Móvil
 // no se convierte en viaje. Solo lo ve el cliente (ToCustomerDTO).
 type TripPayment struct {
+	Status              string     `json:"status,omitempty"`
 	ExpectedAmountBs    float64    `json:"expected_amount_bs,omitempty"`
+	ObservedAmountBs    *float64   `json:"observed_amount_bs,omitempty"`
+	DifferenceBs        *float64   `json:"difference_bs,omitempty"`
+	RejectionReason     *string    `json:"rejection_reason,omitempty"`
 	TransactionID       *uuid.UUID `json:"transaction_id,omitempty"`
 	CreditedBs          *float64   `json:"credited_bs,omitempty"`
 	RefundablePMBs      *float64   `json:"refundable_pm_bs,omitempty"`
@@ -92,7 +97,11 @@ func (p *TripPayment) toDTO() *dtos.TripPayment {
 		return nil
 	}
 	return &dtos.TripPayment{
+		Status:              p.Status,
 		ExpectedAmountBs:    p.ExpectedAmountBs,
+		ObservedAmountBs:    p.ObservedAmountBs,
+		DifferenceBs:        p.DifferenceBs,
+		RejectionReason:     p.RejectionReason,
 		TransactionID:       p.TransactionID,
 		CreditedBs:          p.CreditedBs,
 		RefundablePMBs:      p.RefundablePMBs,

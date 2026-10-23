@@ -26,6 +26,17 @@ const (
 // ReferenceTypeTrip identifica un viaje dentro del módulo de pagos unificado.
 const ReferenceTypeTrip = "trip"
 
+// CancelReason es el código que la app traduce a un texto para el cliente.
+// Nunca lleva el motivo que escribió el staff ni dice quién canceló.
+type CancelReason string
+
+const (
+	CancelReasonPaymentRejected   CancelReason = "payment_rejected"
+	CancelReasonPaymentUnderpaid  CancelReason = "payment_underpaid"
+	CancelReasonCustomerCancelled CancelReason = "customer_cancelled"
+	CancelReasonNoDriver          CancelReason = "no_driver"
+)
+
 const MethodPagoMovil = "PagoMovil"
 const MethodBalance = "Balance"
 const MethodEfectivo = "Efectivo"
@@ -70,11 +81,13 @@ type Trip struct {
 	BalancePaidBs *float64 `bun:"balance_paid_bs"`
 	CashAmountBs  *float64 `bun:"cash_amount_bs"`
 	// Payment es el crédito a la cartera si el Pago Móvil aprobado no se prestó.
-	Payment           *TripPayment `bun:"payment,type:jsonb"`
-	PickupCode        *string      `bun:"pickup_code"`
-	DropoffCode       *string      `bun:"dropoff_code"`
-	PickupCodeUsedAt  *time.Time   `bun:"pickup_code_used_at"`
-	DropoffCodeUsedAt *time.Time   `bun:"dropoff_code_used_at"`
+	Payment *TripPayment `bun:"payment,type:jsonb"`
+	// CancelReason es por qué terminó en cancelled o no_driver. Solo lo ve el cliente.
+	CancelReason      *CancelReason `bun:"cancel_reason"`
+	PickupCode        *string       `bun:"pickup_code"`
+	DropoffCode       *string       `bun:"dropoff_code"`
+	PickupCodeUsedAt  *time.Time    `bun:"pickup_code_used_at"`
+	DropoffCodeUsedAt *time.Time    `bun:"dropoff_code_used_at"`
 	// FareBs no se persiste, se recalcula en cada respuesta (patrón Order.DeliveryFeeBs).
 	FareBs      *float64   `bun:"-"`
 	RequestedAt time.Time  `bun:"requested_at,notnull,default:current_timestamp"`
@@ -158,5 +171,16 @@ func (t *Trip) ToCustomerDTO() dtos.TripResponse {
 		resp.DropoffCode = t.DropoffCode
 	}
 	resp.Payment = t.Payment.toDTO()
+	if t.CancelReason != nil {
+		resp.CancelReason = string(*t.CancelReason)
+	}
 	return resp
+}
+
+// SetCancelReason no pisa un motivo ya escrito: el primero es la causa real.
+func (t *Trip) SetCancelReason(reason CancelReason) {
+	if t == nil || t.CancelReason != nil {
+		return
+	}
+	t.CancelReason = &reason
 }

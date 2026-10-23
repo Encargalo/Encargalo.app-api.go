@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	paymentsmodels "Encargalo.app-api.go/internal/payments/domain/models"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	tripsmodels "Encargalo.app-api.go/internal/trips/domain/models"
 	usersdto "Encargalo.app-api.go/internal/users/domain/dto"
@@ -29,7 +30,15 @@ func TestE2E_HTTP_UnderpayCreditsObservedAndCancelsTrip(t *testing.T) {
 
 	trip := getTripHTTP(t, customerID, tripID)
 	require.Equal(t, string(tripsmodels.TripStatusCancelled), trip.Status)
-	require.Nil(t, trip.Payment)
+	require.Equal(t, string(tripsmodels.CancelReasonPaymentUnderpaid), trip.CancelReason)
+	require.NotNil(t, trip.Payment)
+	require.Equal(t, string(paymentsmodels.ReviewRejectedUnderpaid), trip.Payment.Status)
+	require.InDelta(t, 200.0, trip.Payment.ExpectedAmountBs, 0.001)
+	require.NotNil(t, trip.Payment.ObservedAmountBs)
+	require.InDelta(t, 150.0, *trip.Payment.ObservedAmountBs, 0.001)
+	require.NotNil(t, trip.Payment.CreditedBs)
+	require.InDelta(t, 150.0, *trip.Payment.CreditedBs, 0.001)
+	require.True(t, trip.Payment.CanRequestRefund)
 
 	rows := ledgerForReference(t, tripID)
 	require.Len(t, rows, 1)
@@ -243,13 +252,19 @@ func customerJSON(t *testing.T, customerID uuid.UUID, method, path string, body 
 }
 
 type tripHTTP struct {
-	ID      uuid.UUID    `json:"id"`
-	Status  string       `json:"status"`
-	FareUSD *float64     `json:"fare_usd"`
-	Payment *tripPayHTTP `json:"payment"`
+	ID           uuid.UUID    `json:"id"`
+	Status       string       `json:"status"`
+	FareUSD      *float64     `json:"fare_usd"`
+	Payment      *tripPayHTTP `json:"payment"`
+	CancelReason string       `json:"cancel_reason"`
 }
 
 type tripPayHTTP struct {
+	Status           string     `json:"status"`
+	ExpectedAmountBs float64    `json:"expected_amount_bs"`
+	ObservedAmountBs *float64   `json:"observed_amount_bs"`
+	DifferenceBs     *float64   `json:"difference_bs"`
+	RejectionReason  *string    `json:"rejection_reason"`
 	TransactionID    *uuid.UUID `json:"transaction_id"`
 	CreditedBs       *float64   `json:"credited_bs"`
 	CanRequestRefund bool       `json:"can_request_refund"`
