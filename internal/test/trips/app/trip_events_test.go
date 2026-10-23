@@ -33,7 +33,7 @@ func (f *fakeTripEvents) PublisherEvent(_ context.Context, data any) error {
 func TestRequestTrip_CashPublishesTripCreated(t *testing.T) {
 	d := newTripsDeps(t)
 	events := &fakeTripEvents{}
-	svc := app.NewTripsApp(d.repo, d.matcher, d.bcv, d.quotes, d.upload, d.reviews, d.hub, d.riders, d.balance, nil, nil, nil, events)
+	svc := app.NewTripsApp(d.repo, d.matcher, d.bcv, d.quotes, d.upload, d.reviews, d.hub, d.riders, d.balance, nil, nil, nil, events, nil)
 	customerID := uuid.New()
 	quote := sampleTripQuote(customerID)
 	tripID := uuid.New()
@@ -62,7 +62,7 @@ func TestRequestTrip_CashPublishesTripCreated(t *testing.T) {
 func TestRequestTrip_PagoMovilPublishesProofPendingAndTripCreated(t *testing.T) {
 	d := newTripsDeps(t)
 	events := &fakeTripEvents{}
-	svc := app.NewTripsApp(d.repo, d.matcher, d.bcv, d.quotes, d.upload, d.reviews, d.hub, d.riders, d.balance, nil, nil, nil, events)
+	svc := app.NewTripsApp(d.repo, d.matcher, d.bcv, d.quotes, d.upload, d.reviews, d.hub, d.riders, d.balance, nil, nil, nil, events, nil)
 	customerID := uuid.New()
 	quote := sampleTripQuote(customerID)
 	req := paidTripRequest(quote.QuoteID)

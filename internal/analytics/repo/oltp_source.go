@@ -6,6 +6,7 @@ import (
 
 	"Encargalo.app-api.go/internal/analytics/domain/models"
 	"Encargalo.app-api.go/internal/analytics/domain/ports"
+	"Encargalo.app-api.go/internal/pkg/bizclock"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
@@ -222,6 +223,7 @@ func (r *oltpSourceRepo) FetchOrders(ctx context.Context, from, to time.Time) ([
 
 type tripRow struct {
 	ID                uuid.UUID  `bun:"id"`
+	QuoteID           *uuid.UUID `bun:"quote_id"`
 	CustomerID        uuid.UUID  `bun:"customer_id"`
 	RiderID           *uuid.UUID `bun:"rider_id"`
 	Status            string     `bun:"status"`
@@ -237,7 +239,7 @@ func (r *oltpSourceRepo) FetchTrips(ctx context.Context, from, to time.Time) ([]
 	err := r.db.NewSelect().
 		TableExpr("trips.trips AS t").
 		Column(
-			"t.id", "t.customer_id", "t.rider_id", "t.status", "t.fare",
+			"t.id", "t.quote_id", "t.customer_id", "t.rider_id", "t.status", "t.fare",
 			"t.pickup_h3_cell_zone", "t.dropoff_h3_cell_zone", "t.created_at",
 		).
 		Where("t.created_at >= ? AND t.created_at < ?", from, to).
@@ -251,6 +253,7 @@ func (r *oltpSourceRepo) FetchTrips(ctx context.Context, from, to time.Time) ([]
 	for i, row := range rows {
 		out[i] = models.CubeTrip{
 			TripID:        row.ID,
+			QuoteID:       row.QuoteID,
 			CustomerID:    row.CustomerID,
 			RiderID:       row.RiderID,
 			Status:        row.Status,
@@ -296,6 +299,57 @@ func (r *oltpSourceRepo) FetchTrackingEvents(ctx context.Context, from, to time.
 			Params:    params,
 			CreatedAt: row.CreatedAt,
 			SyncedAt:  now,
+		}
+	}
+	return out, nil
+}
+
+type fareQuoteRow struct {
+	QuoteID           uuid.UUID `bun:"quote_id"`
+	CustomerID        uuid.UUID `bun:"customer_id"`
+	DistanceMeters    float64   `bun:"distance_meters"`
+	DurationMin       int64     `bun:"duration_min"`
+	FareUSD           float64   `bun:"fare_usd"`
+	FareBand          string    `bun:"fare_band"`
+	PickupH3CellZone  *string   `bun:"pickup_h3_cell_zone"`
+	DropoffH3CellZone *string   `bun:"dropoff_h3_cell_zone"`
+	CreatedAt         time.Time `bun:"created_at"`
+}
+
+// Las cotizaciones son inmutables: una vez escritas no cambian, así que la
+// ventana de created_at las cubre sin necesitar lookback por updated_at.
+func (r *oltpSourceRepo) FetchFareQuotes(ctx context.Context, from, to time.Time) ([]models.CubeFareQuote, error) {
+	var rows []fareQuoteRow
+	err := r.db.NewSelect().
+		TableExpr("trips.fare_quotes AS q").
+		Column(
+			"q.quote_id", "q.customer_id", "q.distance_meters", "q.duration_min",
+			"q.fare_usd", "q.fare_band", "q.pickup_h3_cell_zone",
+			"q.dropoff_h3_cell_zone", "q.created_at",
+		).
+		Where("q.created_at >= ? AND q.created_at < ?", from, to).
+		Scan(ctx, &rows)
+	if err != nil {
+		return nil, errcustom.Unexpected(err)
+	}
+
+	now := time.Now().UTC()
+	out := make([]models.CubeFareQuote, len(rows))
+	for i, row := range rows {
+		local := row.CreatedAt.In(bizclock.Location())
+		out[i] = models.CubeFareQuote{
+			QuoteID:        row.QuoteID,
+			CustomerID:     row.CustomerID,
+			DistanceMeters: row.DistanceMeters,
+			DurationMin:    row.DurationMin,
+			FareUSD:        row.FareUSD,
+			FareBand:       row.FareBand,
+			PickupH3Cell:   row.PickupH3CellZone,
+			DropoffH3Cell:  row.DropoffH3CellZone,
+			QuoteDate:      time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, time.UTC),
+			QuoteHour:      int16(local.Hour()),
+			CreatedAt:      row.CreatedAt,
+			SyncedAt:       now,
 		}
 	}
 	return out, nil

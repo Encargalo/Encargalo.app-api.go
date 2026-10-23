@@ -16,6 +16,36 @@ type OLTPSourceRepo struct {
 	mock.Mock
 }
 
+// FetchFareQuotes provides a mock function with given fields: ctx, from, to
+func (_m *OLTPSourceRepo) FetchFareQuotes(ctx context.Context, from time.Time, to time.Time) ([]models.CubeFareQuote, error) {
+	ret := _m.Called(ctx, from, to)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FetchFareQuotes")
+	}
+
+	var r0 []models.CubeFareQuote
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time) ([]models.CubeFareQuote, error)); ok {
+		return rf(ctx, from, to)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time) []models.CubeFareQuote); ok {
+		r0 = rf(ctx, from, to)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.CubeFareQuote)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, time.Time, time.Time) error); ok {
+		r1 = rf(ctx, from, to)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // FetchOrders provides a mock function with given fields: ctx, from, to
 func (_m *OLTPSourceRepo) FetchOrders(ctx context.Context, from time.Time, to time.Time) ([]models.CubeOrder, error) {
 	ret := _m.Called(ctx, from, to)

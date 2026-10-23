@@ -29,6 +29,12 @@ func Now() time.Time {
 	return time.Now().In(location)
 }
 
+// Location es la zona horaria de negocio. Sirve para reinterpretar timestamps
+// ya persistidos en UTC, como hace el ETL al calcular hora del día.
+func Location() *time.Location {
+	return location
+}
+
 // Window representa una ventana de disponibilidad (una fila de products.schedules)
 // en su forma primitiva, desacoplada de bun/dtos para poder usarse desde cualquier dominio.
 type Window struct {
