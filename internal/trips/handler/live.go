@@ -16,7 +16,7 @@ import (
 //
 // ### Mensajes salientes
 //   - `{"type":"connected"}`
-//   - `{"type":"trip_update","trip":{...}}` — incluye pickup_code o dropoff_code cuando el cliente debe mostrarlos, y rider público si ya hay conductor
+//   - `{"type":"trip_update","trip":{...}}` — incluye pickup_code o dropoff_code cuando el cliente debe mostrarlos, y rider público si ya hay conductor. En cancelled y no_driver trae cancel_reason (payment_rejected, payment_underpaid, customer_cancelled o no_driver) y, si hubo revisión de pago, el bloque payment
 //   - `{"type":"rider_location","trip_id":"<uuid>","latitude":0,"longitude":0}` — posición del rider asignado
 //
 // @Tags         Trips

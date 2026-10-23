@@ -395,6 +395,7 @@ func TestOfferTrip_NoCandidatesWaitsFullRoundsBeforeNoDriver(t *testing.T) {
 	searching.Status = tripsModels.TripStatusSearching
 	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&searching, nil)
 	tripsRepo.On("UpdateTripStatus", mock.Anything, trip.ID, tripsModels.TripStatusSearching, tripsModels.TripStatusNoDriver).Return(true, nil).Once()
+	tripsRepo.On("SaveTripCancelReason", mock.Anything, trip.ID, mock.Anything).Return(nil).Maybe()
 
 	matcher.OfferTrip(context.Background(), trip)
 	tripsRepo.AssertNotCalled(t, "UpdateTripStatus", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
@@ -421,6 +422,7 @@ func TestOfferTrip_NoPickupCellExpiresImmediately(t *testing.T) {
 	trip := samplePickupTrip(t)
 	trip.PickupH3Cell = nil
 	tripsRepo.On("UpdateTripStatus", mock.Anything, trip.ID, tripsModels.TripStatusSearching, tripsModels.TripStatusNoDriver).Return(true, nil)
+	tripsRepo.On("SaveTripCancelReason", mock.Anything, trip.ID, tripsModels.CancelReasonNoDriver).Return(nil)
 
 	matcher.OfferTrip(context.Background(), trip)
 
@@ -905,6 +907,7 @@ func TestOfferTrip_EmptyNextRoundWaitsThenExpiresAtRoundCap(t *testing.T) {
 	searching.Status = tripsModels.TripStatusSearching
 	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&searching, nil)
 	tripsRepo.On("UpdateTripStatus", mock.Anything, trip.ID, tripsModels.TripStatusSearching, tripsModels.TripStatusNoDriver).Return(true, nil).Once()
+	tripsRepo.On("SaveTripCancelReason", mock.Anything, trip.ID, mock.Anything).Return(nil).Maybe()
 
 	asMatcher(t, svc).OfferTrip(context.Background(), trip)
 
@@ -943,6 +946,7 @@ func TestOfferTrip_ExpiresAtRoundCapEvenIfCandidatesRemain(t *testing.T) {
 	searching.Status = tripsModels.TripStatusSearching
 	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&searching, nil)
 	tripsRepo.On("UpdateTripStatus", mock.Anything, trip.ID, tripsModels.TripStatusSearching, tripsModels.TripStatusNoDriver).Return(true, nil).Once()
+	tripsRepo.On("SaveTripCancelReason", mock.Anything, trip.ID, mock.Anything).Return(nil).Maybe()
 
 	asMatcher(t, svc).OfferTrip(context.Background(), trip)
 	for range 3 {

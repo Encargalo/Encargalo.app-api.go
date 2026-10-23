@@ -6346,7 +6346,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Cada viaje con rider asignado incluye ` + "`" + `rider` + "`" + ` (nombre, teléfono, foto y vehículo). No incluye documentos KYC.",
+                "description": "Cada viaje con rider asignado incluye ` + "`" + `rider` + "`" + ` (nombre, teléfono, foto y vehículo). No incluye documentos KYC. Los viajes cancelled y no_driver traen ` + "`" + `cancel_reason` + "`" + ` con el motivo (payment_rejected, payment_underpaid, customer_cancelled o no_driver).",
                 "produces": [
                     "application/json"
                 ],
@@ -6467,7 +6467,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Si el viaje ya tiene rider asignado, ` + "`" + `rider` + "`" + ` trae nombre, teléfono, foto y vehículo. No incluye documentos KYC. pickup_code aparece desde accepted hasta que el pasajero sube; dropoff_code aparece en in_progress. Si un Pago Móvil aprobado se reintegró a la cartera, ` + "`" + `payment` + "`" + ` trae transaction_id, credited_bs y refund_eligible_until. Los cambios en vivo llegan por GET /trips/live.",
+                "description": "Si el viaje ya tiene rider asignado, ` + "`" + `rider` + "`" + ` trae nombre, teléfono, foto y vehículo. No incluye documentos KYC. pickup_code aparece desde accepted hasta que el pasajero sube; dropoff_code aparece en in_progress. Si un Pago Móvil aprobado se reintegró a la cartera, ` + "`" + `payment` + "`" + ` trae transaction_id, credited_bs y refund_eligible_until; si el staff rechazó el comprobante, trae además status, observed_amount_bs y difference_bs. En viajes cancelled o no_driver, ` + "`" + `cancel_reason` + "`" + ` dice por qué: payment_rejected, payment_underpaid, customer_cancelled o no_driver. Nunca dice quién canceló. Los cambios en vivo llegan por GET /trips/live.",
                 "produces": [
                     "application/json"
                 ],
@@ -6525,7 +6525,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Solo permitido mientras el viaje esté en requested/searching/accepted/arriving. En payment_review responde 422 trip_payment_review_pending: hay que esperar a que el staff resuelva el comprobante. Si se pagó con balance, el débito se reintegra. Si el Pago Móvil ya estaba aprobado (searching, accepted o arriving), se acredita la tarifa en Bs a la cartera y la respuesta trae payment.transaction_id.",
+                "description": "Solo permitido mientras el viaje esté en requested/searching/accepted/arriving. En payment_review responde 422 trip_payment_review_pending: hay que esperar a que el staff resuelva el comprobante. Si se pagó con balance, el débito se reintegra. Si el Pago Móvil ya estaba aprobado (searching, accepted o arriving), se acredita la tarifa en Bs a la cartera y la respuesta trae payment.transaction_id. La respuesta trae cancel_reason = customer_cancelled.",
                 "produces": [
                     "application/json"
                 ],
@@ -10832,7 +10832,13 @@ const docTemplate = `{
                 "credited_bs": {
                     "type": "number"
                 },
+                "difference_bs": {
+                    "type": "number"
+                },
                 "expected_amount_bs": {
+                    "type": "number"
+                },
+                "observed_amount_bs": {
                     "type": "number"
                 },
                 "refund_eligible_until": {
@@ -10840,6 +10846,15 @@ const docTemplate = `{
                 },
                 "refundable_pm_bs": {
                     "type": "number"
+                },
+                "rejection_reason": {
+                    "description": "RejectionReason solo se llena en rejected_underpaid. El motivo que\nescribe el staff en rejected_invalid nunca sale hacia el cliente.",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Status es el estado de la revisión: approved, overpaid,\nrejected_underpaid o rejected_invalid. Vacío si no hubo revisión.",
+                    "type": "string",
+                    "example": "rejected_underpaid"
                 },
                 "transaction_id": {
                     "type": "string"
@@ -10851,6 +10866,11 @@ const docTemplate = `{
             "properties": {
                 "accepted_at": {
                     "type": "string"
+                },
+                "cancel_reason": {
+                    "description": "CancelReason es un código: payment_rejected, payment_underpaid,\ncustomer_cancelled o no_driver. La app lo traduce; no dice quién canceló.",
+                    "type": "string",
+                    "example": "no_driver"
                 },
                 "cancelled_at": {
                     "type": "string"

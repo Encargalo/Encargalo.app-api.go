@@ -28,6 +28,8 @@ type TripsRepo interface {
 	HasBillableTrip(ctx context.Context, customerID uuid.UUID) (bool, error)
 	UpdateTripStatus(ctx context.Context, tripID uuid.UUID, fromStatus, toStatus models.TripStatus) (bool, error)
 	SaveTripPayment(ctx context.Context, tripID uuid.UUID, payment *models.TripPayment) error
+	// SaveTripCancelReason escribe el motivo solo si el viaje aún no tiene uno.
+	SaveTripCancelReason(ctx context.Context, tripID uuid.UUID, reason models.CancelReason) error
 	AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID, pickupCode string) (bool, error)
 	// StartTripWithPickupCode pasa arriving→in_progress si el código de subida coincide
 	// y guarda el código de bajada que el cliente mostrará al llegar.

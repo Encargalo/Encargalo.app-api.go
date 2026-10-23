@@ -25,6 +25,10 @@ const (
 
 const PaymentProofAlertInterval = 3 * time.Minute
 
+// RejectionReasonUnderpaid es el motivo centinela que RejectUnderpaid pasa al
+// subject. Los demás rechazos mandan el texto libre que escribió el staff.
+const RejectionReasonUnderpaid = "underpaid"
+
 type PaymentReview struct {
 	bun.BaseModel `bun:"table:payments.reviews"`
 

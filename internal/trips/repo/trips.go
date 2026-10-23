@@ -142,6 +142,22 @@ func (r *tripsRepo) SaveTripPayment(ctx context.Context, tripID uuid.UUID, payme
 	return nil
 }
 
+// SaveTripCancelReason solo escribe si el viaje no tiene motivo: el primero en
+// llegar es la causa real y los avisos posteriores no deben pisarlo.
+func (r *tripsRepo) SaveTripCancelReason(ctx context.Context, tripID uuid.UUID, reason models.CancelReason) error {
+	_, err := r.db.NewUpdate().
+		TableExpr("trips.trips").
+		Set("cancel_reason = ?", string(reason)).
+		Set("updated_at = now()").
+		Where("id = ? AND cancel_reason IS NULL", tripID).
+		Exec(ctx)
+	if err != nil {
+		slog.Error("trips SaveTripCancelReason failed", "tripID", tripID, "reason", reason, "error", err)
+		return errcustom.Unexpected(err)
+	}
+	return nil
+}
+
 func (r *tripsRepo) ReleaseTripRider(ctx context.Context, tripID, riderID uuid.UUID) (bool, error) {
 	res, err := r.db.NewUpdate().
 		TableExpr("trips.trips").
