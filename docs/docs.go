@@ -2297,6 +2297,80 @@ const docTemplate = `{
                 }
             }
         },
+        "/maps/places/popular": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Lista los lugares concurridos alrededor de una coordenada, usando la Google Places API (New) Nearby Search con rankPreference POPULARITY. Consulta por grupos de categorías (transporte, comercio, salud, bancos y plazas) y fusiona los resultados, para que estaciones y bancos no pierdan el cupo frente a los centros comerciales. Devuelve la lista ordenada por distancia ascendente, con distance_km calculada desde la coordenada recibida, y solo los lugares a 10 km o menos — el radio es fijo y no se puede pedir otro. Cacheado por el servidor por celda geográfica.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Maps"
+                ],
+                "summary": "Lugares populares cerca",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "Latitud",
+                        "name": "lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Longitud",
+                        "name": "lng",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Cantidad máxima de lugares a devolver (default 20, máximo 80)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_maps_domain_models.PopularPlace"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "lat/lng requeridos o fuera de rango, o limit fuera de los límites permitidos",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "429": {
+                        "description": "Demasiadas solicitudes",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "502": {
+                        "description": "Google Places falló o respondió con error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/orders": {
             "post": {
                 "security": [
@@ -7980,6 +8054,32 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "secondary_text": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_maps_domain_models.PopularPlace": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "category": {
+                    "type": "string"
+                },
+                "distance_km": {
+                    "type": "number"
+                },
+                "lat": {
+                    "type": "number"
+                },
+                "lng": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "place_id": {
                     "type": "string"
                 }
             }

@@ -12,6 +12,9 @@ import (
 // "no encontrado" en vez de a un error genérico.
 var ErrNoResults = errors.New("google maps: no results")
 
+// ErrPartialResults indica que la consulta se resolvió solo en parte: el llamador recibe los resultados buenos y decide qué hacer con el hueco.
+var ErrPartialResults = errors.New("google maps: partial results")
+
 // httpClient es compartido por todas las llamadas a Google Maps Platform de
 // este paquete. El timeout acota cuánto puede colgar una respuesta lenta de
 // Google — sin él, una goroutine queda bloqueada indefinidamente por request.

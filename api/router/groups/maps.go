@@ -50,6 +50,7 @@ func (m *mapsGroup) Resource(g *echo.Echo) {
 	group.GET("/geocode/reverse", m.handler.ReverseGeocode)
 	group.GET("/places/autocomplete", m.handler.AutocompletePlaces)
 	group.GET("/places/details", m.handler.GetPlaceDetails)
+	group.GET("/places/popular", m.handler.PopularPlaces)
 	group.GET("/directions", m.handler.Directions)
 }
 

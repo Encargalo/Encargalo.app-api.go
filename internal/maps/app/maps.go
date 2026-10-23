@@ -2,11 +2,15 @@ package app
 
 import (
 	"context"
+	"math"
+	"sort"
 	"strings"
 	"unicode/utf8"
 
+	"Encargalo.app-api.go/internal/maps/domain/dtos"
 	"Encargalo.app-api.go/internal/maps/domain/models"
 	"Encargalo.app-api.go/internal/maps/domain/ports"
+	"Encargalo.app-api.go/internal/pkg/geo"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 )
 
@@ -14,6 +18,16 @@ import (
 // cueste dinero al backend en cada tecla — el móvil ya aplica el mismo
 // mínimo por UX, pero el servidor no puede confiar en eso.
 const minSearchQueryRunes = 3
+
+const (
+	// popularPlacesRadiusMeters no es configurable por el cliente: un radio fijo mantiene una sola entrada de cache por celda y alcanza para elegir un destino.
+	popularPlacesRadiusMeters = 10000
+
+	defaultPopularPlacesLimit = 20
+
+	// El máximo lo rechaza el handler con un 400; acá se recorta igual para que la invariante valga para cualquier llamador del puerto.
+	maxPopularPlacesLimit = 80
+)
 
 type mapsApp struct {
 	repo ports.MapsRepo
@@ -50,6 +64,44 @@ func (a *mapsApp) Directions(ctx context.Context, originLat, originLng, destLat,
 		return nil, errcustom.ErrInvalidCoordinates
 	}
 	return a.repo.Directions(ctx, originLat, originLng, destLat, destLng)
+}
+
+func (a *mapsApp) PopularPlaces(ctx context.Context, query dtos.PopularPlacesQuery) ([]models.PopularPlace, error) {
+	if !validCoordinates(query.Latitude, query.Longitude) {
+		return nil, errcustom.ErrInvalidCoordinates
+	}
+
+	limit := defaultPopularPlacesLimit
+	if query.Limit > 0 {
+		limit = min(query.Limit, maxPopularPlacesLimit)
+	}
+
+	places, err := a.repo.PopularPlaces(ctx, query.Latitude, query.Longitude, popularPlacesRadiusMeters)
+	if err != nil {
+		return nil, err
+	}
+
+	// El repo consulta el centro de la celda con un radio expandido, así que el radio real se aplica acá, contra la coordenada del usuario.
+	inRadius := make([]models.PopularPlace, 0, len(places))
+	for i := range places {
+		km := geo.HaversineKm(query.Latitude, query.Longitude, places[i].Lat, places[i].Lng)
+		if km*1000 > popularPlacesRadiusMeters {
+			continue
+		}
+		places[i].DistanceKm = math.Round(km*100) / 100
+		inRadius = append(inRadius, places[i])
+	}
+	places = inRadius
+
+	sort.SliceStable(places, func(i, j int) bool {
+		return places[i].DistanceKm < places[j].DistanceKm
+	})
+
+	if len(places) > limit {
+		places = places[:limit]
+	}
+
+	return places, nil
 }
 
 func validCoordinates(lat, lng float64) bool {
