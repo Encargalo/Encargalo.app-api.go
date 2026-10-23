@@ -22,10 +22,6 @@ const (
 	// maxNearbySearchRadiusMeters es el tope que acepta Nearby Search; pedir más es un 400 de Google.
 	maxNearbySearchRadiusMeters = 50000
 
-	// Defaults de idioma/región; config.Google.LanguageCode/RegionCode los sobreescriben por entorno.
-	defaultNearbyLanguageCode = "es"
-	defaultNearbyRegionCode   = "VE"
-
 	// nearbyErrorBodyLimit acota el cuerpo crudo que se adjunta al error cuando Google no responde JSON.
 	nearbyErrorBodyLimit = 200
 )
@@ -119,8 +115,8 @@ func searchNearby(ctx context.Context, lat, lng float64, radiusMeters int, inclu
 		},
 		"rankPreference":       "POPULARITY",
 		"maxResultCount":       nearbyMaxResultCount,
-		"languageCode":         orDefault(config.Get().Google.LanguageCode, defaultNearbyLanguageCode),
-		"regionCode":           orDefault(config.Get().Google.RegionCode, defaultNearbyRegionCode),
+		"languageCode":         languageCode(),
+		"regionCode":           regionCode(),
 		"includedPrimaryTypes": includedPrimaryTypes,
 	})
 	if err != nil {
@@ -205,11 +201,4 @@ func nearbyErrorDetail(body []byte) string {
 	}
 
 	return strings.TrimSpace(data.Error.Status + " " + data.Error.Message)
-}
-
-func orDefault(value, fallback string) string {
-	if value == "" {
-		return fallback
-	}
-	return value
 }

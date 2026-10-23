@@ -75,7 +75,7 @@ func (h *tripsHandler) RequestTrip(c echo.Context) error {
 // @Security     SessionCookie
 // @Param        body  body  dtos.FareEstimateRequest  true  "Direcciones y coordenadas de pickup/destino"
 // @Success      200  {object}  dtos.FareEstimateResponse
-// @Failure      400  {string}  string  "payload inválido"
+// @Failure      400  {string}  string  "payload inválido o coordenadas fuera del área de servicio"
 // @Failure      401  {string}  string  "No autorizado"
 // @Failure      503  {string}  string  "Tasa BCV no disponible"
 // @Router       /trips/fare-estimate [post]

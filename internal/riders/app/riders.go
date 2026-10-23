@@ -241,6 +241,11 @@ func (r *appRidersManager) Unregister(riderID uuid.UUID, conn ridersPorts.RiderC
 }
 
 func (r *appRidersManager) UpdateLocation(ctx context.Context, riderID uuid.UUID, lat, lng float64) error {
+	// LatLngToCell acepta cualquier coordenada del planeta: el área de servicio se exige aparte.
+	if !geo.InVenezuela(lat, lng) {
+		return errcustom.ErrInvalidCoordinates
+	}
+
 	cell, err := geo.LatLngToCell(lat, lng, geo.DriverMatchResolution)
 	if err != nil {
 		return errcustom.ErrInvalidCoordinates

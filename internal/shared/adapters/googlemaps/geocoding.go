@@ -40,6 +40,7 @@ type GeocodeCandidate struct {
 func ReverseGeocode(ctx context.Context, lat, lng float64) (*ReverseGeocodeResult, error) {
 	params := url.Values{}
 	params.Set("latlng", fmt.Sprintf("%f,%f", lat, lng))
+	params.Set("language", languageCode())
 	params.Set("key", config.Get().Google.ServerKey)
 
 	fullURL := "https://maps.googleapis.com/maps/api/geocode/json?" + params.Encode()
@@ -87,13 +88,14 @@ func ReverseGeocode(ctx context.Context, lat, lng float64) (*ReverseGeocodeResul
 	if data.Status != "OK" {
 		return nil, fmt.Errorf("google geocoding api status: %s", data.Status)
 	}
-	if len(data.Results) == 0 {
-		return nil, ErrNoResults
-	}
 
+	// Reverse geocoding no acepta components=country, así que los candidatos de fuera del área de servicio se descartan acá.
 	candidates := make([]GeocodeCandidate, 0, len(data.Results))
 	for _, r := range data.Results {
 		components, parts := parseAddressComponents(r.AddressComponents)
+		if !matchesRegion(parts.CountryCode) {
+			continue
+		}
 		candidates = append(candidates, GeocodeCandidate{
 			FormattedAddress:  r.FormattedAddress,
 			PlaceID:           r.PlaceID,
@@ -104,6 +106,10 @@ func ReverseGeocode(ctx context.Context, lat, lng float64) (*ReverseGeocodeResul
 			Parts:             parts,
 			AddressComponents: components,
 		})
+	}
+
+	if len(candidates) == 0 {
+		return nil, ErrNoResults
 	}
 
 	first := candidates[0]

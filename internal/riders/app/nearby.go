@@ -14,6 +14,11 @@ import (
 )
 
 func (r *appRidersManager) NearbyRiders(lat, lng float64) ([]tripsDtos.NearbyRider, error) {
+	// LatLngToCell acepta cualquier coordenada del planeta: el área de servicio se exige aparte.
+	if !geo.InVenezuela(lat, lng) {
+		return nil, errcustom.ErrInvalidCoordinates
+	}
+
 	origin, err := geo.LatLngToCell(lat, lng, geo.DriverMatchResolution)
 	if err != nil {
 		return nil, errcustom.ErrInvalidCoordinates

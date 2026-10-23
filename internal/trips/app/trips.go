@@ -537,7 +537,7 @@ func (a *tripsApp) toResponse(ctx context.Context, trip *models.Trip, rate float
 }
 
 func (a *tripsApp) NearbyRiders(lat, lng float64) (dtos.NearbyRidersResponse, error) {
-	if !validCoordinates(lat, lng) {
+	if !geo.InVenezuela(lat, lng) {
 		return dtos.NearbyRidersResponse{}, errcustom.ErrInvalidCoordinates
 	}
 	empty := dtos.NearbyRidersResponse{Riders: []dtos.NearbyRider{}}
@@ -592,6 +592,11 @@ func (a *tripsApp) notifyRidersCancelled(ctx context.Context, trip *models.Trip)
 
 // EstimateFare calcula el fare una sola vez y lo congela en una TripQuote.
 func (a *tripsApp) EstimateFare(ctx context.Context, req dtos.FareEstimateRequest) (dtos.FareEstimateResponse, error) {
+	// El viaje se crea a partir de la cotización, así que este es el único punto donde se puede exigir que ambos extremos estén en el área de servicio.
+	if !geo.InVenezuela(req.PickupLatitude, req.PickupLongitude) || !geo.InVenezuela(req.DropoffLatitude, req.DropoffLongitude) {
+		return dtos.FareEstimateResponse{}, errcustom.ErrInvalidCoordinates
+	}
+
 	estimate, err := a.fareEstimate(req.PickupLatitude, req.PickupLongitude, req.DropoffLatitude, req.DropoffLongitude)
 	if err != nil {
 		return dtos.FareEstimateResponse{}, err
@@ -682,10 +687,6 @@ func (a *tripsApp) fareEstimate(pickupLat, pickupLon, dropoffLat, dropoffLon flo
 		}, nil
 	}
 	return tripfare.CalculateWithDuration(pickupLat, pickupLon, dropoffLat, dropoffLon)
-}
-
-func validCoordinates(lat, lng float64) bool {
-	return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
 }
 
 func (a *tripsApp) bcvRate(ctx context.Context) float64 {
