@@ -79,12 +79,18 @@ func TestRun_SyncsAllEntities(t *testing.T) {
 		ID: uuid.New(), Type: "pixel", Params: map[string]any{"name": "app_open"},
 	}}
 
+	quotes := []models.CubeFareQuote{{
+		QuoteID: uuid.New(), CustomerID: userID, DistanceMeters: 4270,
+		DurationMin: 12, FareUSD: 1, FareBand: "day", QuoteHour: 12,
+	}}
+
 	source.On("FetchShops", mock.Anything, from, to).Return(shops, nil)
 	source.On("FetchUsers", mock.Anything, from, to).Return(users, nil)
 	source.On("FetchRiders", mock.Anything, from, to).Return(riders, nil)
 	source.On("FetchOrders", mock.Anything, from, to).Return(orders, nil)
 	source.On("FetchTrips", mock.Anything, from, to).Return(trips, nil)
 	source.On("FetchTrackingEvents", mock.Anything, from, to).Return(events, nil)
+	source.On("FetchFareQuotes", mock.Anything, from, to).Return(quotes, nil)
 
 	sink.On("UpsertShops", mock.Anything, shops).Return(nil)
 	sink.On("UpsertUsers", mock.Anything, users).Return(nil)
@@ -94,6 +100,7 @@ func TestRun_SyncsAllEntities(t *testing.T) {
 	})).Return(nil)
 	sink.On("UpsertTrips", mock.Anything, trips).Return(nil)
 	sink.On("UpsertTrackingEvents", mock.Anything, events).Return(nil)
+	sink.On("UpsertFareQuotes", mock.Anything, quotes).Return(nil)
 
 	syncLog.On("Upsert", mock.Anything, models.EntityDimShop, to).Return(nil)
 	syncLog.On("Upsert", mock.Anything, models.EntityDimUser, to).Return(nil)
@@ -101,11 +108,12 @@ func TestRun_SyncsAllEntities(t *testing.T) {
 	syncLog.On("Upsert", mock.Anything, models.EntityCubeOrder, to).Return(nil)
 	syncLog.On("Upsert", mock.Anything, models.EntityCubeTrip, to).Return(nil)
 	syncLog.On("Upsert", mock.Anything, models.EntityFactTrackingEvent, to).Return(nil)
+	syncLog.On("Upsert", mock.Anything, models.EntityCubeFareQuote, to).Return(nil)
 
 	etl := newETLApp(source, sink, syncLog)
 	result, err := etl.Run(context.Background(), from, to, nil)
 	require.NoError(t, err)
-	require.Equal(t, 6, len(result.Results))
+	require.Equal(t, 7, len(result.Results))
 	for _, item := range result.Results {
 		require.True(t, item.Success, item.Entity)
 	}

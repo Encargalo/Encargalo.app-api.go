@@ -351,7 +351,7 @@ func wire() {
 	hub.SetSnapshotProvider(tripsapp.NewTripStaffSnapshot(tripsRepo, reviewsRepo))
 
 	quoteStore = newMemQuotes()
-	tripsHTTP = tripsapp.NewTripsApp(tripsRepo, nil, fixedBCV{}, quoteStore, fakeUpload{}, reviewsPort, hub, nil, reviewsApp, nil, nil, nil, nil)
+	tripsHTTP = tripsapp.NewTripsApp(tripsRepo, nil, fixedBCV{}, quoteStore, fakeUpload{}, reviewsPort, hub, nil, reviewsApp, nil, nil, nil, nil, nil)
 }
 
 // testCustomerHeader sustituye la sesión que Traefik inyecta. El handler es el de producción.

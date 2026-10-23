@@ -43,6 +43,42 @@ const (
 	DevPlaceholderFee = 2.0
 )
 
+// Band es el tramo horario que determina el multiplicador de la tarifa.
+type Band string
+
+const (
+	BandDay          Band = "day"
+	BandNight        Band = "night"
+	BandEarlyMorning Band = "early_morning"
+)
+
+// BandAt resuelve el tramo horario. `now` debe venir en la zona horaria de
+// negocio (bizclock.Now()), no en UTC.
+// El nocturno cruza medianoche, por eso su rango se evalúa como dos extremos y
+// no como un intervalo.
+func BandAt(now time.Time) Band {
+	hour := now.Hour()
+	if hour >= NightStartHour || hour < EarlyMorningStartHour {
+		return BandNight
+	}
+	if hour < DayStartHour {
+		return BandEarlyMorning
+	}
+	return BandDay
+}
+
+// Multiplier es el factor que el tramo aplica sobre la tarifa.
+func (b Band) Multiplier() float64 {
+	switch b {
+	case BandNight:
+		return NightMultiplier
+	case BandEarlyMorning:
+		return EarlyMorningMultiplier
+	default:
+		return 1
+	}
+}
+
 // FromDistance convierte una distancia en metros a tarifa.
 // El cobro es proporcional a la distancia exacta: se redondea el dinero, no los
 // kilómetros, para que 4.001 m no cueste lo mismo que 4.999 m.
@@ -60,19 +96,7 @@ func FromDistanceAt(distanceMeters float64, now time.Time) float64 {
 		fare += (km - IncludedKm) * ExtraRatePerKm
 	}
 
-	return money.RoundUSD(fare * hourMultiplier(now.Hour()))
-}
-
-// hourMultiplier resuelve el tramo horario. El nocturno cruza medianoche, por
-// eso su rango se evalúa como dos extremos y no como un intervalo.
-func hourMultiplier(hour int) float64 {
-	if hour >= NightStartHour || hour < EarlyMorningStartHour {
-		return NightMultiplier
-	}
-	if hour < DayStartHour {
-		return EarlyMorningMultiplier
-	}
-	return 1
+	return money.RoundUSD(fare * BandAt(now).Multiplier())
 }
 
 // Calculate obtiene la distancia vial entre tienda y dirección de entrega y retorna la tarifa.
@@ -84,11 +108,13 @@ func Calculate(ctx context.Context, shopLat, shopLon, deliveryLat, deliveryLon f
 	return FromDistance(distMeters), nil
 }
 
-// Estimate agrega la distancia y duración estimadas del trayecto junto con la tarifa calculada.
+// Estimate agrega la distancia y duración estimadas del trayecto junto con la
+// tarifa calculada y el tramo horario que la produjo.
 type Estimate struct {
 	DistanceMeters float64
 	DurationMin    int64
 	Fee            float64
+	Band           Band
 }
 
 // CalculateWithDuration es como Calculate, pero además retorna la duración estimada.
@@ -100,10 +126,14 @@ func CalculateWithDuration(originLat, originLon, destLat, destLon float64) (Esti
 	if len(results) == 0 {
 		return Estimate{}, errors.New("google maps: no se pudo resolver el destino")
 	}
+	// Un solo Now para tarifa y tramo: leerlo dos veces podría registrar un
+	// tramo distinto del multiplicador que se aplicó.
+	now := bizclock.Now()
 	elem := results[0]
 	return Estimate{
 		DistanceMeters: elem.DistanceMeters,
 		DurationMin:    elem.DurationMin,
-		Fee:            FromDistance(elem.DistanceMeters),
+		Fee:            FromDistanceAt(elem.DistanceMeters, now),
+		Band:           BandAt(now),
 	}, nil
 }

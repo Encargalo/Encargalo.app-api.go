@@ -24,6 +24,8 @@ type TripQuote struct {
 	FareUSD          float64
 	FareBs           float64
 	BcvRate          float64
-	CreatedAt        time.Time
-	ExpiresAt        time.Time
+	// FareBand es el tramo horario que produjo FareUSD, congelado junto con él.
+	FareBand  string
+	CreatedAt time.Time
+	ExpiresAt time.Time
 }
