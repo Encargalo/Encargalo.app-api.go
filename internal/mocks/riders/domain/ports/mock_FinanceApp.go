@@ -72,6 +72,24 @@ func (_m *FinanceApp) ListTransactions(ctx context.Context, riderID uuid.UUID, p
 	return r0, r1
 }
 
+// RecordRideCashCollected provides a mock function with given fields: ctx, riderID, orderID, deliveryFee, cashUSD, bcvRate
+func (_m *FinanceApp) RecordRideCashCollected(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee float64, cashUSD float64, bcvRate float64) error {
+	ret := _m.Called(ctx, riderID, orderID, deliveryFee, cashUSD, bcvRate)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RecordRideCashCollected")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64, float64) error); ok {
+		r0 = rf(ctx, riderID, orderID, deliveryFee, cashUSD, bcvRate)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // RecordRideEarning provides a mock function with given fields: ctx, riderID, orderID, deliveryFee, totalPrice, bcvRate, method
 func (_m *FinanceApp) RecordRideEarning(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee float64, totalPrice float64, bcvRate float64, method string) error {
 	ret := _m.Called(ctx, riderID, orderID, deliveryFee, totalPrice, bcvRate, method)
@@ -83,24 +101,6 @@ func (_m *FinanceApp) RecordRideEarning(ctx context.Context, riderID uuid.UUID, 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64, float64, string) error); ok {
 		r0 = rf(ctx, riderID, orderID, deliveryFee, totalPrice, bcvRate, method)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// RecordTripEarning provides a mock function with given fields: ctx, riderID, tripID, fare, bcvRate
-func (_m *FinanceApp) RecordTripEarning(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare float64, bcvRate float64) error {
-	ret := _m.Called(ctx, riderID, tripID, fare, bcvRate)
-
-	if len(ret) == 0 {
-		panic("no return value specified for RecordTripEarning")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) error); ok {
-		r0 = rf(ctx, riderID, tripID, fare, bcvRate)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -126,24 +126,6 @@ func (_m *FinanceApp) RecordTripCash(ctx context.Context, riderID uuid.UUID, tri
 	return r0
 }
 
-// RecordRideCashCollected provides a mock function with given fields: ctx, riderID, orderID, deliveryFee, cashUSD, bcvRate
-func (_m *FinanceApp) RecordRideCashCollected(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee float64, cashUSD float64, bcvRate float64) error {
-	ret := _m.Called(ctx, riderID, orderID, deliveryFee, cashUSD, bcvRate)
-
-	if len(ret) == 0 {
-		panic("no return value specified for RecordRideCashCollected")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64, float64) error); ok {
-		r0 = rf(ctx, riderID, orderID, deliveryFee, cashUSD, bcvRate)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
 // RecordTripCashCollected provides a mock function with given fields: ctx, riderID, tripID, fare, cashUSD, bcvRate
 func (_m *FinanceApp) RecordTripCashCollected(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare float64, cashUSD float64, bcvRate float64) error {
 	ret := _m.Called(ctx, riderID, tripID, fare, cashUSD, bcvRate)
@@ -155,6 +137,24 @@ func (_m *FinanceApp) RecordTripCashCollected(ctx context.Context, riderID uuid.
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64, float64) error); ok {
 		r0 = rf(ctx, riderID, tripID, fare, cashUSD, bcvRate)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// RecordTripEarning provides a mock function with given fields: ctx, riderID, tripID, fare, bcvRate
+func (_m *FinanceApp) RecordTripEarning(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare float64, bcvRate float64) error {
+	ret := _m.Called(ctx, riderID, tripID, fare, bcvRate)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RecordTripEarning")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) error); ok {
+		r0 = rf(ctx, riderID, tripID, fare, bcvRate)
 	} else {
 		r0 = ret.Error(0)
 	}

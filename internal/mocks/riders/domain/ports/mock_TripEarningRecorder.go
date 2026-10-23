@@ -15,24 +15,6 @@ type TripEarningRecorder struct {
 	mock.Mock
 }
 
-// RecordTripEarning provides a mock function with given fields: ctx, riderID, tripID, fare, bcvRate
-func (_m *TripEarningRecorder) RecordTripEarning(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare float64, bcvRate float64) error {
-	ret := _m.Called(ctx, riderID, tripID, fare, bcvRate)
-
-	if len(ret) == 0 {
-		panic("no return value specified for RecordTripEarning")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) error); ok {
-		r0 = rf(ctx, riderID, tripID, fare, bcvRate)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
 // RecordTripCash provides a mock function with given fields: ctx, riderID, tripID, fare, bcvRate
 func (_m *TripEarningRecorder) RecordTripCash(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare float64, bcvRate float64) error {
 	ret := _m.Called(ctx, riderID, tripID, fare, bcvRate)
@@ -62,6 +44,24 @@ func (_m *TripEarningRecorder) RecordTripCashCollected(ctx context.Context, ride
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64, float64) error); ok {
 		r0 = rf(ctx, riderID, tripID, fare, cashUSD, bcvRate)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// RecordTripEarning provides a mock function with given fields: ctx, riderID, tripID, fare, bcvRate
+func (_m *TripEarningRecorder) RecordTripEarning(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare float64, bcvRate float64) error {
+	ret := _m.Called(ctx, riderID, tripID, fare, bcvRate)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RecordTripEarning")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) error); ok {
+		r0 = rf(ctx, riderID, tripID, fare, bcvRate)
 	} else {
 		r0 = ret.Error(0)
 	}
