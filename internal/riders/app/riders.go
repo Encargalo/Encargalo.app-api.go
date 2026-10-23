@@ -805,7 +805,15 @@ func (r *appRidersManager) expireTripIfStillSearching(tripID uuid.UUID) {
 	}
 
 	r.clearTripOfferState(tripID)
-	if err != nil || !ok || (r.customers == nil && r.balance == nil) {
+	if err != nil || !ok {
+		return
+	}
+	// El motivo se escribe sin cargar el viaje: aunque no haya nada que
+	// reembolsar ni a quién avisar, tiene que quedar registrado.
+	if reasonErr := r.tripsRepo.SaveTripCancelReason(ctx, tripID, tripsModels.CancelReasonNoDriver); reasonErr != nil {
+		slog.Error("save trip cancel reason", "tripID", tripID, "reason", tripsModels.CancelReasonNoDriver, "error", reasonErr)
+	}
+	if r.customers == nil && r.balance == nil {
 		return
 	}
 	trip, getErr := r.tripsRepo.GetTripByID(ctx, tripID)
@@ -819,6 +827,7 @@ func (r *appRidersManager) expireTripIfStillSearching(tripID uuid.UUID) {
 		}
 	}
 	tripsApp.CreditUnservedPagoMovil(ctx, r.balance, trip, r.tripsRepo.SaveTripPayment)
+	trip.SetCancelReason(tripsModels.CancelReasonNoDriver)
 	r.notifyCustomer(ctx, trip)
 	r.publishTripNoDriver(ctx, trip)
 }

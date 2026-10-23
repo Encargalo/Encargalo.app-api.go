@@ -30,7 +30,7 @@ func paymentReviewTrip(id uuid.UUID) *models.Trip {
 func TestTripPaymentSubject_OnApproved_StartsMatching(t *testing.T) {
 	repo := mockstrips.NewTripsRepo(t)
 	matcher := mockstrips.NewTripRiderMatcher(t)
-	subject := app.NewTripPaymentSubject(repo, matcher, nil, nil)
+	subject := app.NewTripPaymentSubject(repo, matcher, nil, nil, nil)
 	tripID := uuid.New()
 
 	repo.On("GetTripByID", mock.Anything, tripID).Return(paymentReviewTrip(tripID), nil)
@@ -47,7 +47,7 @@ func TestTripPaymentSubject_OnApproved_StartsMatching(t *testing.T) {
 func TestTripPaymentSubject_OnApproved_RejectsWhenNotInPaymentReview(t *testing.T) {
 	repo := mockstrips.NewTripsRepo(t)
 	matcher := mockstrips.NewTripRiderMatcher(t)
-	subject := app.NewTripPaymentSubject(repo, matcher, nil, nil)
+	subject := app.NewTripPaymentSubject(repo, matcher, nil, nil, nil)
 	tripID := uuid.New()
 	trip := paymentReviewTrip(tripID)
 	trip.Status = models.TripStatusSearching
@@ -63,7 +63,7 @@ func TestTripPaymentSubject_OnApproved_RejectsWhenNotInPaymentReview(t *testing.
 func TestTripPaymentSubject_OnOverpaid_StartsMatching(t *testing.T) {
 	repo := mockstrips.NewTripsRepo(t)
 	matcher := mockstrips.NewTripRiderMatcher(t)
-	subject := app.NewTripPaymentSubject(repo, matcher, nil, nil)
+	subject := app.NewTripPaymentSubject(repo, matcher, nil, nil, nil)
 	tripID := uuid.New()
 
 	repo.On("GetTripByID", mock.Anything, tripID).Return(paymentReviewTrip(tripID), nil)
@@ -78,11 +78,12 @@ func TestTripPaymentSubject_OnOverpaid_StartsMatching(t *testing.T) {
 func TestTripPaymentSubject_OnRejected_CancelsWithoutMatching(t *testing.T) {
 	repo := mockstrips.NewTripsRepo(t)
 	matcher := mockstrips.NewTripRiderMatcher(t)
-	subject := app.NewTripPaymentSubject(repo, matcher, nil, nil)
+	subject := app.NewTripPaymentSubject(repo, matcher, nil, nil, nil)
 	tripID := uuid.New()
 
 	repo.On("GetTripByID", mock.Anything, tripID).Return(paymentReviewTrip(tripID), nil)
 	repo.On("UpdateTripStatus", mock.Anything, tripID, models.TripStatusPaymentReview, models.TripStatusCancelled).Return(true, nil)
+	repo.On("SaveTripCancelReason", mock.Anything, tripID, mock.Anything).Return(nil).Maybe()
 
 	err := subject.OnRejected(context.Background(), tripID, uuid.New(), "underpaid", paymentsPorts.BalanceCredit{})
 
@@ -93,7 +94,7 @@ func TestTripPaymentSubject_OnRejected_CancelsWithoutMatching(t *testing.T) {
 func TestTripPaymentSubject_OnRejected_RefundsBalanceLeg(t *testing.T) {
 	repo := mockstrips.NewTripsRepo(t)
 	balance := mockpayments.NewCustomerBalanceCreditor(t)
-	subject := app.NewTripPaymentSubject(repo, nil, nil, balance)
+	subject := app.NewTripPaymentSubject(repo, nil, nil, balance, nil)
 	tripID := uuid.New()
 	trip := paymentReviewTrip(tripID)
 	paid := 50.0
@@ -101,6 +102,7 @@ func TestTripPaymentSubject_OnRejected_RefundsBalanceLeg(t *testing.T) {
 
 	repo.On("GetTripByID", mock.Anything, tripID).Return(trip, nil)
 	repo.On("UpdateTripStatus", mock.Anything, tripID, models.TripStatusPaymentReview, models.TripStatusCancelled).Return(true, nil)
+	repo.On("SaveTripCancelReason", mock.Anything, tripID, mock.Anything).Return(nil).Maybe()
 	balance.On("RefundBalancePayment", mock.Anything, trip.CustomerID, tripID, models.ReferenceTypeTrip, paid).Return(nil).Once()
 
 	err := subject.OnRejected(context.Background(), tripID, uuid.New(), "invalid", paymentsPorts.BalanceCredit{})
@@ -110,7 +112,7 @@ func TestTripPaymentSubject_OnRejected_RefundsBalanceLeg(t *testing.T) {
 
 func TestTripPaymentSubject_ExpectedAmountBs_UsesFrozenRate(t *testing.T) {
 	repo := mockstrips.NewTripsRepo(t)
-	subject := app.NewTripPaymentSubject(repo, nil, nil, nil)
+	subject := app.NewTripPaymentSubject(repo, nil, nil, nil, nil)
 	tripID := uuid.New()
 
 	repo.On("GetTripByID", mock.Anything, tripID).Return(paymentReviewTrip(tripID), nil)

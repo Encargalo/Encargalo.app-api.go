@@ -160,6 +160,42 @@ func (_m *TripsStore) ReleaseTripRider(ctx context.Context, tripID uuid.UUID, ri
 	return r0, r1
 }
 
+// SaveTripCancelReason provides a mock function with given fields: ctx, tripID, reason
+func (_m *TripsStore) SaveTripCancelReason(ctx context.Context, tripID uuid.UUID, reason models.CancelReason) error {
+	ret := _m.Called(ctx, tripID, reason)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SaveTripCancelReason")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, models.CancelReason) error); ok {
+		r0 = rf(ctx, tripID, reason)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SaveTripPayment provides a mock function with given fields: ctx, tripID, payment
+func (_m *TripsStore) SaveTripPayment(ctx context.Context, tripID uuid.UUID, payment *models.TripPayment) error {
+	ret := _m.Called(ctx, tripID, payment)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SaveTripPayment")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, *models.TripPayment) error); ok {
+		r0 = rf(ctx, tripID, payment)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // StartTripWithPickupCode provides a mock function with given fields: ctx, tripID, riderID, pickupCode, dropoffCode
 func (_m *TripsStore) StartTripWithPickupCode(ctx context.Context, tripID uuid.UUID, riderID uuid.UUID, pickupCode string, dropoffCode string) (bool, error) {
 	ret := _m.Called(ctx, tripID, riderID, pickupCode, dropoffCode)
@@ -214,17 +250,6 @@ func (_m *TripsStore) UpdateTripStatus(ctx context.Context, tripID uuid.UUID, fr
 	}
 
 	return r0, r1
-}
-
-func (_m *TripsStore) SaveTripPayment(ctx context.Context, tripID uuid.UUID, payment *models.TripPayment) error {
-	ret := _m.Called(ctx, tripID, payment)
-	if len(ret) == 0 {
-		panic("no return value specified for SaveTripPayment")
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, *models.TripPayment) error); ok {
-		return rf(ctx, tripID, payment)
-	}
-	return ret.Error(0)
 }
 
 // NewTripsStore creates a new instance of TripsStore. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
