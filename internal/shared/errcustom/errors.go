@@ -75,6 +75,7 @@ var (
 	ErrTripAlreadyExists        = errors.New("el id del viaje ya está en uso")
 	ErrTripNotCancellable       = errors.New("el viaje no se puede cancelar en su estado actual")
 	ErrTripPaymentReviewPending = errors.New("no se puede cancelar el viaje mientras el pago móvil está en revisión")
+	ErrFirstTripDiscountUsed    = errors.New("el descuento de primer viaje ya fue usado, vuelve a cotizar")
 )
 
 var (

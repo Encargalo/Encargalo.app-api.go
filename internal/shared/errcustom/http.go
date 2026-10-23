@@ -81,6 +81,7 @@ var statusMap = map[error]int{
 	ErrTripAlreadyExists:        http.StatusConflict,
 	ErrTripNotCancellable:       http.StatusUnprocessableEntity,
 	ErrTripPaymentReviewPending: http.StatusUnprocessableEntity,
+	ErrFirstTripDiscountUsed:    http.StatusConflict,
 }
 
 var codeMap = map[error]string{
@@ -153,6 +154,7 @@ var codeMap = map[error]string{
 	ErrTripAlreadyExists:        "trip_already_exists",
 	ErrTripNotCancellable:       "trip_not_cancellable",
 	ErrTripPaymentReviewPending: "trip_payment_review_pending",
+	ErrFirstTripDiscountUsed:    "first_trip_discount_used",
 }
 
 func Code(sentinel error) string {

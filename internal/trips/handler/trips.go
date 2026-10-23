@@ -44,7 +44,7 @@ func NewTripsHandler(svc ports.TripsApp, live ports.CustomerTripLive) TripsHandl
 // @Failure      400  {string}  string  "payload inválido"
 // @Failure      401  {string}  string  "No autorizado"
 // @Failure      404  {string}  string  "Cotización no encontrada, expirada o de otro cliente"
-// @Failure      409  {string}  string  "El id ya lo usa un viaje de otro cliente"
+// @Failure      409  {string}  string  "El id ya lo usa un viaje de otro cliente, o el descuento de primer viaje ya se usó en otro viaje (\"el descuento de primer viaje ya fue usado, vuelve a cotizar\")"
 // @Failure      422  {string}  string  "No se pudo subir el comprobante o saldo insuficiente"
 // @Router       /trips [post]
 func (h *tripsHandler) RequestTrip(c echo.Context) error {
@@ -68,7 +68,7 @@ func (h *tripsHandler) RequestTrip(c echo.Context) error {
 
 // EstimateFare godoc
 // @Summary      Cotizar tarifa de un viaje
-// @Description  Calcula distancia, tiempo estimado y tarifa (USD/Bs) entre pickup y destino, y la congela por 10 minutos en una cotización. La respuesta incluye bcv_rate, la tasa BCV usada para fare_bs. El quote_id devuelto es obligatorio para crear el viaje (POST /trips): el precio mostrado acá es el que queda fijado, no se recalcula.
+// @Description  Calcula distancia, tiempo estimado y tarifa (USD/Bs) entre pickup y destino, y la congela por 10 minutos en una cotización. La respuesta incluye bcv_rate, la tasa BCV usada para fare_bs. El quote_id devuelto es obligatorio para crear el viaje (POST /trips): el precio mostrado acá es el que queda fijado, no se recalcula. Si el cliente no tiene viajes fuera de cancelled/no_driver, se aplica el descuento de primer viaje (50%, máximo 6 USD): fare_usd y fare_bs ya lo traen restado, y fare_original_usd y discount_usd vienen para mostrar el precio tachado.
 // @Tags         Trips
 // @Accept       json
 // @Produce      json

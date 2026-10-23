@@ -6,7 +6,6 @@ import (
 	context "context"
 
 	dtos "Encargalo.app-api.go/internal/trips/domain/dtos"
-
 	mock "github.com/stretchr/testify/mock"
 
 	uuid "github.com/google/uuid"

@@ -21,14 +21,31 @@ type TripQuotesRepo struct {
 // Get provides a mock function with given fields: ctx, customerID, quoteID
 func (_m *TripQuotesRepo) Get(ctx context.Context, customerID uuid.UUID, quoteID uuid.UUID) (*models.TripQuote, error) {
 	ret := _m.Called(ctx, customerID, quoteID)
+
 	if len(ret) == 0 {
 		panic("no return value specified for Get")
 	}
-	var quote *models.TripQuote
-	if ret.Get(0) != nil {
-		quote = ret.Get(0).(*models.TripQuote)
+
+	var r0 *models.TripQuote
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) (*models.TripQuote, error)); ok {
+		return rf(ctx, customerID, quoteID)
 	}
-	return quote, ret.Error(1)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) *models.TripQuote); ok {
+		r0 = rf(ctx, customerID, quoteID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.TripQuote)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r1 = rf(ctx, customerID, quoteID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // GetAndConsume provides a mock function with given fields: ctx, customerID, quoteID

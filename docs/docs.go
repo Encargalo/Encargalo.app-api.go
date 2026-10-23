@@ -6268,7 +6268,7 @@ const docTemplate = `{
                         }
                     },
                     "409": {
-                        "description": "El id ya lo usa un viaje de otro cliente",
+                        "description": "El id ya lo usa un viaje de otro cliente, o el descuento de primer viaje ya se usó en otro viaje (\\\"el descuento de primer viaje ya fue usado, vuelve a cotizar\\\")",
                         "schema": {
                             "type": "string"
                         }
@@ -6289,7 +6289,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Calcula distancia, tiempo estimado y tarifa (USD/Bs) entre pickup y destino, y la congela por 10 minutos en una cotización. La respuesta incluye bcv_rate, la tasa BCV usada para fare_bs. El quote_id devuelto es obligatorio para crear el viaje (POST /trips): el precio mostrado acá es el que queda fijado, no se recalcula.",
+                "description": "Calcula distancia, tiempo estimado y tarifa (USD/Bs) entre pickup y destino, y la congela por 10 minutos en una cotización. La respuesta incluye bcv_rate, la tasa BCV usada para fare_bs. El quote_id devuelto es obligatorio para crear el viaje (POST /trips): el precio mostrado acá es el que queda fijado, no se recalcula. Si el cliente no tiene viajes fuera de cancelled/no_driver, se aplica el descuento de primer viaje (50%, máximo 6 USD): fare_usd y fare_bs ya lo traen restado, y fare_original_usd y discount_usd vienen para mostrar el precio tachado.",
                 "consumes": [
                     "application/json"
                 ],
@@ -10717,6 +10717,9 @@ const docTemplate = `{
                     "description": "BcvRate es la tasa congelada en la cotización; fare_bs = fare_usd * BcvRate.",
                     "type": "number"
                 },
+                "discount_usd": {
+                    "type": "number"
+                },
                 "distance_meters": {
                     "type": "number"
                 },
@@ -10727,6 +10730,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "fare_bs": {
+                    "type": "number"
+                },
+                "fare_original_usd": {
+                    "description": "FareOriginalUSD y DiscountUSD solo vienen con el descuento de primer viaje; fare_usd ya lo trae restado.",
                     "type": "number"
                 },
                 "fare_usd": {
@@ -10884,6 +10891,9 @@ const docTemplate = `{
                 },
                 "customer_id": {
                     "type": "string"
+                },
+                "discount_usd": {
+                    "type": "number"
                 },
                 "dropoff_address": {
                     "type": "string"

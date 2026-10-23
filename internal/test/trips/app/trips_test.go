@@ -116,10 +116,11 @@ func sampleTripQuote(customerID uuid.UUID) *models.TripQuote {
 }
 
 func TestEstimateFare_SavesQuoteAndReturnsFare(t *testing.T) {
-	svc, _, _, bcv, quotes := newTripsApp(t)
+	svc, repo, _, bcv, quotes := newTripsApp(t)
 	customerID := uuid.New()
 	req := sampleFareEstimateRequest(customerID)
 	mockBcvRate(bcv, 40)
+	repo.On("HasBillableTrip", mock.Anything, customerID).Return(true, nil)
 
 	var saved *models.TripQuote
 	quotes.On("Save", mock.Anything, mock.MatchedBy(func(q *models.TripQuote) bool {
@@ -420,6 +421,7 @@ func TestQuoteFlow_EndToEndFareNeverDrifts(t *testing.T) {
 	customerID := uuid.New()
 	estimateReq := sampleFareEstimateRequest(customerID)
 	mockBcvRate(d.bcv, 40)
+	d.repo.On("HasBillableTrip", mock.Anything, customerID).Return(true, nil)
 
 	var saved *models.TripQuote
 	d.quotes.On("Save", mock.Anything, mock.Anything, models.TripQuoteTTL).Run(func(args mock.Arguments) {

@@ -150,6 +150,34 @@ func (_m *TripsRepo) GetTripHistoryByCustomer(ctx context.Context, customerID uu
 	return r0, r1
 }
 
+// HasBillableTrip provides a mock function with given fields: ctx, customerID
+func (_m *TripsRepo) HasBillableTrip(ctx context.Context, customerID uuid.UUID) (bool, error) {
+	ret := _m.Called(ctx, customerID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for HasBillableTrip")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (bool, error)); ok {
+		return rf(ctx, customerID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) bool); ok {
+		r0 = rf(ctx, customerID)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, customerID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // ListActiveTripsByCustomer provides a mock function with given fields: ctx, customerID
 func (_m *TripsRepo) ListActiveTripsByCustomer(ctx context.Context, customerID uuid.UUID) ([]models.Trip, error) {
 	ret := _m.Called(ctx, customerID)

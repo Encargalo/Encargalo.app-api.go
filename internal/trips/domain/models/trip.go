@@ -1,6 +1,7 @@
 package models
 
 import (
+	"math"
 	"time"
 
 	"Encargalo.app-api.go/internal/pkg/money"
@@ -41,6 +42,20 @@ const MethodPagoMovil = "PagoMovil"
 const MethodBalance = "Balance"
 const MethodEfectivo = "Efectivo"
 
+// El primer viaje lleva 50% de descuento con tope de $6, absorbido por la plataforma.
+const (
+	FirstTripDiscountRate   = 0.5
+	FirstTripDiscountCapUSD = 6.0
+)
+
+// FirstTripDiscountUSD es el descuento sobre la tarifa completa del primer viaje.
+func FirstTripDiscountUSD(grossUSD float64) float64 {
+	if grossUSD <= 0 {
+		return 0
+	}
+	return money.RoundUSD(math.Min(grossUSD*FirstTripDiscountRate, FirstTripDiscountCapUSD))
+}
+
 // CancellableStatuses son los estados desde los que un customer puede cancelar
 // un trip. payment_review no está: el comprobante sigue en la cola del staff.
 // in_progress/completed/cancelled/no_driver tampoco.
@@ -72,6 +87,8 @@ type Trip struct {
 	PickupH3CellZone  *string  `bun:"pickup_h3_cell_zone"`
 	DropoffH3CellZone *string  `bun:"dropoff_h3_cell_zone"`
 	Fare              *float64 `bun:"fare"`
+	// DiscountUSD es el descuento de primer viaje. Fare ya lo trae restado; el rider cobra sobre Fare + DiscountUSD.
+	DiscountUSD float64 `bun:"discount_usd,notnull,default:0"`
 	// MethodPayment distingue PagoMovil, Balance y Efectivo. Vacío en viajes
 	// creados antes de persistir el método: esos se liquidan como bancarios.
 	MethodPayment string `bun:"method_payment,notnull,default:''"`
@@ -101,6 +118,14 @@ type Trip struct {
 
 func (t *Trip) IsCancellable() bool {
 	return CancellableStatuses[t.Status]
+}
+
+// GrossFareUSD es la tarifa completa antes del descuento, la base del pago del rider.
+func (t *Trip) GrossFareUSD() float64 {
+	if t.Fare == nil {
+		return 0
+	}
+	return money.RoundUSD(*t.Fare + t.DiscountUSD)
 }
 
 // ApplyBsFare es no-op si todavía no hay Fare o la tasa no es válida.
@@ -134,6 +159,7 @@ func (t *Trip) ToDTO() dtos.TripResponse {
 		DropoffLongitude: t.DropoffLongitude,
 		FareUSD:          t.Fare,
 		FareBs:           t.FareBs,
+		DiscountUSD:      t.DiscountUSD,
 		MethodPayment:    t.MethodPayment,
 		RequestedAt:      t.RequestedAt,
 		AcceptedAt:       t.AcceptedAt,
