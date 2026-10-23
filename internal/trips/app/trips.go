@@ -17,8 +17,8 @@ import (
 	"Encargalo.app-api.go/internal/pkg/money"
 	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
 	"Encargalo.app-api.go/internal/shared/config"
-	"Encargalo.app-api.go/internal/shared/deliveryfee"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/shared/tripfare"
 	"Encargalo.app-api.go/internal/trips/domain/dtos"
 	"Encargalo.app-api.go/internal/trips/domain/models"
 	"Encargalo.app-api.go/internal/trips/domain/ports"
@@ -671,17 +671,17 @@ func (a *tripsApp) recordFareQuote(ctx context.Context, quote *models.TripQuote)
 }
 
 // fareEstimate evita gastar cuota de Google Maps fuera de producción.
-func (a *tripsApp) fareEstimate(pickupLat, pickupLon, dropoffLat, dropoffLon float64) (deliveryfee.Estimate, error) {
+func (a *tripsApp) fareEstimate(pickupLat, pickupLon, dropoffLat, dropoffLon float64) (tripfare.Estimate, error) {
 	if !config.Get().IsProduction() {
 		distanceMeters := geo.HaversineKm(pickupLat, pickupLon, dropoffLat, dropoffLon) * 1000
-		return deliveryfee.Estimate{
+		return tripfare.Estimate{
 			DistanceMeters: distanceMeters,
 			DurationMin:    0,
-			Fee:            deliveryfee.DevPlaceholderFee,
-			Band:           deliveryfee.BandAt(bizclock.Now()),
+			Fee:            tripfare.DevPlaceholderFee,
+			Band:           tripfare.BandAt(bizclock.Now()),
 		}, nil
 	}
-	return deliveryfee.CalculateWithDuration(pickupLat, pickupLon, dropoffLat, dropoffLon)
+	return tripfare.CalculateWithDuration(pickupLat, pickupLon, dropoffLat, dropoffLon)
 }
 
 func validCoordinates(lat, lng float64) bool {
