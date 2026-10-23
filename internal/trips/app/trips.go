@@ -12,12 +12,13 @@ import (
 	bcvPorts "Encargalo.app-api.go/internal/bcv/domain/ports"
 	paymentsModels "Encargalo.app-api.go/internal/payments/domain/models"
 	paymentsPorts "Encargalo.app-api.go/internal/payments/domain/ports"
+	"Encargalo.app-api.go/internal/pkg/bizclock"
 	"Encargalo.app-api.go/internal/pkg/geo"
 	"Encargalo.app-api.go/internal/pkg/money"
 	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
 	"Encargalo.app-api.go/internal/shared/config"
-	"Encargalo.app-api.go/internal/shared/deliveryfee"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/shared/tripfare"
 	"Encargalo.app-api.go/internal/trips/domain/dtos"
 	"Encargalo.app-api.go/internal/trips/domain/models"
 	"Encargalo.app-api.go/internal/trips/domain/ports"
@@ -38,6 +39,7 @@ type tripsApp struct {
 	nearby      ports.NearbyRidersLookup
 	riderNotify ports.TripRiderNotifier
 	events      ports.TripEventPublisher
+	fareQuotes  ports.FareQuotesRepo
 }
 
 func NewTripsApp(
@@ -54,6 +56,7 @@ func NewTripsApp(
 	nearby ports.NearbyRidersLookup,
 	riderNotify ports.TripRiderNotifier,
 	events ports.TripEventPublisher,
+	fareQuotes ports.FareQuotesRepo,
 ) ports.TripsApp {
 	return &tripsApp{
 		repo:        repo,
@@ -69,6 +72,7 @@ func NewTripsApp(
 		nearby:      nearby,
 		riderNotify: riderNotify,
 		events:      events,
+		fareQuotes:  fareQuotes,
 	}
 }
 
@@ -163,6 +167,7 @@ func (a *tripsApp) createTrip(ctx context.Context, customerID uuid.UUID, req dto
 	rate := quote.BcvRate
 	trip := &models.Trip{
 		ID:               req.ID,
+		QuoteID:          &req.QuoteID,
 		CustomerID:       customerID,
 		Status:           models.TripStatusPaymentReview,
 		PickupAddress:    quote.PickupAddress,
@@ -237,6 +242,7 @@ func (a *tripsApp) requestTripWithBalance(ctx context.Context, customerID uuid.U
 	rate := quote.BcvRate
 	trip := &models.Trip{
 		ID:               req.ID,
+		QuoteID:          &req.QuoteID,
 		CustomerID:       customerID,
 		Status:           models.TripStatusSearching,
 		PickupAddress:    quote.PickupAddress,
@@ -289,6 +295,7 @@ func (a *tripsApp) requestTripCash(ctx context.Context, customerID uuid.UUID, re
 	rate := quote.BcvRate
 	trip := &models.Trip{
 		ID:               req.ID,
+		QuoteID:          &req.QuoteID,
 		CustomerID:       customerID,
 		Status:           models.TripStatusSearching,
 		PickupAddress:    quote.PickupAddress,
@@ -377,6 +384,7 @@ func (a *tripsApp) requestTripSplit(ctx context.Context, customerID uuid.UUID, r
 	}
 	trip := &models.Trip{
 		ID:               req.ID,
+		QuoteID:          &req.QuoteID,
 		CustomerID:       customerID,
 		Status:           status,
 		PickupAddress:    quote.PickupAddress,
@@ -608,12 +616,14 @@ func (a *tripsApp) EstimateFare(ctx context.Context, req dtos.FareEstimateReques
 		FareUSD:          estimate.Fee,
 		FareBs:           money.RoundBs(estimate.Fee * rate),
 		BcvRate:          rate,
+		FareBand:         string(estimate.Band),
 		CreatedAt:        now,
 		ExpiresAt:        now.Add(models.TripQuoteTTL),
 	}
 	if err := a.quotes.Save(ctx, quote, models.TripQuoteTTL); err != nil {
 		return dtos.FareEstimateResponse{}, err
 	}
+	a.recordFareQuote(ctx, quote)
 
 	return dtos.FareEstimateResponse{
 		QuoteID:        quote.QuoteID,
@@ -626,17 +636,52 @@ func (a *tripsApp) EstimateFare(ctx context.Context, req dtos.FareEstimateReques
 	}, nil
 }
 
+// recordFareQuote guarda la cotización en OLTP para medir conversión. Es un
+// registro de analítica: un fallo acá se loguea pero no rompe la cotización.
+func (a *tripsApp) recordFareQuote(ctx context.Context, quote *models.TripQuote) {
+	if a.fareQuotes == nil {
+		return
+	}
+
+	record := &models.FareQuote{
+		QuoteID:          quote.QuoteID,
+		CustomerID:       quote.CustomerID,
+		PickupLatitude:   quote.PickupLatitude,
+		PickupLongitude:  quote.PickupLongitude,
+		DropoffLatitude:  quote.DropoffLatitude,
+		DropoffLongitude: quote.DropoffLongitude,
+		DistanceMeters:   quote.DistanceMeters,
+		DurationMin:      quote.DurationMin,
+		FareUSD:          quote.FareUSD,
+		FareBs:           quote.FareBs,
+		BcvRate:          quote.BcvRate,
+		FareBand:         quote.FareBand,
+		CreatedAt:        quote.CreatedAt,
+	}
+	if cell, err := geo.LatLngToCell(quote.PickupLatitude, quote.PickupLongitude, geo.ZoneAnalyticsResolution); err == nil {
+		record.PickupH3CellZone = &cell
+	}
+	if cell, err := geo.LatLngToCell(quote.DropoffLatitude, quote.DropoffLongitude, geo.ZoneAnalyticsResolution); err == nil {
+		record.DropoffH3CellZone = &cell
+	}
+
+	if err := a.fareQuotes.Insert(ctx, record); err != nil {
+		slog.Error("recordFareQuote failed", "quoteID", quote.QuoteID, "error", err)
+	}
+}
+
 // fareEstimate evita gastar cuota de Google Maps fuera de producción.
-func (a *tripsApp) fareEstimate(pickupLat, pickupLon, dropoffLat, dropoffLon float64) (deliveryfee.Estimate, error) {
+func (a *tripsApp) fareEstimate(pickupLat, pickupLon, dropoffLat, dropoffLon float64) (tripfare.Estimate, error) {
 	if !config.Get().IsProduction() {
 		distanceMeters := geo.HaversineKm(pickupLat, pickupLon, dropoffLat, dropoffLon) * 1000
-		return deliveryfee.Estimate{
+		return tripfare.Estimate{
 			DistanceMeters: distanceMeters,
 			DurationMin:    0,
-			Fee:            deliveryfee.DevPlaceholderFee,
+			Fee:            tripfare.DevPlaceholderFee,
+			Band:           tripfare.BandAt(bizclock.Now()),
 		}, nil
 	}
-	return deliveryfee.CalculateWithDuration(pickupLat, pickupLon, dropoffLat, dropoffLon)
+	return tripfare.CalculateWithDuration(pickupLat, pickupLon, dropoffLat, dropoffLon)
 }
 
 func validCoordinates(lat, lng float64) bool {

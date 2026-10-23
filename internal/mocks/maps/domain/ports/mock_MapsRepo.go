@@ -104,6 +104,36 @@ func (_m *MapsRepo) GetPlaceDetails(ctx context.Context, placeID string, session
 	return r0, r1
 }
 
+// PopularPlaces provides a mock function with given fields: ctx, lat, lng, radiusMeters
+func (_m *MapsRepo) PopularPlaces(ctx context.Context, lat float64, lng float64, radiusMeters int) ([]models.PopularPlace, error) {
+	ret := _m.Called(ctx, lat, lng, radiusMeters)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PopularPlaces")
+	}
+
+	var r0 []models.PopularPlace
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, float64, float64, int) ([]models.PopularPlace, error)); ok {
+		return rf(ctx, lat, lng, radiusMeters)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, float64, float64, int) []models.PopularPlace); ok {
+		r0 = rf(ctx, lat, lng, radiusMeters)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.PopularPlace)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, float64, float64, int) error); ok {
+		r1 = rf(ctx, lat, lng, radiusMeters)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // ReverseGeocode provides a mock function with given fields: ctx, lat, lng
 func (_m *MapsRepo) ReverseGeocode(ctx context.Context, lat float64, lng float64) (*models.ReverseGeocodeResult, error) {
 	ret := _m.Called(ctx, lat, lng)

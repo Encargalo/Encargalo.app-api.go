@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"Encargalo.app-api.go/internal/maps/domain/dtos"
 	"Encargalo.app-api.go/internal/maps/domain/models"
 	"Encargalo.app-api.go/internal/maps/domain/ports"
 	"Encargalo.app-api.go/internal/shared/response"
@@ -15,6 +16,7 @@ type MapsHandler interface {
 	AutocompletePlaces(e echo.Context) error
 	GetPlaceDetails(e echo.Context) error
 	Directions(e echo.Context) error
+	PopularPlaces(e echo.Context) error
 }
 
 type mapsHandler struct {
@@ -169,6 +171,47 @@ func (h *mapsHandler) Directions(e echo.Context) error {
 	}
 
 	return response.Send(e, http.StatusOK, route)
+}
+
+// PopularPlaces godoc
+// @Summary      Lugares populares cerca
+// @Description  Lista los lugares concurridos alrededor de una coordenada, usando la Google Places API (New) Nearby Search con rankPreference POPULARITY. Consulta por grupos de categorías (transporte, comercio, salud, bancos y plazas) y fusiona los resultados, para que estaciones y bancos no pierdan el cupo frente a los centros comerciales. Devuelve la lista ordenada por distancia ascendente, con distance_km calculada desde la coordenada recibida, y solo los lugares a 10 km o menos — el radio es fijo y no se puede pedir otro. Cacheado por el servidor por celda geográfica.
+// @Tags         Maps
+// @Produce      json
+// @Security     SessionCookie
+// @Param        lat     query     number  true   "Latitud"
+// @Param        lng     query     number  true   "Longitud"
+// @Param        limit   query     integer false  "Cantidad máxima de lugares a devolver (default 20, máximo 80)"
+// @Success      200     {array}   models.PopularPlace
+// @Failure      400     {string}  string  "lat/lng requeridos o fuera de rango, o limit fuera de los límites permitidos"
+// @Failure      401     {string}  string  "No autorizado"
+// @Failure      429     {string}  string  "Demasiadas solicitudes"
+// @Failure      502     {string}  string  "Google Places falló o respondió con error"
+// @Router       /maps/places/popular [get]
+func (h *mapsHandler) PopularPlaces(e echo.Context) error {
+	ctx := e.Request().Context()
+
+	// lat/lng se verifican a mano porque el DTO no puede usar `required`: ahí el cero es una coordenada válida, no un parámetro ausente.
+	if e.QueryParam("lat") == "" || e.QueryParam("lng") == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "lat y lng son requeridos")
+	}
+
+	query := dtos.PopularPlacesQuery{}
+
+	if err := e.Bind(&query); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := query.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	places, err := h.svc.PopularPlaces(ctx, query)
+	if err != nil {
+		return err
+	}
+
+	return response.Send(e, http.StatusOK, places)
 }
 
 // parseOptionalCoords reads lat/lng as an optional bias pair — absent or

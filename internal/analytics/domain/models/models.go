@@ -16,6 +16,7 @@ const (
 	EntityCubeOrder         ETLEntity = "cube_order"
 	EntityCubeTrip          ETLEntity = "cube_trip"
 	EntityFactTrackingEvent ETLEntity = "fact_tracking_event"
+	EntityCubeFareQuote     ETLEntity = "cube_fare_quote"
 )
 
 var DefaultETLEntities = []ETLEntity{
@@ -25,6 +26,7 @@ var DefaultETLEntities = []ETLEntity{
 	EntityCubeOrder,
 	EntityCubeTrip,
 	EntityFactTrackingEvent,
+	EntityCubeFareQuote,
 }
 
 type DateRange struct {
@@ -123,6 +125,7 @@ type CubeTrip struct {
 	bun.BaseModel `bun:"table:analytics.cube_trip"`
 
 	TripID        uuid.UUID  `bun:"trip_id,pk,type:uuid"`
+	QuoteID       *uuid.UUID `bun:"quote_id,type:uuid"`
 	CustomerID    uuid.UUID  `bun:"customer_id,type:uuid,notnull"`
 	RiderID       *uuid.UUID `bun:"rider_id,type:uuid"`
 	Status        string     `bun:"status,notnull"`
@@ -132,6 +135,26 @@ type CubeTrip struct {
 	TripDate      time.Time  `bun:"trip_date,notnull"`
 	CreatedAt     time.Time  `bun:"created_at,notnull"`
 	SyncedAt      time.Time  `bun:"synced_at,notnull"`
+}
+
+// CubeFareQuote es la cotización mostrada al cliente, haya convertido o no.
+// QuoteDate/QuoteHour vienen en hora de negocio, no UTC: la hora del día solo
+// significa algo contra el reloj local del cliente.
+type CubeFareQuote struct {
+	bun.BaseModel `bun:"table:analytics.cube_fare_quote"`
+
+	QuoteID        uuid.UUID `bun:"quote_id,pk,type:uuid"`
+	CustomerID     uuid.UUID `bun:"customer_id,type:uuid,notnull"`
+	DistanceMeters float64   `bun:"distance_meters,notnull"`
+	DurationMin    int64     `bun:"duration_min,notnull"`
+	FareUSD        float64   `bun:"fare_usd,notnull"`
+	FareBand       string    `bun:"fare_band,notnull"`
+	PickupH3Cell   *string   `bun:"pickup_h3_cell"`
+	DropoffH3Cell  *string   `bun:"dropoff_h3_cell"`
+	QuoteDate      time.Time `bun:"quote_date,notnull"`
+	QuoteHour      int16     `bun:"quote_hour,notnull"`
+	CreatedAt      time.Time `bun:"created_at,notnull"`
+	SyncedAt       time.Time `bun:"synced_at,notnull"`
 }
 
 type ETLEntityResult struct {

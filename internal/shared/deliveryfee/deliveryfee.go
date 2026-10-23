@@ -2,13 +2,17 @@ package deliveryfee
 
 import (
 	"context"
-	"errors"
 	"math"
 	"time"
 
+	"Encargalo.app-api.go/internal/pkg/bizclock"
+	"Encargalo.app-api.go/internal/pkg/money"
 	"Encargalo.app-api.go/internal/shared/adapters/googlemaps"
 )
 
+// Esta tarifa es solo para el delivery de comida. Los viajes de pasajeros usan
+// internal/shared/tripfare, que tiene piso, kilómetros incluidos y tramos
+// horarios: son dos negocios con economía distinta y no comparten política.
 const (
 	RateDay   = 0.40
 	RateNight = 0.60
@@ -26,12 +30,20 @@ const (
 // FromDistance convierte una distancia en metros a tarifa de entrega.
 // El cobro es por km completo redondeado hacia arriba (ej: 1001m = 2 km = $0.80 diurno).
 func FromDistance(distanceMeters float64) float64 {
+	return FromDistanceAt(distanceMeters, bizclock.Now())
+}
+
+// FromDistanceAt es FromDistance con el reloj inyectado. `now` debe venir en la
+// zona horaria de negocio (bizclock.Now()), no en UTC.
+func FromDistanceAt(distanceMeters float64, now time.Time) float64 {
 	km := math.Ceil(distanceMeters / 1000)
 	rate := float64(RateDay)
-	if time.Now().Hour() >= NightHour {
+	if now.Hour() >= NightHour {
 		rate = RateNight
 	}
-	return km * rate
+	// Redondeo para no serializarle 1.2000000000000002 al cliente; no cambia
+	// el precio, solo su representación.
+	return money.RoundUSD(km * rate)
 }
 
 // Calculate obtiene la distancia vial entre tienda y dirección de entrega y retorna la tarifa.
@@ -41,28 +53,4 @@ func Calculate(ctx context.Context, shopLat, shopLon, deliveryLat, deliveryLon f
 		return 0, err
 	}
 	return FromDistance(distMeters), nil
-}
-
-// Estimate agrega la distancia y duración estimadas del trayecto junto con la tarifa calculada.
-type Estimate struct {
-	DistanceMeters float64
-	DurationMin    int64
-	Fee            float64
-}
-
-// CalculateWithDuration es como Calculate, pero además retorna la duración estimada.
-func CalculateWithDuration(originLat, originLon, destLat, destLon float64) (Estimate, error) {
-	results, err := googlemaps.DistanceMatrix(originLat, originLon, [][2]float64{{destLat, destLon}})
-	if err != nil {
-		return Estimate{}, err
-	}
-	if len(results) == 0 {
-		return Estimate{}, errors.New("google maps: no se pudo resolver el destino")
-	}
-	elem := results[0]
-	return Estimate{
-		DistanceMeters: elem.DistanceMeters,
-		DurationMin:    elem.DurationMin,
-		Fee:            FromDistance(elem.DistanceMeters),
-	}, nil
 }

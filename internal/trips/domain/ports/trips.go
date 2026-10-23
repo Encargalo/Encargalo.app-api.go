@@ -93,6 +93,12 @@ type TripQuotesRepo interface {
 	GetAndConsume(ctx context.Context, customerID, quoteID uuid.UUID) (*models.TripQuote, error)
 }
 
+// FareQuotesRepo persiste la cotización en OLTP para medir conversión. Es un
+// registro de analítica: su escritura nunca debe hacer fallar la cotización.
+type FareQuotesRepo interface {
+	Insert(ctx context.Context, quote *models.FareQuote) error
+}
+
 // TripEventPublisher publica eventos de viaje al stream del servicio de notificaciones.
 type TripEventPublisher interface {
 	PublisherEvent(ctx context.Context, data any) error

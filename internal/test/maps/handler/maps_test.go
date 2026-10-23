@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	mapsdtos "Encargalo.app-api.go/internal/maps/domain/dtos"
 	mapsmodels "Encargalo.app-api.go/internal/maps/domain/models"
 	mapshandler "Encargalo.app-api.go/internal/maps/handler"
 	mocksmaps "Encargalo.app-api.go/internal/mocks/maps/domain/ports"
@@ -251,4 +252,112 @@ func TestDirections_ErrorsMapToContractStatus(t *testing.T) {
 		assert.ErrorIs(t, err, appErr)
 		assert.Equal(t, status, errcustom.HTTPStatus(err))
 	}
+}
+
+func TestPopularPlaces_Success(t *testing.T) {
+	h, svc := newHandler(t)
+
+	places := []mapsmodels.PopularPlace{
+		{PlaceID: "abc", Name: "C.C. El Colonial", Category: "Centro comercial", DistanceKm: 8.01},
+	}
+	tc := buildhttptest.SetupControllerCase("/maps/places/popular?lat=10.17809&lng=-66.81615", http.MethodGet, nil)
+
+	svc.On("PopularPlaces", tc.Req.Context(), mapsdtos.PopularPlacesQuery{Latitude: 10.17809, Longitude: -66.81615}).Return(places, nil)
+
+	err := h.PopularPlaces(tc.Ctx)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, tc.Res.Code)
+
+	var got []mapsmodels.PopularPlace
+	assert.NoError(t, json.Unmarshal(tc.Res.Body.Bytes(), &got))
+	assert.Equal(t, places, got)
+}
+
+func TestPopularPlaces_BindsLimit(t *testing.T) {
+	h, svc := newHandler(t)
+
+	tc := buildhttptest.SetupControllerCase("/maps/places/popular?lat=10.17809&lng=-66.81615&limit=10", http.MethodGet, nil)
+
+	svc.On("PopularPlaces", tc.Req.Context(), mapsdtos.PopularPlacesQuery{Latitude: 10.17809, Longitude: -66.81615, Limit: 10}).Return([]mapsmodels.PopularPlace{}, nil)
+
+	err := h.PopularPlaces(tc.Ctx)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, tc.Res.Code)
+}
+
+func TestPopularPlaces_MissingLng(t *testing.T) {
+	h, _ := newHandler(t)
+
+	tc := buildhttptest.SetupControllerCase("/maps/places/popular?lat=10.17809", http.MethodGet, nil)
+
+	err := h.PopularPlaces(tc.Ctx)
+
+	assert.Equal(t, http.StatusBadRequest, httpCode(err))
+}
+
+func TestPopularPlaces_NonNumericLimit(t *testing.T) {
+	h, _ := newHandler(t)
+
+	tc := buildhttptest.SetupControllerCase("/maps/places/popular?lat=10.17809&lng=-66.81615&limit=muchos", http.MethodGet, nil)
+
+	err := h.PopularPlaces(tc.Ctx)
+
+	assert.Equal(t, http.StatusBadRequest, httpCode(err))
+}
+
+func TestPopularPlaces_LimitOverMaximum(t *testing.T) {
+	h, _ := newHandler(t)
+
+	tc := buildhttptest.SetupControllerCase("/maps/places/popular?lat=10.17809&lng=-66.81615&limit=500", http.MethodGet, nil)
+
+	err := h.PopularPlaces(tc.Ctx)
+
+	assert.Equal(t, http.StatusBadRequest, httpCode(err))
+}
+
+func TestPopularPlaces_ErrorsMapToContractStatus(t *testing.T) {
+	h, svc := newHandler(t)
+
+	tc := buildhttptest.SetupControllerCase("/maps/places/popular?lat=10.17809&lng=-66.81615", http.MethodGet, nil)
+
+	svc.On("PopularPlaces", tc.Req.Context(), mapsdtos.PopularPlacesQuery{Latitude: 10.17809, Longitude: -66.81615}).Return(nil, errcustom.ErrMapsUnavailable)
+
+	err := h.PopularPlaces(tc.Ctx)
+
+	assert.ErrorIs(t, err, errcustom.ErrMapsUnavailable)
+}
+
+func TestPopularPlaces_ZeroCoordinatesAreValid(t *testing.T) {
+	h, svc := newHandler(t)
+
+	tc := buildhttptest.SetupControllerCase("/maps/places/popular?lat=0&lng=0", http.MethodGet, nil)
+
+	svc.On("PopularPlaces", tc.Req.Context(), mapsdtos.PopularPlacesQuery{Latitude: 0, Longitude: 0}).Return([]mapsmodels.PopularPlace{}, nil)
+
+	err := h.PopularPlaces(tc.Ctx)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, tc.Res.Code)
+}
+
+func TestPopularPlaces_EmptyLat(t *testing.T) {
+	h, _ := newHandler(t)
+
+	tc := buildhttptest.SetupControllerCase("/maps/places/popular?lat=&lng=-66.81615", http.MethodGet, nil)
+
+	err := h.PopularPlaces(tc.Ctx)
+
+	assert.Equal(t, http.StatusBadRequest, httpCode(err))
+}
+
+func TestPopularPlaces_LimitJustOverMaximum(t *testing.T) {
+	h, _ := newHandler(t)
+
+	tc := buildhttptest.SetupControllerCase("/maps/places/popular?lat=10.17809&lng=-66.81615&limit=81", http.MethodGet, nil)
+
+	err := h.PopularPlaces(tc.Ctx)
+
+	assert.Equal(t, http.StatusBadRequest, httpCode(err))
 }

@@ -43,8 +43,11 @@ var CancellableStatuses = map[TripStatus]bool{
 type Trip struct {
 	bun.BaseModel `bun:"table:trips.trips"`
 
-	ID               uuid.UUID  `bun:"id,pk,type:uuid,default:uuid_generate_v4()"`
-	CustomerID       uuid.UUID  `bun:"customer_id,type:uuid,notnull"`
+	ID         uuid.UUID `bun:"id,pk,type:uuid,default:uuid_generate_v4()"`
+	CustomerID uuid.UUID `bun:"customer_id,type:uuid,notnull"`
+	// QuoteID enlaza el viaje con la cotización que lo originó; es el que permite
+	// medir qué cotizaciones convirtieron. Nulo en viajes previos a trips.fare_quotes.
+	QuoteID          *uuid.UUID `bun:"quote_id,type:uuid"`
 	RiderID          *uuid.UUID `bun:"rider_id,type:uuid"`
 	Status           TripStatus `bun:"status,notnull,default:'requested'"`
 	PickupAddress    string     `bun:"pickup_address,notnull"`

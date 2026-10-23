@@ -146,6 +146,12 @@ func (a *etlApp) syncEntity(ctx context.Context, entity models.ETLEntity, from, 
 			return 0, err
 		}
 		return len(rows), a.sink.UpsertTrips(ctx, rows)
+	case models.EntityCubeFareQuote:
+		rows, err := a.source.FetchFareQuotes(ctx, from, to)
+		if err != nil {
+			return 0, err
+		}
+		return len(rows), a.sink.UpsertFareQuotes(ctx, rows)
 	case models.EntityFactTrackingEvent:
 		rows, err := a.source.FetchTrackingEvents(ctx, from, to)
 		if err != nil {

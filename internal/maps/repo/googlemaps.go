@@ -26,6 +26,22 @@ const (
 
 	placeDetailsPrefix = "maps:place_details:v2:"
 	placeDetailsTTL    = 24 * time.Hour
+
+	// v2: la key ya no lleva el radio (lo fija el app) y el payload se arma con el radio expandido por el circunradio de la celda.
+	popularPlacesPrefix = "maps:popular_places:v2:"
+	popularPlacesTTL    = 7 * 24 * time.Hour
+
+	// Un resultado parcial se cachea corto: sirve para responder ya, pero no para fijar por una semana una lista a la que le falta un grupo de categorías.
+	popularPlacesPartialTTL = 15 * time.Minute
+
+	// Una zona sin lugares populares se cachea corto: evita repetir 4 llamadas facturadas por request sin fijar por una semana lo que puede ser un vacío transitorio.
+	popularPlacesEmptyTTL = time.Hour
+
+	// Granularidad del cache de lugares populares (celdas de ~5.16 km²); propia del módulo, no la resolución de los heatmaps de analítica.
+	popularPlacesCellResolution = 7
+
+	// Circunradio de una celda de esa resolución: el usuario puede estar a ~1.22 km del centro que se le consulta a Google.
+	popularPlacesCellRadiusMeters = 1300
 )
 
 type mapsRepo struct {
@@ -150,6 +166,69 @@ func (r *mapsRepo) Directions(ctx context.Context, originLat, originLng, destLat
 		DistanceMeters: raw.DistanceMeters,
 		DurationMin:    raw.DurationMin,
 	}, nil
+}
+
+func (r *mapsRepo) PopularPlaces(ctx context.Context, lat, lng float64, radiusMeters int) ([]models.PopularPlace, error) {
+	cell, err := geo.LatLngToCell(lat, lng, popularPlacesCellResolution)
+	if err != nil {
+		return nil, errcustom.ErrInvalidCoordinates
+	}
+
+	// La key no incluye el radio porque el app lo fija: una sola entrada por celda, compartida por todos los usuarios de la zona.
+	cacheKey := popularPlacesPrefix + cell
+
+	cached, _ := r.cache.Get(ctx, cacheKey)
+	if cached != "" {
+		var places []models.PopularPlace
+		if err := json.Unmarshal([]byte(cached), &places); err == nil {
+			return places, nil
+		}
+		slog.Error("maps: error al hacer unmarshal de los lugares populares cacheados", "key", cacheKey)
+	}
+
+	centerLat, centerLng, err := geo.CellToLatLng(cell)
+	if err != nil {
+		return nil, errcustom.ErrInvalidCoordinates
+	}
+
+	// Se pide el radio expandido por el circunradio de la celda para no perder lugares cercanos al usuario pero lejanos al centro consultado.
+	raw, err := googlemaps.NearbyPopularPlaces(ctx, centerLat, centerLng, radiusMeters+popularPlacesCellRadiusMeters)
+	if errors.Is(err, googlemaps.ErrNoResults) {
+		empty := []models.PopularPlace{}
+		if err := r.cache.Set(ctx, cacheKey, empty, popularPlacesEmptyTTL); err != nil {
+			slog.Error("maps: error al guardar los lugares populares vacíos en el cache", "error", err)
+		}
+		return empty, nil
+	}
+
+	partial := errors.Is(err, googlemaps.ErrPartialResults)
+	if err != nil && !partial {
+		return nil, fmt.Errorf("%w: %v", errcustom.ErrMapsUnavailable, err)
+	}
+
+	places := make([]models.PopularPlace, 0, len(raw))
+	for _, p := range raw {
+		places = append(places, models.PopularPlace{
+			PlaceID:  p.PlaceID,
+			Name:     p.Name,
+			Category: p.Category,
+			Address:  p.Address,
+			Lat:      p.Lat,
+			Lng:      p.Lng,
+		})
+	}
+
+	ttl := popularPlacesTTL
+	if partial {
+		slog.Warn("maps: lugares populares incompletos, falló al menos un grupo de categorías", "cell", cell, "error", err)
+		ttl = popularPlacesPartialTTL
+	}
+
+	if err := r.cache.Set(ctx, cacheKey, places, ttl); err != nil {
+		slog.Error("maps: error al guardar los lugares populares en el cache", "error", err)
+	}
+
+	return places, nil
 }
 
 func straightRoute(originLat, originLng, destLat, destLng float64) *models.Route {
