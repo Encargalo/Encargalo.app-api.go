@@ -183,7 +183,7 @@ func (a *paymentReviewsApp) RejectUnderpaid(ctx context.Context, reviewID, staff
 		return models.StaffReviewResult{}, err
 	}
 	credit := ports.BalanceCredit{TxID: txID, RefundablePMBs: pmCreditedBs, CreatedAt: createdAt}
-	if err := subject.OnRejected(ctx, review.ReferenceID, review.ID, "underpaid", credit); err != nil {
+	if err := subject.OnRejected(ctx, review.ReferenceID, review.ID, models.RejectionReasonUnderpaid, credit); err != nil {
 		return models.StaffReviewResult{}, err
 	}
 	a.broadcastResolved(ctx, review, subject)

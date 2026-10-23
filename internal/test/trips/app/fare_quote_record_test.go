@@ -27,6 +27,7 @@ func TestEstimateFare_RecordsFareQuoteForConversion(t *testing.T) {
 	customerID := uuid.New()
 	req := sampleFareEstimateRequest(customerID)
 	mockBcvRate(bcv, 40)
+	repo.On("HasBillableTrip", mock.Anything, customerID).Return(true, nil)
 	quotes.On("Save", mock.Anything, mock.Anything, models.TripQuoteTTL).Return(nil)
 
 	var recorded *models.FareQuote
@@ -61,6 +62,7 @@ func TestEstimateFare_SucceedsWhenFareQuoteRecordFails(t *testing.T) {
 
 	req := sampleFareEstimateRequest(uuid.New())
 	mockBcvRate(bcv, 40)
+	repo.On("HasBillableTrip", mock.Anything, req.CustomerID).Return(true, nil)
 	quotes.On("Save", mock.Anything, mock.Anything, models.TripQuoteTTL).Return(nil)
 	fareQuotes.On("Insert", mock.Anything, mock.Anything).Return(errors.New("db caída"))
 

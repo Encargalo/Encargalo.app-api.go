@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	paymentsModels "Encargalo.app-api.go/internal/payments/domain/models"
 	paymentsPorts "Encargalo.app-api.go/internal/payments/domain/ports"
@@ -10,6 +11,7 @@ import (
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/trips/domain/models"
 	"Encargalo.app-api.go/internal/trips/domain/ports"
+	usersModels "Encargalo.app-api.go/internal/users/domain/models"
 	"github.com/google/uuid"
 )
 
@@ -21,10 +23,11 @@ type TripPaymentSubject struct {
 	matcher   ports.TripRiderMatcher
 	customers ports.CustomerTripNotifier
 	balance   paymentsPorts.CustomerBalanceCreditor
+	reviews   paymentsPorts.PaymentReviewsRepo
 }
 
-func NewTripPaymentSubject(repo ports.TripsRepo, matcher ports.TripRiderMatcher, customers ports.CustomerTripNotifier, balance paymentsPorts.CustomerBalanceCreditor) *TripPaymentSubject {
-	return &TripPaymentSubject{repo: repo, matcher: matcher, customers: customers, balance: balance}
+func NewTripPaymentSubject(repo ports.TripsRepo, matcher ports.TripRiderMatcher, customers ports.CustomerTripNotifier, balance paymentsPorts.CustomerBalanceCreditor, reviews paymentsPorts.PaymentReviewsRepo) *TripPaymentSubject {
+	return &TripPaymentSubject{repo: repo, matcher: matcher, customers: customers, balance: balance, reviews: reviews}
 }
 
 func (s *TripPaymentSubject) ExpectedAmountBs(ctx context.Context, referenceID uuid.UUID) (float64, error) {
@@ -55,7 +58,7 @@ func (s *TripPaymentSubject) OnOverpaid(ctx context.Context, referenceID, _ uuid
 	return s.startMatching(ctx, referenceID)
 }
 
-func (s *TripPaymentSubject) OnRejected(ctx context.Context, referenceID, _ uuid.UUID, _ string, _ paymentsPorts.BalanceCredit) error {
+func (s *TripPaymentSubject) OnRejected(ctx context.Context, referenceID, reviewID uuid.UUID, reason string, credit paymentsPorts.BalanceCredit) error {
 	trip, err := s.loadInPaymentReview(ctx, referenceID)
 	if err != nil {
 		return err
@@ -68,9 +71,72 @@ func (s *TripPaymentSubject) OnRejected(ctx context.Context, referenceID, _ uuid
 		return errcustom.ErrInvalidStatus
 	}
 	trip.Status = models.TripStatusCancelled
+	saveCancelReason(ctx, trip, cancelReasonFromRejection(reason), s.repo.SaveTripCancelReason)
+	s.syncRejectedPayment(ctx, trip, reviewID, credit)
 	s.refundBalancePaid(ctx, trip)
 	s.notify(ctx, trip)
 	return nil
+}
+
+// cancelReasonFromRejection traduce el motivo que manda payments. RejectUnderpaid
+// manda el centinela "underpaid"; RejectInvalid manda el texto libre del staff,
+// que no se expone: cualquier otro valor cae en payment_rejected.
+func cancelReasonFromRejection(reason string) models.CancelReason {
+	if reason == paymentsModels.RejectionReasonUnderpaid {
+		return models.CancelReasonPaymentUnderpaid
+	}
+	return models.CancelReasonPaymentRejected
+}
+
+// syncRejectedPayment congela en el viaje lo que el cliente necesita saber de su
+// dinero tras el rechazo. Un fallo aquí no revierte la cancelación.
+func (s *TripPaymentSubject) syncRejectedPayment(ctx context.Context, trip *models.Trip, reviewID uuid.UUID, credit paymentsPorts.BalanceCredit) {
+	if s.reviews == nil {
+		return
+	}
+	review, err := s.reviews.GetByID(ctx, reviewID)
+	if err != nil {
+		slog.Error("trip rejected payment: read review", "tripID", trip.ID, "reviewID", reviewID, "error", err)
+		return
+	}
+
+	payment := &models.TripPayment{
+		Status:           string(review.Status),
+		ExpectedAmountBs: review.ExpectedAmountBs,
+		ObservedAmountBs: review.ObservedAmountBs,
+		DifferenceBs:     review.DifferenceBs,
+		CreditedBs:       review.CreditedBs,
+	}
+	// El texto de rejected_invalid lo escribe el staff y puede nombrar la
+	// referencia del comprobante duplicado: solo sale el de monto insuficiente.
+	if review.Status == paymentsModels.ReviewRejectedUnderpaid {
+		payment.RejectionReason = review.RejectionReason
+	}
+	applyBalanceCredit(payment, credit, review.BcvRate)
+
+	trip.Payment = payment
+	if err := s.repo.SaveTripPayment(ctx, trip.ID, payment); err != nil {
+		slog.Error("trip rejected payment: save", "tripID", trip.ID, "error", err)
+	}
+}
+
+// applyBalanceCredit habilita la devolución a la cuenta del cliente con las
+// mismas reglas que órdenes: umbral mínimo y ventana desde el movimiento.
+func applyBalanceCredit(payment *models.TripPayment, credit paymentsPorts.BalanceCredit, bcvRate float64) {
+	if credit.TxID == uuid.Nil {
+		return
+	}
+	txID := credit.TxID
+	payment.TransactionID = &txID
+	if !usersModels.MeetsRefundMin(credit.RefundablePMBs, bcvRate) {
+		return
+	}
+	refundable := credit.RefundablePMBs
+	until := credit.CreatedAt.Add(usersModels.RefundRequestWindow)
+	untilStr := until.Format(time.RFC3339)
+	payment.RefundablePMBs = &refundable
+	payment.RefundEligibleUntil = &untilStr
+	payment.CanRequestRefund = !time.Now().After(until)
 }
 
 // refundBalancePaid devuelve la porción de saldo de un viaje mixto; la de Pago Móvil la acredita payments.

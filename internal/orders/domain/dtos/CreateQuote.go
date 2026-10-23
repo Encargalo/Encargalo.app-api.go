@@ -20,17 +20,20 @@ func (q *CreateQuote) Validate() error {
 }
 
 type QuoteResponse struct {
-	QuoteID            uuid.UUID       `json:"quote_id"`
-	TotalUSD           float64         `json:"total_usd"`
-	TotalBs            float64         `json:"total_bs"`
-	DeliveryFeeUSD     float64         `json:"delivery_fee_usd"`
-	DeliveryFeeBs      float64         `json:"delivery_fee_bs"`
-	BcvRate            float64         `json:"bcv_rate"`
-	IsLaunchPromo      bool            `json:"is_launch_promo"`
-	PromoSubsidyAmount float64         `json:"promo_subsidy_amount,omitempty"`
-	ExpiresAt          time.Time       `json:"expires_at"`
-	ProofGraceUntil    time.Time       `json:"proof_grace_until"`
-	Items              []QuoteItemView `json:"items"`
+	QuoteID        uuid.UUID `json:"quote_id"`
+	TotalUSD       float64   `json:"total_usd"`
+	TotalBs        float64   `json:"total_bs"`
+	DeliveryFeeUSD float64   `json:"delivery_fee_usd"`
+	DeliveryFeeBs  float64   `json:"delivery_fee_bs"`
+	// DeliveryFeeOriginalUSD y DeliverySubsidyUSD solo vienen con el envío gratis de primer pedido; delivery_fee_usd ya lo trae restado.
+	DeliveryFeeOriginalUSD float64         `json:"delivery_fee_original_usd,omitempty"`
+	DeliverySubsidyUSD     float64         `json:"delivery_subsidy_usd,omitempty"`
+	BcvRate                float64         `json:"bcv_rate"`
+	IsLaunchPromo          bool            `json:"is_launch_promo"`
+	PromoSubsidyAmount     float64         `json:"promo_subsidy_amount,omitempty"`
+	ExpiresAt              time.Time       `json:"expires_at"`
+	ProofGraceUntil        time.Time       `json:"proof_grace_until"`
+	Items                  []QuoteItemView `json:"items"`
 }
 
 type QuoteItemView struct {

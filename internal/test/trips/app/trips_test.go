@@ -116,10 +116,11 @@ func sampleTripQuote(customerID uuid.UUID) *models.TripQuote {
 }
 
 func TestEstimateFare_SavesQuoteAndReturnsFare(t *testing.T) {
-	svc, _, _, bcv, quotes := newTripsApp(t)
+	svc, repo, _, bcv, quotes := newTripsApp(t)
 	customerID := uuid.New()
 	req := sampleFareEstimateRequest(customerID)
 	mockBcvRate(bcv, 40)
+	repo.On("HasBillableTrip", mock.Anything, customerID).Return(true, nil)
 
 	var saved *models.TripQuote
 	quotes.On("Save", mock.Anything, mock.MatchedBy(func(q *models.TripQuote) bool {
@@ -264,6 +265,7 @@ func TestRequestTrip_ReviewFailureCancelsTrip(t *testing.T) {
 	d.reviews.On("CreateReview", mock.Anything, models.ReferenceTypeTrip, tripID, "https://cdn/proof.jpg", mock.AnythingOfType("float64"), quote.BcvRate).
 		Return(nil, errcustom.ErrUnexpectedError)
 	d.repo.On("UpdateTripStatus", mock.Anything, tripID, models.TripStatusPaymentReview, models.TripStatusCancelled).Return(true, nil)
+	d.repo.On("SaveTripCancelReason", mock.Anything, tripID, mock.Anything).Return(nil).Maybe()
 
 	_, err := d.svc.RequestTrip(context.Background(), customerID, req)
 
@@ -404,6 +406,7 @@ func TestCancelTrip_Success(t *testing.T) {
 
 	repo.On("GetTripByID", mock.Anything, tripID).Return(&models.Trip{ID: tripID, CustomerID: customerID, Status: models.TripStatusSearching}, nil)
 	repo.On("UpdateTripStatus", mock.Anything, tripID, models.TripStatusSearching, models.TripStatusCancelled).Return(true, nil)
+	repo.On("SaveTripCancelReason", mock.Anything, tripID, mock.Anything).Return(nil).Maybe()
 	mockBcvRate(bcv, 40)
 
 	resp, err := svc.CancelTrip(context.Background(), tripID, customerID)
@@ -418,6 +421,7 @@ func TestQuoteFlow_EndToEndFareNeverDrifts(t *testing.T) {
 	customerID := uuid.New()
 	estimateReq := sampleFareEstimateRequest(customerID)
 	mockBcvRate(d.bcv, 40)
+	d.repo.On("HasBillableTrip", mock.Anything, customerID).Return(true, nil)
 
 	var saved *models.TripQuote
 	d.quotes.On("Save", mock.Anything, mock.Anything, models.TripQuoteTTL).Run(func(args mock.Arguments) {

@@ -121,12 +121,16 @@ func riderTripOfferDTO(trip *tripsModels.Trip) tripsDtos.TripResponse {
 	frozen := *trip
 	frozen.ApplyFrozenBsFare()
 	resp := frozen.ToDTO()
-	if resp.FareUSD != nil {
-		usd := money.RoundUSD(riderModels.RiderPayUSD(*resp.FareUSD))
-		resp.FareUSD = &usd
+	resp.DiscountUSD = 0
+	if trip.Fare == nil {
+		return resp
 	}
-	if resp.FareBs != nil {
-		bs := money.RoundBs(riderModels.RiderPayUSD(*resp.FareBs))
+	// El pago del rider sale de la tarifa completa: el descuento de primer viaje lo absorbe la plataforma.
+	gross := trip.GrossFareUSD()
+	usd := money.RoundUSD(riderModels.RiderPayUSD(gross))
+	resp.FareUSD = &usd
+	if trip.BcvRate != nil && *trip.BcvRate > 0 {
+		bs := money.RoundBs(riderModels.RiderPayUSD(money.RoundBs(gross * *trip.BcvRate)))
 		resp.FareBs = &bs
 	}
 	return resp
@@ -805,7 +809,15 @@ func (r *appRidersManager) expireTripIfStillSearching(tripID uuid.UUID) {
 	}
 
 	r.clearTripOfferState(tripID)
-	if err != nil || !ok || (r.customers == nil && r.balance == nil) {
+	if err != nil || !ok {
+		return
+	}
+	// El motivo se escribe sin cargar el viaje: aunque no haya nada que
+	// reembolsar ni a quién avisar, tiene que quedar registrado.
+	if reasonErr := r.tripsRepo.SaveTripCancelReason(ctx, tripID, tripsModels.CancelReasonNoDriver); reasonErr != nil {
+		slog.Error("save trip cancel reason", "tripID", tripID, "reason", tripsModels.CancelReasonNoDriver, "error", reasonErr)
+	}
+	if r.customers == nil && r.balance == nil {
 		return
 	}
 	trip, getErr := r.tripsRepo.GetTripByID(ctx, tripID)
@@ -819,6 +831,7 @@ func (r *appRidersManager) expireTripIfStillSearching(tripID uuid.UUID) {
 		}
 	}
 	tripsApp.CreditUnservedPagoMovil(ctx, r.balance, trip, r.tripsRepo.SaveTripPayment)
+	trip.SetCancelReason(tripsModels.CancelReasonNoDriver)
 	r.notifyCustomer(ctx, trip)
 	r.publishTripNoDriver(ctx, trip)
 }
@@ -1144,17 +1157,19 @@ func (r *appRidersManager) completeTrip(ctx context.Context, trip *tripsModels.T
 	}
 	r.notifyCustomer(ctx, trip)
 
+	// El pago del rider sale de la tarifa completa; con descuento, el efectivo puede no cubrirlo y la plataforma pone la diferencia.
 	var earnErr error
+	gross := trip.GrossFareUSD()
 	cashUSD := tripCashCollectedUSD(trip, fare)
-	partialCash := cashUSD > 0 && fare-cashUSD > 0.01
+	partialCash := cashUSD > 0 && gross-cashUSD > 0.01
 	if partialCash {
-		earnErr = r.tripEarnings.RecordTripCashCollected(ctx, *trip.RiderID, trip.ID, fare, cashUSD, r.bcvRate(ctx))
+		earnErr = r.tripEarnings.RecordTripCashCollected(ctx, *trip.RiderID, trip.ID, gross, cashUSD, r.bcvRate(ctx))
 	}
 	if cashUSD > 0 && !partialCash {
-		earnErr = r.tripEarnings.RecordTripCash(ctx, *trip.RiderID, trip.ID, fare, r.bcvRate(ctx))
+		earnErr = r.tripEarnings.RecordTripCash(ctx, *trip.RiderID, trip.ID, gross, r.bcvRate(ctx))
 	}
 	if cashUSD <= 0 {
-		earnErr = r.tripEarnings.RecordTripEarning(ctx, *trip.RiderID, trip.ID, fare, r.bcvRate(ctx))
+		earnErr = r.tripEarnings.RecordTripEarning(ctx, *trip.RiderID, trip.ID, gross, r.bcvRate(ctx))
 	}
 	if earnErr != nil {
 		slog.Error("error recording trip earning", "tripID", trip.ID, "riderID", *trip.RiderID, "error", earnErr)

@@ -2420,7 +2420,7 @@ const docTemplate = `{
                         }
                     },
                     "409": {
-                        "description": "La orden ya existe, precio cambió, o quote ya usado",
+                        "description": "La orden ya existe, precio cambió, quote ya usado, o el envío gratis de primer pedido ya se usó en otro pedido (first_order_delivery_used: volver a cotizar)",
                         "schema": {
                             "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.ErrorResponse"
                         }
@@ -2538,7 +2538,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Calcula y congela el total (descuentos, promo, delivery, BCV) en Redis con TTL. El cliente debe pagar contra este quote y luego crear la orden con ` + "`" + `quote_id` + "`" + `. ` + "`" + `expires_at` + "`" + ` = 30m; ` + "`" + `proof_grace_until` + "`" + ` = +15m si al crear ya envía comprobante.",
+                "description": "Calcula y congela el total (descuentos, promo, delivery, BCV) en Redis con TTL. El cliente debe pagar contra este quote y luego crear la orden con ` + "`" + `quote_id` + "`" + `. ` + "`" + `expires_at` + "`" + ` = 30m; ` + "`" + `proof_grace_until` + "`" + ` = +15m si al crear ya envía comprobante. Primer pedido: si el cliente no tiene pedidos fuera de Cancelled/Rejected, la plataforma cubre el envío hasta 3 USD; ` + "`" + `delivery_fee_usd` + "`" + `/` + "`" + `delivery_fee_bs` + "`" + ` y ` + "`" + `total_usd` + "`" + `/` + "`" + `total_bs` + "`" + ` ya lo traen restado, y vienen ` + "`" + `delivery_fee_original_usd` + "`" + ` y ` + "`" + `delivery_subsidy_usd` + "`" + ` para mostrar el envío tachado.",
                 "consumes": [
                     "application/json"
                 ],
@@ -6268,7 +6268,7 @@ const docTemplate = `{
                         }
                     },
                     "409": {
-                        "description": "El id ya lo usa un viaje de otro cliente",
+                        "description": "El id ya lo usa un viaje de otro cliente, o el descuento de primer viaje ya se usó en otro viaje (\\\"el descuento de primer viaje ya fue usado, vuelve a cotizar\\\")",
                         "schema": {
                             "type": "string"
                         }
@@ -6289,7 +6289,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Calcula distancia, tiempo estimado y tarifa (USD/Bs) entre pickup y destino, y la congela por 10 minutos en una cotización. La respuesta incluye bcv_rate, la tasa BCV usada para fare_bs. El quote_id devuelto es obligatorio para crear el viaje (POST /trips): el precio mostrado acá es el que queda fijado, no se recalcula.",
+                "description": "Calcula distancia, tiempo estimado y tarifa (USD/Bs) entre pickup y destino, y la congela por 10 minutos en una cotización. La respuesta incluye bcv_rate, la tasa BCV usada para fare_bs. El quote_id devuelto es obligatorio para crear el viaje (POST /trips): el precio mostrado acá es el que queda fijado, no se recalcula. Si el cliente no tiene viajes fuera de cancelled/no_driver, se aplica el descuento de primer viaje (50%, máximo 6 USD): fare_usd y fare_bs ya lo traen restado, y fare_original_usd y discount_usd vienen para mostrar el precio tachado.",
                 "consumes": [
                     "application/json"
                 ],
@@ -6319,7 +6319,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "payload inválido",
+                        "description": "payload inválido o coordenadas fuera del área de servicio",
                         "schema": {
                             "type": "string"
                         }
@@ -6346,7 +6346,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Cada viaje con rider asignado incluye ` + "`" + `rider` + "`" + ` (nombre, teléfono, foto y vehículo). No incluye documentos KYC.",
+                "description": "Cada viaje con rider asignado incluye ` + "`" + `rider` + "`" + ` (nombre, teléfono, foto y vehículo). No incluye documentos KYC. Los viajes cancelled y no_driver traen ` + "`" + `cancel_reason` + "`" + ` con el motivo (payment_rejected, payment_underpaid, customer_cancelled o no_driver).",
                 "produces": [
                     "application/json"
                 ],
@@ -6467,7 +6467,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Si el viaje ya tiene rider asignado, ` + "`" + `rider` + "`" + ` trae nombre, teléfono, foto y vehículo. No incluye documentos KYC. pickup_code aparece desde accepted hasta que el pasajero sube; dropoff_code aparece en in_progress. Si un Pago Móvil aprobado se reintegró a la cartera, ` + "`" + `payment` + "`" + ` trae transaction_id, credited_bs y refund_eligible_until. Los cambios en vivo llegan por GET /trips/live.",
+                "description": "Si el viaje ya tiene rider asignado, ` + "`" + `rider` + "`" + ` trae nombre, teléfono, foto y vehículo. No incluye documentos KYC. pickup_code aparece desde accepted hasta que el pasajero sube; dropoff_code aparece en in_progress. Si un Pago Móvil aprobado se reintegró a la cartera, ` + "`" + `payment` + "`" + ` trae transaction_id, credited_bs y refund_eligible_until; si el staff rechazó el comprobante, trae además status, observed_amount_bs y difference_bs. En viajes cancelled o no_driver, ` + "`" + `cancel_reason` + "`" + ` dice por qué: payment_rejected, payment_underpaid, customer_cancelled o no_driver. Nunca dice quién canceló. Los cambios en vivo llegan por GET /trips/live.",
                 "produces": [
                     "application/json"
                 ],
@@ -6525,7 +6525,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Solo permitido mientras el viaje esté en requested/searching/accepted/arriving. En payment_review responde 422 trip_payment_review_pending: hay que esperar a que el staff resuelva el comprobante. Si se pagó con balance, el débito se reintegra. Si el Pago Móvil ya estaba aprobado (searching, accepted o arriving), se acredita la tarifa en Bs a la cartera y la respuesta trae payment.transaction_id.",
+                "description": "Solo permitido mientras el viaje esté en requested/searching/accepted/arriving. En payment_review responde 422 trip_payment_review_pending: hay que esperar a que el staff resuelva el comprobante. Si se pagó con balance, el débito se reintegra. Si el Pago Móvil ya estaba aprobado (searching, accepted o arriving), se acredita la tarifa en Bs a la cartera y la respuesta trae payment.transaction_id. La respuesta trae cancel_reason = customer_cancelled.",
                 "produces": [
                     "application/json"
                 ],
@@ -8544,7 +8544,14 @@ const docTemplate = `{
                 "delivery_fee_bs": {
                     "type": "number"
                 },
+                "delivery_fee_original_usd": {
+                    "description": "DeliveryFeeOriginalUSD y DeliverySubsidyUSD solo vienen con el envío gratis de primer pedido; delivery_fee_usd ya lo trae restado.",
+                    "type": "number"
+                },
                 "delivery_fee_usd": {
+                    "type": "number"
+                },
+                "delivery_subsidy_usd": {
                     "type": "number"
                 },
                 "expires_at": {
@@ -10717,6 +10724,9 @@ const docTemplate = `{
                     "description": "BcvRate es la tasa congelada en la cotización; fare_bs = fare_usd * BcvRate.",
                     "type": "number"
                 },
+                "discount_usd": {
+                    "type": "number"
+                },
                 "distance_meters": {
                     "type": "number"
                 },
@@ -10727,6 +10737,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "fare_bs": {
+                    "type": "number"
+                },
+                "fare_original_usd": {
+                    "description": "FareOriginalUSD y DiscountUSD solo vienen con el descuento de primer viaje; fare_usd ya lo trae restado.",
                     "type": "number"
                 },
                 "fare_usd": {
@@ -10825,7 +10839,13 @@ const docTemplate = `{
                 "credited_bs": {
                     "type": "number"
                 },
+                "difference_bs": {
+                    "type": "number"
+                },
                 "expected_amount_bs": {
+                    "type": "number"
+                },
+                "observed_amount_bs": {
                     "type": "number"
                 },
                 "refund_eligible_until": {
@@ -10833,6 +10853,15 @@ const docTemplate = `{
                 },
                 "refundable_pm_bs": {
                     "type": "number"
+                },
+                "rejection_reason": {
+                    "description": "RejectionReason solo se llena en rejected_underpaid. El motivo que\nescribe el staff en rejected_invalid nunca sale hacia el cliente.",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Status es el estado de la revisión: approved, overpaid,\nrejected_underpaid o rejected_invalid. Vacío si no hubo revisión.",
+                    "type": "string",
+                    "example": "rejected_underpaid"
                 },
                 "transaction_id": {
                     "type": "string"
@@ -10844,6 +10873,11 @@ const docTemplate = `{
             "properties": {
                 "accepted_at": {
                     "type": "string"
+                },
+                "cancel_reason": {
+                    "description": "CancelReason es un código: payment_rejected, payment_underpaid,\ncustomer_cancelled o no_driver. La app lo traduce; no dice quién canceló.",
+                    "type": "string",
+                    "example": "no_driver"
                 },
                 "cancelled_at": {
                     "type": "string"
@@ -10864,6 +10898,9 @@ const docTemplate = `{
                 },
                 "customer_id": {
                     "type": "string"
+                },
+                "discount_usd": {
+                    "type": "number"
                 },
                 "dropoff_address": {
                     "type": "string"

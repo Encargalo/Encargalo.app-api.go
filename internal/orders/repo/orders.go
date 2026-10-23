@@ -14,10 +14,16 @@ import (
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/driver/pgdriver"
 	"github.com/uptrace/bun/schema"
 
 	items "Encargalo.app-api.go/internal/products/domain/models"
 )
+
+const pgUniqueViolation = "23505"
+
+// firstOrderDeliveryConstraint impide más de un pedido vivo o completado con envío gratis por cliente.
+const firstOrderDeliveryConstraint = "uq_orders_first_order_delivery"
 
 type orders struct {
 	db *bun.DB
@@ -39,6 +45,10 @@ func (o *orders) CreateOrder(ctx context.Context, order *models.Order) (*models.
 		order.Number = lastNum + 1
 
 		if _, err := tx.NewInsert().Model(order).Exec(ctx); err != nil {
+			var pgErr pgdriver.Error
+			if errors.As(err, &pgErr) && pgErr.Field('C') == pgUniqueViolation && pgErr.Field('n') == firstOrderDeliveryConstraint {
+				return errcustom.ErrFirstOrderDeliveryUsed
+			}
 			slog.Error("CreateOrder: failed to insert order", "orderID", order.ID, "error", err)
 			return errcustom.ErrUnexpectedError
 		}
@@ -355,6 +365,19 @@ func (o *orders) SearchActiveOrdersByRiderID(ctx context.Context, riderID uuid.U
 		return nil, errcustom.ErrNotFound
 	}
 	return orders, nil
+}
+
+func (o *orders) HasBillableOrder(ctx context.Context, customerID uuid.UUID) (bool, error) {
+	exists, err := o.db.NewSelect().
+		Model((*models.Order)(nil)).
+		Where("customer_id = ?", customerID).
+		Where("status NOT IN (?)", bun.In([]string{string(models.StatusCancelled), string(models.StatusRejected)})).
+		Exists(ctx)
+	if err != nil {
+		slog.Error("orders HasBillableOrder failed", "customerID", customerID, "error", err)
+		return false, errcustom.Unexpected(err)
+	}
+	return exists, nil
 }
 
 func (o *orders) SearchOrderHistoryByCustomer(ctx context.Context, customerID uuid.UUID) ([]models.Order, error) {

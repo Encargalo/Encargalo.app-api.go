@@ -208,6 +208,7 @@ func (o *orderApp) CreateQuote(ctx context.Context, req *dtos.CreateQuote) (*dto
 		TotalBs:            money.RoundBs(priced.order.TotalPrice * priced.rate),
 		DeliveryFeeUSD:     money.RoundUSD(priced.order.DeliveryFee),
 		DeliveryFeeBs:      money.RoundBs(priced.order.DeliveryFee * priced.rate),
+		DeliverySubsidyUSD: priced.order.DeliverySubsidyUSD,
 		BcvRate:            priced.rate,
 		IsLaunchPromo:      priced.order.IsLaunchPromo,
 		PromoSubsidyAmount: priced.order.PromoSubsidyAmount,
@@ -275,7 +276,7 @@ func quoteResponseFromModel(quote *models.OrderQuote) *dtos.QuoteResponse {
 			TotalPrice: line.TotalPrice,
 		})
 	}
-	return &dtos.QuoteResponse{
+	resp := &dtos.QuoteResponse{
 		QuoteID:            quote.QuoteID,
 		TotalUSD:           quote.TotalUSD,
 		TotalBs:            quote.TotalBs,
@@ -288,6 +289,11 @@ func quoteResponseFromModel(quote *models.OrderQuote) *dtos.QuoteResponse {
 		ProofGraceUntil:    quote.ProofGraceUntil,
 		Items:              itemsView,
 	}
+	if quote.DeliverySubsidyUSD > 0 {
+		resp.DeliveryFeeOriginalUSD = money.RoundUSD(quote.DeliveryFeeUSD + quote.DeliverySubsidyUSD)
+		resp.DeliverySubsidyUSD = quote.DeliverySubsidyUSD
+	}
+	return resp
 }
 
 type pricedOrderDraft struct {
@@ -321,6 +327,7 @@ func (o *orderApp) priceOrderDraft(ctx context.Context, order *dtos.CreateOrder)
 		fee = deliveryfee.DevPlaceholderFee
 	}
 	orderModel.DeliveryFee = fee
+	orderModel.ApplyFirstOrderDeliverySubsidy(o.eligibleForFirstOrderDelivery(ctx, order.CustomerID))
 
 	items, err := o.repo.SearchItemsByID(ctx, orderModel.GetItemsID())
 	if err != nil {
@@ -360,6 +367,17 @@ func (o *orderApp) priceOrderDraft(ctx context.Context, order *dtos.CreateOrder)
 		shop:  shop,
 		rate:  o.bcvRate(ctx),
 	}, nil
+}
+
+// eligibleForFirstOrderDelivery: el cliente no tiene pedidos fuera de Cancelled/Rejected.
+// Si la consulta falla se cobra el envío normal: perder la promo es mejor que no cotizar.
+func (o *orderApp) eligibleForFirstOrderDelivery(ctx context.Context, customerID uuid.UUID) bool {
+	hasOrder, err := o.repo.HasBillableOrder(ctx, customerID)
+	if err != nil {
+		slog.Error("eligibleForFirstOrderDelivery lookup failed", "customerID", customerID, "error", err)
+		return false
+	}
+	return !hasOrder
 }
 
 // requireOpenShopAndBatch valida que el local esté abierto y resuelve el lote
@@ -611,7 +629,7 @@ func (o *orderApp) CreateOrder(ctx context.Context, order *dtos.CreateOrder) (*m
 	orderDB, err := o.repo.CreateOrder(ctx, orderModel)
 	if err != nil {
 		o.refundBalanceDebit(ctx, order.CustomerID, orderModel.ID, balanceUsedBs)
-		o.releaseQuoteConsume(ctx, quote)
+		o.discardOrReleaseQuote(ctx, order.CustomerID, quote, err)
 		return &models.Order{}, err
 	}
 
@@ -737,6 +755,18 @@ func (o *orderApp) releaseQuoteConsume(ctx context.Context, quote *models.OrderQ
 	if err := o.quotes.ReleaseConsume(ctx, quote.QuoteID); err != nil {
 		slog.Error("releaseQuoteConsume failed", "quoteID", quote.QuoteID, "error", err)
 	}
+}
+
+// discardOrReleaseQuote borra la quote si su envío gratis ya no aplica: reintentarla daría el mismo 409.
+func (o *orderApp) discardOrReleaseQuote(ctx context.Context, customerID uuid.UUID, quote *models.OrderQuote, cause error) {
+	if quote == nil || o.quotes == nil || !errors.Is(cause, errcustom.ErrFirstOrderDeliveryUsed) {
+		o.releaseQuoteConsume(ctx, quote)
+		return
+	}
+	if err := o.quotes.Delete(ctx, quote.QuoteID); err != nil {
+		slog.Error("discardOrReleaseQuote delete failed", "quoteID", quote.QuoteID, "error", err)
+	}
+	_ = o.quotes.ClearActiveID(ctx, customerID)
 }
 
 func (o *orderApp) SearchOrdersByID(ctx context.Context, orderID uuid.UUID) (*models.Order, error) {
@@ -1094,19 +1124,21 @@ func (o *orderApp) ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code 
 	// Sin tasa persistida por orden a esta altura del ciclo de vida (ver
 	// refundCustomerOnShopRejectWithReason): se usa la tasa BCV vigente al
 	// completar la entrega, más justa para el rider que la del quote inicial.
+	// El rider cobra sobre el envío completo; con envío gratis el efectivo puede no cubrir su pago y la plataforma pone la diferencia.
 	cashUSD := cashCollectedUSD(order)
 	shopMethod := order.MethodPayment
-	partialCash := cashUSD > priceTolerance && order.TotalPrice-cashUSD > priceTolerance
+	riderFee := order.RiderDeliveryFee()
+	partialCash := cashUSD > priceTolerance && (order.TotalPrice-cashUSD > priceTolerance || order.DeliverySubsidyUSD > 0)
 	if cashUSD > priceTolerance {
 		shopMethod = string(models.MethodEfectivo)
 	}
 	if partialCash {
-		if err := o.finance.RecordRideCashCollected(ctx, *order.RiderID, order.ID, order.DeliveryFee, cashUSD, o.bcvRate(ctx)); err != nil {
+		if err := o.finance.RecordRideCashCollected(ctx, *order.RiderID, order.ID, riderFee, cashUSD, o.bcvRate(ctx)); err != nil {
 			slog.Error("error recording ride cash", "orderID", orderID, "error", err)
 		}
 	}
 	if !partialCash {
-		if err := o.finance.RecordRideEarning(ctx, *order.RiderID, order.ID, order.DeliveryFee, order.TotalPrice, o.bcvRate(ctx), order.MethodPayment); err != nil {
+		if err := o.finance.RecordRideEarning(ctx, *order.RiderID, order.ID, riderFee, order.TotalPrice, o.bcvRate(ctx), order.MethodPayment); err != nil {
 			slog.Error("error recording ride earning", "orderID", orderID, "error", err)
 		}
 	}

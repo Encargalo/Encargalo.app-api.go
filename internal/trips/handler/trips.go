@@ -44,7 +44,7 @@ func NewTripsHandler(svc ports.TripsApp, live ports.CustomerTripLive) TripsHandl
 // @Failure      400  {string}  string  "payload inválido"
 // @Failure      401  {string}  string  "No autorizado"
 // @Failure      404  {string}  string  "Cotización no encontrada, expirada o de otro cliente"
-// @Failure      409  {string}  string  "El id ya lo usa un viaje de otro cliente"
+// @Failure      409  {string}  string  "El id ya lo usa un viaje de otro cliente, o el descuento de primer viaje ya se usó en otro viaje (\"el descuento de primer viaje ya fue usado, vuelve a cotizar\")"
 // @Failure      422  {string}  string  "No se pudo subir el comprobante o saldo insuficiente"
 // @Router       /trips [post]
 func (h *tripsHandler) RequestTrip(c echo.Context) error {
@@ -68,7 +68,7 @@ func (h *tripsHandler) RequestTrip(c echo.Context) error {
 
 // EstimateFare godoc
 // @Summary      Cotizar tarifa de un viaje
-// @Description  Calcula distancia, tiempo estimado y tarifa (USD/Bs) entre pickup y destino, y la congela por 10 minutos en una cotización. La respuesta incluye bcv_rate, la tasa BCV usada para fare_bs. El quote_id devuelto es obligatorio para crear el viaje (POST /trips): el precio mostrado acá es el que queda fijado, no se recalcula.
+// @Description  Calcula distancia, tiempo estimado y tarifa (USD/Bs) entre pickup y destino, y la congela por 10 minutos en una cotización. La respuesta incluye bcv_rate, la tasa BCV usada para fare_bs. El quote_id devuelto es obligatorio para crear el viaje (POST /trips): el precio mostrado acá es el que queda fijado, no se recalcula. Si el cliente no tiene viajes fuera de cancelled/no_driver, se aplica el descuento de primer viaje (50%, máximo 6 USD): fare_usd y fare_bs ya lo traen restado, y fare_original_usd y discount_usd vienen para mostrar el precio tachado.
 // @Tags         Trips
 // @Accept       json
 // @Produce      json
@@ -140,7 +140,7 @@ func parseMapPoint(latRaw, lngRaw string) (float64, float64, error) {
 
 // GetTrip godoc
 // @Summary      Detalle de un viaje
-// @Description  Si el viaje ya tiene rider asignado, `rider` trae nombre, teléfono, foto y vehículo. No incluye documentos KYC. pickup_code aparece desde accepted hasta que el pasajero sube; dropoff_code aparece en in_progress. Si un Pago Móvil aprobado se reintegró a la cartera, `payment` trae transaction_id, credited_bs y refund_eligible_until. Los cambios en vivo llegan por GET /trips/live.
+// @Description  Si el viaje ya tiene rider asignado, `rider` trae nombre, teléfono, foto y vehículo. No incluye documentos KYC. pickup_code aparece desde accepted hasta que el pasajero sube; dropoff_code aparece en in_progress. Si un Pago Móvil aprobado se reintegró a la cartera, `payment` trae transaction_id, credited_bs y refund_eligible_until; si el staff rechazó el comprobante, trae además status, observed_amount_bs y difference_bs. En viajes cancelled o no_driver, `cancel_reason` dice por qué: payment_rejected, payment_underpaid, customer_cancelled o no_driver. Nunca dice quién canceló. Los cambios en vivo llegan por GET /trips/live.
 // @Tags         Trips
 // @Produce      json
 // @Security     SessionCookie
@@ -169,7 +169,7 @@ func (h *tripsHandler) GetTrip(c echo.Context) error {
 
 // GetTripHistory godoc
 // @Summary      Historial de viajes del cliente
-// @Description  Cada viaje con rider asignado incluye `rider` (nombre, teléfono, foto y vehículo). No incluye documentos KYC.
+// @Description  Cada viaje con rider asignado incluye `rider` (nombre, teléfono, foto y vehículo). No incluye documentos KYC. Los viajes cancelled y no_driver traen `cancel_reason` con el motivo (payment_rejected, payment_underpaid, customer_cancelled o no_driver).
 // @Tags         Trips
 // @Produce      json
 // @Security     SessionCookie
@@ -189,7 +189,7 @@ func (h *tripsHandler) GetTripHistory(c echo.Context) error {
 
 // CancelTrip godoc
 // @Summary      Cancelar un viaje
-// @Description  Solo permitido mientras el viaje esté en requested/searching/accepted/arriving. En payment_review responde 422 trip_payment_review_pending: hay que esperar a que el staff resuelva el comprobante. Si se pagó con balance, el débito se reintegra. Si el Pago Móvil ya estaba aprobado (searching, accepted o arriving), se acredita la tarifa en Bs a la cartera y la respuesta trae payment.transaction_id.
+// @Description  Solo permitido mientras el viaje esté en requested/searching/accepted/arriving. En payment_review responde 422 trip_payment_review_pending: hay que esperar a que el staff resuelva el comprobante. Si se pagó con balance, el débito se reintegra. Si el Pago Móvil ya estaba aprobado (searching, accepted o arriving), se acredita la tarifa en Bs a la cartera y la respuesta trae payment.transaction_id. La respuesta trae cancel_reason = customer_cancelled.
 // @Tags         Trips
 // @Produce      json
 // @Security     SessionCookie

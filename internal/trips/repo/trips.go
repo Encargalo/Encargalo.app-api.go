@@ -21,6 +21,9 @@ type tripsRepo struct {
 
 const pgUniqueViolation = "23505"
 
+// firstTripDiscountConstraint es el índice que impide más de un viaje vivo o completado con descuento por cliente.
+const firstTripDiscountConstraint = "uq_trips_first_trip_discount"
+
 // riderBusyStatuses son los estados en que el rider ya está ocupado con un viaje.
 var riderBusyStatuses = []models.TripStatus{
 	models.TripStatusAccepted,
@@ -36,6 +39,9 @@ func (r *tripsRepo) CreateTrip(ctx context.Context, trip *models.Trip) error {
 	trip.ID = id.Ensure(trip.ID)
 	_, err := r.db.NewInsert().Model(trip).Exec(ctx)
 	var pgErr pgdriver.Error
+	if errors.As(err, &pgErr) && pgErr.Field('C') == pgUniqueViolation && pgErr.Field('n') == firstTripDiscountConstraint {
+		return errcustom.ErrFirstTripDiscountUsed
+	}
 	if errors.As(err, &pgErr) && pgErr.Field('C') == pgUniqueViolation {
 		return errcustom.ErrTripAlreadyExists
 	}
@@ -60,6 +66,19 @@ func (r *tripsRepo) GetTripByID(ctx context.Context, tripID uuid.UUID) (*models.
 		return nil, errcustom.Unexpected(err)
 	}
 	return &trip, nil
+}
+
+func (r *tripsRepo) HasBillableTrip(ctx context.Context, customerID uuid.UUID) (bool, error) {
+	exists, err := r.db.NewSelect().
+		Model((*models.Trip)(nil)).
+		Where("customer_id = ?", customerID).
+		Where("status NOT IN (?)", bun.In([]models.TripStatus{models.TripStatusCancelled, models.TripStatusNoDriver})).
+		Exists(ctx)
+	if err != nil {
+		slog.Error("trips HasBillableTrip failed", "customerID", customerID, "error", err)
+		return false, errcustom.Unexpected(err)
+	}
+	return exists, nil
 }
 
 func (r *tripsRepo) GetTripHistoryByCustomer(ctx context.Context, customerID uuid.UUID) ([]models.Trip, error) {
@@ -118,6 +137,22 @@ func (r *tripsRepo) SaveTripPayment(ctx context.Context, tripID uuid.UUID, payme
 		Exec(ctx)
 	if err != nil {
 		slog.Error("trips SaveTripPayment failed", "tripID", tripID, "error", err)
+		return errcustom.Unexpected(err)
+	}
+	return nil
+}
+
+// SaveTripCancelReason solo escribe si el viaje no tiene motivo: el primero en
+// llegar es la causa real y los avisos posteriores no deben pisarlo.
+func (r *tripsRepo) SaveTripCancelReason(ctx context.Context, tripID uuid.UUID, reason models.CancelReason) error {
+	_, err := r.db.NewUpdate().
+		TableExpr("trips.trips").
+		Set("cancel_reason = ?", string(reason)).
+		Set("updated_at = now()").
+		Where("id = ? AND cancel_reason IS NULL", tripID).
+		Exec(ctx)
+	if err != nil {
+		slog.Error("trips SaveTripCancelReason failed", "tripID", tripID, "reason", reason, "error", err)
 		return errcustom.Unexpected(err)
 	}
 	return nil
