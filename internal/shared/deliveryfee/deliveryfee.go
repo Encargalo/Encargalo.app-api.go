@@ -3,16 +3,36 @@ package deliveryfee
 import (
 	"context"
 	"errors"
-	"math"
 	"time"
 
+	"Encargalo.app-api.go/internal/pkg/bizclock"
+	"Encargalo.app-api.go/internal/pkg/money"
 	"Encargalo.app-api.go/internal/shared/adapters/googlemaps"
 )
 
 const (
-	RateDay   = 0.40
-	RateNight = 0.60
-	NightHour = 22
+	// MinFare es el piso de toda tarifa: cubre cualquier trayecto de hasta IncludedKm.
+	MinFare = 1.00
+
+	// IncludedKm son los kilómetros que MinFare ya cubre sin cargo extra.
+	// Calibrado contra precios de calle: un trayecto de 4,27 km cuesta $1.
+	IncludedKm = 4.5
+
+	// ExtraRatePerKm se cobra por cada kilómetro por encima de IncludedKm.
+	// Calibrado contra precios de calle: 10,8 km cuesta $5.
+	ExtraRatePerKm = 0.63
+
+	// Multiplicadores por tramo horario. La madrugada es el tramo más caro
+	// porque ahí el limitante es la oferta: casi no hay riders despiertos y el
+	// regreso vacío es casi seguro.
+	NightMultiplier        = 1.5
+	EarlyMorningMultiplier = 1.7
+
+	// Bordes de los tramos: nocturno 22:00-01:59, madrugada 02:00-03:59,
+	// diurno 04:00-21:59.
+	NightStartHour        = 22
+	EarlyMorningStartHour = 2
+	DayStartHour          = 4
 
 	// DevPlaceholderFee es el delivery fee fijo que se muestra/cobra fuera de
 	// production, para no gastar cuota de la API de Google Maps en desarrollo.
@@ -23,15 +43,36 @@ const (
 	DevPlaceholderFee = 2.0
 )
 
-// FromDistance convierte una distancia en metros a tarifa de entrega.
-// El cobro es por km completo redondeado hacia arriba (ej: 1001m = 2 km = $0.80 diurno).
+// FromDistance convierte una distancia en metros a tarifa.
+// El cobro es proporcional a la distancia exacta: se redondea el dinero, no los
+// kilómetros, para que 4.001 m no cueste lo mismo que 4.999 m.
 func FromDistance(distanceMeters float64) float64 {
-	km := math.Ceil(distanceMeters / 1000)
-	rate := float64(RateDay)
-	if time.Now().Hour() >= NightHour {
-		rate = RateNight
+	return FromDistanceAt(distanceMeters, bizclock.Now())
+}
+
+// FromDistanceAt es FromDistance con el reloj inyectado. `now` debe venir en la
+// zona horaria de negocio (bizclock.Now()), no en UTC.
+func FromDistanceAt(distanceMeters float64, now time.Time) float64 {
+	km := distanceMeters / 1000
+
+	fare := MinFare
+	if km > IncludedKm {
+		fare += (km - IncludedKm) * ExtraRatePerKm
 	}
-	return km * rate
+
+	return money.RoundUSD(fare * hourMultiplier(now.Hour()))
+}
+
+// hourMultiplier resuelve el tramo horario. El nocturno cruza medianoche, por
+// eso su rango se evalúa como dos extremos y no como un intervalo.
+func hourMultiplier(hour int) float64 {
+	if hour >= NightStartHour || hour < EarlyMorningStartHour {
+		return NightMultiplier
+	}
+	if hour < DayStartHour {
+		return EarlyMorningMultiplier
+	}
+	return 1
 }
 
 // Calculate obtiene la distancia vial entre tienda y dirección de entrega y retorna la tarifa.
