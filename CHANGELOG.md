@@ -1,5 +1,24 @@
 # Changelog
 
+## [2.7.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.6.0...v2.7.0) (2026-10-23)
+
+
+### Features
+
+* **analytics:** registrar cotizaciones y su conversión para validar la tarifa ([1ae836f](https://github.com/Encargalo/Encargalo.app-api.go/commit/1ae836f5e6a5e623d2781a10e4a679ed8684f214))
+* **analytics:** registrar cotizaciones y su conversión para validar la tarifa ([70f8870](https://github.com/Encargalo/Encargalo.app-api.go/commit/70f88709b8e1917821e6fcd805dcf48231268ab1))
+* **maps:** listar los lugares populares cerca de una coordenada ([79b23b3](https://github.com/Encargalo/Encargalo.app-api.go/commit/79b23b3fb8f0556ffc79e157b5b015b1b792ea70))
+* **maps:** lugares populares cerca de una coordenada ([c426a46](https://github.com/Encargalo/Encargalo.app-api.go/commit/c426a46caa0ba41771bd2105adcbf40856db13a9))
+* **tarifas:** cobrar por distancia exacta con piso de $1 y tramos horarios ([a5d1716](https://github.com/Encargalo/Encargalo.app-api.go/commit/a5d171638e0b8935ea2d194901e8852ad59b34f7))
+* **tarifas:** cobrar por distancia exacta con piso de $1 y tramos horarios ([790b463](https://github.com/Encargalo/Encargalo.app-api.go/commit/790b463ea70e8fac0783bf35518c19a2d173a6d8))
+
+
+### Bug Fixes
+
+* **tarifas:** devolver al delivery su tarifa por distancia ([f0371e2](https://github.com/Encargalo/Encargalo.app-api.go/commit/f0371e2ca25962d7e4d774747ef122720db61bec))
+* **tarifas:** devolver al delivery su tarifa por distancia ([e3bbf89](https://github.com/Encargalo/Encargalo.app-api.go/commit/e3bbf89f239f75f514d5760cb51e8cd1d77badf6))
+* **upload:** validar el data-URL antes de subir a Cloudinary y guardar en WebP ([db2b7ca](https://github.com/Encargalo/Encargalo.app-api.go/commit/db2b7ca57381d2616a7924bc38c3de333af60c2b))
+
 ## [2.6.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.5.0...v2.6.0) (2026-10-22)
 
 
