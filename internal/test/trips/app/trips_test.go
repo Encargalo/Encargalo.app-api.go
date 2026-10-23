@@ -14,8 +14,8 @@ import (
 	paymentsModels "Encargalo.app-api.go/internal/payments/domain/models"
 	"Encargalo.app-api.go/internal/pkg/geo"
 	"Encargalo.app-api.go/internal/pkg/money"
-	"Encargalo.app-api.go/internal/shared/deliveryfee"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/shared/tripfare"
 	"Encargalo.app-api.go/internal/trips/app"
 	"Encargalo.app-api.go/internal/trips/domain/dtos"
 	"Encargalo.app-api.go/internal/trips/domain/models"
@@ -126,7 +126,7 @@ func TestEstimateFare_SavesQuoteAndReturnsFare(t *testing.T) {
 		return q.CustomerID == customerID &&
 			q.PickupAddress == req.PickupAddress &&
 			q.DropoffAddress == req.DropoffAddress &&
-			q.FareUSD == deliveryfee.DevPlaceholderFee
+			q.FareUSD == tripfare.DevPlaceholderFee
 	}), models.TripQuoteTTL).Run(func(args mock.Arguments) {
 		saved = args.Get(1).(*models.TripQuote)
 	}).Return(nil)
@@ -135,8 +135,8 @@ func TestEstimateFare_SavesQuoteAndReturnsFare(t *testing.T) {
 
 	require.NoError(t, err)
 	require.NotEqual(t, uuid.Nil, resp.QuoteID)
-	require.Equal(t, deliveryfee.DevPlaceholderFee, resp.FareUSD)
-	require.Equal(t, deliveryfee.DevPlaceholderFee*40, resp.FareBs)
+	require.Equal(t, tripfare.DevPlaceholderFee, resp.FareUSD)
+	require.Equal(t, tripfare.DevPlaceholderFee*40, resp.FareBs)
 	require.InDelta(t, geo.HaversineKm(req.PickupLatitude, req.PickupLongitude, req.DropoffLatitude, req.DropoffLongitude)*1000, resp.DistanceMeters, 0.001)
 	require.WithinDuration(t, time.Now().Add(models.TripQuoteTTL), resp.ExpiresAt, 2*time.Second)
 	require.NotNil(t, saved)

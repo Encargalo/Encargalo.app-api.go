@@ -8,7 +8,7 @@ import (
 	mockbcvports "Encargalo.app-api.go/internal/mocks/bcv/domain/ports"
 	mockstrips "Encargalo.app-api.go/internal/mocks/trips/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/bizclock"
-	"Encargalo.app-api.go/internal/shared/deliveryfee"
+	"Encargalo.app-api.go/internal/shared/tripfare"
 	"Encargalo.app-api.go/internal/trips/app"
 	"Encargalo.app-api.go/internal/trips/domain/dtos"
 	"Encargalo.app-api.go/internal/trips/domain/models"
@@ -45,7 +45,7 @@ func TestEstimateFare_RecordsFareQuoteForConversion(t *testing.T) {
 	require.Equal(t, resp.DistanceMeters, recorded.DistanceMeters)
 	require.Equal(t, 40.0, recorded.BcvRate)
 	// El tramo viene congelado de la cotización, no recalculado al registrar.
-	require.Equal(t, string(deliveryfee.BandAt(bizclock.Now())), recorded.FareBand)
+	require.Equal(t, string(tripfare.BandAt(bizclock.Now())), recorded.FareBand)
 	require.NotEmpty(t, recorded.FareBand)
 	require.NotNil(t, recorded.PickupH3CellZone)
 	require.NotNil(t, recorded.DropoffH3CellZone)
