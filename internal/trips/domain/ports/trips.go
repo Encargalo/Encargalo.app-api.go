@@ -24,6 +24,8 @@ type TripsRepo interface {
 	CreateTrip(ctx context.Context, trip *models.Trip) error
 	GetTripByID(ctx context.Context, tripID uuid.UUID) (*models.Trip, error)
 	GetTripHistoryByCustomer(ctx context.Context, customerID uuid.UUID) ([]models.Trip, error)
+	// HasBillableTrip dice si el cliente tiene algún viaje fuera de cancelled/no_driver.
+	HasBillableTrip(ctx context.Context, customerID uuid.UUID) (bool, error)
 	UpdateTripStatus(ctx context.Context, tripID uuid.UUID, fromStatus, toStatus models.TripStatus) (bool, error)
 	SaveTripPayment(ctx context.Context, tripID uuid.UUID, payment *models.TripPayment) error
 	AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID, pickupCode string) (bool, error)

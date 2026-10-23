@@ -21,9 +21,11 @@ type TripQuote struct {
 	DropoffLongitude float64
 	DistanceMeters   float64
 	DurationMin      int64
-	FareUSD          float64
-	FareBs           float64
-	BcvRate          float64
+	// FareUSD ya trae restado DiscountUSD: es lo que paga el cliente.
+	FareUSD     float64
+	DiscountUSD float64
+	FareBs      float64
+	BcvRate     float64
 	// FareBand es el tramo horario que produjo FareUSD, congelado junto con él.
 	FareBand  string
 	CreatedAt time.Time

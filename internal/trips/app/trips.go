@@ -177,6 +177,7 @@ func (a *tripsApp) createTrip(ctx context.Context, customerID uuid.UUID, req dto
 		DropoffLatitude:  quote.DropoffLatitude,
 		DropoffLongitude: quote.DropoffLongitude,
 		Fare:             &fare,
+		DiscountUSD:      quote.DiscountUSD,
 		BcvRate:          &rate,
 		MethodPayment:    models.MethodPagoMovil,
 	}
@@ -252,6 +253,7 @@ func (a *tripsApp) requestTripWithBalance(ctx context.Context, customerID uuid.U
 		DropoffLatitude:  quote.DropoffLatitude,
 		DropoffLongitude: quote.DropoffLongitude,
 		Fare:             &fare,
+		DiscountUSD:      quote.DiscountUSD,
 		BcvRate:          &rate,
 		BalancePaidBs:    &expectedBs,
 		MethodPayment:    models.MethodBalance,
@@ -305,6 +307,7 @@ func (a *tripsApp) requestTripCash(ctx context.Context, customerID uuid.UUID, re
 		DropoffLatitude:  quote.DropoffLatitude,
 		DropoffLongitude: quote.DropoffLongitude,
 		Fare:             &fare,
+		DiscountUSD:      quote.DiscountUSD,
 		BcvRate:          &rate,
 		MethodPayment:    models.MethodEfectivo,
 	}
@@ -394,6 +397,7 @@ func (a *tripsApp) requestTripSplit(ctx context.Context, customerID uuid.UUID, r
 		DropoffLatitude:  quote.DropoffLatitude,
 		DropoffLongitude: quote.DropoffLongitude,
 		Fare:             &fare,
+		DiscountUSD:      quote.DiscountUSD,
 		BcvRate:          &rate,
 		MethodPayment:    req.MethodPayment,
 	}
@@ -606,6 +610,9 @@ func (a *tripsApp) EstimateFare(ctx context.Context, req dtos.FareEstimateReques
 		return dtos.FareEstimateResponse{}, errcustom.ErrBcvRateUnavailable
 	}
 
+	discount := a.firstTripDiscount(ctx, req.CustomerID, estimate.Fee)
+	fare := money.RoundUSD(estimate.Fee - discount)
+
 	now := time.Now()
 	quote := &models.TripQuote{
 		QuoteID:          id.New(),
@@ -618,8 +625,9 @@ func (a *tripsApp) EstimateFare(ctx context.Context, req dtos.FareEstimateReques
 		DropoffLongitude: req.DropoffLongitude,
 		DistanceMeters:   estimate.DistanceMeters,
 		DurationMin:      estimate.DurationMin,
-		FareUSD:          estimate.Fee,
-		FareBs:           money.RoundBs(estimate.Fee * rate),
+		FareUSD:          fare,
+		DiscountUSD:      discount,
+		FareBs:           money.RoundBs(fare * rate),
 		BcvRate:          rate,
 		FareBand:         string(estimate.Band),
 		CreatedAt:        now,
@@ -630,7 +638,7 @@ func (a *tripsApp) EstimateFare(ctx context.Context, req dtos.FareEstimateReques
 	}
 	a.recordFareQuote(ctx, quote)
 
-	return dtos.FareEstimateResponse{
+	resp := dtos.FareEstimateResponse{
 		QuoteID:        quote.QuoteID,
 		DistanceMeters: quote.DistanceMeters,
 		DurationMin:    quote.DurationMin,
@@ -638,7 +646,26 @@ func (a *tripsApp) EstimateFare(ctx context.Context, req dtos.FareEstimateReques
 		FareBs:         quote.FareBs,
 		BcvRate:        quote.BcvRate,
 		ExpiresAt:      quote.ExpiresAt,
-	}, nil
+	}
+	if discount > 0 {
+		resp.FareOriginalUSD = money.RoundUSD(estimate.Fee)
+		resp.DiscountUSD = discount
+	}
+	return resp, nil
+}
+
+// firstTripDiscount aplica solo si el cliente no tiene viajes fuera de cancelled/no_driver.
+// Si la consulta falla se cotiza sin descuento: perder la promo es mejor que no cotizar.
+func (a *tripsApp) firstTripDiscount(ctx context.Context, customerID uuid.UUID, grossUSD float64) float64 {
+	hasTrip, err := a.repo.HasBillableTrip(ctx, customerID)
+	if err != nil {
+		slog.Error("firstTripDiscount lookup failed", "customerID", customerID, "error", err)
+		return 0
+	}
+	if hasTrip {
+		return 0
+	}
+	return models.FirstTripDiscountUSD(grossUSD)
 }
 
 // recordFareQuote guarda la cotización en OLTP para medir conversión. Es un
@@ -659,6 +686,7 @@ func (a *tripsApp) recordFareQuote(ctx context.Context, quote *models.TripQuote)
 		DurationMin:      quote.DurationMin,
 		FareUSD:          quote.FareUSD,
 		FareBs:           quote.FareBs,
+		DiscountUSD:      quote.DiscountUSD,
 		BcvRate:          quote.BcvRate,
 		FareBand:         quote.FareBand,
 		CreatedAt:        quote.CreatedAt,

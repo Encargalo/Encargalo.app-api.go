@@ -77,6 +77,7 @@ type TripResponse struct {
 	DropoffLongitude float64           `json:"dropoff_longitude"`
 	FareUSD          *float64          `json:"fare_usd,omitempty"`
 	FareBs           *float64          `json:"fare_bs,omitempty"`
+	DiscountUSD      float64           `json:"discount_usd,omitempty"`
 	MethodPayment    string            `json:"method_payment,omitempty"`
 	// CollectUSD es lo que el rider cobra en efectivo al pasajero. Su pago ya
 	// va dentro de ese monto; el resto queda como deuda en su balance.
@@ -139,6 +140,9 @@ type FareEstimateResponse struct {
 	DurationMin    int64     `json:"duration_min"`
 	FareUSD        float64   `json:"fare_usd"`
 	FareBs         float64   `json:"fare_bs"`
+	// FareOriginalUSD y DiscountUSD solo vienen con el descuento de primer viaje; fare_usd ya lo trae restado.
+	FareOriginalUSD float64 `json:"fare_original_usd,omitempty"`
+	DiscountUSD     float64 `json:"discount_usd,omitempty"`
 	// BcvRate es la tasa congelada en la cotización; fare_bs = fare_usd * BcvRate.
 	BcvRate   float64   `json:"bcv_rate"`
 	ExpiresAt time.Time `json:"expires_at"`
