@@ -28,5 +28,6 @@ type FareQuote struct {
 	DiscountUSD       float64   `bun:"discount_usd,notnull,default:0"`
 	BcvRate           float64   `bun:"bcv_rate,notnull"`
 	FareBand          string    `bun:"fare_band,notnull"`
+	VehicleType       string    `bun:"vehicle_type,notnull"`
 	CreatedAt         time.Time `bun:"created_at,notnull"`
 }

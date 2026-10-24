@@ -131,6 +131,19 @@ type NearbyRidersResponse struct {
 	Riders []NearbyRider `json:"riders"`
 }
 
+// TripServiceResponse es un servicio del catálogo. available en false lo deja
+// visible pero no pedible: la app lo pinta deshabilitado.
+type TripServiceResponse struct {
+	Type      string `json:"type" example:"moto"`
+	Name      string `json:"name" example:"Moto"`
+	Capacity  int    `json:"capacity" example:"1"`
+	Available bool   `json:"available" example:"true"`
+}
+
+type TripServicesResponse struct {
+	Services []TripServiceResponse `json:"services"`
+}
+
 // FareEstimateRequest congela todo lo necesario para crear el viaje después.
 type FareEstimateRequest struct {
 	CustomerID       uuid.UUID `json:"customer_id" swaggerignore:"true"`
@@ -140,6 +153,8 @@ type FareEstimateRequest struct {
 	DropoffAddress   string    `json:"dropoff_address" validate:"required" example:"CC Sambil, Caracas"`
 	DropoffLatitude  float64   `json:"dropoff_latitude" validate:"required,latitude" example:"10.4956"`
 	DropoffLongitude float64   `json:"dropoff_longitude" validate:"required,longitude" example:"-66.8517"`
+	// VehicleType es opcional: sin él se cotiza moto, que es lo que manda la app actual.
+	VehicleType string `json:"vehicle_type" validate:"omitempty,oneof=moto carro" example:"moto"`
 }
 
 func (r *FareEstimateRequest) Validate() error {
@@ -156,6 +171,8 @@ type FareEstimateResponse struct {
 	FareOriginalUSD float64 `json:"fare_original_usd,omitempty"`
 	DiscountUSD     float64 `json:"discount_usd,omitempty"`
 	// BcvRate es la tasa congelada en la cotización; fare_bs = fare_usd * BcvRate.
-	BcvRate   float64   `json:"bcv_rate"`
-	ExpiresAt time.Time `json:"expires_at"`
+	BcvRate float64 `json:"bcv_rate"`
+	// VehicleType es el servicio que quedó congelado en la cotización.
+	VehicleType string    `json:"vehicle_type"`
+	ExpiresAt   time.Time `json:"expires_at"`
 }

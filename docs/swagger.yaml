@@ -2135,6 +2135,14 @@ definitions:
       pickup_longitude:
         example: -66.9036
         type: number
+      vehicle_type:
+        description: 'VehicleType es opcional: sin él se cotiza moto, que es lo que
+          manda la app actual.'
+        enum:
+        - moto
+        - carro
+        example: moto
+        type: string
     required:
     - dropoff_address
     - dropoff_latitude
@@ -2166,6 +2174,9 @@ definitions:
       fare_usd:
         type: number
       quote_id:
+        type: string
+      vehicle_type:
+        description: VehicleType es el servicio que quedó congelado en la cotización.
         type: string
     type: object
   Encargalo_app-api_go_internal_trips_domain_dtos.NearbyRider:
@@ -2314,6 +2325,28 @@ definitions:
         type: string
       status:
         type: string
+    type: object
+  Encargalo_app-api_go_internal_trips_domain_dtos.TripServiceResponse:
+    properties:
+      available:
+        example: true
+        type: boolean
+      capacity:
+        example: 1
+        type: integer
+      name:
+        example: Moto
+        type: string
+      type:
+        example: moto
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_trips_domain_dtos.TripServicesResponse:
+    properties:
+      services:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.TripServiceResponse'
+        type: array
     type: object
   Encargalo_app-api_go_internal_users_domain_dto.Address:
     properties:
@@ -7343,6 +7376,29 @@ paths:
       security:
       - SessionCookie: []
       summary: Conductores cercanos para el mapa de cotización
+      tags:
+      - Trips
+  /trips/services:
+    get:
+      description: 'Vehículos que el cliente puede elegir al cotizar. `available`
+        en false deja el servicio visible pero no pedible: cotizar con él responde
+        422. Hoy solo la moto está disponible; el carro aparece para que la app lo
+        pinte deshabilitado, sin tener que cambiar el contrato cuando se habilite.
+        El `type` es el valor que se manda en `vehicle_type` al cotizar.'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.TripServicesResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Catálogo de servicios de viaje
       tags:
       - Trips
   /turbo/entry:
