@@ -60,6 +60,11 @@ type PassengerLookup interface {
 	GetByCustomerID(ctx context.Context, customerID uuid.UUID) (tripsDtos.PassengerContact, error)
 }
 
+// VehicleLookup lee el perfil del rider para conocer su vehículo. Subconjunto de RiderProfileRepo.
+type VehicleLookup interface {
+	GetByUserID(ctx context.Context, userID uuid.UUID) (*riderModels.RiderProfile, error)
+}
+
 type RidersStream interface {
 	PublisherEvent(ctx context.Context, data any) error
 }

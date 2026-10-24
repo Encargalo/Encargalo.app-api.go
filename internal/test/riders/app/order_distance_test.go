@@ -24,7 +24,7 @@ import (
 func registerCapturingConn(t *testing.T) (*mocksriders.RidersRepo, chan []byte, func(context.Context, ordersModels.Order), func(context.Context, ordersModels.Order)) {
 	t.Helper()
 	repo := mocksriders.NewRidersRepo(t)
-	svc := app.New(repo, mocksriders.NewRidersStream(t), mockbcvports.NewBcvApp(t), mockstrips.NewTripsRepo(t), mocksriders.NewTripEarningRecorder(t), nil, nil, nil)
+	svc := app.New(repo, mocksriders.NewRidersStream(t), mockbcvports.NewBcvApp(t), mockstrips.NewTripsRepo(t), mocksriders.NewTripEarningRecorder(t), nil, nil, nil, nil)
 	broadcaster := asBroadcaster(t, svc)
 
 	sent := make(chan []byte, 4)
