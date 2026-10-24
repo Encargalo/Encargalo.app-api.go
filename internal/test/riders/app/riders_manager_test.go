@@ -271,6 +271,28 @@ func TestUpdateLocation_SnapshotOnlyIncludesTripsMode(t *testing.T) {
 	assert.Equal(t, wantCell, snapshot[0].Location.H3Cell)
 }
 
+func TestSnapshotTripsRiders_ExcludesStaleLocations(t *testing.T) {
+	svc := newNearbyMgr(t)
+	lat, lng := 10.4806, -66.9036
+
+	freshID, _ := placeTripRider(t, svc, lat, lng)
+	staleID, _ := placeTripRider(t, svc, lat+0.001, lng)
+	app.AgeRiderLocationForTest(svc, staleID, riderModels.TripMatchRiderMaxAge+time.Second)
+
+	snapshot := svc.SnapshotTripsRiders()
+
+	require.Len(t, snapshot, 1)
+	assert.Equal(t, freshID, snapshot[0].RiderID)
+}
+
+func TestSnapshotTripsRiders_KeepsLocationsTooStaleForTheMap(t *testing.T) {
+	svc := newNearbyMgr(t)
+	riderID, _ := placeTripRider(t, svc, 10.4806, -66.9036)
+	app.AgeRiderLocationForTest(svc, riderID, riderModels.NearbyRiderMaxAge+time.Second)
+
+	require.Len(t, svc.SnapshotTripsRiders(), 1)
+}
+
 func TestBroadcastNewOrder_SkipsRidersInTripsMode(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
 	stream := mocksriders.NewRidersStream(t)
@@ -378,6 +400,48 @@ func TestOfferTrip_OffersNearestCandidatesSortedByDistance(t *testing.T) {
 		c.conn.AssertExpectations(t)
 	}
 	candidates[3].conn.AssertNotCalled(t, "Send", mock.Anything)
+}
+
+func TestOfferTrip_StaleRiderDoesNotTakeACandidateSlot(t *testing.T) {
+	repo := mocksriders.NewRidersRepo(t)
+	stream := mocksriders.NewRidersStream(t)
+	bcv := mockbcvports.NewBcvApp(t)
+	tripsRepo := mockstrips.NewTripsRepo(t)
+	tripEarnings := mocksriders.NewTripEarningRecorder(t)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil)
+	matcher := asMatcher(t, svc)
+
+	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
+	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound)
+
+	type candidate struct {
+		id       uuid.UUID
+		conn     *mocksriders.RiderConn
+		lat, lng float64
+	}
+	candidates := []candidate{
+		{uuid.New(), mocksriders.NewRiderConn(t), 10.4808, -66.9036},
+		{uuid.New(), mocksriders.NewRiderConn(t), 10.4810, -66.9036},
+		{uuid.New(), mocksriders.NewRiderConn(t), 10.4815, -66.9036},
+		{uuid.New(), mocksriders.NewRiderConn(t), 10.4850, -66.9036},
+	}
+	for _, c := range candidates {
+		require.NoError(t, svc.Register(context.Background(), c.id, c.conn, riderModels.RiderModeTrips))
+		require.NoError(t, svc.UpdateLocation(context.Background(), c.id, c.lat, c.lng))
+	}
+
+	// El más cercano dejó de reportar: su cupo va al cuarto, que sí está reportando.
+	app.AgeRiderLocationForTest(svc, candidates[0].id, riderModels.TripMatchRiderMaxAge+time.Second)
+	for _, c := range candidates[1:] {
+		c.conn.On("Send", mock.Anything).Return().Once()
+	}
+
+	matcher.OfferTrip(context.Background(), samplePickupTrip(t))
+
+	for _, c := range candidates[1:] {
+		c.conn.AssertExpectations(t)
+	}
+	candidates[0].conn.AssertNotCalled(t, "Send", mock.Anything)
 }
 
 func TestOfferTrip_NoCandidatesWaitsFullRoundsBeforeNoDriver(t *testing.T) {
