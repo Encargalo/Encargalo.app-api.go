@@ -460,9 +460,13 @@ func (r *appRidersManager) SnapshotTripsRiders() []riderModels.RiderLocationEntr
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
+	now := time.Now()
 	out := make([]riderModels.RiderLocationEntry, 0, len(r.riderLocation))
 	for riderID, loc := range r.riderLocation {
 		if r.riderMode[riderID] != riderModels.RiderModeTrips {
+			continue
+		}
+		if now.Sub(loc.UpdatedAt) > riderModels.TripMatchRiderMaxAge {
 			continue
 		}
 		out = append(out, riderModels.RiderLocationEntry{RiderID: riderID, Location: loc})
