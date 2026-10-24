@@ -57,6 +57,7 @@ type appRidersManager struct {
 	orderCustomer      map[uuid.UUID]uuid.UUID   // orderID → customerID, para avisarle la ubicación del rider
 	riderMode          map[uuid.UUID]riderModels.RiderMode
 	riderLocation      map[uuid.UUID]riderModels.RiderLocation
+	riderVehicle       map[uuid.UUID]string
 	ridersByCell       map[string]map[uuid.UUID]struct{}
 	tripOffers         map[uuid.UUID]map[uuid.UUID]struct{}
 	tripAlreadyOffered map[uuid.UUID]map[uuid.UUID]struct{}
@@ -78,6 +79,7 @@ type appRidersManager struct {
 	customers       tripsPorts.CustomerTripNotifier
 	balance         paymentsPorts.CustomerBalanceCreditor
 	passengers      ridersPorts.PassengerLookup
+	vehicles        ridersPorts.VehicleLookup
 	riderTrips      map[uuid.UUID]riderAssignment
 	orderNotifier   ridersPorts.OrderCustomerNotifier
 }
@@ -87,13 +89,14 @@ type riderAssignment struct {
 	customerID uuid.UUID
 }
 
-func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPorts.BcvApp, tripsRepo ridersPorts.TripsStore, tripEarnings ridersPorts.TripEarningRecorder, customers tripsPorts.CustomerTripNotifier, balance paymentsPorts.CustomerBalanceCreditor, passengers ridersPorts.PassengerLookup) ridersPorts.RidersApp {
+func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPorts.BcvApp, tripsRepo ridersPorts.TripsStore, tripEarnings ridersPorts.TripEarningRecorder, customers tripsPorts.CustomerTripNotifier, balance paymentsPorts.CustomerBalanceCreditor, passengers ridersPorts.PassengerLookup, vehicles ridersPorts.VehicleLookup) ridersPorts.RidersApp {
 	return &appRidersManager{
 		availableRiders:    make(map[uuid.UUID]ridersPorts.RiderConn),
 		assignedOrders:     make(map[uuid.UUID][]uuid.UUID),
 		orderCustomer:      make(map[uuid.UUID]uuid.UUID),
 		riderMode:          make(map[uuid.UUID]riderModels.RiderMode),
 		riderLocation:      make(map[uuid.UUID]riderModels.RiderLocation),
+		riderVehicle:       make(map[uuid.UUID]string),
 		ridersByCell:       make(map[string]map[uuid.UUID]struct{}),
 		tripOffers:         make(map[uuid.UUID]map[uuid.UUID]struct{}),
 		tripAlreadyOffered: make(map[uuid.UUID]map[uuid.UUID]struct{}),
@@ -112,6 +115,7 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 		customers:          customers,
 		balance:            balance,
 		passengers:         passengers,
+		vehicles:           vehicles,
 		riderTrips:         make(map[uuid.UUID]riderAssignment),
 	}
 }
@@ -197,6 +201,8 @@ func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn
 	}
 	r.mu.Unlock()
 
+	r.cacheRiderVehicle(ctx, riderID)
+
 	activeOrders, err := r.repo.SearchActiveOrdersByRiderID(ctx, riderID)
 	if err != nil && !errors.Is(err, errcustom.ErrNotFound) {
 		return err
@@ -232,6 +238,25 @@ func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn
 	return nil
 }
 
+// cacheRiderVehicle trae el vehículo a memoria: el matching lo consulta con el lock tomado.
+func (r *appRidersManager) cacheRiderVehicle(ctx context.Context, riderID uuid.UUID) {
+	if r.vehicles == nil {
+		return
+	}
+	profile, err := r.vehicles.GetByUserID(ctx, riderID)
+	if err != nil {
+		slog.Error("error leyendo el vehículo del rider", "riderID", riderID, "error", err)
+		return
+	}
+	if profile == nil || profile.VehicleType == nil {
+		return
+	}
+
+	r.mu.Lock()
+	r.riderVehicle[riderID] = *profile.VehicleType
+	r.mu.Unlock()
+}
+
 func (r *appRidersManager) Unregister(riderID uuid.UUID, conn ridersPorts.RiderConn) {
 	r.mu.Lock()
 	if stored, ok := r.availableRiders[riderID]; ok && stored == conn {
@@ -241,6 +266,7 @@ func (r *appRidersManager) Unregister(riderID uuid.UUID, conn ridersPorts.RiderC
 		delete(r.availableRiders, riderID)
 		delete(r.riderMode, riderID)
 		delete(r.riderLocation, riderID)
+		delete(r.riderVehicle, riderID)
 	}
 	r.mu.Unlock()
 
@@ -467,6 +493,10 @@ func (r *appRidersManager) SnapshotTripsRiders() []riderModels.RiderLocationEntr
 			continue
 		}
 		if now.Sub(loc.UpdatedAt) > riderModels.TripMatchRiderMaxAge {
+			continue
+		}
+		// La bici no lleva pasajeros. Un vehículo sin cargar no excluye: hay riders legacy sin el campo.
+		if r.riderVehicle[riderID] == riderModels.VehicleTypeBike {
 			continue
 		}
 		out = append(out, riderModels.RiderLocationEntry{RiderID: riderID, Location: loc})

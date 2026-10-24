@@ -22,7 +22,7 @@ func TestOfferTrip_CashTripSendsBsAtFrozenRate(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil)
 
 	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
 	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound)
