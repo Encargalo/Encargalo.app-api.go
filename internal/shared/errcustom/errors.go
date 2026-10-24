@@ -57,6 +57,7 @@ var (
 	ErrRiderReviewNotPending       = errors.New("la solicitud de rider no está en revisión")
 	ErrReviewReasonRequired        = errors.New("el motivo de la revisión es requerido")
 	ErrAlreadyRider                = errors.New("la cuenta ya es rider")
+	ErrVehicleCannotCarryOrder     = errors.New("el vehículo del rider no puede llevar este pedido")
 	ErrInvalidDateRange            = errors.New("rango de fechas inválido")
 	ErrUnknownETLEntity            = errors.New("entidad ETL desconocida")
 	ErrTurboOutOfCoverage          = errors.New("la dirección está fuera de la cobertura Turbo (2 km)")
