@@ -201,7 +201,7 @@ func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn
 	}
 	r.mu.Unlock()
 
-	r.cacheRiderVehicle(ctx, riderID)
+	vehicle := r.cacheRiderVehicle(ctx, riderID)
 
 	activeOrders, err := r.repo.SearchActiveOrdersByRiderID(ctx, riderID)
 	if err != nil && !errors.Is(err, errcustom.ErrNotFound) {
@@ -229,9 +229,14 @@ func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn
 		return err
 	}
 
+	// Los activos van sin filtrar: ya están asignados a este rider. Acá se filtran los que podría tomar.
 	for _, order := range availableOrders {
 		deliveryfee.ApplyBsToOrder(ctx, r.bcv, &order)
-		data, _ := json.Marshal(r.orderBroadcast(ctx, "new_order", order, false))
+		msg := r.orderBroadcast(ctx, "new_order", order, false)
+		if msg.Shop != nil && !riderModels.VehicleCanCarryShopType(vehicle, msg.Shop.Type) {
+			continue
+		}
+		data, _ := json.Marshal(msg)
 		conn.Send(data)
 	}
 
@@ -239,22 +244,23 @@ func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn
 }
 
 // cacheRiderVehicle trae el vehículo a memoria: el matching lo consulta con el lock tomado.
-func (r *appRidersManager) cacheRiderVehicle(ctx context.Context, riderID uuid.UUID) {
+func (r *appRidersManager) cacheRiderVehicle(ctx context.Context, riderID uuid.UUID) string {
 	if r.vehicles == nil {
-		return
+		return ""
 	}
 	profile, err := r.vehicles.GetByUserID(ctx, riderID)
 	if err != nil {
 		slog.Error("error leyendo el vehículo del rider", "riderID", riderID, "error", err)
-		return
+		return ""
 	}
 	if profile == nil || profile.VehicleType == nil {
-		return
+		return ""
 	}
 
 	r.mu.Lock()
 	r.riderVehicle[riderID] = *profile.VehicleType
 	r.mu.Unlock()
+	return *profile.VehicleType
 }
 
 func (r *appRidersManager) Unregister(riderID uuid.UUID, conn ridersPorts.RiderConn) {
@@ -505,16 +511,26 @@ func (r *appRidersManager) SnapshotTripsRiders() []riderModels.RiderLocationEntr
 }
 
 func (r *appRidersManager) BroadcastNewOrder(ctx context.Context, order ordersModels.Order) {
-	data, err := json.Marshal(r.orderBroadcast(ctx, "new_order", order, false))
+	msg := r.orderBroadcast(ctx, "new_order", order, false)
+	data, err := json.Marshal(msg)
 	if err != nil {
 		slog.Error("error marshaling new_order broadcast", "error", err)
 		return
+	}
+
+	// El shop ya viene de orderBroadcast: el filtro por vehículo no cuesta una consulta extra.
+	shopType := ""
+	if msg.Shop != nil {
+		shopType = msg.Shop.Type
 	}
 
 	r.mu.RLock()
 	clients := make([]ridersPorts.RiderConn, 0, len(r.availableRiders))
 	for riderID, c := range r.availableRiders {
 		if r.riderMode[riderID] == riderModels.RiderModeTrips {
+			continue
+		}
+		if !riderModels.VehicleCanCarryShopType(r.riderVehicle[riderID], shopType) {
 			continue
 		}
 		clients = append(clients, c)
@@ -574,6 +590,10 @@ func (r *appRidersManager) AcceptOrder(ctx context.Context, riderID uuid.UUID, o
 		return errcustom.ErrInvalidTransition
 	}
 
+	if err := r.ensureVehicleCanCarry(ctx, riderID, *order); err != nil {
+		return err
+	}
+
 	if err := r.repo.AssignRider(ctx, orderID, riderID); err != nil {
 		if errors.Is(err, errcustom.ErrOrderAlreadyAssigned) {
 			msg, _ := json.Marshal(map[string]string{"type": "order_taken", "order_id": orderID.String()})
@@ -606,6 +626,25 @@ func (r *appRidersManager) AcceptOrder(ctx context.Context, riderID uuid.UUID, o
 	}
 
 	return nil
+}
+
+// ensureVehicleCanCarry corta el pedido que no entra en el vehículo del rider.
+// Es el único de los tres caminos que es regla: filtrar los broadcasts es UX.
+func (r *appRidersManager) ensureVehicleCanCarry(ctx context.Context, riderID uuid.UUID, order ordersModels.Order) error {
+	// Un shop que no se pudo leer no bloquea: mismo criterio fail-open que el vehículo sin cargar.
+	shop := r.shopForOrder(ctx, order)
+	if shop == nil {
+		return nil
+	}
+
+	r.mu.RLock()
+	vehicle := r.riderVehicle[riderID]
+	r.mu.RUnlock()
+
+	if riderModels.VehicleCanCarryShopType(vehicle, shop.Type) {
+		return nil
+	}
+	return errcustom.ErrVehicleCannotCarryOrder
 }
 
 // shopForOrder fetches the shop's public info (name, logo, address, etc.) to

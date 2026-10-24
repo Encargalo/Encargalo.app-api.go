@@ -217,6 +217,7 @@ func TestAcceptOrder_AlreadyAssignedNotifiesOrderTaken(t *testing.T) {
 	riderID, orderID := uuid.New(), uuid.New()
 	conn := mocksriders.NewRiderConn(t)
 	repo.On("SearchOrdersByID", mock.Anything, orderID).Return(&ordersModels.Order{ID: orderID, Status: string(ordersModels.StatusReady)}, nil)
+	repo.On("SearchShopByID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound).Once()
 	repo.On("AssignRider", mock.Anything, orderID, riderID).Return(errcustom.ErrOrderAlreadyAssigned)
 	conn.On("Send", mock.Anything).Return()
 

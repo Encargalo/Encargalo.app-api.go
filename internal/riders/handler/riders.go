@@ -48,7 +48,9 @@ func New(svc ridersPorts.RidersApp) RiderHandler {
 //
 //	{"type":"accept_order","order_id":"<uuid>"}
 //
-// → Intenta asignar la orden al rider. Primer rider que acepta gana.
+// → Intenta asignar la orden al rider. Primer rider que acepta gana. Un rider en bici
+// no puede tomar pedidos de negocios Turbo ni de supermercado: responde
+// `{"type":"error","message":"tu vehículo no puede llevar este pedido"}`.
 //
 // **update_location**
 //
@@ -87,7 +89,9 @@ func New(svc ridersPorts.RidersApp) RiderHandler {
 //   - `{"type":"connected"}` — confirmación de conexión. En modo trips le siguen
 //     los viajes que el rider ya tiene asignados (accepted, arriving o in_progress),
 //     como `trip_status` sin códigos.
-//   - `{"type":"new_order","order":{...}}` — nueva orden disponible (sin códigos)
+//   - `{"type":"new_order","order":{...}}` — nueva orden disponible (sin códigos). Un rider
+//     en bici no recibe las de negocios Turbo ni de supermercado, ni en el broadcast ni
+//     entre las disponibles que llegan al conectar.
 //   - `{"type":"order_accepted","order":{...}}` — asignación exitosa (con pickup_code)
 //   - `{"type":"order_taken","order_id":"<uuid>"}` — otro rider se adelantó
 //   - `{"type":"order_update","order":{...}}` — actualización de orden asignada (con pickup_code)
@@ -324,6 +328,9 @@ func safeErrorMessage(err error) string {
 	}
 	if errors.Is(err, errcustom.ErrRiderBusy) {
 		return "ya tienes un viaje en curso"
+	}
+	if errors.Is(err, errcustom.ErrVehicleCannotCarryOrder) {
+		return "tu vehículo no puede llevar este pedido"
 	}
 	return "error interno"
 }
