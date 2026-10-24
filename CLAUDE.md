@@ -32,8 +32,9 @@ go test ./...
 # Run a single test
 go test ./internal/path/to/package -run TestName
 
-# Generate mocks (uses .mockery.yaml config)
-mockery
+# Generate mocks (uses .mockery.yaml config). Pin the version, like swag below:
+# a binary built with an older Go fails to parse the current stdlib.
+go run github.com/vektra/mockery/v2@v2.53.8
 
 # Generate Swagger docs. Compile swag with the same Go as this repo.
 # A binary built with an older Go fails to parse the current stdlib.
