@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.8.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.7.0...v2.8.0) (2026-10-23)
+
+
+### Features
+
+* **pedidos:** envío gratis en el primer pedido con tope de $3 ([17d40b4](https://github.com/Encargalo/Encargalo.app-api.go/commit/17d40b4732ebad25e2111d09b1e3f70d5444f756))
+* **pedidos:** envío gratis en el primer pedido con tope de $3 ([cb6f8d6](https://github.com/Encargalo/Encargalo.app-api.go/commit/cb6f8d688e82f15b20220f69aef03a67b626bf15))
+* **trips:** decirle al cliente por qué se canceló su viaje ([a3fa56c](https://github.com/Encargalo/Encargalo.app-api.go/commit/a3fa56c282acd7a8697329541a10c95eed267069))
+* **trips:** decirle al cliente por qué se canceló su viaje ([ab22238](https://github.com/Encargalo/Encargalo.app-api.go/commit/ab2223873bf42fb6ee01b865187c22a02d86bf8a)), closes [#310](https://github.com/Encargalo/Encargalo.app-api.go/issues/310)
+* **viajes:** descuento del 50% en el primer viaje con tope de $6 ([8c5ec1c](https://github.com/Encargalo/Encargalo.app-api.go/commit/8c5ec1c2fee0e91105bdbc58ed7ea6394ff0a159))
+* **viajes:** descuento del 50% en el primer viaje con tope de $6 ([7d31572](https://github.com/Encargalo/Encargalo.app-api.go/commit/7d315725b380a700bc62fb483e2858d12577896a))
+
 ## [2.7.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.6.0...v2.7.0) (2026-10-23)
 
 
