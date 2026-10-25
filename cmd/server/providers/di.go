@@ -216,6 +216,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(repoRiders.NewRiderProfileRepo)
 	_ = Container.Provide(repoRiders.NewRiderPublicInfoLookup)
 	_ = Container.Provide(repoRiders.NewPassengerLookup)
+	_ = Container.Provide(repoRiders.NewRiderPresenceRepo)
 	_ = Container.Provide(appRiders.NewRiderProfileApp)
 	_ = Container.Provide(func(mgr ridersPorts.RidersApp) ordersPorts.OrderRiderBroadcaster {
 		return mgr.(ordersPorts.OrderRiderBroadcaster)
