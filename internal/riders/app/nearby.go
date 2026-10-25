@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"math"
-	"time"
 
 	"Encargalo.app-api.go/internal/pkg/geo"
 	riderModels "Encargalo.app-api.go/internal/riders/domain/models"
@@ -71,17 +70,4 @@ func MarkRiderBusyForTest(svc ridersPorts.RidersApp, riderID uuid.UUID) {
 	mgr.mu.Lock()
 	defer mgr.mu.Unlock()
 	mgr.riderTrips[riderID] = riderAssignment{tripID: uuid.New(), customerID: uuid.New()}
-}
-
-// AgeRiderLocationForTest envejece la última ubicación del rider.
-func AgeRiderLocationForTest(svc ridersPorts.RidersApp, riderID uuid.UUID, age time.Duration) {
-	mgr := svc.(*appRidersManager)
-	mgr.mu.Lock()
-	defer mgr.mu.Unlock()
-	loc, ok := mgr.riderLocation[riderID]
-	if !ok {
-		return
-	}
-	loc.UpdatedAt = time.Now().Add(-age)
-	mgr.riderLocation[riderID] = loc
 }

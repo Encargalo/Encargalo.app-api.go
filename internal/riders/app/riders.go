@@ -528,28 +528,6 @@ func (r *appRidersManager) ActiveTrips(ctx context.Context, riderID uuid.UUID) (
 	return out, nil
 }
 
-func (r *appRidersManager) SnapshotTripsRiders() []riderModels.RiderLocationEntry {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	now := time.Now()
-	out := make([]riderModels.RiderLocationEntry, 0, len(r.riderLocation))
-	for riderID, loc := range r.riderLocation {
-		if r.riderMode[riderID] != riderModels.RiderModeTrips {
-			continue
-		}
-		if now.Sub(loc.UpdatedAt) > riderModels.TripMatchRiderMaxAge {
-			continue
-		}
-		// La bici no lleva pasajeros. Un vehículo sin cargar no excluye: hay riders legacy sin el campo.
-		if r.riderVehicle[riderID] == riderModels.VehicleTypeBike {
-			continue
-		}
-		out = append(out, riderModels.RiderLocationEntry{RiderID: riderID, Location: loc})
-	}
-	return out
-}
-
 func (r *appRidersManager) BroadcastNewOrder(ctx context.Context, order ordersModels.Order) {
 	msg := r.orderBroadcast(ctx, "new_order", order, false)
 	data, err := json.Marshal(msg)

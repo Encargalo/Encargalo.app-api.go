@@ -158,26 +158,6 @@ func (_m *RidersApp) SendActiveTrips(ctx context.Context, riderID uuid.UUID, con
 	return r0
 }
 
-// SnapshotTripsRiders provides a mock function with no fields
-func (_m *RidersApp) SnapshotTripsRiders() []models.RiderLocationEntry {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for SnapshotTripsRiders")
-	}
-
-	var r0 []models.RiderLocationEntry
-	if rf, ok := ret.Get(0).(func() []models.RiderLocationEntry); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]models.RiderLocationEntry)
-		}
-	}
-
-	return r0
-}
-
 // Unregister provides a mock function with given fields: riderID, conn
 func (_m *RidersApp) Unregister(riderID uuid.UUID, conn ports.RiderConn) {
 	_m.Called(riderID, conn)
