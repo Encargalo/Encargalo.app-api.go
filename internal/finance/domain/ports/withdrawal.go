@@ -34,7 +34,8 @@ type WithdrawalRepo interface {
 	// LastCompletedAt es el ancla del cooldown: la fecha del último retiro
 	// efectivamente pagado, no de la última solicitud.
 	LastCompletedAt(ctx context.Context, entityID uuid.UUID, entityType string) (*time.Time, error)
-	List(ctx context.Context, entityType string, statuses []models.WithdrawalStatus) ([]models.WithdrawalListRow, error)
+	// List pagina: los estados cerrados crecen sin techo.
+	List(ctx context.Context, entityType string, statuses []models.WithdrawalStatus, page, limit int) ([]models.WithdrawalListRow, int, error)
 	// Claim congela el neto pagable y pasa la solicitud a processing. Si el
 	// neto es <= 0 anula la solicitud y falla con ErrWithdrawalNothingPayable.
 	Claim(ctx context.Context, id, staffID uuid.UUID) (models.WithdrawalRequest, error)
@@ -46,7 +47,7 @@ type WithdrawalRepo interface {
 }
 
 type WithdrawalApp interface {
-	List(ctx context.Context, entityType string, statuses []models.WithdrawalStatus) (dtos.WithdrawalsResponse, error)
+	List(ctx context.Context, entityType string, statuses []models.WithdrawalStatus, page, limit int) (dtos.WithdrawalsResponse, error)
 	Claim(ctx context.Context, id, staffID uuid.UUID) (dtos.ClaimResponse, error)
 	Complete(ctx context.Context, id, staffID uuid.UUID, req dtos.CompleteWithdrawalRequest) (dtos.WithdrawalItem, error)
 	Reject(ctx context.Context, id, staffID uuid.UUID, req dtos.RejectWithdrawalRequest) (dtos.WithdrawalItem, error)

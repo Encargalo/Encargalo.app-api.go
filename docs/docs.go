@@ -3613,7 +3613,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Lista las solicitudes de retiro. Sin parámetro status devuelve las activas (pending y processing), que son las que requieren acción. Cada ítem trae amount_bs (lo solicitado) y payable_bs (lo que hay que transferir hoy): difieren cuando el rider cobró efectivo después de pedir el retiro, y el que manda es payable_bs. payable_frozen indica si ya quedó congelado por un reclamo.",
+                "description": "Lista las solicitudes de retiro. Sin parámetro status devuelve las activas (pending y processing), que son las que requieren acción. Cada ítem trae amount_bs (lo solicitado) y payable_bs (lo que hay que transferir hoy): difieren cuando el rider cobró efectivo después de pedir el retiro, y el que manda es payable_bs. payable_frozen indica si ya quedó congelado por un reclamo. El listado es paginado: total es el total que matchea el filtro, no el tamaño de la página.",
                 "produces": [
                     "application/json"
                 ],
@@ -3632,6 +3632,18 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Filtro por estado",
                         "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Página (default 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Límite por página, máx 50 (default 20)",
+                        "name": "limit",
                         "in": "query"
                     }
                 ],
@@ -8341,6 +8353,12 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/Encargalo_app-api_go_internal_finance_domain_dtos.WithdrawalItem"
                     }
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
                 },
                 "total": {
                     "type": "integer"

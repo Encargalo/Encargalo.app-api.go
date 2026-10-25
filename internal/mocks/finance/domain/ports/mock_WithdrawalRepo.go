@@ -192,34 +192,41 @@ func (_m *WithdrawalRepo) LastCompletedAt(ctx context.Context, entityID uuid.UUI
 	return r0, r1
 }
 
-// List provides a mock function with given fields: ctx, entityType, statuses
-func (_m *WithdrawalRepo) List(ctx context.Context, entityType string, statuses []models.WithdrawalStatus) ([]models.WithdrawalListRow, error) {
-	ret := _m.Called(ctx, entityType, statuses)
+// List provides a mock function with given fields: ctx, entityType, statuses, page, limit
+func (_m *WithdrawalRepo) List(ctx context.Context, entityType string, statuses []models.WithdrawalStatus, page int, limit int) ([]models.WithdrawalListRow, int, error) {
+	ret := _m.Called(ctx, entityType, statuses, page, limit)
 
 	if len(ret) == 0 {
 		panic("no return value specified for List")
 	}
 
 	var r0 []models.WithdrawalListRow
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, []models.WithdrawalStatus) ([]models.WithdrawalListRow, error)); ok {
-		return rf(ctx, entityType, statuses)
+	var r1 int
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, []models.WithdrawalStatus, int, int) ([]models.WithdrawalListRow, int, error)); ok {
+		return rf(ctx, entityType, statuses, page, limit)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, []models.WithdrawalStatus) []models.WithdrawalListRow); ok {
-		r0 = rf(ctx, entityType, statuses)
+	if rf, ok := ret.Get(0).(func(context.Context, string, []models.WithdrawalStatus, int, int) []models.WithdrawalListRow); ok {
+		r0 = rf(ctx, entityType, statuses, page, limit)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]models.WithdrawalListRow)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, []models.WithdrawalStatus) error); ok {
-		r1 = rf(ctx, entityType, statuses)
+	if rf, ok := ret.Get(1).(func(context.Context, string, []models.WithdrawalStatus, int, int) int); ok {
+		r1 = rf(ctx, entityType, statuses, page, limit)
 	} else {
-		r1 = ret.Error(1)
+		r1 = ret.Get(1).(int)
 	}
 
-	return r0, r1
+	if rf, ok := ret.Get(2).(func(context.Context, string, []models.WithdrawalStatus, int, int) error); ok {
+		r2 = rf(ctx, entityType, statuses, page, limit)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // Reject provides a mock function with given fields: ctx, id, staffID, reason
