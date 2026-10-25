@@ -25,7 +25,7 @@ func newTripVehicleMgr(t *testing.T) (ridersPorts.RidersApp, *mocksriders.Vehicl
 	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound).Maybe()
 	vehicles := mocksriders.NewVehicleLookup(t)
 	tripsStore := mocksriders.NewTripsStore(t)
-	svc := app.New(repo, mocksriders.NewRidersStream(t), mockbcvports.NewBcvApp(t), tripsStore, mocksriders.NewTripEarningRecorder(t), nil, nil, nil, vehicles)
+	svc := app.New(repo, mocksriders.NewRidersStream(t), mockbcvports.NewBcvApp(t), tripsStore, mocksriders.NewTripEarningRecorder(t), nil, nil, nil, vehicles, newPresenceStore(t))
 	return svc, vehicles, tripsStore
 }
 
@@ -99,12 +99,17 @@ func TestAcceptTrip_RejectsBike(t *testing.T) {
 	tripsStore.AssertNotCalled(t, "AssignTripRider", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }
 
-// "Bici" del CRM es la misma bici: el upsert de staff no normaliza el campo.
-func TestSnapshotTripsRiders_ExcludesBikeWrittenWithCapital(t *testing.T) {
+// "Bici" del CRM es la misma bici: el upsert de staff no normaliza el campo, y
+// el índice de Redis compara exacto, así que el valor se canoniza al publicarlo.
+func TestNearbyRiders_ExcludesBikeWrittenWithCapital(t *testing.T) {
 	svc, vehicles, _ := newTripVehicleMgr(t)
-	capitalized := "Bici"
+	capitalized := " Bici "
+	lat, lng := 10.4806, -66.9036
 
-	placeVehicleRider(t, svc, vehicles, &capitalized, 10.4806, -66.9036)
+	placeVehicleRider(t, svc, vehicles, &capitalized, lat, lng)
 
-	require.Empty(t, svc.SnapshotTripsRiders())
+	pins, err := asNearby(t, svc).NearbyRiders(context.Background(), lat, lng)
+
+	require.NoError(t, err)
+	require.Empty(t, pins)
 }

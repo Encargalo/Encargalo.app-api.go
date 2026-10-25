@@ -6,10 +6,14 @@ import (
 	shopsmodels "Encargalo.app-api.go/internal/shops/domain/models/shops"
 )
 
-// IsBike normaliza el valor crudo del perfil: el upsert de staff no valida el
-// campo, asi que "Bici" y " bici " son la misma bici.
+// NormalizeVehicleType canoniza el valor crudo del perfil: el upsert de staff no
+// valida el campo, así que "Bici" y " bici " son la misma bici.
+func NormalizeVehicleType(vehicleType string) string {
+	return strings.ToLower(strings.TrimSpace(vehicleType))
+}
+
 func IsBike(vehicleType string) bool {
-	return strings.EqualFold(strings.TrimSpace(vehicleType), VehicleTypeBike)
+	return NormalizeVehicleType(vehicleType) == VehicleTypeBike
 }
 
 // VehicleCanCarryShopType: la bici solo lleva restaurante — Turbo y supermercado son volumen y peso que no le entran.

@@ -1,9 +1,8 @@
 package app
 
 import (
+	"context"
 	"math"
-	"sort"
-	"time"
 
 	"Encargalo.app-api.go/internal/pkg/geo"
 	riderModels "Encargalo.app-api.go/internal/riders/domain/models"
@@ -13,105 +12,52 @@ import (
 	"github.com/google/uuid"
 )
 
-func (r *appRidersManager) NearbyRiders(lat, lng float64) ([]tripsDtos.NearbyRider, error) {
-	// LatLngToCell acepta cualquier coordenada del planeta: el área de servicio se exige aparte.
+func (r *appRidersManager) NearbyRiders(ctx context.Context, lat, lng float64) ([]tripsDtos.NearbyRider, error) {
+	// InVenezuela acota el área de servicio; Redis acepta cualquier coordenada del planeta.
 	if !geo.InVenezuela(lat, lng) {
 		return nil, errcustom.ErrInvalidCoordinates
 	}
+	if r.presence == nil {
+		return []tripsDtos.NearbyRider{}, nil
+	}
 
-	origin, err := geo.LatLngToCell(lat, lng, geo.DriverMatchResolution)
+	entries, err := r.presence.SearchNearby(ctx, riderModels.PresenceQuery{
+		Latitude:  lat,
+		Longitude: lng,
+		RadiusKm:  geo.RingsToKm(riderModels.NearbyRiderRings),
+		Mode:      riderModels.RiderModeTrips,
+		MaxAge:    riderModels.NearbyRiderMaxAge,
+		// La bici no lleva pasajeros, igual que en el matching; sin vehículo cargado no excluye.
+		ExcludeVehicles: []string{riderModels.VehicleTypeBike},
+	})
 	if err != nil {
-		return nil, errcustom.ErrInvalidCoordinates
-	}
-	cells, err := geo.GridDisk(origin, riderModels.NearbyRiderRings)
-	if err != nil {
-		return nil, errcustom.ErrUnexpectedError
+		return nil, err
 	}
 
-	now := time.Now()
-	type candidate struct {
-		lat, lng, km float64
-	}
+	return r.pinsForAvailable(entries), nil
+}
 
+// pinsForAvailable descarta a los riders con viaje asignado y corta en el tope
+// del mapa. El tope no viaja en la query porque se aplica después de ese filtro.
+func (r *appRidersManager) pinsForAvailable(entries []riderModels.RiderLocationEntry) []tripsDtos.NearbyRider {
 	r.mu.RLock()
-	matched := make([]candidate, 0, riderModels.NearbyRiderMaxResults)
-	for _, cell := range cells {
-		for riderID := range r.ridersByCell[cell] {
-			loc, ok := r.freshTripRiderLocked(riderID, now)
-			if !ok {
-				continue
-			}
-			matched = append(matched, candidate{
-				lat: loc.Latitude,
-				lng: loc.Longitude,
-				km:  geo.HaversineKm(lat, lng, loc.Latitude, loc.Longitude),
-			})
+	defer r.mu.RUnlock()
+
+	out := make([]tripsDtos.NearbyRider, 0, riderModels.NearbyRiderMaxResults)
+	for _, entry := range entries {
+		// riderTrips sigue en memoria hasta que el estado de asignación salga del proceso.
+		if _, busy := r.riderTrips[entry.RiderID]; busy {
+			continue
+		}
+		out = append(out, tripsDtos.NearbyRider{
+			Latitude:  roundMapCoord(entry.Location.Latitude),
+			Longitude: roundMapCoord(entry.Location.Longitude),
+		})
+		if len(out) == riderModels.NearbyRiderMaxResults {
+			return out
 		}
 	}
-	r.mu.RUnlock()
-
-	sort.Slice(matched, func(i, j int) bool { return matched[i].km < matched[j].km })
-	if len(matched) > riderModels.NearbyRiderMaxResults {
-		matched = matched[:riderModels.NearbyRiderMaxResults]
-	}
-
-	out := make([]tripsDtos.NearbyRider, len(matched))
-	for i, c := range matched {
-		out[i] = tripsDtos.NearbyRider{
-			Latitude:  roundMapCoord(c.lat),
-			Longitude: roundMapCoord(c.lng),
-		}
-	}
-	return out, nil
-}
-
-func (r *appRidersManager) freshTripRiderLocked(riderID uuid.UUID, now time.Time) (riderModels.RiderLocation, bool) {
-	if r.riderMode[riderID] != riderModels.RiderModeTrips {
-		return riderModels.RiderLocation{}, false
-	}
-	if _, busy := r.riderTrips[riderID]; busy {
-		return riderModels.RiderLocation{}, false
-	}
-	loc, ok := r.riderLocation[riderID]
-	if !ok || now.Sub(loc.UpdatedAt) > riderModels.NearbyRiderMaxAge {
-		return riderModels.RiderLocation{}, false
-	}
-	return loc, true
-}
-
-func (r *appRidersManager) reindexRiderLocked(riderID uuid.UUID, prevCell, cell string, inTrips bool) {
-	if prevCell != "" {
-		r.unindexCellLocked(riderID, prevCell)
-	}
-	if !inTrips {
-		if cell != "" && cell != prevCell {
-			r.unindexCellLocked(riderID, cell)
-		}
-		return
-	}
-	if cell == "" {
-		return
-	}
-	bucket := r.ridersByCell[cell]
-	if bucket == nil {
-		bucket = make(map[uuid.UUID]struct{})
-		r.ridersByCell[cell] = bucket
-	}
-	bucket[riderID] = struct{}{}
-}
-
-func (r *appRidersManager) unindexCellLocked(riderID uuid.UUID, cell string) {
-	if cell == "" || r.ridersByCell == nil {
-		return
-	}
-	bucket := r.ridersByCell[cell]
-	if bucket == nil {
-		return
-	}
-	delete(bucket, riderID)
-	if len(bucket) == 0 {
-		delete(r.ridersByCell, cell)
-	}
+	return out
 }
 
 func roundMapCoord(v float64) float64 {
@@ -124,17 +70,4 @@ func MarkRiderBusyForTest(svc ridersPorts.RidersApp, riderID uuid.UUID) {
 	mgr.mu.Lock()
 	defer mgr.mu.Unlock()
 	mgr.riderTrips[riderID] = riderAssignment{tripID: uuid.New(), customerID: uuid.New()}
-}
-
-// AgeRiderLocationForTest envejece la última ubicación del rider.
-func AgeRiderLocationForTest(svc ridersPorts.RidersApp, riderID uuid.UUID, age time.Duration) {
-	mgr := svc.(*appRidersManager)
-	mgr.mu.Lock()
-	defer mgr.mu.Unlock()
-	loc, ok := mgr.riderLocation[riderID]
-	if !ok {
-		return
-	}
-	loc.UpdatedAt = time.Now().Add(-age)
-	mgr.riderLocation[riderID] = loc
 }

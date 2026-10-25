@@ -6,7 +6,6 @@ import (
 	"errors"
 	"log/slog"
 	"slices"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -58,7 +57,6 @@ type appRidersManager struct {
 	riderMode          map[uuid.UUID]riderModels.RiderMode
 	riderLocation      map[uuid.UUID]riderModels.RiderLocation
 	riderVehicle       map[uuid.UUID]string
-	ridersByCell       map[string]map[uuid.UUID]struct{}
 	tripOffers         map[uuid.UUID]map[uuid.UUID]struct{}
 	tripAlreadyOffered map[uuid.UUID]map[uuid.UUID]struct{}
 	tripOfferRounds    map[uuid.UUID]int
@@ -80,6 +78,7 @@ type appRidersManager struct {
 	balance         paymentsPorts.CustomerBalanceCreditor
 	passengers      ridersPorts.PassengerLookup
 	vehicles        ridersPorts.VehicleLookup
+	presence        ridersPorts.RiderPresenceStore
 	riderTrips      map[uuid.UUID]riderAssignment
 	orderNotifier   ridersPorts.OrderCustomerNotifier
 }
@@ -89,7 +88,7 @@ type riderAssignment struct {
 	customerID uuid.UUID
 }
 
-func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPorts.BcvApp, tripsRepo ridersPorts.TripsStore, tripEarnings ridersPorts.TripEarningRecorder, customers tripsPorts.CustomerTripNotifier, balance paymentsPorts.CustomerBalanceCreditor, passengers ridersPorts.PassengerLookup, vehicles ridersPorts.VehicleLookup) ridersPorts.RidersApp {
+func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPorts.BcvApp, tripsRepo ridersPorts.TripsStore, tripEarnings ridersPorts.TripEarningRecorder, customers tripsPorts.CustomerTripNotifier, balance paymentsPorts.CustomerBalanceCreditor, passengers ridersPorts.PassengerLookup, vehicles ridersPorts.VehicleLookup, presence ridersPorts.RiderPresenceStore) ridersPorts.RidersApp {
 	return &appRidersManager{
 		availableRiders:    make(map[uuid.UUID]ridersPorts.RiderConn),
 		assignedOrders:     make(map[uuid.UUID][]uuid.UUID),
@@ -97,7 +96,6 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 		riderMode:          make(map[uuid.UUID]riderModels.RiderMode),
 		riderLocation:      make(map[uuid.UUID]riderModels.RiderLocation),
 		riderVehicle:       make(map[uuid.UUID]string),
-		ridersByCell:       make(map[string]map[uuid.UUID]struct{}),
 		tripOffers:         make(map[uuid.UUID]map[uuid.UUID]struct{}),
 		tripAlreadyOffered: make(map[uuid.UUID]map[uuid.UUID]struct{}),
 		tripOfferRounds:    make(map[uuid.UUID]int),
@@ -116,6 +114,7 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 		balance:            balance,
 		passengers:         passengers,
 		vehicles:           vehicles,
+		presence:           presence,
 		riderTrips:         make(map[uuid.UUID]riderAssignment),
 	}
 }
@@ -196,12 +195,18 @@ func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn
 	r.mu.Lock()
 	r.availableRiders[riderID] = conn
 	r.riderMode[riderID] = mode
-	if loc, ok := r.riderLocation[riderID]; ok {
-		r.reindexRiderLocked(riderID, loc.H3Cell, loc.H3Cell, mode == riderModels.RiderModeTrips)
-	}
 	r.mu.Unlock()
 
 	vehicle := r.cacheRiderVehicle(ctx, riderID)
+
+	// Un rider que se reconecta puede venir en otro modo: su ubicación ya
+	// conocida tiene que quedar publicada en el índice del modo nuevo.
+	r.mu.RLock()
+	known, hadKnownLocation := r.riderLocation[riderID]
+	r.mu.RUnlock()
+	if hadKnownLocation {
+		r.savePresence(ctx, riderID, known, mode, vehicle)
+	}
 
 	activeOrders, err := r.repo.SearchActiveOrdersByRiderID(ctx, riderID)
 	if err != nil && !errors.Is(err, errcustom.ErrNotFound) {
@@ -263,18 +268,53 @@ func (r *appRidersManager) cacheRiderVehicle(ctx context.Context, riderID uuid.U
 	return *profile.VehicleType
 }
 
+// savePresence publica la ubicación del rider fuera del proceso. Un fallo de
+// Redis no corta el flujo del socket: la memoria sigue siendo la fuente de verdad.
+func (r *appRidersManager) savePresence(ctx context.Context, riderID uuid.UUID, location riderModels.RiderLocation, mode riderModels.RiderMode, vehicle string) {
+	if r.presence == nil {
+		return
+	}
+	if mode != riderModels.RiderModeTrips {
+		mode = riderModels.RiderModeOrders
+	}
+	presence := riderModels.RiderPresence{
+		RiderID:  riderID,
+		Location: location,
+		Mode:     mode,
+		// Canónico: el filtro del adapter compara exacto y el perfil trae "Bici" tal cual lo escribió el staff.
+		Vehicle: riderModels.NormalizeVehicleType(vehicle),
+	}
+	if err := r.presence.SaveLocation(ctx, presence); err != nil {
+		slog.Error("error publicando la presencia del rider", "riderID", riderID, "error", err)
+	}
+}
+
+// removePresence corre con su propio contexto: cuando se llega acá el socket ya
+// se cerró y el contexto del request está cancelado.
+func (r *appRidersManager) removePresence(riderID uuid.UUID) {
+	if r.presence == nil {
+		return
+	}
+	if err := r.presence.Remove(context.Background(), riderID); err != nil {
+		slog.Error("error borrando la presencia del rider", "riderID", riderID, "error", err)
+	}
+}
+
 func (r *appRidersManager) Unregister(riderID uuid.UUID, conn ridersPorts.RiderConn) {
 	r.mu.Lock()
-	if stored, ok := r.availableRiders[riderID]; ok && stored == conn {
-		if loc, hasLoc := r.riderLocation[riderID]; hasLoc {
-			r.unindexCellLocked(riderID, loc.H3Cell)
-		}
+	stored, ok := r.availableRiders[riderID]
+	disconnected := ok && stored == conn
+	if disconnected {
 		delete(r.availableRiders, riderID)
 		delete(r.riderMode, riderID)
 		delete(r.riderLocation, riderID)
 		delete(r.riderVehicle, riderID)
 	}
 	r.mu.Unlock()
+
+	if disconnected {
+		r.removePresence(riderID)
+	}
 
 	conn.Close()
 }
@@ -290,22 +330,23 @@ func (r *appRidersManager) UpdateLocation(ctx context.Context, riderID uuid.UUID
 		return errcustom.ErrInvalidCoordinates
 	}
 
-	r.mu.Lock()
-	prev, hadLocation := r.riderLocation[riderID]
-	r.riderLocation[riderID] = riderModels.RiderLocation{
+	location := riderModels.RiderLocation{
 		Latitude:  lat,
 		Longitude: lng,
 		H3Cell:    cell,
 		UpdatedAt: time.Now(),
 	}
-	prevCell := ""
-	if hadLocation {
-		prevCell = prev.H3Cell
-	}
-	inTripsMode := r.riderMode[riderID] == riderModels.RiderModeTrips
-	r.reindexRiderLocked(riderID, prevCell, cell, inTripsMode)
+
+	r.mu.Lock()
+	prev, hadLocation := r.riderLocation[riderID]
+	r.riderLocation[riderID] = location
+	mode := r.riderMode[riderID]
+	vehicle := r.riderVehicle[riderID]
+	inTripsMode := mode == riderModels.RiderModeTrips
 	assignment, onTrip := r.riderTrips[riderID]
 	r.mu.Unlock()
+
+	r.savePresence(ctx, riderID, location, mode, vehicle)
 
 	if onTrip && r.customers != nil {
 		r.customers.NotifyRiderLocation(ctx, assignment.customerID, assignment.tripID, lat, lng)
@@ -487,28 +528,6 @@ func (r *appRidersManager) ActiveTrips(ctx context.Context, riderID uuid.UUID) (
 		out[i] = r.riderTripDTO(ctx, &trips[i])
 	}
 	return out, nil
-}
-
-func (r *appRidersManager) SnapshotTripsRiders() []riderModels.RiderLocationEntry {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	now := time.Now()
-	out := make([]riderModels.RiderLocationEntry, 0, len(r.riderLocation))
-	for riderID, loc := range r.riderLocation {
-		if r.riderMode[riderID] != riderModels.RiderModeTrips {
-			continue
-		}
-		if now.Sub(loc.UpdatedAt) > riderModels.TripMatchRiderMaxAge {
-			continue
-		}
-		// La bici no lleva pasajeros. Un vehículo sin cargar no excluye: hay riders legacy sin el campo.
-		if riderModels.IsBike(r.riderVehicle[riderID]) {
-			continue
-		}
-		out = append(out, riderModels.RiderLocationEntry{RiderID: riderID, Location: loc})
-	}
-	return out
 }
 
 func (r *appRidersManager) BroadcastNewOrder(ctx context.Context, order ordersModels.Order) {
@@ -738,8 +757,10 @@ func (r *appRidersManager) OfferTrip(_ context.Context, trip tripsModels.Trip) {
 }
 
 func (r *appRidersManager) offerTripRound(trip tripsModels.Trip, round int) {
+	// Las rondas sobreviven al request que pidió el viaje: siguen en timers.
+	ctx := context.Background()
 	maxRings := tripSearchMaxRings + round - 1
-	candidates := r.nearestTripsRiders(trip, r.offerExclusions(trip.ID), maxRings)
+	candidates := r.nearestTripsRiders(ctx, trip, r.offerExclusions(trip.ID), maxRings)
 	if len(candidates) == 0 {
 		// Sin celda H3 el viaje nunca va a matchear: no tiene sentido esperar.
 		if trip.PickupH3Cell == nil {
@@ -762,7 +783,7 @@ func (r *appRidersManager) offerTripRound(trip tripsModels.Trip, round int) {
 		return
 	}
 
-	data, err := json.Marshal(tripBroadcast{Type: "trip_offer", Trip: r.tripOfferWithPassenger(context.Background(), &trip)})
+	data, err := json.Marshal(tripBroadcast{Type: "trip_offer", Trip: r.tripOfferWithPassenger(ctx, &trip)})
 	if err != nil {
 		slog.Error("error marshaling trip_offer broadcast", "error", err)
 		return
@@ -977,63 +998,49 @@ func (r *appRidersManager) endCompleting(tripID uuid.UUID) {
 	r.mu.Unlock()
 }
 
-func (r *appRidersManager) nearestTripsRiders(trip tripsModels.Trip, exclude map[uuid.UUID]struct{}, maxRings int) []riderModels.RiderLocationEntry {
-	if trip.PickupH3Cell == nil {
+// nearestTripsRiders devuelve los candidatos más cercanos al pickup. No escala
+// anillos: GEOSEARCH ya ordena por distancia, así que los N primeros dentro del
+// radio máximo son los mismos que encontraba el disco más chico con N dentro.
+func (r *appRidersManager) nearestTripsRiders(ctx context.Context, trip tripsModels.Trip, exclude map[uuid.UUID]struct{}, maxRings int) []riderModels.RiderLocationEntry {
+	// Sin celda H3 el viaje no entra al matching; offerTripRound lo da por perdido.
+	if trip.PickupH3Cell == nil || r.presence == nil {
 		return nil
 	}
 
-	byCell := make(map[string][]riderModels.RiderLocationEntry)
-	for _, e := range r.SnapshotTripsRiders() {
-		if _, skip := exclude[e.RiderID]; skip {
-			continue
-		}
-		byCell[e.Location.H3Cell] = append(byCell[e.Location.H3Cell], e)
+	entries, err := r.presence.SearchNearby(ctx, riderModels.PresenceQuery{
+		Latitude:        trip.PickupLatitude,
+		Longitude:       trip.PickupLongitude,
+		RadiusKm:        geo.RingsToKm(maxRings),
+		Mode:            riderModels.RiderModeTrips,
+		MaxAge:          riderModels.TripMatchRiderMaxAge,
+		ExcludeRiders:   exclude,
+		ExcludeVehicles: []string{riderModels.VehicleTypeBike},
+	})
+	if err != nil {
+		slog.Error("error buscando riders para el viaje", "tripID", trip.ID, "error", err)
+		return nil
 	}
-
-	for k := 0; k <= maxRings; k++ {
-		cells, err := geo.GridDisk(*trip.PickupH3Cell, k)
-		if err != nil {
-			slog.Error("error expanding H3 rings for trip matching", "tripID", trip.ID, "error", err)
-			return nil
-		}
-
-		matched := make([]riderModels.RiderLocationEntry, 0, tripOfferCandidateCount)
-		for _, cell := range cells {
-			matched = append(matched, byCell[cell]...)
-		}
-
-		if len(matched) < tripOfferCandidateCount && k < maxRings {
-			continue
-		}
-
-		return nearestByDistance(trip, matched)
-	}
-
-	return nil
+	return r.connectedCandidates(entries)
 }
 
-func nearestByDistance(trip tripsModels.Trip, candidates []riderModels.RiderLocationEntry) []riderModels.RiderLocationEntry {
-	type scored struct {
-		entry riderModels.RiderLocationEntry
-		km    float64
-	}
+// connectedCandidates deja solo a los riders con socket en esta réplica y recién
+// ahí aplica el tope. La presencia en Redis sobrevive al reinicio del proceso
+// por su TTL, así que después de un deploy hay riders frescos que todavía no
+// reconectaron: tomarlos como candidatos quema un cupo y los marca como ya
+// ofertados sin que a nadie le llegue nada.
+func (r *appRidersManager) connectedCandidates(entries []riderModels.RiderLocationEntry) []riderModels.RiderLocationEntry {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 
-	ranked := make([]scored, len(candidates))
-	for i, e := range candidates {
-		ranked[i] = scored{
-			entry: e,
-			km:    geo.HaversineKm(trip.PickupLatitude, trip.PickupLongitude, e.Location.Latitude, e.Location.Longitude),
+	out := make([]riderModels.RiderLocationEntry, 0, tripOfferCandidateCount)
+	for _, entry := range entries {
+		if _, connected := r.availableRiders[entry.RiderID]; !connected {
+			continue
 		}
-	}
-	sort.Slice(ranked, func(i, j int) bool { return ranked[i].km < ranked[j].km })
-
-	if len(ranked) > tripOfferCandidateCount {
-		ranked = ranked[:tripOfferCandidateCount]
-	}
-
-	out := make([]riderModels.RiderLocationEntry, len(ranked))
-	for i, s := range ranked {
-		out[i] = s.entry
+		out = append(out, entry)
+		if len(out) == tripOfferCandidateCount {
+			return out
+		}
 	}
 	return out
 }
@@ -1385,6 +1392,9 @@ func AdvanceTripOfferTimeout(svc ridersPorts.RidersApp, trip tripsModels.Trip) {
 // TripSearchMaxRingsForTest expone el tope de anillos de la primera ronda, para
 // que los tests ubiquen riders dentro o fuera del radio sin fijar el número.
 const TripSearchMaxRingsForTest = tripSearchMaxRings
+
+// TripOfferCandidateCountForTest expone cuántos candidatos entran por ronda.
+const TripOfferCandidateCountForTest = tripOfferCandidateCount
 
 // StopTripOfferTimerForTest detiene el timer de oferta para que no dispare
 // después de que el test ya terminó.

@@ -5,6 +5,7 @@ go 1.26.4
 require (
 	github.com/AndresXLP/ravenTree v1.1.0
 	github.com/PuerkitoBio/goquery v1.12.0
+	github.com/alicebob/miniredis/v2 v2.40.0
 	github.com/andresxlp/redsumer v1.1.5
 	github.com/charmbracelet/log v0.4.2
 	github.com/cloudinary/cloudinary-go/v2 v2.14.0
@@ -116,6 +117,7 @@ require (
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
+	github.com/yuin/gopher-lua v1.1.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.70.0 // indirect

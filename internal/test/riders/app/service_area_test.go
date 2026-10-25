@@ -35,7 +35,7 @@ func TestUpdateLocation_RejectedLocationIsNotStored(t *testing.T) {
 
 	require.Error(t, svc.UpdateLocation(context.Background(), riderID, outsideServiceAreaLat, outsideServiceAreaLng))
 
-	pins, err := asNearby(t, svc).NearbyRiders(lat, lng)
+	pins, err := asNearby(t, svc).NearbyRiders(context.Background(), lat, lng)
 	require.NoError(t, err)
 	require.Len(t, pins, 1)
 	require.Equal(t, 10.481, pins[0].Latitude)
@@ -44,7 +44,7 @@ func TestUpdateLocation_RejectedLocationIsNotStored(t *testing.T) {
 func TestNearbyRiders_LookupOutsideVenezuela(t *testing.T) {
 	svc := newNearbyMgr(t)
 
-	_, err := asNearby(t, svc).NearbyRiders(outsideServiceAreaLat, outsideServiceAreaLng)
+	_, err := asNearby(t, svc).NearbyRiders(context.Background(), outsideServiceAreaLat, outsideServiceAreaLng)
 
 	require.ErrorIs(t, err, errcustom.ErrInvalidCoordinates)
 }

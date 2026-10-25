@@ -17,7 +17,7 @@ type TripsApp interface {
 	// EstimateFare congela el precio en una TripQuote; RequestTrip la exige en vez de recalcular.
 	EstimateFare(ctx context.Context, req dtos.FareEstimateRequest) (dtos.FareEstimateResponse, error)
 	// NearbyRiders devuelve pines anónimos de conductores disponibles alrededor de un punto.
-	NearbyRiders(lat, lng float64) (dtos.NearbyRidersResponse, error)
+	NearbyRiders(ctx context.Context, lat, lng float64) (dtos.NearbyRidersResponse, error)
 	// Services es el catálogo de vehículos que el cliente puede elegir.
 	Services() dtos.TripServicesResponse
 }
@@ -86,7 +86,7 @@ type RiderPublicInfoLookup interface {
 // NearbyRidersLookup lee conductores en modo viajes cerca de un punto.
 // Lo implementa el mismo proceso que guarda su ubicación en vivo.
 type NearbyRidersLookup interface {
-	NearbyRiders(lat, lng float64) ([]dtos.NearbyRider, error)
+	NearbyRiders(ctx context.Context, lat, lng float64) ([]dtos.NearbyRider, error)
 }
 
 // TripQuotesRepo persiste TripQuote en Redis con TTL.
