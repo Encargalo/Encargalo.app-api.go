@@ -184,6 +184,24 @@ func (_m *TripsApp) RequestTrip(ctx context.Context, customerID uuid.UUID, req d
 	return r0, r1
 }
 
+// Services provides a mock function with no fields
+func (_m *TripsApp) Services() dtos.TripServicesResponse {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Services")
+	}
+
+	var r0 dtos.TripServicesResponse
+	if rf, ok := ret.Get(0).(func() dtos.TripServicesResponse); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(dtos.TripServicesResponse)
+	}
+
+	return r0
+}
+
 // NewTripsApp creates a new instance of TripsApp. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewTripsApp(t interface {

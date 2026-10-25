@@ -20,6 +20,7 @@ type TripsHandler interface {
 	CancelTrip(c echo.Context) error
 	EstimateFare(c echo.Context) error
 	NearbyRiders(c echo.Context) error
+	Services(c echo.Context) error
 	Live(c echo.Context) error
 }
 
@@ -124,6 +125,19 @@ func (h *tripsHandler) NearbyRiders(c echo.Context) error {
 		return errcustom.ToHTTPError(err)
 	}
 	return response.Send(c, http.StatusOK, resp)
+}
+
+// Services godoc
+// @Summary      Catálogo de servicios de viaje
+// @Description  Vehículos que el cliente puede elegir al cotizar. `available` en false deja el servicio visible pero no pedible: cotizar con él responde 422. Hoy solo la moto está disponible; el carro aparece para que la app lo pinte deshabilitado, sin tener que cambiar el contrato cuando se habilite. El `type` es el valor que se manda en `vehicle_type` al cotizar.
+// @Tags         Trips
+// @Produce      json
+// @Security     SessionCookie
+// @Success      200  {object}  dtos.TripServicesResponse
+// @Failure      401  {string}  string  "No autorizado"
+// @Router       /trips/services [get]
+func (h *tripsHandler) Services(c echo.Context) error {
+	return response.Send(c, http.StatusOK, h.svc.Services())
 }
 
 func parseMapPoint(latRaw, lngRaw string) (float64, float64, error) {

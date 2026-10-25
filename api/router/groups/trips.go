@@ -55,6 +55,7 @@ func (t *tripsGroup) Resource(g *echo.Echo) {
 		t.rateLimiter.LimitByIP("trips:fare-estimate", fareEstimateIPRateLimitCount, fareEstimateIPRateLimitWindow),
 		t.rateLimiter.LimitByKey(sessionUserIDKey, "trips:fare-estimate:daily", fareEstimateDailyLimitPerUser, fareEstimateDailyLimitWindow),
 	)
+	group.GET("/services", t.handlerTrips.Services, t.middle.Auth, t.middle.Require(models.Customer))
 	group.GET("/history", t.handlerTrips.GetTripHistory, t.middle.Auth, t.middle.Require(models.Customer))
 	group.GET("/live", t.handlerTrips.Live, t.middle.Auth, t.middle.Require(models.Customer))
 	group.GET("/nearby-riders", t.handlerTrips.NearbyRiders, t.middle.Auth, t.middle.Require(models.Customer),

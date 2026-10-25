@@ -18,6 +18,8 @@ type TripsApp interface {
 	EstimateFare(ctx context.Context, req dtos.FareEstimateRequest) (dtos.FareEstimateResponse, error)
 	// NearbyRiders devuelve pines anónimos de conductores disponibles alrededor de un punto.
 	NearbyRiders(lat, lng float64) (dtos.NearbyRidersResponse, error)
+	// Services es el catálogo de vehículos que el cliente puede elegir.
+	Services() dtos.TripServicesResponse
 }
 
 type TripsRepo interface {
