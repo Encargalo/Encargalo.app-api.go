@@ -6,7 +6,6 @@ import (
 	"errors"
 	"log/slog"
 	"slices"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -765,8 +764,10 @@ func (r *appRidersManager) OfferTrip(_ context.Context, trip tripsModels.Trip) {
 }
 
 func (r *appRidersManager) offerTripRound(trip tripsModels.Trip, round int) {
+	// Las rondas sobreviven al request que pidió el viaje: siguen en timers.
+	ctx := context.Background()
 	maxRings := tripSearchMaxRings + round - 1
-	candidates := r.nearestTripsRiders(trip, r.offerExclusions(trip.ID), maxRings)
+	candidates := r.nearestTripsRiders(ctx, trip, r.offerExclusions(trip.ID), maxRings)
 	if len(candidates) == 0 {
 		// Sin celda H3 el viaje nunca va a matchear: no tiene sentido esperar.
 		if trip.PickupH3Cell == nil {
@@ -789,7 +790,7 @@ func (r *appRidersManager) offerTripRound(trip tripsModels.Trip, round int) {
 		return
 	}
 
-	data, err := json.Marshal(tripBroadcast{Type: "trip_offer", Trip: r.tripOfferWithPassenger(context.Background(), &trip)})
+	data, err := json.Marshal(tripBroadcast{Type: "trip_offer", Trip: r.tripOfferWithPassenger(ctx, &trip)})
 	if err != nil {
 		slog.Error("error marshaling trip_offer broadcast", "error", err)
 		return
@@ -1004,65 +1005,30 @@ func (r *appRidersManager) endCompleting(tripID uuid.UUID) {
 	r.mu.Unlock()
 }
 
-func (r *appRidersManager) nearestTripsRiders(trip tripsModels.Trip, exclude map[uuid.UUID]struct{}, maxRings int) []riderModels.RiderLocationEntry {
-	if trip.PickupH3Cell == nil {
+// nearestTripsRiders devuelve los candidatos más cercanos al pickup. No escala
+// anillos: GEOSEARCH ya ordena por distancia, así que los N primeros dentro del
+// radio máximo son los mismos que encontraba el disco más chico con N dentro.
+func (r *appRidersManager) nearestTripsRiders(ctx context.Context, trip tripsModels.Trip, exclude map[uuid.UUID]struct{}, maxRings int) []riderModels.RiderLocationEntry {
+	// Sin celda H3 el viaje no entra al matching; offerTripRound lo da por perdido.
+	if trip.PickupH3Cell == nil || r.presence == nil {
 		return nil
 	}
 
-	byCell := make(map[string][]riderModels.RiderLocationEntry)
-	for _, e := range r.SnapshotTripsRiders() {
-		if _, skip := exclude[e.RiderID]; skip {
-			continue
-		}
-		byCell[e.Location.H3Cell] = append(byCell[e.Location.H3Cell], e)
+	entries, err := r.presence.SearchNearby(ctx, riderModels.PresenceQuery{
+		Latitude:        trip.PickupLatitude,
+		Longitude:       trip.PickupLongitude,
+		RadiusKm:        geo.RingsToKm(maxRings),
+		Mode:            riderModels.RiderModeTrips,
+		MaxAge:          riderModels.TripMatchRiderMaxAge,
+		Limit:           tripOfferCandidateCount,
+		ExcludeRiders:   exclude,
+		ExcludeVehicles: []string{riderModels.VehicleTypeBike},
+	})
+	if err != nil {
+		slog.Error("error buscando riders para el viaje", "tripID", trip.ID, "error", err)
+		return nil
 	}
-
-	for k := 0; k <= maxRings; k++ {
-		cells, err := geo.GridDisk(*trip.PickupH3Cell, k)
-		if err != nil {
-			slog.Error("error expanding H3 rings for trip matching", "tripID", trip.ID, "error", err)
-			return nil
-		}
-
-		matched := make([]riderModels.RiderLocationEntry, 0, tripOfferCandidateCount)
-		for _, cell := range cells {
-			matched = append(matched, byCell[cell]...)
-		}
-
-		if len(matched) < tripOfferCandidateCount && k < maxRings {
-			continue
-		}
-
-		return nearestByDistance(trip, matched)
-	}
-
-	return nil
-}
-
-func nearestByDistance(trip tripsModels.Trip, candidates []riderModels.RiderLocationEntry) []riderModels.RiderLocationEntry {
-	type scored struct {
-		entry riderModels.RiderLocationEntry
-		km    float64
-	}
-
-	ranked := make([]scored, len(candidates))
-	for i, e := range candidates {
-		ranked[i] = scored{
-			entry: e,
-			km:    geo.HaversineKm(trip.PickupLatitude, trip.PickupLongitude, e.Location.Latitude, e.Location.Longitude),
-		}
-	}
-	sort.Slice(ranked, func(i, j int) bool { return ranked[i].km < ranked[j].km })
-
-	if len(ranked) > tripOfferCandidateCount {
-		ranked = ranked[:tripOfferCandidateCount]
-	}
-
-	out := make([]riderModels.RiderLocationEntry, len(ranked))
-	for i, s := range ranked {
-		out[i] = s.entry
-	}
-	return out
+	return entries
 }
 
 func (r *appRidersManager) AcceptTrip(ctx context.Context, riderID, tripID uuid.UUID, conn ridersPorts.RiderConn) error {

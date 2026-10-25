@@ -36,7 +36,7 @@ func TestNotifyTripCancelled_AssignedRiderStopsLocationRelay(t *testing.T) {
 			tripsRepo := mockstrips.NewTripsRepo(t)
 			tripEarnings := mocksriders.NewTripEarningRecorder(t)
 			customer := &recordingCustomer{}
-			svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, customer, nil, nil, nil, nil)
+			svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, customer, nil, nil, nil, newPresenceStore(t))
 
 			repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
 			repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound)

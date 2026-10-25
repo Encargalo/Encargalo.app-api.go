@@ -135,7 +135,7 @@ func (r *riderPresenceRepo) SearchNearby(ctx context.Context, query models.Prese
 		if slices.Contains(query.ExcludeVehicles, presence.Vehicle) {
 			continue
 		}
-		if slices.Contains(query.ExcludeRiders, presence.RiderID) {
+		if _, skip := query.ExcludeRiders[presence.RiderID]; skip {
 			continue
 		}
 		out = append(out, models.RiderLocationEntry{RiderID: presence.RiderID, Location: presence.Location})

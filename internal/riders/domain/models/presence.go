@@ -24,8 +24,9 @@ type PresenceQuery struct {
 	Mode      RiderMode
 	MaxAge    time.Duration
 	// Limit acota el resultado ya ordenado por distancia; 0 es sin tope.
-	Limit           int
-	ExcludeRiders   []uuid.UUID
+	Limit int
+	// ExcludeRiders es un set porque el matching ya arma uno (offerExclusions).
+	ExcludeRiders   map[uuid.UUID]struct{}
 	ExcludeVehicles []string
 }
 
