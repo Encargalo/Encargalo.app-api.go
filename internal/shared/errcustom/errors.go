@@ -59,6 +59,7 @@ var (
 	ErrAlreadyRider                = errors.New("la cuenta ya es rider")
 	ErrVehicleCannotCarryOrder     = errors.New("el vehículo del rider no puede llevar este pedido")
 	ErrVehicleCannotCarryTrip      = errors.New("el vehículo del rider no puede llevar pasajeros")
+	ErrTripServiceUnavailable      = errors.New("el servicio solicitado no está disponible")
 	ErrInvalidDateRange            = errors.New("rango de fechas inválido")
 	ErrUnknownETLEntity            = errors.New("entidad ETL desconocida")
 	ErrTurboOutOfCoverage          = errors.New("la dirección está fuera de la cobertura Turbo (2 km)")

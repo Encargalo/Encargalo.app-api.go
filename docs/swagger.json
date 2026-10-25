@@ -6740,6 +6740,37 @@
                 }
             }
         },
+        "/trips/services": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Vehículos que el cliente puede elegir al cotizar. `available` en false deja el servicio visible pero no pedible: cotizar con él responde 422. Hoy solo la moto está disponible; el carro aparece para que la app lo pinte deshabilitado, sin tener que cambiar el contrato cuando se habilite. El `type` es el valor que se manda en `vehicle_type` al cotizar.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Trips"
+                ],
+                "summary": "Catálogo de servicios de viaje",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.TripServicesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/trips/{id}": {
             "get": {
                 "security": [
@@ -11189,6 +11220,15 @@
                 "pickup_longitude": {
                     "type": "number",
                     "example": -66.9036
+                },
+                "vehicle_type": {
+                    "description": "VehicleType es opcional: sin él se cotiza moto, que es lo que manda la app actual.",
+                    "type": "string",
+                    "enum": [
+                        "moto",
+                        "carro"
+                    ],
+                    "example": "moto"
                 }
             }
         },
@@ -11222,6 +11262,10 @@
                     "type": "number"
                 },
                 "quote_id": {
+                    "type": "string"
+                },
+                "vehicle_type": {
+                    "description": "VehicleType es el servicio que quedó congelado en la cotización.",
                     "type": "string"
                 }
             }
@@ -11430,6 +11474,38 @@
                 },
                 "status": {
                     "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_trips_domain_dtos.TripServiceResponse": {
+            "type": "object",
+            "properties": {
+                "available": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "capacity": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Moto"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "moto"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_trips_domain_dtos.TripServicesResponse": {
+            "type": "object",
+            "properties": {
+                "services": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.TripServiceResponse"
+                    }
                 }
             }
         },

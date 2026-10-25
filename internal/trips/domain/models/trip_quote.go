@@ -27,7 +27,9 @@ type TripQuote struct {
 	FareBs      float64
 	BcvRate     float64
 	// FareBand es el tramo horario que produjo FareUSD, congelado junto con él.
-	FareBand  string
-	CreatedAt time.Time
-	ExpiresAt time.Time
+	FareBand string
+	// VehicleType es el servicio elegido; el viaje lo hereda de acá, no del request.
+	VehicleType string
+	CreatedAt   time.Time
+	ExpiresAt   time.Time
 }
