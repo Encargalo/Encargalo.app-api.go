@@ -3,6 +3,8 @@
 package mocks
 
 import (
+	context "context"
+
 	dtos "Encargalo.app-api.go/internal/trips/domain/dtos"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -12,9 +14,9 @@ type NearbyRidersLookup struct {
 	mock.Mock
 }
 
-// NearbyRiders provides a mock function with given fields: lat, lng
-func (_m *NearbyRidersLookup) NearbyRiders(lat float64, lng float64) ([]dtos.NearbyRider, error) {
-	ret := _m.Called(lat, lng)
+// NearbyRiders provides a mock function with given fields: ctx, lat, lng
+func (_m *NearbyRidersLookup) NearbyRiders(ctx context.Context, lat float64, lng float64) ([]dtos.NearbyRider, error) {
+	ret := _m.Called(ctx, lat, lng)
 
 	if len(ret) == 0 {
 		panic("no return value specified for NearbyRiders")
@@ -22,19 +24,19 @@ func (_m *NearbyRidersLookup) NearbyRiders(lat float64, lng float64) ([]dtos.Nea
 
 	var r0 []dtos.NearbyRider
 	var r1 error
-	if rf, ok := ret.Get(0).(func(float64, float64) ([]dtos.NearbyRider, error)); ok {
-		return rf(lat, lng)
+	if rf, ok := ret.Get(0).(func(context.Context, float64, float64) ([]dtos.NearbyRider, error)); ok {
+		return rf(ctx, lat, lng)
 	}
-	if rf, ok := ret.Get(0).(func(float64, float64) []dtos.NearbyRider); ok {
-		r0 = rf(lat, lng)
+	if rf, ok := ret.Get(0).(func(context.Context, float64, float64) []dtos.NearbyRider); ok {
+		r0 = rf(ctx, lat, lng)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]dtos.NearbyRider)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(float64, float64) error); ok {
-		r1 = rf(lat, lng)
+	if rf, ok := ret.Get(1).(func(context.Context, float64, float64) error); ok {
+		r1 = rf(ctx, lat, lng)
 	} else {
 		r1 = ret.Error(1)
 	}

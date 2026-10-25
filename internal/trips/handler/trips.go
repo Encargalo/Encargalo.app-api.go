@@ -120,7 +120,7 @@ func (h *tripsHandler) NearbyRiders(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "coordenadas inválidas")
 	}
 
-	resp, err := h.svc.NearbyRiders(lat, lng)
+	resp, err := h.svc.NearbyRiders(c.Request().Context(), lat, lng)
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}

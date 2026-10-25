@@ -43,7 +43,7 @@ func TestEstimateFare_DropoffOutsideVenezuela(t *testing.T) {
 func TestNearbyRiders_OutsideVenezuela(t *testing.T) {
 	svc, _, _, _, _ := newTripsApp(t)
 
-	_, err := svc.NearbyRiders(outsideServiceAreaLat, outsideServiceAreaLng)
+	_, err := svc.NearbyRiders(context.Background(), outsideServiceAreaLat, outsideServiceAreaLng)
 
 	require.ErrorIs(t, err, errcustom.ErrInvalidCoordinates)
 }

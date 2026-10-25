@@ -128,9 +128,9 @@ func (_m *TripsApp) GetTripHistory(ctx context.Context, customerID uuid.UUID) (d
 	return r0, r1
 }
 
-// NearbyRiders provides a mock function with given fields: lat, lng
-func (_m *TripsApp) NearbyRiders(lat float64, lng float64) (dtos.NearbyRidersResponse, error) {
-	ret := _m.Called(lat, lng)
+// NearbyRiders provides a mock function with given fields: ctx, lat, lng
+func (_m *TripsApp) NearbyRiders(ctx context.Context, lat float64, lng float64) (dtos.NearbyRidersResponse, error) {
+	ret := _m.Called(ctx, lat, lng)
 
 	if len(ret) == 0 {
 		panic("no return value specified for NearbyRiders")
@@ -138,17 +138,17 @@ func (_m *TripsApp) NearbyRiders(lat float64, lng float64) (dtos.NearbyRidersRes
 
 	var r0 dtos.NearbyRidersResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(float64, float64) (dtos.NearbyRidersResponse, error)); ok {
-		return rf(lat, lng)
+	if rf, ok := ret.Get(0).(func(context.Context, float64, float64) (dtos.NearbyRidersResponse, error)); ok {
+		return rf(ctx, lat, lng)
 	}
-	if rf, ok := ret.Get(0).(func(float64, float64) dtos.NearbyRidersResponse); ok {
-		r0 = rf(lat, lng)
+	if rf, ok := ret.Get(0).(func(context.Context, float64, float64) dtos.NearbyRidersResponse); ok {
+		r0 = rf(ctx, lat, lng)
 	} else {
 		r0 = ret.Get(0).(dtos.NearbyRidersResponse)
 	}
 
-	if rf, ok := ret.Get(1).(func(float64, float64) error); ok {
-		r1 = rf(lat, lng)
+	if rf, ok := ret.Get(1).(func(context.Context, float64, float64) error); ok {
+		r1 = rf(ctx, lat, lng)
 	} else {
 		r1 = ret.Error(1)
 	}

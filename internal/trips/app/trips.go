@@ -545,7 +545,7 @@ func (a *tripsApp) toResponse(ctx context.Context, trip *models.Trip, rate float
 	return resp, nil
 }
 
-func (a *tripsApp) NearbyRiders(lat, lng float64) (dtos.NearbyRidersResponse, error) {
+func (a *tripsApp) NearbyRiders(ctx context.Context, lat, lng float64) (dtos.NearbyRidersResponse, error) {
 	if !geo.InVenezuela(lat, lng) {
 		return dtos.NearbyRidersResponse{}, errcustom.ErrInvalidCoordinates
 	}
@@ -553,7 +553,7 @@ func (a *tripsApp) NearbyRiders(lat, lng float64) (dtos.NearbyRidersResponse, er
 	if a.nearby == nil {
 		return empty, nil
 	}
-	riders, err := a.nearby.NearbyRiders(lat, lng)
+	riders, err := a.nearby.NearbyRiders(ctx, lat, lng)
 	if err != nil {
 		return dtos.NearbyRidersResponse{}, err
 	}
