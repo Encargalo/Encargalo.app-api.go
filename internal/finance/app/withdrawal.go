@@ -25,8 +25,8 @@ func NewWithdrawalApp(repo ports.WithdrawalRepo, bcv bcvPorts.BcvApp, uploader u
 	return &withdrawalApp{repo: repo, bcv: bcv, uploader: uploader}
 }
 
-func (a *withdrawalApp) List(ctx context.Context, entityType string, statuses []financeModels.WithdrawalStatus) (dtos.WithdrawalsResponse, error) {
-	rows, err := a.repo.List(ctx, entityType, statuses)
+func (a *withdrawalApp) List(ctx context.Context, entityType string, statuses []financeModels.WithdrawalStatus, page, limit int) (dtos.WithdrawalsResponse, error) {
+	rows, total, err := a.repo.List(ctx, entityType, statuses, page, limit)
 	if err != nil {
 		return dtos.WithdrawalsResponse{}, err
 	}
@@ -37,7 +37,7 @@ func (a *withdrawalApp) List(ctx context.Context, entityType string, statuses []
 		items = append(items, toWithdrawalItem(row, entityType, spotRate))
 	}
 
-	return dtos.WithdrawalsResponse{Items: items, Total: len(items)}, nil
+	return dtos.WithdrawalsResponse{Items: items, Total: total, Page: page, Limit: limit}, nil
 }
 
 func (a *withdrawalApp) Claim(ctx context.Context, requestID, staffID uuid.UUID) (dtos.ClaimResponse, error) {

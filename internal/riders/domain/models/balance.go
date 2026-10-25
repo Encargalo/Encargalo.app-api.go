@@ -15,7 +15,6 @@ const (
 	MovementTypeRideCash MovementType = "ride_cash"
 	MovementTypeTripBank MovementType = "trip_bank"
 	MovementTypeTripCash MovementType = "trip_cash"
-	MovementTypeWithdraw MovementType = "withdrawal"
 
 	// PaymentMethodEfectivo es el method_payment que cobra el rider en la entrega.
 	PaymentMethodEfectivo = "Efectivo"
@@ -31,9 +30,8 @@ const (
 	// unidad estable de referencia. El mínimo real en Bs se recalcula en cada
 	// consulta con la tasa BCV vigente (ver riders/app/finance.go), para que
 	// el poder adquisitivo del piso no se erosione con la tasa.
-	WithdrawalMinUSD   float64 = 3.0
-	WithdrawalCooldown         = 24 * time.Hour
-	RiderShare         float64 = 0.90
+	WithdrawalMinUSD float64 = 3.0
+	RiderShare       float64 = 0.90
 
 	// CurrencyVES es la moneda nativa del balance de riders: cada movimiento
 	// se registra ya convertido a bolívares con la tasa BCV vigente al

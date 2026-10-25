@@ -28,7 +28,7 @@ func TestListWithdrawals_ExposesRequestedAndPayableSeparately(t *testing.T) {
 
 	sur := "Pérez"
 	phone := "04121234567"
-	repo.On("List", mock.Anything, financeModels.EntityTypeRider, mock.Anything).Return([]financeModels.WithdrawalListRow{
+	repo.On("List", mock.Anything, financeModels.EntityTypeRider, mock.Anything, 1, 20).Return([]financeModels.WithdrawalListRow{
 		{
 			WithdrawalRequest: financeModels.WithdrawalRequest{
 				ID:        uuid.New(),
@@ -43,10 +43,10 @@ func TestListWithdrawals_ExposesRequestedAndPayableSeparately(t *testing.T) {
 			SurName:          &sur,
 			AvailableBalance: -728,
 		},
-	}, nil)
+	}, 1, nil)
 	bcv.On("GetRate", mock.Anything).Return(&bcvmodels.ExchangeRate{Rate: 40}, nil)
 
-	resp, err := svc.List(context.Background(), financeModels.EntityTypeRider, nil)
+	resp, err := svc.List(context.Background(), financeModels.EntityTypeRider, nil, 1, 20)
 
 	require.NoError(t, err)
 	require.Equal(t, 1, resp.Total)
@@ -62,7 +62,7 @@ func TestListWithdrawals_MarksFrozenPayableAfterClaim(t *testing.T) {
 	svc := app.NewWithdrawalApp(repo, bcv, nil)
 
 	frozen := 72.0
-	repo.On("List", mock.Anything, financeModels.EntityTypeRider, mock.Anything).Return([]financeModels.WithdrawalListRow{
+	repo.On("List", mock.Anything, financeModels.EntityTypeRider, mock.Anything, 1, 20).Return([]financeModels.WithdrawalListRow{
 		{
 			WithdrawalRequest: financeModels.WithdrawalRequest{
 				ID: uuid.New(), EntityID: uuid.New(), Amount: 800,
@@ -72,10 +72,10 @@ func TestListWithdrawals_MarksFrozenPayableAfterClaim(t *testing.T) {
 			Name:             "Ana",
 			AvailableBalance: -728,
 		},
-	}, nil)
+	}, 1, nil)
 	bcv.On("GetRate", mock.Anything).Return(&bcvmodels.ExchangeRate{Rate: 40}, nil)
 
-	resp, err := svc.List(context.Background(), financeModels.EntityTypeRider, nil)
+	resp, err := svc.List(context.Background(), financeModels.EntityTypeRider, nil, 1, 20)
 
 	require.NoError(t, err)
 	assert.Equal(t, 72.0, resp.Items[0].PayableBs)

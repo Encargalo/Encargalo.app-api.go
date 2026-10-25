@@ -281,7 +281,8 @@ func (r *appRidersManager) savePresence(ctx context.Context, riderID uuid.UUID, 
 		RiderID:  riderID,
 		Location: location,
 		Mode:     mode,
-		Vehicle:  vehicle,
+		// Canónico: el filtro del adapter compara exacto y el perfil trae "Bici" tal cual lo escribió el staff.
+		Vehicle: riderModels.NormalizeVehicleType(vehicle),
 	}
 	if err := r.presence.SaveLocation(ctx, presence); err != nil {
 		slog.Error("error publicando la presencia del rider", "riderID", riderID, "error", err)
@@ -421,7 +422,8 @@ func isTerminalOrderStatus(status string) bool {
 func (r *appRidersManager) offerOpenTripsToRider(ctx context.Context, riderID uuid.UUID, cell string) {
 	r.mu.RLock()
 	conn, connected := r.availableRiders[riderID]
-	if !connected || len(r.tripOfferTrip) == 0 || r.riderBusyLocked(riderID) {
+	// La bici no lleva pasajeros: tampoco por este camino, que corre en cada cambio de celda.
+	if !connected || riderModels.IsBike(r.riderVehicle[riderID]) || len(r.tripOfferTrip) == 0 || r.riderBusyLocked(riderID) {
 		r.mu.RUnlock()
 		return
 	}
@@ -663,6 +665,19 @@ func (r *appRidersManager) ensureVehicleCanCarry(ctx context.Context, riderID uu
 		return nil
 	}
 	return errcustom.ErrVehicleCannotCarryOrder
+}
+
+// ensureVehicleCanCarryTrip corta el viaje de pasajeros que la bici no puede llevar.
+func (r *appRidersManager) ensureVehicleCanCarryTrip(riderID uuid.UUID) error {
+	r.mu.RLock()
+	vehicle := r.riderVehicle[riderID]
+	r.mu.RUnlock()
+
+	// Un vehículo sin cargar no bloquea: mismo criterio fail-open que los pedidos.
+	if !riderModels.IsBike(vehicle) {
+		return nil
+	}
+	return errcustom.ErrVehicleCannotCarryTrip
 }
 
 // shopForOrder fetches the shop's public info (name, logo, address, etc.) to
@@ -1040,6 +1055,10 @@ func (r *appRidersManager) AcceptTrip(ctx context.Context, riderID, tripID uuid.
 	}
 	if !r.wasOfferedTrip(tripID, riderID) {
 		return errcustom.ErrInvalidTransition
+	}
+	// Filtrar las ofertas es UX; esto es la regla, como ensureVehicleCanCarry en los pedidos.
+	if err := r.ensureVehicleCanCarryTrip(riderID); err != nil {
+		return err
 	}
 	if !r.beginAccepting(riderID) {
 		return errcustom.ErrRiderBusy

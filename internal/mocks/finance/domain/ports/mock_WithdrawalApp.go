@@ -74,9 +74,9 @@ func (_m *WithdrawalApp) Complete(ctx context.Context, id uuid.UUID, staffID uui
 	return r0, r1
 }
 
-// List provides a mock function with given fields: ctx, entityType, statuses
-func (_m *WithdrawalApp) List(ctx context.Context, entityType string, statuses []models.WithdrawalStatus) (dtos.WithdrawalsResponse, error) {
-	ret := _m.Called(ctx, entityType, statuses)
+// List provides a mock function with given fields: ctx, entityType, statuses, page, limit
+func (_m *WithdrawalApp) List(ctx context.Context, entityType string, statuses []models.WithdrawalStatus, page int, limit int) (dtos.WithdrawalsResponse, error) {
+	ret := _m.Called(ctx, entityType, statuses, page, limit)
 
 	if len(ret) == 0 {
 		panic("no return value specified for List")
@@ -84,17 +84,17 @@ func (_m *WithdrawalApp) List(ctx context.Context, entityType string, statuses [
 
 	var r0 dtos.WithdrawalsResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, []models.WithdrawalStatus) (dtos.WithdrawalsResponse, error)); ok {
-		return rf(ctx, entityType, statuses)
+	if rf, ok := ret.Get(0).(func(context.Context, string, []models.WithdrawalStatus, int, int) (dtos.WithdrawalsResponse, error)); ok {
+		return rf(ctx, entityType, statuses, page, limit)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, []models.WithdrawalStatus) dtos.WithdrawalsResponse); ok {
-		r0 = rf(ctx, entityType, statuses)
+	if rf, ok := ret.Get(0).(func(context.Context, string, []models.WithdrawalStatus, int, int) dtos.WithdrawalsResponse); ok {
+		r0 = rf(ctx, entityType, statuses, page, limit)
 	} else {
 		r0 = ret.Get(0).(dtos.WithdrawalsResponse)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, []models.WithdrawalStatus) error); ok {
-		r1 = rf(ctx, entityType, statuses)
+	if rf, ok := ret.Get(1).(func(context.Context, string, []models.WithdrawalStatus, int, int) error); ok {
+		r1 = rf(ctx, entityType, statuses, page, limit)
 	} else {
 		r1 = ret.Error(1)
 	}

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 
 	authModels "Encargalo.app-api.go/internal/auth/domain/models"
 	financedtos "Encargalo.app-api.go/internal/finance/domain/dtos"
@@ -31,10 +32,12 @@ func NewStaffWithdrawalHandler(svc financePorts.WithdrawalApp) StaffWithdrawalHa
 // List godoc
 //
 // @Summary      Solicitudes de retiro de riders (staff)
-// @Description  Lista las solicitudes de retiro. Sin parámetro status devuelve las activas (pending y processing), que son las que requieren acción. Cada ítem trae amount_bs (lo solicitado) y payable_bs (lo que hay que transferir hoy): difieren cuando el rider cobró efectivo después de pedir el retiro, y el que manda es payable_bs. payable_frozen indica si ya quedó congelado por un reclamo.
+// @Description  Lista las solicitudes de retiro. Sin parámetro status devuelve las activas (pending y processing), que son las que requieren acción. Cada ítem trae amount_bs (lo solicitado) y payable_bs (lo que hay que transferir hoy): difieren cuando el rider cobró efectivo después de pedir el retiro, y el que manda es payable_bs. payable_frozen indica si ya quedó congelado por un reclamo. El listado es paginado: total es el total que matchea el filtro, no el tamaño de la página.
 // @Tags         Riders Staff Finance
 // @Produce      json
 // @Param        status  query  string  false  "Filtro por estado"  Enums(pending, processing, completed, rejected)
+// @Param        page    query  int     false  "Página (default 1)"
+// @Param        limit   query  int     false  "Límite por página, máx 50 (default 20)"
 // @Security     SessionCookie
 // @Success      200  {object}  financedtos.WithdrawalsResponse
 // @Failure      401  {string}  string  "No autorizado"
@@ -46,7 +49,16 @@ func (h *staffWithdrawalHandler) List(c echo.Context) error {
 		return err
 	}
 
-	resp, err := h.svc.List(c.Request().Context(), financeModels.EntityTypeRider, statuses)
+	page, _ := strconv.Atoi(c.QueryParam("page"))
+	if page < 1 {
+		page = 1
+	}
+	limit, _ := strconv.Atoi(c.QueryParam("limit"))
+	if limit < 1 {
+		limit = 20
+	}
+
+	resp, err := h.svc.List(c.Request().Context(), financeModels.EntityTypeRider, statuses, page, limit)
 	if err != nil {
 		return errcustom.ToHTTPError(err)
 	}

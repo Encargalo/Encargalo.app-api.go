@@ -23,6 +23,9 @@ const pgUniqueViolation = "23505"
 // pending o processing por entidad.
 const activeWithdrawalConstraint = "uq_withdrawal_requests_entity_active"
 
+// withdrawalListMaxLimit es el techo de página del listado del CRM.
+const withdrawalListMaxLimit = 50
+
 type withdrawalRepo struct {
 	db *bun.DB
 }
@@ -158,9 +161,30 @@ func (r *withdrawalRepo) LastCompletedAt(ctx context.Context, entityID uuid.UUID
 	return req.CompletedAt, nil
 }
 
-func (r *withdrawalRepo) List(ctx context.Context, entityType string, statuses []models.WithdrawalStatus) ([]models.WithdrawalListRow, error) {
+// List pagina porque los estados cerrados (completed, rejected) crecen una fila
+// por retiro y sin techo: el listado activo es corto, el histórico no.
+func (r *withdrawalRepo) List(ctx context.Context, entityType string, statuses []models.WithdrawalStatus, page, limit int) ([]models.WithdrawalListRow, int, error) {
+	if limit > withdrawalListMaxLimit {
+		limit = withdrawalListMaxLimit
+	}
+	offset := (page - 1) * limit
+
+	filter := func(q *bun.SelectQuery) *bun.SelectQuery {
+		q = q.Where("w.entity_type = ?", entityType)
+		if len(statuses) > 0 {
+			q = q.Where("w.status IN (?)", bun.In(statuses))
+		}
+		return q
+	}
+
+	total, err := filter(r.db.NewSelect().TableExpr("finance.withdrawal_requests AS w")).Count(ctx)
+	if err != nil {
+		slog.Error("withdrawal List count failed", "entityType", entityType, "error", err)
+		return nil, 0, errcustom.ErrUnexpectedError
+	}
+
 	var rows []models.WithdrawalListRow
-	q := r.db.NewSelect().
+	q := filter(r.db.NewSelect().
 		TableExpr("finance.withdrawal_requests AS w").
 		ColumnExpr("w.*").
 		ColumnExpr("a.name").
@@ -168,19 +192,16 @@ func (r *withdrawalRepo) List(ctx context.Context, entityType string, statuses [
 		ColumnExpr("a.phone").
 		ColumnExpr("COALESCE(b.amount, 0) AS available_balance").
 		Join("JOIN users.accounts AS a ON a.id = w.entity_id").
-		Join("LEFT JOIN finance.balances AS b ON b.entity_id = w.entity_id AND b.entity_type = w.entity_type").
-		Where("w.entity_type = ?", entityType).
-		OrderExpr("w.created_at DESC")
-
-	if len(statuses) > 0 {
-		q = q.Where("w.status IN (?)", bun.In(statuses))
-	}
+		Join("LEFT JOIN finance.balances AS b ON b.entity_id = w.entity_id AND b.entity_type = w.entity_type")).
+		OrderExpr("w.created_at DESC").
+		Limit(limit).
+		Offset(offset)
 
 	if err := q.Scan(ctx, &rows); err != nil {
 		slog.Error("withdrawal List failed", "entityType", entityType, "error", err)
-		return nil, errcustom.ErrUnexpectedError
+		return nil, 0, errcustom.ErrUnexpectedError
 	}
-	return rows, nil
+	return rows, total, nil
 }
 
 // Claim congela el neto pagable. Si ese neto no es positivo, la solicitud se
@@ -188,6 +209,7 @@ func (r *withdrawalRepo) List(ctx context.Context, entityType string, statuses [
 // en el balance y el cooldown no se activa, porque no se le pagó nada.
 func (r *withdrawalRepo) Claim(ctx context.Context, requestID, staffID uuid.UUID) (models.WithdrawalRequest, error) {
 	var out models.WithdrawalRequest
+	var voided bool
 
 	err := r.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 		req, err := lockRequest(ctx, tx, requestID)
@@ -208,10 +230,13 @@ func (r *withdrawalRepo) Claim(ctx context.Context, requestID, staffID uuid.UUID
 
 		if payable <= 0 {
 			reason := "anulada automáticamente: el efectivo cobrado por el rider consumió el monto del retiro"
-			if err = releaseReservation(ctx, tx, req, available, &staffID, &reason, now); err != nil {
+			if err = releaseReservation(ctx, tx, &req, available, &staffID, &reason, now); err != nil {
 				return err
 			}
-			return errcustom.ErrWithdrawalNothingPayable
+			// Devolver el error acá haría rollback del anulado: bun revierte la tx
+			// con cualquier error del callback. El sentinel viaja después del commit.
+			voided = true
+			return nil
 		}
 
 		req.Status = models.WithdrawalProcessing
@@ -237,6 +262,9 @@ func (r *withdrawalRepo) Claim(ctx context.Context, requestID, staffID uuid.UUID
 	})
 	if err != nil {
 		return models.WithdrawalRequest{}, err
+	}
+	if voided {
+		return models.WithdrawalRequest{}, errcustom.ErrWithdrawalNothingPayable
 	}
 
 	return out, nil
@@ -333,11 +361,10 @@ func (r *withdrawalRepo) Reject(ctx context.Context, requestID, staffID uuid.UUI
 			return err
 		}
 
-		if err = releaseReservation(ctx, tx, req, available, &staffID, &reason, time.Now()); err != nil {
+		if err = releaseReservation(ctx, tx, &req, available, &staffID, &reason, time.Now()); err != nil {
 			return err
 		}
 
-		req.Status = models.WithdrawalRejected
 		out = req
 		return nil
 	})
@@ -351,14 +378,14 @@ func (r *withdrawalRepo) Reject(ctx context.Context, requestID, staffID uuid.UUI
 // releaseReservation cierra la solicitud como rechazada y devuelve al balance
 // todo lo retenido. La fila de reserva queda en withdrawal_restore con monto 0:
 // el retiro no movió plata.
-func releaseReservation(ctx context.Context, tx bun.Tx, req models.WithdrawalRequest, available float64, staffID *uuid.UUID, reason *string, now time.Time) error {
+func releaseReservation(ctx context.Context, tx bun.Tx, req *models.WithdrawalRequest, available float64, staffID *uuid.UUID, reason *string, now time.Time) error {
 	req.Status = models.WithdrawalRejected
 	req.StaffID = staffID
 	req.RejectionReason = reason
 	req.ResolvedAt = &now
 
 	if _, err := tx.NewUpdate().
-		Model(&req).
+		Model(req).
 		Column("status", "staff_id", "rejection_reason", "resolved_at").
 		WherePK().
 		Exec(ctx); err != nil {
