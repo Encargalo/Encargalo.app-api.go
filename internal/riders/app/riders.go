@@ -80,6 +80,7 @@ type appRidersManager struct {
 	balance         paymentsPorts.CustomerBalanceCreditor
 	passengers      ridersPorts.PassengerLookup
 	vehicles        ridersPorts.VehicleLookup
+	presence        ridersPorts.RiderPresenceStore
 	riderTrips      map[uuid.UUID]riderAssignment
 	orderNotifier   ridersPorts.OrderCustomerNotifier
 }
@@ -89,7 +90,7 @@ type riderAssignment struct {
 	customerID uuid.UUID
 }
 
-func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPorts.BcvApp, tripsRepo ridersPorts.TripsStore, tripEarnings ridersPorts.TripEarningRecorder, customers tripsPorts.CustomerTripNotifier, balance paymentsPorts.CustomerBalanceCreditor, passengers ridersPorts.PassengerLookup, vehicles ridersPorts.VehicleLookup) ridersPorts.RidersApp {
+func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPorts.BcvApp, tripsRepo ridersPorts.TripsStore, tripEarnings ridersPorts.TripEarningRecorder, customers tripsPorts.CustomerTripNotifier, balance paymentsPorts.CustomerBalanceCreditor, passengers ridersPorts.PassengerLookup, vehicles ridersPorts.VehicleLookup, presence ridersPorts.RiderPresenceStore) ridersPorts.RidersApp {
 	return &appRidersManager{
 		availableRiders:    make(map[uuid.UUID]ridersPorts.RiderConn),
 		assignedOrders:     make(map[uuid.UUID][]uuid.UUID),
@@ -116,6 +117,7 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 		balance:            balance,
 		passengers:         passengers,
 		vehicles:           vehicles,
+		presence:           presence,
 		riderTrips:         make(map[uuid.UUID]riderAssignment),
 	}
 }
@@ -203,6 +205,15 @@ func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn
 
 	vehicle := r.cacheRiderVehicle(ctx, riderID)
 
+	// Un rider que se reconecta puede venir en otro modo: su ubicación ya
+	// conocida tiene que quedar publicada en el índice del modo nuevo.
+	r.mu.RLock()
+	known, hadKnownLocation := r.riderLocation[riderID]
+	r.mu.RUnlock()
+	if hadKnownLocation {
+		r.savePresence(ctx, riderID, known, mode, vehicle)
+	}
+
 	activeOrders, err := r.repo.SearchActiveOrdersByRiderID(ctx, riderID)
 	if err != nil && !errors.Is(err, errcustom.ErrNotFound) {
 		return err
@@ -263,9 +274,42 @@ func (r *appRidersManager) cacheRiderVehicle(ctx context.Context, riderID uuid.U
 	return *profile.VehicleType
 }
 
+// savePresence publica la ubicación del rider fuera del proceso. Un fallo de
+// Redis no corta el flujo del socket: la memoria sigue siendo la fuente de verdad.
+func (r *appRidersManager) savePresence(ctx context.Context, riderID uuid.UUID, location riderModels.RiderLocation, mode riderModels.RiderMode, vehicle string) {
+	if r.presence == nil {
+		return
+	}
+	if mode != riderModels.RiderModeTrips {
+		mode = riderModels.RiderModeOrders
+	}
+	presence := riderModels.RiderPresence{
+		RiderID:  riderID,
+		Location: location,
+		Mode:     mode,
+		Vehicle:  vehicle,
+	}
+	if err := r.presence.SaveLocation(ctx, presence); err != nil {
+		slog.Error("error publicando la presencia del rider", "riderID", riderID, "error", err)
+	}
+}
+
+// removePresence corre con su propio contexto: cuando se llega acá el socket ya
+// se cerró y el contexto del request está cancelado.
+func (r *appRidersManager) removePresence(riderID uuid.UUID) {
+	if r.presence == nil {
+		return
+	}
+	if err := r.presence.Remove(context.Background(), riderID); err != nil {
+		slog.Error("error borrando la presencia del rider", "riderID", riderID, "error", err)
+	}
+}
+
 func (r *appRidersManager) Unregister(riderID uuid.UUID, conn ridersPorts.RiderConn) {
 	r.mu.Lock()
-	if stored, ok := r.availableRiders[riderID]; ok && stored == conn {
+	stored, ok := r.availableRiders[riderID]
+	disconnected := ok && stored == conn
+	if disconnected {
 		if loc, hasLoc := r.riderLocation[riderID]; hasLoc {
 			r.unindexCellLocked(riderID, loc.H3Cell)
 		}
@@ -275,6 +319,10 @@ func (r *appRidersManager) Unregister(riderID uuid.UUID, conn ridersPorts.RiderC
 		delete(r.riderVehicle, riderID)
 	}
 	r.mu.Unlock()
+
+	if disconnected {
+		r.removePresence(riderID)
+	}
 
 	conn.Close()
 }
@@ -290,22 +338,28 @@ func (r *appRidersManager) UpdateLocation(ctx context.Context, riderID uuid.UUID
 		return errcustom.ErrInvalidCoordinates
 	}
 
-	r.mu.Lock()
-	prev, hadLocation := r.riderLocation[riderID]
-	r.riderLocation[riderID] = riderModels.RiderLocation{
+	location := riderModels.RiderLocation{
 		Latitude:  lat,
 		Longitude: lng,
 		H3Cell:    cell,
 		UpdatedAt: time.Now(),
 	}
+
+	r.mu.Lock()
+	prev, hadLocation := r.riderLocation[riderID]
+	r.riderLocation[riderID] = location
 	prevCell := ""
 	if hadLocation {
 		prevCell = prev.H3Cell
 	}
-	inTripsMode := r.riderMode[riderID] == riderModels.RiderModeTrips
+	mode := r.riderMode[riderID]
+	vehicle := r.riderVehicle[riderID]
+	inTripsMode := mode == riderModels.RiderModeTrips
 	r.reindexRiderLocked(riderID, prevCell, cell, inTripsMode)
 	assignment, onTrip := r.riderTrips[riderID]
 	r.mu.Unlock()
+
+	r.savePresence(ctx, riderID, location, mode, vehicle)
 
 	if onTrip && r.customers != nil {
 		r.customers.NotifyRiderLocation(ctx, assignment.customerID, assignment.tripID, lat, lng)

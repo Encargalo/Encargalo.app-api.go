@@ -22,7 +22,7 @@ func newVehicleMgr(t *testing.T) (ridersPorts.RidersApp, *mocksriders.VehicleLoo
 	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound).Maybe()
 	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound).Maybe()
 	vehicles := mocksriders.NewVehicleLookup(t)
-	svc := app.New(repo, mocksriders.NewRidersStream(t), mockbcvports.NewBcvApp(t), mocksriders.NewTripsStore(t), mocksriders.NewTripEarningRecorder(t), nil, nil, nil, vehicles)
+	svc := app.New(repo, mocksriders.NewRidersStream(t), mockbcvports.NewBcvApp(t), mocksriders.NewTripsStore(t), mocksriders.NewTripEarningRecorder(t), nil, nil, nil, vehicles, nil)
 	return svc, vehicles
 }
 

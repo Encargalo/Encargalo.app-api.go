@@ -45,7 +45,7 @@ func ordersMgr(t *testing.T) (ridersPorts.RidersApp, *mocksriders.RidersRepo, *m
 	vehicles := mocksriders.NewVehicleLookup(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	bcv.On("GetRate", mock.Anything).Return(nil, errcustom.ErrBcvRateUnavailable).Maybe()
-	svc := app.New(repo, mocksriders.NewRidersStream(t), bcv, mocksriders.NewTripsStore(t), mocksriders.NewTripEarningRecorder(t), nil, nil, nil, vehicles)
+	svc := app.New(repo, mocksriders.NewRidersStream(t), bcv, mocksriders.NewTripsStore(t), mocksriders.NewTripEarningRecorder(t), nil, nil, nil, vehicles, nil)
 	return svc, repo, vehicles
 }
 

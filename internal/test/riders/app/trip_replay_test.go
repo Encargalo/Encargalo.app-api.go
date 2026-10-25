@@ -168,7 +168,7 @@ func TestSendActiveTrips_ResendsAssignedTripWithoutCodesAndRelinksLocation(t *te
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
 	customer := &recordingCustomer{}
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, customer, nil, nil, nil)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, customer, nil, nil, nil, nil)
 
 	riderID := uuid.New()
 	customerID := uuid.New()
@@ -214,7 +214,7 @@ func TestSendActiveTrips_NoActiveTripsSendsNothing(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, nil)
 
 	riderID := uuid.New()
 	tripsRepo.On("ListActiveTripsByRider", mock.Anything, riderID).Return([]tripsModels.Trip{}, nil)
@@ -232,7 +232,7 @@ func TestSendActiveTrips_PropagatesRepoError(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, nil)
 
 	riderID := uuid.New()
 	tripsRepo.On("ListActiveTripsByRider", mock.Anything, riderID).Return(nil, errcustom.ErrUnexpectedError)
@@ -248,7 +248,7 @@ func TestActiveTrips_ReturnsTripsWithBsFareAndNoCodes(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, nil)
 
 	riderID := uuid.New()
 	pickupCode, dropoffCode := "1234", "5678"
@@ -283,7 +283,7 @@ func TestActiveTrips_EmptyReturnsEmptyListWithoutQueryingBcv(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, nil)
 
 	riderID := uuid.New()
 	tripsRepo.On("ListActiveTripsByRider", mock.Anything, riderID).Return([]tripsModels.Trip{}, nil)
@@ -302,7 +302,7 @@ func TestActiveTrips_PropagatesRepoError(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, nil)
 
 	riderID := uuid.New()
 	tripsRepo.On("ListActiveTripsByRider", mock.Anything, riderID).Return(nil, errcustom.ErrUnexpectedError)

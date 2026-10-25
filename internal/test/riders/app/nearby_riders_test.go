@@ -28,7 +28,7 @@ func newNearbyMgr(t *testing.T) ridersPorts.RidersApp {
 	earnings := mocksriders.NewTripEarningRecorder(t)
 	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound).Maybe()
 	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound).Maybe()
-	return app.New(repo, stream, bcv, tripsRepo, earnings, nil, nil, nil, nil)
+	return app.New(repo, stream, bcv, tripsRepo, earnings, nil, nil, nil, nil, nil)
 }
 
 func asNearby(t *testing.T, svc ridersPorts.RidersApp) tripsPorts.NearbyRidersLookup {
