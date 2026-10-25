@@ -242,58 +242,34 @@ func TestAcceptOrder_OrderNotFound(t *testing.T) {
 	assert.ErrorIs(t, err, errcustom.ErrNotFound)
 }
 
-func TestUpdateLocation_SnapshotOnlyIncludesTripsMode(t *testing.T) {
-	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
-	bcv := mockbcvports.NewBcvApp(t)
-	tripsRepo := mockstrips.NewTripsRepo(t)
-	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t))
-
-	tripsRiderID, ordersRiderID := uuid.New(), uuid.New()
-	tripsConn, ordersConn := mocksriders.NewRiderConn(t), mocksriders.NewRiderConn(t)
+// Los dos umbrales son distintos a propósito: a los 60 segundos el rider ya no
+// sale en el mapa (45s) pero sigue siendo candidato para el matching (2min).
+func TestOfferTrip_ReachesRiderTooStaleForTheMap(t *testing.T) {
+	svc, tripsRepo, repo, store := newTripOfferSvcWithStore(t)
+	trip := samplePickupTrip(t)
+	t.Cleanup(func() { app.StopTripOfferTimerForTest(svc, trip.ID) })
 	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
 	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound)
 
-	require.NoError(t, svc.Register(context.Background(), tripsRiderID, tripsConn, riderModels.RiderModeTrips))
-	require.NoError(t, svc.Register(context.Background(), ordersRiderID, ordersConn, riderModels.RiderModeOrders))
+	offers, watch := countTripOffers(t)
+	riderID := uuid.New()
+	conn := mocksriders.NewRiderConn(t)
+	watch(riderID, conn)
+	require.NoError(t, svc.Register(context.Background(), riderID, conn, riderModels.RiderModeTrips))
+	require.NoError(t, svc.UpdateLocation(context.Background(), riderID, trip.PickupLatitude, trip.PickupLongitude))
+	ageStoredLocation(t, store, riderID, trip.PickupLatitude, trip.PickupLongitude, riderModels.NearbyRiderMaxAge+15*time.Second)
 
-	lat, lng := 10.4806, -66.9036
-	wantCell, err := geo.LatLngToCell(lat, lng, geo.DriverMatchResolution)
+	pins, err := asNearby(t, svc).NearbyRiders(context.Background(), trip.PickupLatitude, trip.PickupLongitude)
 	require.NoError(t, err)
+	require.Empty(t, pins, "el mapa descarta a los 45s")
 
-	require.NoError(t, svc.UpdateLocation(context.Background(), tripsRiderID, lat, lng))
-	require.NoError(t, svc.UpdateLocation(context.Background(), ordersRiderID, lat, lng))
+	searching := trip
+	searching.Status = tripsModels.TripStatusSearching
+	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&searching, nil).Maybe()
+	asMatcher(t, svc).OfferTrip(context.Background(), trip)
 
-	snapshot := svc.SnapshotTripsRiders()
-
-	require.Len(t, snapshot, 1)
-	assert.Equal(t, tripsRiderID, snapshot[0].RiderID)
-	assert.Equal(t, wantCell, snapshot[0].Location.H3Cell)
+	require.Equal(t, 1, offers[riderID], "el matching lo acepta hasta los 2min")
 }
-
-func TestSnapshotTripsRiders_ExcludesStaleLocations(t *testing.T) {
-	svc := newNearbyMgr(t)
-	lat, lng := 10.4806, -66.9036
-
-	freshID, _ := placeTripRider(t, svc, lat, lng)
-	staleID, _ := placeTripRider(t, svc, lat+0.001, lng)
-	app.AgeRiderLocationForTest(svc, staleID, riderModels.TripMatchRiderMaxAge+time.Second)
-
-	snapshot := svc.SnapshotTripsRiders()
-
-	require.Len(t, snapshot, 1)
-	assert.Equal(t, freshID, snapshot[0].RiderID)
-}
-
-func TestSnapshotTripsRiders_KeepsLocationsTooStaleForTheMap(t *testing.T) {
-	svc := newNearbyMgr(t)
-	riderID, _ := placeTripRider(t, svc, 10.4806, -66.9036)
-	app.AgeRiderLocationForTest(svc, riderID, riderModels.NearbyRiderMaxAge+time.Second)
-
-	require.Len(t, svc.SnapshotTripsRiders(), 1)
-}
-
 func TestBroadcastNewOrder_SkipsRidersInTripsMode(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
 	stream := mocksriders.NewRidersStream(t)
@@ -318,29 +294,6 @@ func TestBroadcastNewOrder_SkipsRidersInTripsMode(t *testing.T) {
 	broadcaster.BroadcastNewOrder(context.Background(), order)
 
 	tripsConn.AssertNotCalled(t, "Send", mock.Anything)
-}
-
-func TestUnregister_RemovesModeAndLocation(t *testing.T) {
-	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
-	bcv := mockbcvports.NewBcvApp(t)
-	tripsRepo := mockstrips.NewTripsRepo(t)
-	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t))
-
-	riderID := uuid.New()
-	conn := mocksriders.NewRiderConn(t)
-	conn.On("Close").Return()
-	repo.On("SearchActiveOrdersByRiderID", mock.Anything, riderID).Return(nil, errcustom.ErrNotFound)
-	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound)
-
-	require.NoError(t, svc.Register(context.Background(), riderID, conn, riderModels.RiderModeTrips))
-	require.NoError(t, svc.UpdateLocation(context.Background(), riderID, 10.48, -66.90))
-	require.Len(t, svc.SnapshotTripsRiders(), 1)
-
-	svc.Unregister(riderID, conn)
-
-	assert.Empty(t, svc.SnapshotTripsRiders())
 }
 
 func asMatcher(t *testing.T, svc ridersPorts.RidersApp) tripsPorts.TripRiderMatcher {
@@ -865,12 +818,19 @@ func messageType(t *testing.T, raw []byte) string {
 
 func newTripOfferSvc(t *testing.T) (ridersPorts.RidersApp, *mockstrips.TripsRepo, *mocksriders.RidersRepo) {
 	t.Helper()
+	svc, tripsRepo, repo, _ := newTripOfferSvcWithStore(t)
+	return svc, tripsRepo, repo
+}
+
+func newTripOfferSvcWithStore(t *testing.T) (ridersPorts.RidersApp, *mockstrips.TripsRepo, *mocksriders.RidersRepo, ridersPorts.RiderPresenceStore) {
+	t.Helper()
 	repo := mocksriders.NewRidersRepo(t)
 	stream := mocksriders.NewRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	return app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t)), tripsRepo, repo
+	store := newPresenceStore(t)
+	return app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, store), tripsRepo, repo, store
 }
 
 func countTripOffers(t *testing.T) (map[uuid.UUID]int, func(uuid.UUID, *mocksriders.RiderConn)) {
