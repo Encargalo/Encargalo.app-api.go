@@ -58,7 +58,6 @@ type appRidersManager struct {
 	riderMode          map[uuid.UUID]riderModels.RiderMode
 	riderLocation      map[uuid.UUID]riderModels.RiderLocation
 	riderVehicle       map[uuid.UUID]string
-	ridersByCell       map[string]map[uuid.UUID]struct{}
 	tripOffers         map[uuid.UUID]map[uuid.UUID]struct{}
 	tripAlreadyOffered map[uuid.UUID]map[uuid.UUID]struct{}
 	tripOfferRounds    map[uuid.UUID]int
@@ -98,7 +97,6 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 		riderMode:          make(map[uuid.UUID]riderModels.RiderMode),
 		riderLocation:      make(map[uuid.UUID]riderModels.RiderLocation),
 		riderVehicle:       make(map[uuid.UUID]string),
-		ridersByCell:       make(map[string]map[uuid.UUID]struct{}),
 		tripOffers:         make(map[uuid.UUID]map[uuid.UUID]struct{}),
 		tripAlreadyOffered: make(map[uuid.UUID]map[uuid.UUID]struct{}),
 		tripOfferRounds:    make(map[uuid.UUID]int),
@@ -198,9 +196,6 @@ func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn
 	r.mu.Lock()
 	r.availableRiders[riderID] = conn
 	r.riderMode[riderID] = mode
-	if loc, ok := r.riderLocation[riderID]; ok {
-		r.reindexRiderLocked(riderID, loc.H3Cell, loc.H3Cell, mode == riderModels.RiderModeTrips)
-	}
 	r.mu.Unlock()
 
 	vehicle := r.cacheRiderVehicle(ctx, riderID)
@@ -310,9 +305,6 @@ func (r *appRidersManager) Unregister(riderID uuid.UUID, conn ridersPorts.RiderC
 	stored, ok := r.availableRiders[riderID]
 	disconnected := ok && stored == conn
 	if disconnected {
-		if loc, hasLoc := r.riderLocation[riderID]; hasLoc {
-			r.unindexCellLocked(riderID, loc.H3Cell)
-		}
 		delete(r.availableRiders, riderID)
 		delete(r.riderMode, riderID)
 		delete(r.riderLocation, riderID)
@@ -348,14 +340,9 @@ func (r *appRidersManager) UpdateLocation(ctx context.Context, riderID uuid.UUID
 	r.mu.Lock()
 	prev, hadLocation := r.riderLocation[riderID]
 	r.riderLocation[riderID] = location
-	prevCell := ""
-	if hadLocation {
-		prevCell = prev.H3Cell
-	}
 	mode := r.riderMode[riderID]
 	vehicle := r.riderVehicle[riderID]
 	inTripsMode := mode == riderModels.RiderModeTrips
-	r.reindexRiderLocked(riderID, prevCell, cell, inTripsMode)
 	assignment, onTrip := r.riderTrips[riderID]
 	r.mu.Unlock()
 

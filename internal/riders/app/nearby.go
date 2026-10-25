@@ -61,41 +61,6 @@ func (r *appRidersManager) pinsForAvailable(entries []riderModels.RiderLocationE
 	return out
 }
 
-func (r *appRidersManager) reindexRiderLocked(riderID uuid.UUID, prevCell, cell string, inTrips bool) {
-	if prevCell != "" {
-		r.unindexCellLocked(riderID, prevCell)
-	}
-	if !inTrips {
-		if cell != "" && cell != prevCell {
-			r.unindexCellLocked(riderID, cell)
-		}
-		return
-	}
-	if cell == "" {
-		return
-	}
-	bucket := r.ridersByCell[cell]
-	if bucket == nil {
-		bucket = make(map[uuid.UUID]struct{})
-		r.ridersByCell[cell] = bucket
-	}
-	bucket[riderID] = struct{}{}
-}
-
-func (r *appRidersManager) unindexCellLocked(riderID uuid.UUID, cell string) {
-	if cell == "" || r.ridersByCell == nil {
-		return
-	}
-	bucket := r.ridersByCell[cell]
-	if bucket == nil {
-		return
-	}
-	delete(bucket, riderID)
-	if len(bucket) == 0 {
-		delete(r.ridersByCell, cell)
-	}
-}
-
 func roundMapCoord(v float64) float64 {
 	return math.Round(v*riderModels.NearbyCoordDecimals) / riderModels.NearbyCoordDecimals
 }
