@@ -186,6 +186,10 @@ definitions:
         items:
           $ref: '#/definitions/Encargalo_app-api_go_internal_finance_domain_dtos.WithdrawalItem'
         type: array
+      limit:
+        type: integer
+      page:
+        type: integer
       total:
         type: integer
     type: object
@@ -5366,7 +5370,8 @@ paths:
         ítem trae amount_bs (lo solicitado) y payable_bs (lo que hay que transferir
         hoy): difieren cuando el rider cobró efectivo después de pedir el retiro,
         y el que manda es payable_bs. payable_frozen indica si ya quedó congelado
-        por un reclamo.'
+        por un reclamo. El listado es paginado: total es el total que matchea el filtro,
+        no el tamaño de la página.'
       parameters:
       - description: Filtro por estado
         enum:
@@ -5377,6 +5382,14 @@ paths:
         in: query
         name: status
         type: string
+      - description: Página (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Límite por página, máx 50 (default 20)
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:

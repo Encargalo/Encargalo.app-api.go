@@ -48,7 +48,7 @@ func TestListWithdrawals_DefaultsToActiveStatuses(t *testing.T) {
 	h, svc := newStaffWithdrawalHandler(t)
 
 	svc.On("List", mock.Anything, financeModels.EntityTypeRider,
-		[]financeModels.WithdrawalStatus{financeModels.WithdrawalPending, financeModels.WithdrawalProcessing}).
+		[]financeModels.WithdrawalStatus{financeModels.WithdrawalPending, financeModels.WithdrawalProcessing}, 1, 20).
 		Return(financedtos.WithdrawalsResponse{Total: 0}, nil)
 
 	tc := buildhttptest.SetupControllerCase("/riders/staff/finance/withdrawals", http.MethodGet, nil)
@@ -63,7 +63,7 @@ func TestListWithdrawals_FiltersByStatus(t *testing.T) {
 	h, svc := newStaffWithdrawalHandler(t)
 
 	svc.On("List", mock.Anything, financeModels.EntityTypeRider,
-		[]financeModels.WithdrawalStatus{financeModels.WithdrawalCompleted}).
+		[]financeModels.WithdrawalStatus{financeModels.WithdrawalCompleted}, 1, 20).
 		Return(financedtos.WithdrawalsResponse{Total: 0}, nil)
 
 	tc := buildhttptest.SetupControllerCase("/riders/staff/finance/withdrawals", http.MethodGet, nil)

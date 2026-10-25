@@ -124,7 +124,7 @@ func (p *RiderProfile) Completion() RiderCompletion {
 	}
 
 	// Placa requerida salvo bici.
-	requiresPlate := !strSet(p.VehicleType) || !strings.EqualFold(strings.TrimSpace(*p.VehicleType), VehicleTypeBike)
+	requiresPlate := !strSet(p.VehicleType) || !IsBike(*p.VehicleType)
 	if requiresPlate {
 		if strSet(p.VehiclePlate) {
 			filled++

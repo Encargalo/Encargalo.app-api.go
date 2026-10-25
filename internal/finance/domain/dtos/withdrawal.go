@@ -31,9 +31,12 @@ type WithdrawalItem struct {
 	ResolvedAt      *string `json:"resolved_at,omitempty"`
 }
 
+// Total es el total que matchea el filtro, no el tamaño de la página.
 type WithdrawalsResponse struct {
 	Items []WithdrawalItem `json:"items"`
 	Total int              `json:"total"`
+	Page  int              `json:"page"`
+	Limit int              `json:"limit"`
 }
 
 // ClaimResponse devuelve el monto congelado: es el valor exacto que el
