@@ -1102,3 +1102,34 @@ func TestAdvanceTrip_WrongPickupCodeDoesNotStartTrip(t *testing.T) {
 
 	require.ErrorIs(t, err, errcustom.ErrInvalidCode)
 }
+
+// Tres presencias frescas en Redis sin socket, más cerca del pickup que el
+// rider conectado: es el estado de los primeros segundos tras un deploy, porque
+// la presencia sobrevive al reinicio y los riders todavía no reconectaron. Si
+// cuentan como candidatos le roban los tres cupos y nadie recibe la oferta.
+func TestOfferTrip_RidersWithoutConnectionDoNotTakeCandidateSlots(t *testing.T) {
+	svc, tripsRepo, repo, store := newTripOfferSvcWithStore(t)
+	trip := samplePickupTrip(t)
+	t.Cleanup(func() { app.StopTripOfferTimerForTest(svc, trip.ID) })
+	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
+	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound)
+
+	for range app.TripOfferCandidateCountForTest {
+		ageStoredLocation(t, store, uuid.New(), trip.PickupLatitude, trip.PickupLongitude, 0)
+	}
+
+	offers, watch := countTripOffers(t)
+	connected := uuid.New()
+	conn := mocksriders.NewRiderConn(t)
+	watch(connected, conn)
+	require.NoError(t, svc.Register(context.Background(), connected, conn, riderModels.RiderModeTrips))
+	require.NoError(t, svc.UpdateLocation(context.Background(), connected, trip.PickupLatitude+0.0005, trip.PickupLongitude))
+
+	searching := trip
+	searching.Status = tripsModels.TripStatusSearching
+	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&searching, nil).Maybe()
+
+	asMatcher(t, svc).OfferTrip(context.Background(), trip)
+
+	require.Equal(t, 1, offers[connected], "la oferta tiene que llegar al único rider conectado")
+}

@@ -998,7 +998,6 @@ func (r *appRidersManager) nearestTripsRiders(ctx context.Context, trip tripsMod
 		RadiusKm:        geo.RingsToKm(maxRings),
 		Mode:            riderModels.RiderModeTrips,
 		MaxAge:          riderModels.TripMatchRiderMaxAge,
-		Limit:           tripOfferCandidateCount,
 		ExcludeRiders:   exclude,
 		ExcludeVehicles: []string{riderModels.VehicleTypeBike},
 	})
@@ -1006,7 +1005,29 @@ func (r *appRidersManager) nearestTripsRiders(ctx context.Context, trip tripsMod
 		slog.Error("error buscando riders para el viaje", "tripID", trip.ID, "error", err)
 		return nil
 	}
-	return entries
+	return r.connectedCandidates(entries)
+}
+
+// connectedCandidates deja solo a los riders con socket en esta réplica y recién
+// ahí aplica el tope. La presencia en Redis sobrevive al reinicio del proceso
+// por su TTL, así que después de un deploy hay riders frescos que todavía no
+// reconectaron: tomarlos como candidatos quema un cupo y los marca como ya
+// ofertados sin que a nadie le llegue nada.
+func (r *appRidersManager) connectedCandidates(entries []riderModels.RiderLocationEntry) []riderModels.RiderLocationEntry {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	out := make([]riderModels.RiderLocationEntry, 0, tripOfferCandidateCount)
+	for _, entry := range entries {
+		if _, connected := r.availableRiders[entry.RiderID]; !connected {
+			continue
+		}
+		out = append(out, entry)
+		if len(out) == tripOfferCandidateCount {
+			return out
+		}
+	}
+	return out
 }
 
 func (r *appRidersManager) AcceptTrip(ctx context.Context, riderID, tripID uuid.UUID, conn ridersPorts.RiderConn) error {
@@ -1352,6 +1373,9 @@ func AdvanceTripOfferTimeout(svc ridersPorts.RidersApp, trip tripsModels.Trip) {
 // TripSearchMaxRingsForTest expone el tope de anillos de la primera ronda, para
 // que los tests ubiquen riders dentro o fuera del radio sin fijar el número.
 const TripSearchMaxRingsForTest = tripSearchMaxRings
+
+// TripOfferCandidateCountForTest expone cuántos candidatos entran por ronda.
+const TripOfferCandidateCountForTest = tripOfferCandidateCount
 
 // StopTripOfferTimerForTest detiene el timer de oferta para que no dispare
 // después de que el test ya terminó.
