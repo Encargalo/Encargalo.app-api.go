@@ -22,7 +22,7 @@ func newVehicleMgr(t *testing.T) (ridersPorts.RidersApp, *mocksriders.VehicleLoo
 	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound).Maybe()
 	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound).Maybe()
 	vehicles := mocksriders.NewVehicleLookup(t)
-	svc := app.New(repo, mocksriders.NewRidersStream(t), mockbcvports.NewBcvApp(t), mocksriders.NewTripsStore(t), mocksriders.NewTripEarningRecorder(t), nil, nil, nil, vehicles, nil)
+	svc := app.New(repo, mocksriders.NewRidersStream(t), mockbcvports.NewBcvApp(t), mocksriders.NewTripsStore(t), mocksriders.NewTripEarningRecorder(t), nil, nil, nil, vehicles, newPresenceStore(t))
 	return svc, vehicles
 }
 
@@ -123,4 +123,31 @@ func TestOfferTrip_BikeRiderDoesNotTakeACandidateSlot(t *testing.T) {
 		conn.AssertExpectations(t)
 	}
 	bikeConn.AssertNotCalled(t, "Send", mock.Anything)
+}
+
+// El mapa del cliente ahora filtra igual que el matching: antes una bici
+// aparecía como pin disponible aunque nunca pudiera aceptar un viaje.
+func TestNearbyRiders_ExcludesBikeRiders(t *testing.T) {
+	svc, vehicles := newVehicleMgr(t)
+	lat, lng := 10.4806, -66.9036
+
+	placeVehicleRider(t, svc, vehicles, new(riderModels.VehicleTypeMoto), lat, lng)
+	placeVehicleRider(t, svc, vehicles, new(riderModels.VehicleTypeBike), lat+0.0001, lng)
+
+	pins, err := asNearby(t, svc).NearbyRiders(context.Background(), lat, lng)
+
+	require.NoError(t, err)
+	require.Len(t, pins, 1)
+}
+
+// Mismo criterio que el matching: sin vehículo cargado el rider sigue elegible.
+func TestNearbyRiders_KeepsRiderWithoutVehicleLoaded(t *testing.T) {
+	svc, vehicles := newVehicleMgr(t)
+
+	placeVehicleRider(t, svc, vehicles, nil, 10.4806, -66.9036)
+
+	pins, err := asNearby(t, svc).NearbyRiders(context.Background(), 10.4806, -66.9036)
+
+	require.NoError(t, err)
+	require.Len(t, pins, 1)
 }

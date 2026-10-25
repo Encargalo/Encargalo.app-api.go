@@ -28,6 +28,8 @@ func (r *appRidersManager) NearbyRiders(ctx context.Context, lat, lng float64) (
 		RadiusKm:  geo.RingsToKm(riderModels.NearbyRiderRings),
 		Mode:      riderModels.RiderModeTrips,
 		MaxAge:    riderModels.NearbyRiderMaxAge,
+		// La bici no lleva pasajeros, igual que en el matching; sin vehículo cargado no excluye.
+		ExcludeVehicles: []string{riderModels.VehicleTypeBike},
 	})
 	if err != nil {
 		return nil, err
