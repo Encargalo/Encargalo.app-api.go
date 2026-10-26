@@ -469,6 +469,283 @@ const docTemplate = `{
                 }
             }
         },
+        "/banners": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Devuelve los banners activos ordenados por position, para mostrar en el carrusel del home. Cacheado 1h en Redis.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Banners"
+                ],
+                "summary": "Listar banners publicitarios activos",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_banners_domain_dtos.BannerResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/banners/staff": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Lista todos los banners (activos e inactivos) ordenados por position.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Banners Staff"
+                ],
+                "summary": "Listar banners (staff)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_banners_domain_dtos.BannerResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Crea un banner activo. La imagen va como data-URL/base64 (se sube a Cloudinary en WebP).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Banners Staff"
+                ],
+                "summary": "Crear banner publicitario",
+                "parameters": [
+                    {
+                        "description": "Datos del banner",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_banners_domain_dtos.CreateBannerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_banners_domain_dtos.BannerResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "payload inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "error al subir la imagen",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/banners/staff/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Banners Staff"
+                ],
+                "summary": "Detalle de banner (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Banner ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_banners_domain_dtos.BannerResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Borra el banner y, best-effort, su imagen en Cloudinary.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Banners Staff"
+                ],
+                "summary": "Eliminar banner",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Banner ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Sin contenido"
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Actualización parcial: los campos omitidos no se tocan. ` + "`" + `image` + "`" + ` reemplaza la imagen (se sube a Cloudinary y la anterior se borra, best-effort). ` + "`" + `link_url` + "`" + ` en ` + "`" + `null` + "`" + ` remueve el link.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Banners Staff"
+                ],
+                "summary": "Actualizar banner por partes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Banner ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Campos parciales",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_banners_domain_dtos.UpdateBannerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_banners_domain_dtos.BannerResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "id inválido / payload inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "error al subir la imagen",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/bcv/rate": {
             "get": {
                 "security": [
@@ -8154,6 +8431,61 @@ const docTemplate = `{
                 "phone_number": {
                     "type": "string",
                     "example": "+573001112233"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_banners_domain_dtos.BannerResponse": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "image_url": {
+                    "type": "string"
+                },
+                "link_url": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_banners_domain_dtos.CreateBannerRequest": {
+            "type": "object",
+            "required": [
+                "image"
+            ],
+            "properties": {
+                "image": {
+                    "type": "string"
+                },
+                "link_url": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_banners_domain_dtos.UpdateBannerRequest": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "image": {
+                    "type": "string",
+                    "example": "data:image/jpeg;base64,/9j/4AAQSkZJRg..."
+                },
+                "link_url": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
                 }
             }
         },

@@ -81,6 +81,10 @@ import (
 	tripsPorts "Encargalo.app-api.go/internal/trips/domain/ports"
 	handTrips "Encargalo.app-api.go/internal/trips/handler"
 	repoTrips "Encargalo.app-api.go/internal/trips/repo"
+
+	appBanners "Encargalo.app-api.go/internal/banners/app"
+	handBanners "Encargalo.app-api.go/internal/banners/handler"
+	repoBanners "Encargalo.app-api.go/internal/banners/repo"
 )
 
 var Container *dig.Container
@@ -135,6 +139,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(groups.NewTrackingGroup)
 	_ = Container.Provide(groups.NewDiagnosticsGroup)
 	_ = Container.Provide(groups.NewTripsGroup)
+	_ = Container.Provide(groups.NewBannersGroup)
 	_ = Container.Provide(handPayment.NewPaymentMethodsHandler)
 	_ = Container.Provide(appPayment.NewPaymentMethodsApp)
 	_ = Container.Provide(repoPayment.NewPaymentMethodsRepo)
@@ -156,6 +161,11 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(repoTrips.NewTripsRepo)
 	_ = Container.Provide(repoTrips.NewTripQuotesRepo)
 	_ = Container.Provide(repoTrips.NewFareQuotesRepo)
+
+	_ = Container.Provide(handBanners.NewBannersHandler)
+	_ = Container.Provide(handBanners.NewStaffBannersHandler)
+	_ = Container.Provide(appBanners.NewBannersApp)
+	_ = Container.Provide(repoBanners.NewBannersRepo)
 
 	_ = Container.Provide(requestinfo.NewRequestMiddleware)
 	_ = Container.Provide(sharedmw.NewRateLimiter)
