@@ -90,3 +90,7 @@ packages:
   Encargalo.app-api.go/internal/shared/adapters/googleauth:
     config:
       dir: "internal/mocks/shared/adapters/googleauth"
+
+  Encargalo.app-api.go/internal/banners/domain/ports:
+    config:
+      dir: "internal/mocks/banners/domain/ports"

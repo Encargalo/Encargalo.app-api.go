@@ -33,6 +33,42 @@ definitions:
     - password
     - phone_number
     type: object
+  Encargalo_app-api_go_internal_banners_domain_dtos.BannerResponse:
+    properties:
+      active:
+        type: boolean
+      id:
+        type: string
+      image_url:
+        type: string
+      link_url:
+        type: string
+      position:
+        type: integer
+    type: object
+  Encargalo_app-api_go_internal_banners_domain_dtos.CreateBannerRequest:
+    properties:
+      image:
+        type: string
+      link_url:
+        type: string
+      position:
+        type: integer
+    required:
+    - image
+    type: object
+  Encargalo_app-api_go_internal_banners_domain_dtos.UpdateBannerRequest:
+    properties:
+      active:
+        type: boolean
+      image:
+        example: data:image/jpeg;base64,/9j/4AAQSkZJRg...
+        type: string
+      link_url:
+        type: string
+      position:
+        type: integer
+    type: object
   Encargalo_app-api_go_internal_bcv_domain_models.ExchangeRate:
     properties:
       date:
@@ -3062,6 +3098,185 @@ paths:
       summary: Iniciar sesión como cliente
       tags:
       - Auth
+  /banners:
+    get:
+      description: Devuelve los banners activos ordenados por position, para mostrar
+        en el carrusel del home. Cacheado 1h en Redis.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_banners_domain_dtos.BannerResponse'
+            type: array
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Listar banners publicitarios activos
+      tags:
+      - Banners
+  /banners/staff:
+    get:
+      description: Lista todos los banners (activos e inactivos) ordenados por position.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_banners_domain_dtos.BannerResponse'
+            type: array
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Listar banners (staff)
+      tags:
+      - Banners Staff
+    post:
+      consumes:
+      - application/json
+      description: Crea un banner activo. La imagen va como data-URL/base64 (se sube
+        a Cloudinary en WebP).
+      parameters:
+      - description: Datos del banner
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_banners_domain_dtos.CreateBannerRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_banners_domain_dtos.BannerResponse'
+        "400":
+          description: payload inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "422":
+          description: error al subir la imagen
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Crear banner publicitario
+      tags:
+      - Banners Staff
+  /banners/staff/{id}:
+    delete:
+      description: Borra el banner y, best-effort, su imagen en Cloudinary.
+      parameters:
+      - description: Banner ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Sin contenido
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: No encontrado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Eliminar banner
+      tags:
+      - Banners Staff
+    get:
+      parameters:
+      - description: Banner ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_banners_domain_dtos.BannerResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: No encontrado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Detalle de banner (staff)
+      tags:
+      - Banners Staff
+    patch:
+      consumes:
+      - application/json
+      description: 'Actualización parcial: los campos omitidos no se tocan. `image`
+        reemplaza la imagen (se sube a Cloudinary y la anterior se borra, best-effort).
+        `link_url` en `null` remueve el link.'
+      parameters:
+      - description: Banner ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Campos parciales
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_banners_domain_dtos.UpdateBannerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_banners_domain_dtos.BannerResponse'
+        "400":
+          description: id inválido / payload inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: No encontrado
+          schema:
+            type: string
+        "422":
+          description: error al subir la imagen
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Actualizar banner por partes
+      tags:
+      - Banners Staff
   /bcv/rate:
     get:
       description: Retorna la última tasa de cambio USD/Bs publicada por el BCV, cacheada
