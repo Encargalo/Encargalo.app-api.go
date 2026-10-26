@@ -170,6 +170,7 @@ func (a *tripsApp) createTrip(ctx context.Context, customerID uuid.UUID, req dto
 		QuoteID:          &req.QuoteID,
 		CustomerID:       customerID,
 		Status:           models.TripStatusPaymentReview,
+		VehicleType:      quote.VehicleType,
 		PickupAddress:    quote.PickupAddress,
 		PickupLatitude:   quote.PickupLatitude,
 		PickupLongitude:  quote.PickupLongitude,
@@ -246,6 +247,7 @@ func (a *tripsApp) requestTripWithBalance(ctx context.Context, customerID uuid.U
 		QuoteID:          &req.QuoteID,
 		CustomerID:       customerID,
 		Status:           models.TripStatusSearching,
+		VehicleType:      quote.VehicleType,
 		PickupAddress:    quote.PickupAddress,
 		PickupLatitude:   quote.PickupLatitude,
 		PickupLongitude:  quote.PickupLongitude,
@@ -300,6 +302,7 @@ func (a *tripsApp) requestTripCash(ctx context.Context, customerID uuid.UUID, re
 		QuoteID:          &req.QuoteID,
 		CustomerID:       customerID,
 		Status:           models.TripStatusSearching,
+		VehicleType:      quote.VehicleType,
 		PickupAddress:    quote.PickupAddress,
 		PickupLatitude:   quote.PickupLatitude,
 		PickupLongitude:  quote.PickupLongitude,
@@ -390,6 +393,7 @@ func (a *tripsApp) requestTripSplit(ctx context.Context, customerID uuid.UUID, r
 		QuoteID:          &req.QuoteID,
 		CustomerID:       customerID,
 		Status:           status,
+		VehicleType:      quote.VehicleType,
 		PickupAddress:    quote.PickupAddress,
 		PickupLatitude:   quote.PickupLatitude,
 		PickupLongitude:  quote.PickupLongitude,
@@ -541,7 +545,7 @@ func (a *tripsApp) toResponse(ctx context.Context, trip *models.Trip, rate float
 	return resp, nil
 }
 
-func (a *tripsApp) NearbyRiders(lat, lng float64) (dtos.NearbyRidersResponse, error) {
+func (a *tripsApp) NearbyRiders(ctx context.Context, lat, lng float64) (dtos.NearbyRidersResponse, error) {
 	if !geo.InVenezuela(lat, lng) {
 		return dtos.NearbyRidersResponse{}, errcustom.ErrInvalidCoordinates
 	}
@@ -549,7 +553,7 @@ func (a *tripsApp) NearbyRiders(lat, lng float64) (dtos.NearbyRidersResponse, er
 	if a.nearby == nil {
 		return empty, nil
 	}
-	riders, err := a.nearby.NearbyRiders(lat, lng)
+	riders, err := a.nearby.NearbyRiders(ctx, lat, lng)
 	if err != nil {
 		return dtos.NearbyRidersResponse{}, err
 	}
@@ -602,6 +606,15 @@ func (a *tripsApp) EstimateFare(ctx context.Context, req dtos.FareEstimateReques
 		return dtos.FareEstimateResponse{}, errcustom.ErrInvalidCoordinates
 	}
 
+	// El servicio se resuelve antes de gastar una llamada a Google Maps.
+	vehicleType := req.VehicleType
+	if vehicleType == "" {
+		vehicleType = models.DefaultTripService
+	}
+	if !models.TripServiceAvailable(vehicleType) {
+		return dtos.FareEstimateResponse{}, errcustom.ErrTripServiceUnavailable
+	}
+
 	estimate, err := a.fareEstimate(req.PickupLatitude, req.PickupLongitude, req.DropoffLatitude, req.DropoffLongitude)
 	if err != nil {
 		return dtos.FareEstimateResponse{}, err
@@ -631,6 +644,7 @@ func (a *tripsApp) EstimateFare(ctx context.Context, req dtos.FareEstimateReques
 		FareBs:           money.RoundBs(fare * rate),
 		BcvRate:          rate,
 		FareBand:         string(estimate.Band),
+		VehicleType:      vehicleType,
 		CreatedAt:        now,
 		ExpiresAt:        now.Add(models.TripQuoteTTL),
 	}
@@ -646,6 +660,7 @@ func (a *tripsApp) EstimateFare(ctx context.Context, req dtos.FareEstimateReques
 		FareUSD:        quote.FareUSD,
 		FareBs:         quote.FareBs,
 		BcvRate:        quote.BcvRate,
+		VehicleType:    quote.VehicleType,
 		ExpiresAt:      quote.ExpiresAt,
 	}
 	if discount > 0 {
@@ -653,6 +668,20 @@ func (a *tripsApp) EstimateFare(ctx context.Context, req dtos.FareEstimateReques
 		resp.DiscountUSD = discount
 	}
 	return resp, nil
+}
+
+// Services mapea el catálogo del dominio al DTO: dtos no puede importar models.
+func (a *tripsApp) Services() dtos.TripServicesResponse {
+	out := make([]dtos.TripServiceResponse, 0, len(models.TripServices))
+	for _, s := range models.TripServices {
+		out = append(out, dtos.TripServiceResponse{
+			Type:      s.Type,
+			Name:      s.Name,
+			Capacity:  s.Capacity,
+			Available: s.Available,
+		})
+	}
+	return dtos.TripServicesResponse{Services: out}
 }
 
 // firstTripDiscount aplica solo si el cliente no tiene viajes fuera de cancelled/no_driver.
@@ -690,6 +719,7 @@ func (a *tripsApp) recordFareQuote(ctx context.Context, quote *models.TripQuote)
 		DiscountUSD:      quote.DiscountUSD,
 		BcvRate:          quote.BcvRate,
 		FareBand:         quote.FareBand,
+		VehicleType:      quote.VehicleType,
 		CreatedAt:        quote.CreatedAt,
 	}
 	if cell, err := geo.LatLngToCell(quote.PickupLatitude, quote.PickupLongitude, geo.ZoneAnalyticsResolution); err == nil {

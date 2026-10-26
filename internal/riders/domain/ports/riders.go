@@ -24,7 +24,6 @@ type RidersApp interface {
 	Unregister(riderID uuid.UUID, conn RiderConn)
 	AcceptOrder(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, conn RiderConn) error
 	UpdateLocation(ctx context.Context, riderID uuid.UUID, lat, lng float64) error
-	SnapshotTripsRiders() []riderModels.RiderLocationEntry
 	AcceptTrip(ctx context.Context, riderID, tripID uuid.UUID, conn RiderConn) error
 	// CancelAcceptedTrip libera un viaje accepted o arriving y lo vuelve a ofertar,
 	// excluyendo al rider que canceló. in_progress y completed no se pueden cancelar aquí.
@@ -58,6 +57,11 @@ type OrderCustomerNotifierSetter interface {
 // No devuelve el email. El llamador decide si el teléfono sale al rider.
 type PassengerLookup interface {
 	GetByCustomerID(ctx context.Context, customerID uuid.UUID) (tripsDtos.PassengerContact, error)
+}
+
+// VehicleLookup lee el perfil del rider para conocer su vehículo. Subconjunto de RiderProfileRepo.
+type VehicleLookup interface {
+	GetByUserID(ctx context.Context, userID uuid.UUID) (*riderModels.RiderProfile, error)
 }
 
 type RidersStream interface {

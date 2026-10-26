@@ -32,8 +32,9 @@ go test ./...
 # Run a single test
 go test ./internal/path/to/package -run TestName
 
-# Generate mocks (uses .mockery.yaml config)
-mockery
+# Generate mocks (uses .mockery.yaml config). Pin the version, like swag below:
+# a binary built with an older Go fails to parse the current stdlib.
+go run github.com/vektra/mockery/v2@v2.53.8
 
 # Generate Swagger docs. Compile swag with the same Go as this repo.
 # A binary built with an older Go fails to parse the current stdlib.
@@ -126,6 +127,27 @@ A credit commission (10% of `totalPrice - deliveryFee`) is sent via HTTP to the 
 `internal/trips` owns the `Trip` entity and its customer-driven transitions (`RequestTrip`, `CancelTrip`, via REST). Everything the **rider** drives — `accept_trip` and `advance_trip` (`accepted→arriving→in_progress→completed`, plus fare calculation and `RecordTripEarning`) — is implemented in `internal/riders/app` instead, over the WebSocket connection at `GET /orders/rider`, not in `internal/trips/app`.
 
 This is a deliberate split, not an oversight: rider-driven transitions need the same in-memory rider connection/offer state (`appRidersManager`) that `accept_trip` already uses for the "first to accept wins" CAS pattern, so keeping them together avoids threading that state across a domain boundary. `riders/app` reaches `trips` persistence through a narrow `ridersPorts.TripsStore` port (a subset of `tripsPorts.TripsRepo`: `GetTripByID`, `UpdateTripStatus`, `AssignTripRider`, `CompleteTrip`), not through `tripsPorts.TripsApp` — so `trips/app`'s own business rules (e.g. `IsCancellable`) never see these transitions. Keep this split in mind before adding new `Trip` invariants: a rule added only to `trips/app` will not apply to rider-driven transitions.
+
+## Retiros de Riders
+
+`POST /riders/withdrawal` **no paga**: crea una solicitud. El ciclo completo vive en `finance.withdrawal_requests` (genérica por `entity_type`, espejo de `finance.balance_refund_requests`) y es el mismo patrón que los reembolsos de clientes:
+
+```
+pending ──claim──> processing ──complete──> completed
+   └──────────── reject ────────────┘  (devuelve el saldo retenido)
+```
+
+El ledger acompaña con **una sola fila de reserva por solicitud** en `finance.transactions`, vinculada por `reference_type='withdrawal_request'` + `reference_id`, cuyo `movement_type` se muta en cada transición (`withdrawal_hold` → `withdrawal_processing` → `withdrawal_payout` / `withdrawal_restore`). Un índice parcial único sobre `reference_id` garantiza que el saldo no se retenga ni libere dos veces por el mismo retiro.
+
+Tres invariantes que no son obvias y conviene tener presentes antes de tocar este flujo:
+
+- **El `claim` es obligatorio** (no existe `pending → completed`). La transferencia bancaria ocurre fuera del sistema: el operador ve un monto, se va a su app del banco y vuelve minutos después. El reclamo congela `payable_amount`, y el pago registra ese valor **sin recalcular**. Recalcular al pagar haría que los libros digan 72 Bs cuando del banco salieron 800.
+- **El monto solicitado es un techo, no una promesa.** Al reclamar, lo pagable se recalcula como `retenido + min(disponible, 0)` (`models.PayableFrom`). Un pedido en efectivo debita fuerte (el rider cobra el total y debe todo lo que no es su pago), así que sin esto la plataforma transferiría 800 Bs a alguien que tiene 728 Bs suyos en el bolsillo. Si el neto queda en cero o menos, la solicitud se anula sola devolviendo la reserva y **no** activa el cooldown.
+- **El cooldown de 24h corre desde `completed_at`**, no desde la solicitud, y un rechazo no lo quema. Lo que la regla acota es el costo de una transferencia manual, y ese costo se incurre al pagar. El trabajo anti-spam lo hace el índice parcial único `uq_withdrawal_requests_entity_active`, que impide dos solicitudes activas por entidad a nivel de BD.
+
+El listado del CRM (`GET /riders/staff/finance/withdrawals`) expone `amount_bs` y `payable_bs` **por separado**, más `payable_frozen`. Mostrar un solo número es como se produce un descuadre. Las solicitudes no aparecen en `/riders/staff/finance/payables`, que filtra por saldo > 0: una solicitud retiene el saldo, así que el rider desaparecería de ahí justo cuando hay que pagarle.
+
+El destino de pago sale de `users.accounts.pago_movil` (`GET`/`PUT /users/pago-movil`, habilitado para `Customer` y `Rider`) y se congela en cada solicitud, para que el comprobante corresponda siempre a la cuenta a la que se transfirió.
 
 ## Notifications Service
 

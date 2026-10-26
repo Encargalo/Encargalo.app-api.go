@@ -23,6 +23,7 @@ test_login.html
 go.work
 
 .env
+.env.local
 
 .idea
 

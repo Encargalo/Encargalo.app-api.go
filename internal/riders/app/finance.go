@@ -1,11 +1,16 @@
 package app
 
 import (
-	"Encargalo.app-api.go/internal/pkg/id"
 	"context"
+	"errors"
+	"log/slog"
 	"time"
 
+	"Encargalo.app-api.go/internal/pkg/id"
+
 	bcvPorts "Encargalo.app-api.go/internal/bcv/domain/ports"
+	financeModels "Encargalo.app-api.go/internal/finance/domain/models"
+	financePorts "Encargalo.app-api.go/internal/finance/domain/ports"
 	"Encargalo.app-api.go/internal/pkg/money"
 	"Encargalo.app-api.go/internal/riders/domain/dtos"
 	"Encargalo.app-api.go/internal/riders/domain/models"
@@ -17,12 +22,21 @@ import (
 const entityTypeRider = "rider"
 
 type financeApp struct {
-	repo ports.FinanceRepo
-	bcv  bcvPorts.BcvApp
+	repo        ports.FinanceRepo
+	bcv         bcvPorts.BcvApp
+	withdrawals ports.WithdrawalStore
+	payments    ports.PaymentDetailsStore
+	events      ports.WithdrawalPublisher
 }
 
-func NewFinanceApp(repo ports.FinanceRepo, bcv bcvPorts.BcvApp) ports.FinanceApp {
-	return &financeApp{repo, bcv}
+func NewFinanceApp(
+	repo ports.FinanceRepo,
+	bcv bcvPorts.BcvApp,
+	withdrawals ports.WithdrawalStore,
+	payments ports.PaymentDetailsStore,
+	events ports.WithdrawalPublisher,
+) ports.FinanceApp {
+	return &financeApp{repo: repo, bcv: bcv, withdrawals: withdrawals, payments: payments, events: events}
 }
 
 // RecordRideEarning liquida el domicilio al completar. En Pago Móvil acredita
@@ -178,13 +192,34 @@ func (f *financeApp) GetBalance(ctx context.Context, riderID uuid.UUID) (dtos.Ba
 	balanceBs, balanceUSD := money.BalanceDual(balance, currency, spotRate)
 	minBs := f.withdrawalMinBs(ctx)
 	return dtos.BalanceResponse{
-		BalanceBs:       balanceBs,
-		BalanceUSD:      balanceUSD,
-		BcvRate:         spotRate,
-		Zone:            getZone(balanceBs, minBs),
-		WithdrawalMinBs: minBs,
-		Transactions:    toTransactionDTOs(txs, spotRate),
+		BalanceBs:        balanceBs,
+		BalanceUSD:       balanceUSD,
+		BcvRate:          spotRate,
+		Zone:             getZone(balanceBs, minBs),
+		WithdrawalMinBs:  minBs,
+		ActiveWithdrawal: f.activeWithdrawal(ctx, riderID, spotRate),
+		Transactions:     toTransactionDTOs(txs, spotRate),
 	}, nil
+}
+
+// activeWithdrawal distingue un balance en 0 por retiro en curso de uno por no
+// haber ganado nada. Un fallo acá no debe tumbar la consulta de balance.
+func (f *financeApp) activeWithdrawal(ctx context.Context, riderID uuid.UUID, spotRate float64) *dtos.ActiveWithdrawalDTO {
+	if f.withdrawals == nil {
+		return nil
+	}
+	req, err := f.withdrawals.GetActive(ctx, riderID, entityTypeRider)
+	if err != nil || req == nil {
+		return nil
+	}
+	amountBs, amountUSD := money.BalanceDual(req.Amount, models.CurrencyVES, spotRate)
+	return &dtos.ActiveWithdrawalDTO{
+		ID:        req.ID.String(),
+		AmountBs:  amountBs,
+		AmountUSD: amountUSD,
+		Status:    string(req.Status),
+		CreatedAt: req.CreatedAt.Format(time.RFC3339),
+	}
 }
 
 // withdrawalMinBs convierte el piso de negocio (WithdrawalMinUSD) a Bs con la
@@ -198,38 +233,76 @@ func (f *financeApp) withdrawalMinBs(ctx context.Context) float64 {
 	return money.RoundBs(models.WithdrawalMinUSD * rate.Rate)
 }
 
+// RequestWithdrawal crea una solicitud, no un pago: retiene el saldo y deja
+// registrada la deuda hasta que staff transfiera y cargue el comprobante. El
+// cooldown se mide contra el último retiro pagado, así que un rechazo no lo
+// quema.
 func (f *financeApp) RequestWithdrawal(ctx context.Context, riderID uuid.UUID) (dtos.WithdrawalResponse, error) {
-	lastWithdrawal, err := f.repo.GetLastWithdrawal(ctx, riderID, entityTypeRider)
+	lastPaid, err := f.withdrawals.LastCompletedAt(ctx, riderID, entityTypeRider)
 	if err != nil {
 		return dtos.WithdrawalResponse{}, err
 	}
-	if lastWithdrawal != nil && time.Since(*lastWithdrawal) < models.WithdrawalCooldown {
+	if lastPaid != nil && time.Since(*lastPaid) < financeModels.WithdrawalCooldown {
 		return dtos.WithdrawalResponse{}, errcustom.ErrWithdrawalCooldown
 	}
 
-	minBs := f.withdrawalMinBs(ctx)
+	active, err := f.withdrawals.GetActive(ctx, riderID, entityTypeRider)
+	if err != nil {
+		return dtos.WithdrawalResponse{}, err
+	}
+	if active != nil {
+		return dtos.WithdrawalResponse{}, errcustom.ErrWithdrawalAlreadyRequested
+	}
+
+	rate, err := f.bcv.GetRate(ctx)
+	if err != nil || rate == nil || rate.Rate <= 0 {
+		return dtos.WithdrawalResponse{}, errcustom.ErrBcvRateUnavailable
+	}
+	minBs := money.RoundBs(models.WithdrawalMinUSD * rate.Rate)
 	if minBs <= 0 {
 		return dtos.WithdrawalResponse{}, errcustom.ErrBcvRateUnavailable
 	}
 
-	balanceRec, err := f.repo.GetBalance(ctx, riderID, entityTypeRider)
+	pm, err := f.payments.GetPagoMovil(ctx, riderID)
+	if err != nil {
+		if errors.Is(err, errcustom.ErrNotFound) {
+			return dtos.WithdrawalResponse{}, errcustom.ErrPagoMovilRequired
+		}
+		return dtos.WithdrawalResponse{}, err
+	}
+
+	req, err := f.withdrawals.Create(ctx, financePorts.CreateWithdrawalParams{
+		EntityID:     riderID,
+		EntityType:   entityTypeRider,
+		MinAmount:    minBs,
+		Currency:     models.CurrencyVES,
+		BcvRate:      rate.Rate,
+		PMPhone:      pm.Phone,
+		PMBankCode:   pm.BankCode,
+		PMNationalID: pm.NationalID,
+	})
 	if err != nil {
 		return dtos.WithdrawalResponse{}, err
 	}
-	balance := balanceRec.Amount
 
-	tx := models.Transaction{
-		ID:           id.New(),
-		MovementType: string(models.MovementTypeWithdraw),
-		Currency:     models.CurrencyVES,
-		CreatedAt:    time.Now(),
+	// El aviso es conveniencia, no fuente de verdad: la solicitud ya existe y
+	// el CRM la muestra igual si la publicación falla.
+	if f.events != nil {
+		if pubErr := f.events.PublishWithdrawalRequested(ctx, req); pubErr != nil {
+			slog.Error("RequestWithdrawal: publish event failed", "requestID", req.ID, "error", pubErr)
+		}
 	}
 
-	if _, err = f.repo.RecordMovement(ctx, riderID, entityTypeRider, -balance, minBs, tx); err != nil {
-		return dtos.WithdrawalResponse{}, err
-	}
-
-	return dtos.WithdrawalResponse{AmountWithdrawn: balance}, nil
+	amountBs, amountUSD := money.BalanceDual(req.Amount, models.CurrencyVES, rate.Rate)
+	return dtos.WithdrawalResponse{
+		ID:        req.ID.String(),
+		AmountBs:  amountBs,
+		AmountUSD: amountUSD,
+		BcvRate:   rate.Rate,
+		Status:    string(req.Status),
+		PMPhone:   pm.Phone,
+		CreatedAt: req.CreatedAt.Format(time.RFC3339),
+	}, nil
 }
 
 func (f *financeApp) ListTransactions(ctx context.Context, riderID uuid.UUID, page, limit int) (dtos.TransactionsResponse, error) {

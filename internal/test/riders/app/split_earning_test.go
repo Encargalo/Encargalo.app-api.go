@@ -15,7 +15,7 @@ import (
 
 func TestRecordRideCashCollected_DebitsCashAboveRiderPay(t *testing.T) {
 	repo := mocksriders.NewFinanceRepo(t)
-	svc := app.NewFinanceApp(repo, nil)
+	svc := app.NewFinanceApp(repo, nil, nil, nil, nil)
 
 	riderID := uuid.New()
 	orderID := uuid.New()

@@ -9,6 +9,7 @@ import (
 	"Encargalo.app-api.go/internal/trips/domain/dtos"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,7 +34,7 @@ func TestNearbyRiders_InvalidCoordinates(t *testing.T) {
 func TestNearbyRiders_Success(t *testing.T) {
 	h, svc := newTripsHandler(t)
 	tc := buildhttptest.SetupControllerCase("/trips/nearby-riders?lat=10.4806&lng=-66.9036", http.MethodGet, nil)
-	svc.On("NearbyRiders", 10.4806, -66.9036).Return(dtos.NearbyRidersResponse{
+	svc.On("NearbyRiders", mock.Anything, 10.4806, -66.9036).Return(dtos.NearbyRidersResponse{
 		Riders: []dtos.NearbyRider{{Latitude: 10.481, Longitude: -66.904}},
 	}, nil)
 
@@ -48,7 +49,7 @@ func TestNearbyRiders_Success(t *testing.T) {
 func TestNearbyRiders_ServiceError(t *testing.T) {
 	h, svc := newTripsHandler(t)
 	tc := buildhttptest.SetupControllerCase("/trips/nearby-riders?lat=10.48&lng=-66.90", http.MethodGet, nil)
-	svc.On("NearbyRiders", 10.48, -66.90).Return(dtos.NearbyRidersResponse{}, errcustom.ErrUnexpectedError)
+	svc.On("NearbyRiders", mock.Anything, 10.48, -66.90).Return(dtos.NearbyRidersResponse{}, errcustom.ErrUnexpectedError)
 
 	err := h.NearbyRiders(tc.Ctx)
 

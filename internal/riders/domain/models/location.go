@@ -32,6 +32,8 @@ const (
 	NearbyRiderMaxResults = 30
 	// NearbyRiderMaxAge descarta ubicaciones que dejaron de reportarse.
 	NearbyRiderMaxAge = 45 * time.Second
+	// TripMatchRiderMaxAge es más holgado que el del mapa: un umbral corto deja al viaje sin candidatos.
+	TripMatchRiderMaxAge = 2 * time.Minute
 	// NearbyCoordDecimals redondea a 0.001° (~111 m) para no publicar el GPS crudo.
 	NearbyCoordDecimals = 1000
 )

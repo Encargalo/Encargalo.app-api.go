@@ -25,7 +25,7 @@ func TestAdvanceTrip_DiscountedCashTripCreditsRiderTheDifference(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t))
 
 	riderID, tripID := uuid.New(), uuid.New()
 	var sent tripsDtos.TripResponse
@@ -63,7 +63,7 @@ func TestAdvanceTrip_DiscountedBankTripPaysOnGrossFare(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t))
 
 	riderID, tripID := uuid.New(), uuid.New()
 	conn := mocksriders.NewRiderConn(t)
@@ -85,7 +85,7 @@ func TestAdvanceTrip_DiscountedBankTripPaysOnGrossFare(t *testing.T) {
 
 func TestRecordTripCashCollected_CreditsWhenCashIsBelowRiderPay(t *testing.T) {
 	repo := mocksriders.NewFinanceRepo(t)
-	svc := app.NewFinanceApp(repo, nil)
+	svc := app.NewFinanceApp(repo, nil, nil, nil, nil)
 
 	riderID, tripID := uuid.New(), uuid.New()
 	// Pago $7.20 - efectivo $4 = $3.20 a favor del rider.

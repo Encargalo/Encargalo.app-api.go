@@ -53,7 +53,7 @@ El local rechaza la orden. No genera movimientos financieros.
 
 **Rider**
 - Acumula saldo positivo con cada entrega completada (+90 % del domicilio)
-- Puede solicitar retiro cuando su saldo supera **$15**, máximo una vez cada **24 horas**
+- Puede solicitar retiro cuando su saldo supera **$3**, máximo una vez cada **24 horas**
 - Al procesar el pago su saldo vuelve a $0
 
 **Local**

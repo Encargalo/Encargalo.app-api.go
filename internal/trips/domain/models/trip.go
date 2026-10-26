@@ -89,6 +89,9 @@ type Trip struct {
 	Fare              *float64 `bun:"fare"`
 	// DiscountUSD es el descuento de primer viaje. Fare ya lo trae restado; el rider cobra sobre Fare + DiscountUSD.
 	DiscountUSD float64 `bun:"discount_usd,notnull,default:0"`
+
+	// VehicleType es el servicio con el que se cotizó; el matching filtra por él.
+	VehicleType string `bun:"vehicle_type,notnull"`
 	// MethodPayment distingue PagoMovil, Balance y Efectivo. Vacío en viajes
 	// creados antes de persistir el método: esos se liquidan como bancarios.
 	MethodPayment string `bun:"method_payment,notnull,default:''"`

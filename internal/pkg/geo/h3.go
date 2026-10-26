@@ -58,6 +58,18 @@ func GridDisk(cell string, k int) ([]string, error) {
 	return out, nil
 }
 
+// h3Res8NeighborKm es la distancia entre centros de celdas vecinas en resolución 8: la arista por raíz de 3.
+const h3Res8NeighborKm = 0.7991
+
+// RingsToKm traduce k anillos de GridDisk al radio en km que cubren; el medio
+// anillo extra es el apotema de la celda del borde, no su centro.
+func RingsToKm(rings int) float64 {
+	if rings < 0 {
+		return 0
+	}
+	return (float64(rings) + 0.5) * h3Res8NeighborKm
+}
+
 func errInvalidCell(cell string) error {
 	return fmt.Errorf("geo: celda H3 inválida: %q", cell)
 }

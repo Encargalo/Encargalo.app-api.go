@@ -88,10 +88,24 @@ func TestUpdateLocation_DoesNotOfferOutsideCurrentRoundRadius(t *testing.T) {
 	svc, _, trip := newOpenTripSvc(t)
 	riderID, offersReceived := registerWatchedRider(t, svc, riderModels.RiderModeTrips)
 
-	farLat, farLng := latLngAtRing(t, *trip.PickupH3Cell, 4)
+	// Un anillo más allá del tope de la primera ronda: fuera del radio sea cual
+	// sea el valor de la constante.
+	farLat, farLng := latLngAtRing(t, *trip.PickupH3Cell, app.TripSearchMaxRingsForTest+1)
 	require.NoError(t, svc.UpdateLocation(context.Background(), riderID, farLat, farLng))
 
 	require.Zero(t, offersReceived())
+}
+
+// El borde de adentro: el último anillo que la primera ronda alcanza sí oferta.
+// Junto con el test de arriba fija el radio en el valor de la constante.
+func TestUpdateLocation_OffersAtMaxRingOfFirstRound(t *testing.T) {
+	svc, _, trip := newOpenTripSvc(t)
+	riderID, offersReceived := registerWatchedRider(t, svc, riderModels.RiderModeTrips)
+
+	lat, lng := latLngAtRing(t, *trip.PickupH3Cell, app.TripSearchMaxRingsForTest)
+	require.NoError(t, svc.UpdateLocation(context.Background(), riderID, lat, lng))
+
+	require.Equal(t, 1, offersReceived())
 }
 
 func TestUpdateLocation_DoesNotOfferToRidersInOrdersMode(t *testing.T) {
@@ -154,7 +168,7 @@ func TestSendActiveTrips_ResendsAssignedTripWithoutCodesAndRelinksLocation(t *te
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
 	customer := &recordingCustomer{}
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, customer, nil, nil)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, customer, nil, nil, nil, newPresenceStore(t))
 
 	riderID := uuid.New()
 	customerID := uuid.New()
@@ -200,7 +214,7 @@ func TestSendActiveTrips_NoActiveTripsSendsNothing(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t))
 
 	riderID := uuid.New()
 	tripsRepo.On("ListActiveTripsByRider", mock.Anything, riderID).Return([]tripsModels.Trip{}, nil)
@@ -218,7 +232,7 @@ func TestSendActiveTrips_PropagatesRepoError(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t))
 
 	riderID := uuid.New()
 	tripsRepo.On("ListActiveTripsByRider", mock.Anything, riderID).Return(nil, errcustom.ErrUnexpectedError)
@@ -234,7 +248,7 @@ func TestActiveTrips_ReturnsTripsWithBsFareAndNoCodes(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t))
 
 	riderID := uuid.New()
 	pickupCode, dropoffCode := "1234", "5678"
@@ -269,7 +283,7 @@ func TestActiveTrips_EmptyReturnsEmptyListWithoutQueryingBcv(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t))
 
 	riderID := uuid.New()
 	tripsRepo.On("ListActiveTripsByRider", mock.Anything, riderID).Return([]tripsModels.Trip{}, nil)
@@ -288,7 +302,7 @@ func TestActiveTrips_PropagatesRepoError(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t))
 
 	riderID := uuid.New()
 	tripsRepo.On("ListActiveTripsByRider", mock.Anything, riderID).Return(nil, errcustom.ErrUnexpectedError)

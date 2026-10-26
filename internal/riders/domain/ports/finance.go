@@ -4,8 +4,11 @@ import (
 	"context"
 	"time"
 
+	financeModels "Encargalo.app-api.go/internal/finance/domain/models"
+	financePorts "Encargalo.app-api.go/internal/finance/domain/ports"
 	"Encargalo.app-api.go/internal/riders/domain/dtos"
 	"Encargalo.app-api.go/internal/riders/domain/models"
+	usersModels "Encargalo.app-api.go/internal/users/domain/models"
 	"github.com/google/uuid"
 )
 
@@ -15,7 +18,24 @@ type FinanceRepo interface {
 	ListTransactions(ctx context.Context, entityID uuid.UUID, entityType string, page, limit int) ([]models.Transaction, int, error)
 	// ListRecentTransactions: como ListTransactions pero sin el COUNT(*) que GetBalance nunca usa.
 	ListRecentTransactions(ctx context.Context, entityID uuid.UUID, entityType string, limit int) ([]models.Transaction, error)
-	GetLastWithdrawal(ctx context.Context, entityID uuid.UUID, entityType string) (*time.Time, error)
+}
+
+// WithdrawalStore es la porción de la persistencia de retiros que riders
+// necesita: crear la solicitud y responder si puede crearse. Las transiciones
+// (reclamar, pagar, rechazar) son de staff y viven en finance.
+type WithdrawalStore interface {
+	Create(ctx context.Context, params financePorts.CreateWithdrawalParams) (financeModels.WithdrawalRequest, error)
+	GetActive(ctx context.Context, entityID uuid.UUID, entityType string) (*financeModels.WithdrawalRequest, error)
+	// LastCompletedAt ancla el cooldown en el último retiro pagado, no en la
+	// última solicitud: lo que la regla acota es la transferencia manual.
+	LastCompletedAt(ctx context.Context, entityID uuid.UUID, entityType string) (*time.Time, error)
+}
+
+// PaymentDetailsStore es la porción de users que riders necesita: el Pago
+// Móvil de la cuenta, que es el destino del retiro. Devuelve ErrNotFound
+// cuando el rider no lo registró.
+type PaymentDetailsStore interface {
+	GetPagoMovil(ctx context.Context, userID uuid.UUID) (*usersModels.CustomerPagoMovil, error)
 }
 
 type FinanceApp interface {
@@ -42,4 +62,10 @@ type TripEarningRecorder interface {
 	// RecordTripCash debita lo que el rider cobró en efectivo y no es su pago.
 	RecordTripCash(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare, bcvRate float64) error
 	RecordTripCashCollected(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare, cashUSD, bcvRate float64) error
+}
+
+// WithdrawalPublisher avisa al equipo de una solicitud nueva. Es conveniencia,
+// no fuente de verdad: un fallo acá no debe abortar el retiro.
+type WithdrawalPublisher interface {
+	PublishWithdrawalRequested(ctx context.Context, req financeModels.WithdrawalRequest) error
 }

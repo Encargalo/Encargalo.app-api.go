@@ -25,14 +25,15 @@ type RidersGroup interface {
 }
 
 type ridersGroup struct {
-	middle              auth.AuthMiddleware
-	handlerRiders       ridersHandler.RiderHandler
-	handlerProfile      ridersHandler.RiderProfileHandler
-	handlerApplication  ridersHandler.RiderApplicationHandler
-	handlerFinance      ridersHandler.FinanceHandler
-	handlerStaffRiders  ridersHandler.StaffRiderHandler
-	handlerStaffFinance ridersHandler.StaffFinanceHandler
-	rateLimiter         sharedmw.RateLimiter
+	middle               auth.AuthMiddleware
+	handlerRiders        ridersHandler.RiderHandler
+	handlerProfile       ridersHandler.RiderProfileHandler
+	handlerApplication   ridersHandler.RiderApplicationHandler
+	handlerFinance       ridersHandler.FinanceHandler
+	handlerStaffRiders   ridersHandler.StaffRiderHandler
+	handlerStaffFinance  ridersHandler.StaffFinanceHandler
+	handlerStaffWithdraw ridersHandler.StaffWithdrawalHandler
+	rateLimiter          sharedmw.RateLimiter
 }
 
 func NewRidersGroup(
@@ -43,9 +44,10 @@ func NewRidersGroup(
 	handlerFinance ridersHandler.FinanceHandler,
 	handlerStaffRiders ridersHandler.StaffRiderHandler,
 	handlerStaffFinance ridersHandler.StaffFinanceHandler,
+	handlerStaffWithdraw ridersHandler.StaffWithdrawalHandler,
 	rateLimiter sharedmw.RateLimiter,
 ) RidersGroup {
-	return &ridersGroup{middle, handlerRiders, handlerProfile, handlerApplication, handlerFinance, handlerStaffRiders, handlerStaffFinance, rateLimiter}
+	return &ridersGroup{middle, handlerRiders, handlerProfile, handlerApplication, handlerFinance, handlerStaffRiders, handlerStaffFinance, handlerStaffWithdraw, rateLimiter}
 }
 
 func (r *ridersGroup) Resource(g *echo.Echo) {
@@ -85,4 +87,12 @@ func (r *ridersGroup) Resource(g *echo.Echo) {
 	staffRiders.GET("/finance/:riderId/transactions", r.handlerStaffFinance.ListTransactions)
 	staffRiders.POST("/finance/:riderId/payouts", r.handlerStaffFinance.RecordPayout)
 	staffRiders.POST("/finance/:riderId/adjustments", r.handlerStaffFinance.RecordAdjustment)
+
+	// Las solicitudes de retiro se listan acá y no en payables: payables filtra
+	// por saldo > 0 y una solicitud retiene el saldo, así que el rider no
+	// aparecería ahí justo cuando hay que pagarle.
+	staffRiders.GET("/finance/withdrawals", r.handlerStaffWithdraw.List)
+	staffRiders.POST("/finance/withdrawals/:id/claim", r.handlerStaffWithdraw.Claim)
+	staffRiders.POST("/finance/withdrawals/:id/complete", r.handlerStaffWithdraw.Complete)
+	staffRiders.POST("/finance/withdrawals/:id/reject", r.handlerStaffWithdraw.Reject)
 }
