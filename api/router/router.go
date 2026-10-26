@@ -12,9 +12,9 @@ import (
 
 	_ "Encargalo.app-api.go/docs"
 
+	echootel "github.com/labstack/echo-otel/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 )
 
 type Router struct {
@@ -34,6 +34,7 @@ type Router struct {
 	trackingGroup       groups.TrackingGroup
 	diagnosticsGroup    groups.DiagnosticsGroup
 	tripsGroup          groups.TripsGroup
+	bannersGroup        groups.BannersGroup
 }
 
 func New(
@@ -52,6 +53,7 @@ func New(
 	trackingGroup groups.TrackingGroup,
 	diagnosticsGroup groups.DiagnosticsGroup,
 	tripsGroup groups.TripsGroup,
+	bannersGroup groups.BannersGroup,
 ) *Router {
 	return &Router{
 		server,
@@ -70,13 +72,14 @@ func New(
 		trackingGroup,
 		diagnosticsGroup,
 		tripsGroup,
+		bannersGroup,
 	}
 }
 
 func (r *Router) Init() {
 
 	r.server.Use(sharedmw.RequestID())
-	r.server.Use(otelecho.Middleware(reqctx.ServiceName))
+	r.server.Use(echootel.NewMiddleware(reqctx.ServiceName))
 	r.server.Use(sharedmw.RequestLog())
 	r.server.Use(middleware.Recover())
 
@@ -104,5 +107,6 @@ func (r *Router) Init() {
 	r.trackingGroup.Resource(r.server)
 	r.diagnosticsGroup.Resource(r.server)
 	r.tripsGroup.Resource(r.server)
+	r.bannersGroup.Resource(r.server)
 
 }
