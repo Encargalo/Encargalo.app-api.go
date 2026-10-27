@@ -101,11 +101,17 @@ func TestUpdateOrderStatus_RejectedRefundsCustomer(t *testing.T) {
 	m.repo.On("UpdateOrderDetails", mock.Anything, orderID, mock.Anything).Return(nil)
 	m.riderMgr.On("BroadcastOrderUpdate", mock.Anything, mock.Anything).Return()
 	m.shops.On("TryCloseOpenBatch", mock.Anything, shopID).Return(nil)
+	m.stream.On("PublisherEvent", mock.Anything, mock.MatchedBy(func(e ordermodels.DataEventOrderStatusChanged) bool {
+		return e.OrderID == orderID.String() && e.Status == string(ordermodels.StatusRejected)
+	})).Return(nil)
 
 	out, err := svc.UpdateOrderStatus(context.Background(), orderID, "Rejected", shopID, true, shopID)
 
 	require.NoError(t, err)
 	assert.Equal(t, string(ordermodels.StatusRejected), out.Status)
+	m.stream.AssertCalled(t, "PublisherEvent", mock.Anything, mock.MatchedBy(func(e ordermodels.DataEventOrderStatusChanged) bool {
+		return e.OrderID == orderID.String() && e.Status == string(ordermodels.StatusRejected)
+	}))
 }
 
 func TestAutoRejectStalePending_RejectsAndRefunds(t *testing.T) {
@@ -248,6 +254,9 @@ func TestConfirmDelivery_Success(t *testing.T) {
 	m.shopCommission.On("RecordSaleCommission", mock.Anything, shopID, orderID, 20.0, 2.0, "Cash", false, false, 0.0).Return(nil)
 	m.riderMgr.On("BroadcastOrderUpdate", mock.Anything, mock.Anything).Return()
 	m.shops.On("TryCloseOpenBatch", mock.Anything, shopID).Return(nil)
+	m.stream.On("PublisherEvent", mock.Anything, mock.MatchedBy(func(e ordermodels.DataEventOrderStatusChanged) bool {
+		return e.OrderID == orderID.String() && e.Status == string(ordermodels.StatusCompleted)
+	})).Return(nil)
 
 	out, err := svc.ConfirmDelivery(context.Background(), orderID, code, riderID)
 
