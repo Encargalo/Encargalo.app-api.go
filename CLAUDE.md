@@ -152,10 +152,19 @@ El destino de pago sale de `users.accounts.pago_movil` (`GET`/`PUT /users/pago-m
 ## ETL / OLAP Worker
 
 `cmd/etl` syncs OLTP → OLAP (`internal/analytics`) two ways at once:
-- **Cron** (`robfig/cron`, `ETL_SCHEDULE`): syncs `models.CronETLEntities` — every entity except `CubeOrder` (shops, users, riders, trips, fare quotes, delivery quotes, tracking events). These still wait for the batch; they don't have event producers yet.
-- **Event-driven** (same Redis Stream as `cmd/notifications`, its own consumer group): reacts to `order_created`, `order_status_changed`, `order_auto_rejected` by calling `ports.ETLApp.SyncOrderByID`, which re-reads that one order from OLTP and upserts it into `analytics.cube_order` immediately — no batch wait for `CubeOrder`.
+- **Cron** (`robfig/cron`, `ETL_SCHEDULE`): syncs `models.CronETLEntities`, which is now just `{EntityFactTrackingEvent}` — tracking events have no event producer yet, so they still wait for the hourly batch. Every other entity is event-driven and has been fully removed from the cron.
+- **Event-driven** (same Redis Stream as `cmd/notifications`, its own consumer group in `startOrderEventConsumer`): `processStreamEvent` dispatches each message's `type` to the `ports.ETLApp.SyncXByID` of the matching entity, which re-reads just that one row from OLTP and upserts it into OLAP immediately — no batch wait. Event types per entity (see `cmd/etl/main.go`):
+  - `CubeOrder` ← `order_created`, `order_status_changed`, `order_auto_rejected`
+  - `CubeTrip` ← `trip_created`, `trip_status_changed`, `trip_no_driver`
+  - `CubeFareQuote` ← `fare_quote_created` (immutable, no "changed" variant)
+  - `CubeDeliveryQuote` ← `delivery_quote_created` (immutable, no "changed" variant)
+  - `DimShop` ← `shop_updated`, published from `shops/app`
+  - `DimRider` ← `rider_updated`, published from `riders/app`
+  - `DimUser` ← `user_updated`, published from `users/app` **and** from `riders/app`/`shops/app` when they grant the Rider/Owner role (that mutates `users.user_roles`, which `DimUser.Roles` depends on) — same precedent as `DataEventTrip` being published from both `trips/app` and `riders/app` (see "Trips & Riders" above).
 
-Both paths funnel through the same `OLAPSinkRepo.UpsertOrders` (`INSERT ... ON CONFLICT DO UPDATE`) — the sink never deletes rows. Any message type on the stream that isn't one of those three is acked and ignored (the stream is shared with other consumers, e.g. `withdrawal_requested`, `trip_created`); it is not treated as an error.
+Every event struct lives in the domain that owns the analytical entity (e.g. `DataEventUserUpdated` lives in `users/domain/models` even though `riders/app` and `shops/app` also publish it), not necessarily in the domain that publishes it. Publishers reuse whatever stream port is already wired into that app struct for its own domain's events — no dedicated port per analytical entity.
+
+All sync paths funnel through the same `OLAPSinkRepo.UpsertX` (`INSERT ... ON CONFLICT DO UPDATE`) — the sink never deletes rows. A message type on the stream that doesn't match any of the above is acked and ignored (the stream is shared with other consumers, e.g. `withdrawal_requested`); it is not treated as an error. If `SyncXByID` returns `errcustom.ErrNotFound` (entity deleted or a race between the event and processing), the consumer loop logs a warning and still Acks the message instead of leaving it to be reclaimed and retried forever by `XAutoClaim`.
 
 ## Notifications Service
 
