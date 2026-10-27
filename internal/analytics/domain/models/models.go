@@ -17,6 +17,7 @@ const (
 	EntityCubeTrip          ETLEntity = "cube_trip"
 	EntityFactTrackingEvent ETLEntity = "fact_tracking_event"
 	EntityCubeFareQuote     ETLEntity = "cube_fare_quote"
+	EntityCubeDeliveryQuote ETLEntity = "cube_delivery_quote"
 )
 
 var DefaultETLEntities = []ETLEntity{
@@ -27,6 +28,7 @@ var DefaultETLEntities = []ETLEntity{
 	EntityCubeTrip,
 	EntityFactTrackingEvent,
 	EntityCubeFareQuote,
+	EntityCubeDeliveryQuote,
 }
 
 type DateRange struct {
@@ -103,6 +105,7 @@ type CubeOrder struct {
 	bun.BaseModel `bun:"table:analytics.cube_order"`
 
 	OrderID            uuid.UUID  `bun:"order_id,pk,type:uuid"`
+	QuoteID            *uuid.UUID `bun:"quote_id,type:uuid"`
 	ShopID             uuid.UUID  `bun:"shop_id,type:uuid,notnull"`
 	CustomerID         uuid.UUID  `bun:"customer_id,type:uuid,notnull"`
 	RiderID            *uuid.UUID `bun:"rider_id,type:uuid"`
@@ -151,6 +154,23 @@ type CubeFareQuote struct {
 	FareBand       string    `bun:"fare_band,notnull"`
 	PickupH3Cell   *string   `bun:"pickup_h3_cell"`
 	DropoffH3Cell  *string   `bun:"dropoff_h3_cell"`
+	QuoteDate      time.Time `bun:"quote_date,notnull"`
+	QuoteHour      int16     `bun:"quote_hour,notnull"`
+	CreatedAt      time.Time `bun:"created_at,notnull"`
+	SyncedAt       time.Time `bun:"synced_at,notnull"`
+}
+
+// CubeDeliveryQuote es la cotización de delivery mostrada al cliente, haya
+// convertido o no. QuoteDate/QuoteHour vienen en hora de negocio, no UTC.
+type CubeDeliveryQuote struct {
+	bun.BaseModel `bun:"table:analytics.cube_delivery_quote"`
+
+	QuoteID        uuid.UUID `bun:"quote_id,pk,type:uuid"`
+	CustomerID     uuid.UUID `bun:"customer_id,type:uuid,notnull"`
+	ShopID         uuid.UUID `bun:"shop_id,type:uuid,notnull"`
+	DistanceMeters float64   `bun:"distance_meters,notnull"`
+	FeeUSD         float64   `bun:"fee_usd,notnull"`
+	FareBand       string    `bun:"fare_band,notnull"`
 	QuoteDate      time.Time `bun:"quote_date,notnull"`
 	QuoteHour      int16     `bun:"quote_hour,notnull"`
 	CreatedAt      time.Time `bun:"created_at,notnull"`

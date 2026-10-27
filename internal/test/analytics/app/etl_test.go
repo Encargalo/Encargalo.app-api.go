@@ -84,6 +84,11 @@ func TestRun_SyncsAllEntities(t *testing.T) {
 		DurationMin: 12, FareUSD: 1, FareBand: "day", QuoteHour: 12,
 	}}
 
+	deliveryQuotes := []models.CubeDeliveryQuote{{
+		QuoteID: uuid.New(), CustomerID: userID, ShopID: shopID, DistanceMeters: 2000,
+		FeeUSD: 1, FareBand: "day", QuoteHour: 12,
+	}}
+
 	source.On("FetchShops", mock.Anything, from, to).Return(shops, nil)
 	source.On("FetchUsers", mock.Anything, from, to).Return(users, nil)
 	source.On("FetchRiders", mock.Anything, from, to).Return(riders, nil)
@@ -91,6 +96,7 @@ func TestRun_SyncsAllEntities(t *testing.T) {
 	source.On("FetchTrips", mock.Anything, from, to).Return(trips, nil)
 	source.On("FetchTrackingEvents", mock.Anything, from, to).Return(events, nil)
 	source.On("FetchFareQuotes", mock.Anything, from, to).Return(quotes, nil)
+	source.On("FetchDeliveryQuotes", mock.Anything, from, to).Return(deliveryQuotes, nil)
 
 	sink.On("UpsertShops", mock.Anything, shops).Return(nil)
 	sink.On("UpsertUsers", mock.Anything, users).Return(nil)
@@ -101,6 +107,7 @@ func TestRun_SyncsAllEntities(t *testing.T) {
 	sink.On("UpsertTrips", mock.Anything, trips).Return(nil)
 	sink.On("UpsertTrackingEvents", mock.Anything, events).Return(nil)
 	sink.On("UpsertFareQuotes", mock.Anything, quotes).Return(nil)
+	sink.On("UpsertDeliveryQuotes", mock.Anything, deliveryQuotes).Return(nil)
 
 	syncLog.On("Upsert", mock.Anything, models.EntityDimShop, to).Return(nil)
 	syncLog.On("Upsert", mock.Anything, models.EntityDimUser, to).Return(nil)
@@ -109,11 +116,12 @@ func TestRun_SyncsAllEntities(t *testing.T) {
 	syncLog.On("Upsert", mock.Anything, models.EntityCubeTrip, to).Return(nil)
 	syncLog.On("Upsert", mock.Anything, models.EntityFactTrackingEvent, to).Return(nil)
 	syncLog.On("Upsert", mock.Anything, models.EntityCubeFareQuote, to).Return(nil)
+	syncLog.On("Upsert", mock.Anything, models.EntityCubeDeliveryQuote, to).Return(nil)
 
 	etl := newETLApp(source, sink, syncLog)
 	result, err := etl.Run(context.Background(), from, to, nil)
 	require.NoError(t, err)
-	require.Equal(t, 7, len(result.Results))
+	require.Equal(t, 8, len(result.Results))
 	for _, item := range result.Results {
 		require.True(t, item.Success, item.Entity)
 	}

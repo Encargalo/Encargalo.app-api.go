@@ -53,6 +53,10 @@ type Order struct {
 	DeliverySubsidyUSD float64 `bun:"delivery_subsidy_usd,notnull,default:0" json:"delivery_subsidy_usd,omitempty"`
 	DeliverySubsidyBs  float64 `bun:"-" json:"delivery_subsidy_bs,omitempty"`
 
+	// QuoteID enlaza la orden con la cotización que la originó (orders.fare_quotes);
+	// es el que permite medir conversión de cotización a pedido real.
+	QuoteID *uuid.UUID `bun:"quote_id,type:uuid" json:"-"`
+
 	ItemsOrders []ItemsOrder `bun:"rel:has-many,join:id=order_id" json:"-"`
 }
 

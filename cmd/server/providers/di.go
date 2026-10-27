@@ -314,6 +314,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(repoCustomer.NewUsersAddressRepo)
 	_ = Container.Provide(repoOrders.NewOrdersRepo)
 	_ = Container.Provide(repoOrders.NewOrderQuotesRepo)
+	_ = Container.Provide(repoOrders.NewFareQuotesRepo)
 	_ = Container.Provide(repoOrders.NewRepositoryProducerStream)
 
 	_ = Container.Provide(appEmployee.New)

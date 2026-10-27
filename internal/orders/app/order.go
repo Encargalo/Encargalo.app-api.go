@@ -18,6 +18,7 @@ import (
 	"Encargalo.app-api.go/internal/orders/domain/models"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
 	paymentsModels "Encargalo.app-api.go/internal/payments/domain/models"
+	"Encargalo.app-api.go/internal/pkg/bizclock"
 	"Encargalo.app-api.go/internal/pkg/geo"
 	"Encargalo.app-api.go/internal/pkg/money"
 	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
@@ -26,6 +27,7 @@ import (
 	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/deliveryfee"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/shared/tripfare"
 	shopsmodels "Encargalo.app-api.go/internal/shops/domain/models/shops"
 	shops "Encargalo.app-api.go/internal/shops/domain/ports"
 	"Encargalo.app-api.go/internal/users/domain/dto"
@@ -129,10 +131,11 @@ type orderApp struct {
 	customerBalance ports.CustomerBalanceCreditor
 	quotes          ports.OrderQuotesRepo
 	products        productsPorts.ProductsRepo
+	fareQuotes      ports.OrderFareQuotesRepo
 	statusHandlers  map[models.OrderStatus]statusHandler
 }
 
-func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.UsersRepo, stream ports.RedisStream, uploadImage uploadimage.UploadImage, riderMgr ports.OrderRiderBroadcaster, finance ports.RideEarningRecorder, shopCommission ports.ShopCommissionRecorder, bcv bcvPorts.BcvApp, reviewsRepo ports.PaymentReviewsRepo, staffHub ports.StaffReviewHub, customerBalance ports.CustomerBalanceCreditor, quotes ports.OrderQuotesRepo, products productsPorts.ProductsRepo) ports.OrdersApp {
+func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustomers.UsersRepo, stream ports.RedisStream, uploadImage uploadimage.UploadImage, riderMgr ports.OrderRiderBroadcaster, finance ports.RideEarningRecorder, shopCommission ports.ShopCommissionRecorder, bcv bcvPorts.BcvApp, reviewsRepo ports.PaymentReviewsRepo, staffHub ports.StaffReviewHub, customerBalance ports.CustomerBalanceCreditor, quotes ports.OrderQuotesRepo, products productsPorts.ProductsRepo, fareQuotes ports.OrderFareQuotesRepo) ports.OrdersApp {
 	o := &orderApp{
 		repo:            repo,
 		shops:           shops,
@@ -148,6 +151,7 @@ func NewOrderApp(repo ports.OrdersRepo, shops shops.ShopsRepo, custo portsCustom
 		customerBalance: customerBalance,
 		quotes:          quotes,
 		products:        products,
+		fareQuotes:      fareQuotes,
 	}
 	o.statusHandlers = map[models.OrderStatus]statusHandler{
 		models.StatusInPreparation: func(ctx context.Context, order models.Order) error {
@@ -224,6 +228,7 @@ func (o *orderApp) CreateQuote(ctx context.Context, req *dtos.CreateQuote) (*dto
 	if err := o.replaceActiveQuote(ctx, req.CustomerID, quote, ttl); err != nil {
 		return nil, err
 	}
+	o.recordFareQuote(ctx, quote, priced.shop, priced.estimate)
 
 	return quoteResponseFromModel(quote), nil
 }
@@ -265,6 +270,33 @@ func (o *orderApp) replaceActiveQuote(ctx context.Context, customerID uuid.UUID,
 	return o.quotes.SetActiveID(ctx, customerID, quote.QuoteID, ttl)
 }
 
+// recordFareQuote guarda la cotización en OLTP para medir conversión. Es un
+// registro de analítica: un fallo acá se loguea pero no rompe la cotización.
+func (o *orderApp) recordFareQuote(ctx context.Context, quote *models.OrderQuote, shop *models.ShopOrder, estimate deliveryfee.Estimate) {
+	if o.fareQuotes == nil {
+		return
+	}
+	record := &models.OrderFareQuote{
+		QuoteID:            quote.QuoteID,
+		CustomerID:         quote.CustomerID,
+		ShopID:             quote.ShopID,
+		ShopLatitude:       shop.Latitude,
+		ShopLongitude:      shop.Longitude,
+		DeliveryLatitude:   quote.Address.Latitude,
+		DeliveryLongitude:  quote.Address.Longitude,
+		DistanceMeters:     estimate.DistanceMeters,
+		FeeUSD:             quote.DeliveryFeeUSD,
+		FeeBs:              quote.DeliveryFeeBs,
+		DeliverySubsidyUSD: quote.DeliverySubsidyUSD,
+		BcvRate:            quote.BcvRate,
+		FareBand:           string(estimate.Band),
+		CreatedAt:          quote.CreatedAt,
+	}
+	if err := o.fareQuotes.Insert(ctx, record); err != nil {
+		slog.Error("recordFareQuote failed", "quoteID", quote.QuoteID, "error", err)
+	}
+}
+
 func quoteResponseFromModel(quote *models.OrderQuote) *dtos.QuoteResponse {
 	itemsView := make([]dtos.QuoteItemView, 0, len(quote.Lines))
 	for _, line := range quote.Lines {
@@ -297,9 +329,23 @@ func quoteResponseFromModel(quote *models.OrderQuote) *dtos.QuoteResponse {
 }
 
 type pricedOrderDraft struct {
-	order *models.Order
-	shop  *models.ShopOrder
-	rate  float64
+	order    *models.Order
+	shop     *models.ShopOrder
+	rate     float64
+	estimate deliveryfee.Estimate
+}
+
+// deliveryEstimate evita gastar cuota de Google Maps fuera de producción.
+func (o *orderApp) deliveryEstimate(ctx context.Context, shopLat, shopLon, lat, lon float64) (deliveryfee.Estimate, error) {
+	if !config.Get().IsProduction() {
+		distanceMeters := geo.HaversineKm(shopLat, shopLon, lat, lon) * 1000
+		return deliveryfee.Estimate{
+			DistanceMeters: distanceMeters,
+			Fee:            deliveryfee.DevPlaceholderFee,
+			Band:           tripfare.BandAt(bizclock.Now()),
+		}, nil
+	}
+	return deliveryfee.CalculateWithBand(ctx, shopLat, shopLon, lat, lon)
 }
 
 // priceOrderDraft calcula totales (items, delivery, promo) sin persistir ni cobrar.
@@ -316,17 +362,12 @@ func (o *orderApp) priceOrderDraft(ctx context.Context, order *dtos.CreateOrder)
 	orderModel := new(models.Order)
 	orderModel.BuildDtoToModel(*order, batchID)
 
-	var fee float64
-	if config.Get().IsProduction() {
-		fee, err = deliveryfee.Calculate(ctx, shop.Latitude, shop.Longitude, order.Address.Latitude, order.Address.Longitude)
-		if err != nil {
-			slog.Error("calcDeliveryFee: google maps failed", "shopID", shop.ID, "error", err)
-			return nil, errcustom.ErrUnexpectedError
-		}
-	} else {
-		fee = deliveryfee.DevPlaceholderFee
+	estimate, err := o.deliveryEstimate(ctx, shop.Latitude, shop.Longitude, order.Address.Latitude, order.Address.Longitude)
+	if err != nil {
+		slog.Error("calcDeliveryFee: google maps failed", "shopID", shop.ID, "error", err)
+		return nil, errcustom.ErrUnexpectedError
 	}
-	orderModel.DeliveryFee = fee
+	orderModel.DeliveryFee = estimate.Fee
 	orderModel.ApplyFirstOrderDeliverySubsidy(o.eligibleForFirstOrderDelivery(ctx, order.CustomerID))
 
 	items, err := o.repo.SearchItemsByID(ctx, orderModel.GetItemsID())
@@ -363,9 +404,10 @@ func (o *orderApp) priceOrderDraft(ctx context.Context, order *dtos.CreateOrder)
 	orderModel.ApplyZeroCommission(shop.HasActiveZeroCommission())
 
 	return &pricedOrderDraft{
-		order: orderModel,
-		shop:  shop,
-		rate:  o.bcvRate(ctx),
+		order:    orderModel,
+		shop:     shop,
+		rate:     o.bcvRate(ctx),
+		estimate: estimate,
 	}, nil
 }
 

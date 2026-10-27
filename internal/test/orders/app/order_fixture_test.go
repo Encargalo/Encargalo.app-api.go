@@ -11,6 +11,7 @@ import (
 	mockusersports "Encargalo.app-api.go/internal/mocks/users/domain/ports"
 	"Encargalo.app-api.go/internal/orders/app"
 	"Encargalo.app-api.go/internal/orders/domain/ports"
+	"github.com/stretchr/testify/mock"
 )
 
 // orderAppMocks agrupa las 14 dependencias de orderApp para no repetir el
@@ -30,6 +31,7 @@ type orderAppMocks struct {
 	customerBalance *mockordersports.CustomerBalanceCreditor
 	quotes          *mockordersports.OrderQuotesRepo
 	products        *mockproductsports.ProductsRepo
+	fareQuotes      *mockordersports.OrderFareQuotesRepo
 }
 
 func newOrderAppFixture(t *testing.T) (ports.OrdersApp, *orderAppMocks) {
@@ -49,11 +51,15 @@ func newOrderAppFixture(t *testing.T) (ports.OrdersApp, *orderAppMocks) {
 		customerBalance: mockordersports.NewCustomerBalanceCreditor(t),
 		quotes:          mockordersports.NewOrderQuotesRepo(t),
 		products:        mockproductsports.NewProductsRepo(t),
+		fareQuotes:      mockordersports.NewOrderFareQuotesRepo(t),
 	}
+	// recordFareQuote es fire-and-forget (ver CreateQuote): no todos los tests
+	// lo disparan, así que la expectativa es opcional.
+	m.fareQuotes.On("Insert", mock.Anything, mock.Anything).Return(nil).Maybe()
 	svc := app.NewOrderApp(
 		m.repo, m.shops, m.users, m.stream, m.upload, m.riderMgr, m.finance,
 		m.shopCommission, m.bcv, m.reviewsRepo, m.staffHub, m.customerBalance,
-		m.quotes, m.products,
+		m.quotes, m.products, m.fareQuotes,
 	)
 	return svc, m
 }

@@ -79,6 +79,13 @@ type OrderQuotesRepo interface {
 	ClearActiveID(ctx context.Context, customerID uuid.UUID) error
 }
 
+// OrderFareQuotesRepo persiste la cotización de delivery en OLTP para medir
+// conversión. Es un registro de analítica: un fallo acá se loguea pero no
+// rompe la cotización.
+type OrderFareQuotesRepo interface {
+	Insert(ctx context.Context, quote *models.OrderFareQuote) error
+}
+
 // OrderRiderBroadcaster is implemented by the riders module to receive order lifecycle events.
 // Defined here so orders/app has no import dependency on riders/domain/ports.
 type OrderRiderBroadcaster interface {
