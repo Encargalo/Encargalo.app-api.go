@@ -91,6 +91,7 @@ func (r *olapSinkRepo) UpsertOrders(ctx context.Context, rows []models.CubeOrder
 		_, err := r.db.NewInsert().
 			Model(&chunk).
 			On("CONFLICT (order_id) DO UPDATE").
+			Set("quote_id = EXCLUDED.quote_id").
 			Set("shop_id = EXCLUDED.shop_id").
 			Set("customer_id = EXCLUDED.customer_id").
 			Set("rider_id = EXCLUDED.rider_id").
@@ -168,6 +169,30 @@ func (r *olapSinkRepo) UpsertFareQuotes(ctx context.Context, rows []models.CubeF
 			Set("fare_band = EXCLUDED.fare_band").
 			Set("pickup_h3_cell = EXCLUDED.pickup_h3_cell").
 			Set("dropoff_h3_cell = EXCLUDED.dropoff_h3_cell").
+			Set("quote_date = EXCLUDED.quote_date").
+			Set("quote_hour = EXCLUDED.quote_hour").
+			Set("created_at = EXCLUDED.created_at").
+			Set("synced_at = EXCLUDED.synced_at").
+			Exec(ctx)
+		if err != nil {
+			return errcustom.Unexpected(err)
+		}
+		return nil
+	})
+}
+
+// Las cotizaciones son inmutables, pero el upsert se mantiene idempotente para
+// que re-sincronizar una ventana ya procesada no falle por clave duplicada.
+func (r *olapSinkRepo) UpsertDeliveryQuotes(ctx context.Context, rows []models.CubeDeliveryQuote) error {
+	return insertInChunks(rows, func(chunk []models.CubeDeliveryQuote) error {
+		_, err := r.db.NewInsert().
+			Model(&chunk).
+			On("CONFLICT (quote_id) DO UPDATE").
+			Set("customer_id = EXCLUDED.customer_id").
+			Set("shop_id = EXCLUDED.shop_id").
+			Set("distance_meters = EXCLUDED.distance_meters").
+			Set("fee_usd = EXCLUDED.fee_usd").
+			Set("fare_band = EXCLUDED.fare_band").
 			Set("quote_date = EXCLUDED.quote_date").
 			Set("quote_hour = EXCLUDED.quote_hour").
 			Set("created_at = EXCLUDED.created_at").

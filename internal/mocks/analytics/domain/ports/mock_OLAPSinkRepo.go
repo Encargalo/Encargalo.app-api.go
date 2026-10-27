@@ -14,6 +14,24 @@ type OLAPSinkRepo struct {
 	mock.Mock
 }
 
+// UpsertDeliveryQuotes provides a mock function with given fields: ctx, rows
+func (_m *OLAPSinkRepo) UpsertDeliveryQuotes(ctx context.Context, rows []models.CubeDeliveryQuote) error {
+	ret := _m.Called(ctx, rows)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpsertDeliveryQuotes")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, []models.CubeDeliveryQuote) error); ok {
+		r0 = rf(ctx, rows)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // UpsertFareQuotes provides a mock function with given fields: ctx, rows
 func (_m *OLAPSinkRepo) UpsertFareQuotes(ctx context.Context, rows []models.CubeFareQuote) error {
 	ret := _m.Called(ctx, rows)

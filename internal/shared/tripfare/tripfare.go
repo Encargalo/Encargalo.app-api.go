@@ -1,6 +1,5 @@
 // Package tripfare calcula la tarifa de los viajes de pasajeros.
-// El delivery de comida usa internal/shared/deliveryfee, que cobra por
-// kilómetro redondeado: son dos negocios con economía distinta.
+// internal/shared/deliveryfee (delivery de comida) reusa esta misma fórmula.
 package tripfare
 
 import (
