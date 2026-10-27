@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -38,7 +37,7 @@ func main() {
 
 	container := providers.BuildContainer()
 	if err := container.Invoke(func(notificationHand handler.Notification, grafanaWebhookHand handler.GrafanaWebhook) {
-		consumer := redisStream.NewConsumerRedisStreamConnection(ctx, *cfg)
+		consumer := redisStream.NewConsumerRedisStreamConnection(ctx, cfg.Redis.URL, cfg.RedisStream)
 
 		go startHTTPServer(cfg.Server.Port, grafanaWebhookHand)
 
@@ -91,7 +90,7 @@ func processMessage(msg redis.XMessage, notificationHand handler.Notification) e
 	messageType, ok := msg.Values["type"].(string)
 	if !ok {
 		slog.Warn("mensaje sin campo type válido, se descarta", "msg_id", msg.ID, "value", msg.Values["type"])
-		return errors.New("message type not recognized")
+		return nil
 	}
 
 	switch messageType {
@@ -151,8 +150,10 @@ func processMessage(msg redis.XMessage, notificationHand handler.Notification) e
 			return err
 		}
 	default:
-		slog.Warn("tipo de mensaje no reconocido", "type", messageType)
-		return errors.New("message type not recognized")
+		// El stream es compartido con otros consumidores (cmd/etl): un tipo que
+		// no nos corresponde (p.ej. order_status_changed, fare_quote_created)
+		// se confirma sin procesar, no es un error nuestro que haya que reintentar.
+		return nil
 	}
 
 	return nil

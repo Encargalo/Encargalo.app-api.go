@@ -10,6 +10,7 @@ import (
 	"Encargalo.app-api.go/internal/riders/domain/dtos"
 	"Encargalo.app-api.go/internal/riders/domain/models"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	usersmodels "Encargalo.app-api.go/internal/users/domain/models"
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -19,7 +20,7 @@ import (
 
 func TestFindCandidate_NoProfileYet(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 
 	userID := uuid.New()
 	repo.On("FindAccountByPhone", mock.Anything, "0414").Return(userID, "Ada", "Lovelace", "0414", "a@b.c", nil)
@@ -35,7 +36,7 @@ func TestFindCandidate_NoProfileYet(t *testing.T) {
 
 func TestFindCandidate_WithExistingProfile(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 
 	userID := uuid.New()
 	repo.On("FindAccountByPhone", mock.Anything, "0414").Return(userID, "Ada", "Lovelace", "0414", "a@b.c", nil)
@@ -51,7 +52,7 @@ func TestFindCandidate_WithExistingProfile(t *testing.T) {
 
 func TestFindCandidate_AccountNotFound(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 
 	repo.On("FindAccountByPhone", mock.Anything, "0414").Return(uuid.Nil, "", "", "", "", errcustom.ErrNotFound)
 
@@ -62,7 +63,7 @@ func TestFindCandidate_AccountNotFound(t *testing.T) {
 
 func TestGetProfile_AccountBasicsError(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 
 	userID := uuid.New()
 	repo.On("GetByUserID", mock.Anything, userID).Return(&models.RiderProfile{UserID: userID}, nil)
@@ -75,7 +76,7 @@ func TestGetProfile_AccountBasicsError(t *testing.T) {
 
 func TestListProfiles_DefaultsToPendingReviewAndSkipsBrokenAccounts(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 
 	ok := uuid.New()
 	broken := uuid.New()
@@ -96,7 +97,7 @@ func TestListProfiles_DefaultsToPendingReviewAndSkipsBrokenAccounts(t *testing.T
 
 func TestListProfiles_RepoError(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 
 	repo.On("ListByStatus", mock.Anything, models.RiderProfileActive).Return(nil, errcustom.ErrUnexpectedError)
 
@@ -107,7 +108,8 @@ func TestListProfiles_RepoError(t *testing.T) {
 
 func TestUpsertProfile_CreatesDraftWithoutPhotos(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	stream := mocksriders.NewRidersStream(t)
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), stream)
 
 	userID := uuid.New()
 	repo.On("GetAccountBasics", mock.Anything, userID).Return("Ada", "Lovelace", "0414", "a@b.c", nil).Twice()
@@ -117,6 +119,11 @@ func TestUpsertProfile_CreatesDraftWithoutPhotos(t *testing.T) {
 	})).Return(nil)
 	repo.On("GetByUserID", mock.Anything, userID).Return(&models.RiderProfile{UserID: userID, Status: models.RiderProfileDraft}, nil).Once()
 	repo.On("HasRiderRole", mock.Anything, userID).Return(false, nil)
+	// El ETL resincroniza DimRider por evento, no por el batch horario.
+	stream.On("PublisherEvent", mock.Anything, models.DataEventRiderUpdated{
+		MessageType: "rider_updated",
+		RiderID:     userID.String(),
+	}).Return(nil)
 
 	vehicleType := "bici"
 	resp, err := svc.UpsertProfile(context.Background(), userID, dtos.UpsertRiderProfileRequest{VehicleType: &vehicleType})
@@ -127,7 +134,7 @@ func TestUpsertProfile_CreatesDraftWithoutPhotos(t *testing.T) {
 
 func TestUpsertProfile_AccountNotFound(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 
 	userID := uuid.New()
 	repo.On("GetAccountBasics", mock.Anything, userID).Return("", "", "", "", errcustom.ErrNotFound)
@@ -140,7 +147,7 @@ func TestUpsertProfile_AccountNotFound(t *testing.T) {
 func TestUpsertProfile_UploadsPhotosConcurrently(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
 	uploader_ := mockuploadimage.NewUploadImage(t)
-	svc := app.NewRiderProfileApp(repo, uploader_)
+	svc := app.NewRiderProfileApp(repo, uploader_, nil)
 
 	userID := uuid.New()
 	repo.On("GetAccountBasics", mock.Anything, userID).Return("Ada", "Lovelace", "0414", "a@b.c", nil).Twice()
@@ -161,7 +168,7 @@ func TestUpsertProfile_UploadsPhotosConcurrently(t *testing.T) {
 func TestUpsertProfile_ReplacedPhotoIsDeletedAfterSave(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
 	uploader_ := mockuploadimage.NewUploadImage(t)
-	svc := app.NewRiderProfileApp(repo, uploader_)
+	svc := app.NewRiderProfileApp(repo, uploader_, nil)
 
 	userID := uuid.New()
 	repo.On("GetAccountBasics", mock.Anything, userID).Return("Ada", "Lovelace", "0414", "a@b.c", nil).Twice()
@@ -184,7 +191,7 @@ func TestUpsertProfile_ReplacedPhotoIsDeletedAfterSave(t *testing.T) {
 func TestUpsertProfile_UploadFails(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
 	uploader_ := mockuploadimage.NewUploadImage(t)
-	svc := app.NewRiderProfileApp(repo, uploader_)
+	svc := app.NewRiderProfileApp(repo, uploader_, nil)
 
 	userID := uuid.New()
 	repo.On("GetAccountBasics", mock.Anything, userID).Return("Ada", "Lovelace", "0414", "a@b.c", nil).Once()
@@ -199,7 +206,8 @@ func TestUpsertProfile_UploadFails(t *testing.T) {
 
 func TestActivate_Success(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	stream := mocksriders.NewRidersStream(t)
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), stream)
 
 	userID, staffID := uuid.New(), uuid.New()
 	vt := "moto"
@@ -210,6 +218,16 @@ func TestActivate_Success(t *testing.T) {
 	repo.On("GetByUserID", mock.Anything, userID).Return(complete, nil).Once()
 	repo.On("GetAccountBasics", mock.Anything, userID).Return("Ada", "Lovelace", "0414", "a@b.c", nil)
 	repo.On("HasRiderRole", mock.Anything, userID).Return(true, nil)
+	stream.On("PublisherEvent", mock.Anything, models.DataEventRiderUpdated{
+		MessageType: "rider_updated",
+		RiderID:     userID.String(),
+	}).Return(nil)
+	// EnsureRiderRole otorga el rol Rider (muta users.user_roles), así que
+	// DimUser.Roles también necesita resincronizarse.
+	stream.On("PublisherEvent", mock.Anything, usersmodels.DataEventUserUpdated{
+		MessageType: "user_updated",
+		UserID:      userID.String(),
+	}).Return(nil)
 
 	resp, err := svc.Activate(context.Background(), userID, staffID)
 
@@ -219,7 +237,7 @@ func TestActivate_Success(t *testing.T) {
 
 func TestActivate_IncompleteProfile(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 
 	userID, staffID := uuid.New(), uuid.New()
 	repo.On("GetByUserID", mock.Anything, userID).Return(&models.RiderProfile{UserID: userID, Status: models.RiderProfileDraft}, nil)
@@ -231,7 +249,8 @@ func TestActivate_IncompleteProfile(t *testing.T) {
 
 func TestSuspend_Success(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	stream := mocksriders.NewRidersStream(t)
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), stream)
 
 	userID := uuid.New()
 	repo.On("Suspend", mock.Anything, userID).Return(nil)
@@ -239,6 +258,15 @@ func TestSuspend_Success(t *testing.T) {
 	repo.On("GetByUserID", mock.Anything, userID).Return(&models.RiderProfile{UserID: userID, Status: models.RiderProfileSuspended}, nil)
 	repo.On("GetAccountBasics", mock.Anything, userID).Return("Ada", "Lovelace", "0414", "a@b.c", nil)
 	repo.On("HasRiderRole", mock.Anything, userID).Return(false, nil)
+	stream.On("PublisherEvent", mock.Anything, models.DataEventRiderUpdated{
+		MessageType: "rider_updated",
+		RiderID:     userID.String(),
+	}).Return(nil)
+	// DisableRiderRole también muta users.user_roles.
+	stream.On("PublisherEvent", mock.Anything, usersmodels.DataEventUserUpdated{
+		MessageType: "user_updated",
+		UserID:      userID.String(),
+	}).Return(nil)
 
 	resp, err := svc.Suspend(context.Background(), userID)
 
@@ -248,7 +276,7 @@ func TestSuspend_Success(t *testing.T) {
 
 func TestSuspend_RepoError(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 
 	userID := uuid.New()
 	repo.On("Suspend", mock.Anything, userID).Return(errcustom.ErrUnexpectedError)
@@ -260,7 +288,8 @@ func TestSuspend_RepoError(t *testing.T) {
 
 func TestTouchContact_Success(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	stream := mocksriders.NewRidersStream(t)
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), stream)
 
 	userID := uuid.New()
 	notes := "  llamó, no contesta  "
@@ -270,6 +299,10 @@ func TestTouchContact_Success(t *testing.T) {
 	repo.On("GetByUserID", mock.Anything, userID).Return(&models.RiderProfile{UserID: userID, Status: models.RiderProfileDraft}, nil)
 	repo.On("GetAccountBasics", mock.Anything, userID).Return("Ada", "Lovelace", "0414", "a@b.c", nil)
 	repo.On("HasRiderRole", mock.Anything, userID).Return(false, nil)
+	stream.On("PublisherEvent", mock.Anything, models.DataEventRiderUpdated{
+		MessageType: "rider_updated",
+		RiderID:     userID.String(),
+	}).Return(nil)
 
 	_, err := svc.TouchContact(context.Background(), userID, &notes)
 
@@ -278,7 +311,7 @@ func TestTouchContact_Success(t *testing.T) {
 
 func TestIsActiveRider_True(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 
 	userID := uuid.New()
 	repo.On("GetByUserID", mock.Anything, userID).Return(&models.RiderProfile{UserID: userID, Status: models.RiderProfileActive}, nil)
@@ -291,7 +324,7 @@ func TestIsActiveRider_True(t *testing.T) {
 
 func TestIsActiveRider_LegacyWithoutProfile(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 
 	userID := uuid.New()
 	repo.On("GetByUserID", mock.Anything, userID).Return(nil, errcustom.ErrNotFound)
@@ -304,7 +337,7 @@ func TestIsActiveRider_LegacyWithoutProfile(t *testing.T) {
 
 func TestIsActiveRider_RepoError(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 
 	userID := uuid.New()
 	repo.On("GetByUserID", mock.Anything, userID).Return(nil, errcustom.ErrUnexpectedError)

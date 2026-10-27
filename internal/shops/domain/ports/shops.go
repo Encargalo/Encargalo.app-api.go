@@ -14,6 +14,13 @@ type ShopStatusBroadcaster interface {
 	BroadcastShopStatus(shopID uuid.UUID, open bool) error
 }
 
+// ShopEventPublisher publica eventos de shop al stream compartido (mismo
+// contrato que orders.RedisStream), para que el ETL resincronice DimShop
+// en tiempo real en vez de esperar al batch.
+type ShopEventPublisher interface {
+	PublisherEvent(ctx context.Context, data any) error
+}
+
 type ShopsApp interface {
 	GetAllShops(ctx context.Context, query dtos.ListShopsQuery) (dtos.ShopsResponse, error)
 	GetShopsBy(ctx context.Context, criteria dtos.SearchShopsByID, coords dtos.Coords) (dtos.ShopsResponse, error)

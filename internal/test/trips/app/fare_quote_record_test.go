@@ -52,6 +52,30 @@ func TestEstimateFare_RecordsFareQuoteForConversion(t *testing.T) {
 	require.NotNil(t, recorded.DropoffH3CellZone)
 }
 
+// El ETL resincroniza CubeFareQuote por evento, no por el batch horario.
+func TestEstimateFare_PublishesFareQuoteCreated(t *testing.T) {
+	repo := mockstrips.NewTripsRepo(t)
+	quotes := mockstrips.NewTripQuotesRepo(t)
+	fareQuotes := mockstrips.NewFareQuotesRepo(t)
+	bcv := mockbcvports.NewBcvApp(t)
+	events := &fakeTripEvents{}
+	svc := app.NewTripsApp(repo, nil, bcv, quotes, nil, nil, nil, nil, nil, nil, nil, nil, events, fareQuotes)
+
+	req := sampleFareEstimateRequest(uuid.New())
+	mockBcvRate(bcv, 40)
+	repo.On("HasBillableTrip", mock.Anything, req.CustomerID).Return(true, nil)
+	quotes.On("Save", mock.Anything, mock.Anything, models.TripQuoteTTL).Return(nil)
+	fareQuotes.On("Insert", mock.Anything, mock.Anything).Return(nil)
+
+	resp, err := svc.EstimateFare(context.Background(), req)
+
+	require.NoError(t, err)
+	require.Equal(t, []any{models.DataEventFareQuoteCreated{
+		MessageType: "fare_quote_created",
+		QuoteID:     resp.QuoteID.String(),
+	}}, events.events)
+}
+
 // El registro es analítica: si la escritura falla, la cotización sigue sirviéndose.
 func TestEstimateFare_SucceedsWhenFareQuoteRecordFails(t *testing.T) {
 	repo := mockstrips.NewTripsRepo(t)

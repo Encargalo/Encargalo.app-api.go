@@ -294,6 +294,19 @@ func (o *orderApp) recordFareQuote(ctx context.Context, quote *models.OrderQuote
 	}
 	if err := o.fareQuotes.Insert(ctx, record); err != nil {
 		slog.Error("recordFareQuote failed", "quoteID", quote.QuoteID, "error", err)
+		return
+	}
+	o.publishDeliveryQuoteCreated(ctx, quote.QuoteID)
+}
+
+func (o *orderApp) publishDeliveryQuoteCreated(ctx context.Context, quoteID uuid.UUID) {
+	if o.stream == nil {
+		return
+	}
+	event := models.DataEventDeliveryQuoteCreated{}
+	event.BuildFromQuoteID(quoteID.String())
+	if err := o.stream.PublisherEvent(ctx, event); err != nil {
+		slog.Error("error publishing delivery_quote_created event", "quoteID", quoteID, "error", err)
 	}
 }
 
@@ -858,6 +871,7 @@ func (o *orderApp) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, sta
 
 	if newStatus == models.StatusRejected && prevStatus != string(models.StatusRejected) {
 		o.refundCustomerOnShopReject(ctx, order)
+		o.publishOrderStatusChanged(ctx, *order)
 	}
 
 	o.handleStatusTransition(ctx, newStatus, order)
@@ -977,6 +991,21 @@ func (o *orderApp) AutoRejectStalePending(ctx context.Context) ([]models.Order, 
 		slog.Info("AutoRejectStalePending rejected order", "orderID", order.ID, "shopID", order.ShopID)
 	}
 	return out, nil
+}
+
+// publishOrderStatusChanged notifica al stream un cambio de estado puntual
+// (hoy: rechazo por el local y entrega confirmada) para que el ETL re-sincronice
+// esa orden contra OLAP sin esperar al batch. No es la fuente de verdad del
+// estado, solo una señal — el consumidor vuelve a leer la orden de OLTP.
+func (o *orderApp) publishOrderStatusChanged(ctx context.Context, order models.Order) {
+	if o.stream == nil {
+		return
+	}
+	event := models.DataEventOrderStatusChanged{}
+	event.BuildFromOrder(order)
+	if err := o.stream.PublisherEvent(ctx, event); err != nil {
+		slog.Error("error producing order_status_changed to stream", "orderID", order.ID, "status", order.Status, "error", err)
+	}
 }
 
 func (o *orderApp) publishOrderAutoRejected(ctx context.Context, order models.Order) {
@@ -1157,6 +1186,7 @@ func (o *orderApp) ConfirmDelivery(ctx context.Context, orderID uuid.UUID, code 
 	}
 
 	order.Status = string(models.StatusCompleted)
+	o.publishOrderStatusChanged(ctx, *order)
 
 	if order.RiderID == nil {
 		slog.Error("order completed without rider assigned", "orderID", orderID)

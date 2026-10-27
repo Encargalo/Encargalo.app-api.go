@@ -19,7 +19,7 @@ import (
 func TestGetShopsBy_AppliesBsRate(t *testing.T) {
 	repo := mocksshops.NewShopsRepo(t)
 	bcv := mocksbcv.NewBcvApp(t)
-	shopsApp := app.NewShopsApp(repo, nil, bcv)
+	shopsApp := app.NewShopsApp(repo, nil, bcv, nil)
 
 	criteria := dtos.SearchShopsByID{}
 	coords := dtos.Coords{Latitude: 10.48, Longitude: -66.9}
@@ -36,7 +36,7 @@ func TestGetShopsBy_AppliesBsRate(t *testing.T) {
 
 func TestGetShopsBy_RepoError(t *testing.T) {
 	repo := mocksshops.NewShopsRepo(t)
-	shopsApp := app.NewShopsApp(repo, nil, nil)
+	shopsApp := app.NewShopsApp(repo, nil, nil, nil)
 
 	criteria := dtos.SearchShopsByID{}
 	coords := dtos.Coords{}
@@ -50,7 +50,7 @@ func TestGetShopsBy_RepoError(t *testing.T) {
 
 func TestGetShopByID_DelegatesToRepo(t *testing.T) {
 	repo := mocksshops.NewShopsRepo(t)
-	shopsApp := app.NewShopsApp(repo, nil, nil)
+	shopsApp := app.NewShopsApp(repo, nil, nil, nil)
 
 	shopID := uuid.New()
 	repo.On("GetShopByID", context.Background(), shopID).Return(dtos.ShopResponse{ID: shopID}, nil)
@@ -63,7 +63,7 @@ func TestGetShopByID_DelegatesToRepo(t *testing.T) {
 
 func TestGetLaunchPromoEndsAt_DelegatesToRepo(t *testing.T) {
 	repo := mocksshops.NewShopsRepo(t)
-	shopsApp := app.NewShopsApp(repo, nil, nil)
+	shopsApp := app.NewShopsApp(repo, nil, nil, nil)
 
 	shopID := uuid.New()
 	endsAt := time.Now().Add(48 * time.Hour)
@@ -80,7 +80,7 @@ func TestGetLaunchPromoEndsAt_DelegatesToRepo(t *testing.T) {
 func TestSearchShops_FiltersMatchedItemsOutsideSchedule(t *testing.T) {
 	repo := mocksshops.NewShopsRepo(t)
 	bcv := mocksbcv.NewBcvApp(t)
-	shopsApp := app.NewShopsApp(repo, nil, bcv)
+	shopsApp := app.NewShopsApp(repo, nil, bcv, nil)
 
 	shopID := uuid.New()
 	query := dtos.SearchShopsQuery{Q: "arroz"}
@@ -107,7 +107,7 @@ func TestSearchShops_FiltersMatchedItemsOutsideSchedule(t *testing.T) {
 
 func TestSearchShops_RepoErrorOnCandidates(t *testing.T) {
 	repo := mocksshops.NewShopsRepo(t)
-	shopsApp := app.NewShopsApp(repo, nil, nil)
+	shopsApp := app.NewShopsApp(repo, nil, nil, nil)
 
 	query := dtos.SearchShopsQuery{}
 	repo.On("SearchShopCandidates", context.Background(), query).

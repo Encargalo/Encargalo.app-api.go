@@ -25,7 +25,7 @@ func newTripVehicleMgr(t *testing.T) (ridersPorts.RidersApp, *mocksriders.Vehicl
 	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound).Maybe()
 	vehicles := mocksriders.NewVehicleLookup(t)
 	tripsStore := mocksriders.NewTripsStore(t)
-	svc := app.New(repo, mocksriders.NewRidersStream(t), mockbcvports.NewBcvApp(t), tripsStore, mocksriders.NewTripEarningRecorder(t), nil, nil, nil, vehicles, newPresenceStore(t))
+	svc := app.New(repo, newRidersStream(t), mockbcvports.NewBcvApp(t), tripsStore, mocksriders.NewTripEarningRecorder(t), nil, nil, nil, vehicles, newPresenceStore(t))
 	return svc, vehicles, tripsStore
 }
 

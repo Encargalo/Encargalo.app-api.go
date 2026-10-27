@@ -22,8 +22,9 @@ func (d *DataEventTrip) BuildFromTrip(messageType string, trip Trip) {
 }
 
 const (
-	EventTripCreated  = "trip_created"
-	EventTripNoDriver = "trip_no_driver"
+	EventTripCreated       = "trip_created"
+	EventTripNoDriver      = "trip_no_driver"
+	EventTripStatusChanged = "trip_status_changed"
 )
 
 // DataEventTripPaymentProofPending usa el mismo type que el de órdenes: el

@@ -16,7 +16,7 @@ import (
 func TestGetAllShops_PropagatesTypeFilter(t *testing.T) {
 	repo := mocksshops.NewShopsRepo(t)
 	bcv := mocksbcv.NewBcvApp(t)
-	shopsApp := app.NewShopsApp(repo, nil, bcv)
+	shopsApp := app.NewShopsApp(repo, nil, bcv, nil)
 
 	query := dtos.ListShopsQuery{
 		Latitude:  4.678034,
@@ -39,7 +39,7 @@ func TestGetAllShops_PropagatesTypeFilter(t *testing.T) {
 func TestSearchShops_PropagatesTypeFilter(t *testing.T) {
 	repo := mocksshops.NewShopsRepo(t)
 	bcv := mocksbcv.NewBcvApp(t)
-	shopsApp := app.NewShopsApp(repo, nil, bcv)
+	shopsApp := app.NewShopsApp(repo, nil, bcv, nil)
 
 	query := dtos.SearchShopsQuery{
 		Q:         "arroz",

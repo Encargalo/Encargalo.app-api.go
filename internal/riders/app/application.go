@@ -47,6 +47,7 @@ func (a *riderProfileApp) SaveOwnApplication(ctx context.Context, userID uuid.UU
 		return dtos.RiderApplicationResponse{}, err
 	}
 	a.deleteImages(ctx, userID, photos.replaced)
+	a.publishRiderUpdated(ctx, userID)
 	return toApplicationResponse(profile), nil
 }
 
@@ -72,6 +73,7 @@ func (a *riderProfileApp) SubmitOwnApplication(ctx context.Context, userID uuid.
 	}
 	profile.Status = models.RiderProfilePendingReview
 	profile.SubmittedAt = &now
+	a.publishRiderUpdated(ctx, userID)
 	return toApplicationResponse(profile), nil
 }
 
@@ -125,6 +127,7 @@ func (a *riderProfileApp) review(
 	if err := a.repo.ReviewApplication(ctx, userID, staffID, status, reason, time.Now()); err != nil {
 		return dtos.RiderProfileResponse{}, err
 	}
+	a.publishRiderUpdated(ctx, userID)
 	return a.GetProfile(ctx, userID)
 }
 

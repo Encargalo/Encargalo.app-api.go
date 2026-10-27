@@ -204,3 +204,23 @@ func (r *olapSinkRepo) UpsertDeliveryQuotes(ctx context.Context, rows []models.C
 		return nil
 	})
 }
+
+// El historial es append-only en origen (orders.order_status_history), pero
+// el upsert se mantiene idempotente para que re-sincronizar una orden ya
+// procesada no falle por clave duplicada.
+func (r *olapSinkRepo) UpsertOrderStatusChanges(ctx context.Context, rows []models.FactOrderStatusChange) error {
+	return insertInChunks(rows, func(chunk []models.FactOrderStatusChange) error {
+		_, err := r.db.NewInsert().
+			Model(&chunk).
+			On("CONFLICT (id) DO UPDATE").
+			Set("order_id = EXCLUDED.order_id").
+			Set("status = EXCLUDED.status").
+			Set("at = EXCLUDED.at").
+			Set("synced_at = EXCLUDED.synced_at").
+			Exec(ctx)
+		if err != nil {
+			return errcustom.Unexpected(err)
+		}
+		return nil
+	})
+}

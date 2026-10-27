@@ -73,6 +73,33 @@ func TestCreateQuote_Success(t *testing.T) {
 	assert.NotEqual(t, uuid.Nil, resp.QuoteID)
 }
 
+// El ETL resincroniza CubeDeliveryQuote por evento, no por el batch horario.
+func TestCreateQuote_PublishesDeliveryQuoteCreated(t *testing.T) {
+	svc, m := newOrderAppFixture(t)
+	customerID, shopID, itemID := uuid.New(), uuid.New(), uuid.New()
+
+	m.quotes.On("GetActiveID", mock.Anything, customerID).Return(uuid.Nil, nil)
+	wireNoQuoteItemCatalog(m, shopID, itemID, 10)
+	m.repo.On("HasBillableOrder", mock.Anything, customerID).Return(true, nil)
+	m.quotes.On("Save", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	m.quotes.On("SetActiveID", mock.Anything, customerID, mock.Anything, mock.Anything).Return(nil)
+
+	req := &dtos.CreateQuote{
+		ShopID:     shopID,
+		CustomerID: customerID,
+		Address:    dtos.Address{Address: "Calle 1", Latitude: 10.48, Longitude: -66.9},
+		Items:      sampleCreateItems(itemID),
+	}
+
+	resp, err := svc.CreateQuote(context.Background(), req)
+
+	require.NoError(t, err)
+	m.stream.AssertCalled(t, "PublisherEvent", mock.Anything, ordermodels.DataEventDeliveryQuoteCreated{
+		MessageType: "delivery_quote_created",
+		QuoteID:     resp.QuoteID.String(),
+	})
+}
+
 func TestCreateQuote_ShopClosed(t *testing.T) {
 	svc, m := newOrderAppFixture(t)
 	customerID, shopID, itemID := uuid.New(), uuid.New(), uuid.New()

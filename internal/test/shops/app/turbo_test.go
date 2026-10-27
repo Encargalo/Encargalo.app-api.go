@@ -54,7 +54,7 @@ func TestSelectNearestOpenTurboNode_NoCandidates(t *testing.T) {
 
 func TestGetTurboEntry_AssignsNearestAndResolvesMetrics(t *testing.T) {
 	repo := mocksshops.NewShopsRepo(t)
-	shopsApp := app.NewShopsApp(repo, nil, nil)
+	shopsApp := app.NewShopsApp(repo, nil, nil, nil)
 
 	near := dtos.ShopResponse{ID: uuid.New(), Name: "Turbo Cerca", Opened: true, Latitude: 10.4820, Longitude: customerLon}
 	far := dtos.ShopResponse{ID: uuid.New(), Name: "Turbo Lejos", Opened: true, Latitude: 10.4900, Longitude: customerLon}
@@ -78,7 +78,7 @@ func TestGetTurboEntry_AssignsNearestAndResolvesMetrics(t *testing.T) {
 
 func TestGetTurboEntry_NoCoverageReturnsUnavailableWithoutResolvingMetrics(t *testing.T) {
 	repo := mocksshops.NewShopsRepo(t)
-	shopsApp := app.NewShopsApp(repo, nil, nil)
+	shopsApp := app.NewShopsApp(repo, nil, nil, nil)
 
 	coords := dtos.Coords{Latitude: customerLat, Longitude: customerLon}
 	repo.On("ListTurboCandidates", context.Background()).Return(dtos.ShopsResponse{}, nil)

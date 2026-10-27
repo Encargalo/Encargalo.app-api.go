@@ -50,6 +50,24 @@ func (_m *OLAPSinkRepo) UpsertFareQuotes(ctx context.Context, rows []models.Cube
 	return r0
 }
 
+// UpsertOrderStatusChanges provides a mock function with given fields: ctx, rows
+func (_m *OLAPSinkRepo) UpsertOrderStatusChanges(ctx context.Context, rows []models.FactOrderStatusChange) error {
+	ret := _m.Called(ctx, rows)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpsertOrderStatusChanges")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, []models.FactOrderStatusChange) error); ok {
+		r0 = rf(ctx, rows)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // UpsertOrders provides a mock function with given fields: ctx, rows
 func (_m *OLAPSinkRepo) UpsertOrders(ctx context.Context, rows []models.CubeOrder) error {
 	ret := _m.Called(ctx, rows)

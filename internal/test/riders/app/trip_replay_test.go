@@ -163,7 +163,7 @@ func TestUpdateLocation_DoesNotOfferTripToRiderWhoCancelledIt(t *testing.T) {
 
 func TestSendActiveTrips_ResendsAssignedTripWithoutCodesAndRelinksLocation(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -210,7 +210,7 @@ func TestSendActiveTrips_ResendsAssignedTripWithoutCodesAndRelinksLocation(t *te
 
 func TestSendActiveTrips_NoActiveTripsSendsNothing(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -228,7 +228,7 @@ func TestSendActiveTrips_NoActiveTripsSendsNothing(t *testing.T) {
 
 func TestSendActiveTrips_PropagatesRepoError(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -244,7 +244,7 @@ func TestSendActiveTrips_PropagatesRepoError(t *testing.T) {
 
 func TestActiveTrips_ReturnsTripsWithBsFareAndNoCodes(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -279,7 +279,7 @@ func TestActiveTrips_ReturnsTripsWithBsFareAndNoCodes(t *testing.T) {
 
 func TestActiveTrips_EmptyReturnsEmptyListWithoutQueryingBcv(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -298,7 +298,7 @@ func TestActiveTrips_EmptyReturnsEmptyListWithoutQueryingBcv(t *testing.T) {
 
 func TestActiveTrips_PropagatesRepoError(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)

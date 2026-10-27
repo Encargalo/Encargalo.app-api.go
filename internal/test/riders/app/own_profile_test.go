@@ -17,7 +17,7 @@ import (
 
 func TestGetOwnProfile_ReturnsDriverAndVehicleOnly(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 
 	userID := uuid.New()
 	repo.On("GetAccountBasics", mock.Anything, userID).Return("Ada", "Lovelace", "0414", "a@b.c", nil)
@@ -49,7 +49,7 @@ func TestGetOwnProfile_ReturnsDriverAndVehicleOnly(t *testing.T) {
 
 func TestGetOwnProfile_NoProfileYetReturnsEmptyVehicle(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 
 	userID := uuid.New()
 	repo.On("GetAccountBasics", mock.Anything, userID).Return("Ada", "Lovelace", "0414", "a@b.c", nil)
@@ -65,7 +65,7 @@ func TestGetOwnProfile_NoProfileYetReturnsEmptyVehicle(t *testing.T) {
 
 func TestGetOwnProfile_BikeWithoutPlate(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 
 	userID := uuid.New()
 	repo.On("GetAccountBasics", mock.Anything, userID).Return("Ada", "Lovelace", "0414", "a@b.c", nil)
@@ -80,7 +80,7 @@ func TestGetOwnProfile_BikeWithoutPlate(t *testing.T) {
 
 func TestGetOwnProfile_AccountErrorPropagates(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 
 	userID := uuid.New()
 	repo.On("GetAccountBasics", mock.Anything, userID).Return("", "", "", "", errcustom.ErrNotFound)
@@ -92,7 +92,7 @@ func TestGetOwnProfile_AccountErrorPropagates(t *testing.T) {
 
 func TestGetOwnProfile_ProfileRepoErrorPropagates(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 
 	userID := uuid.New()
 	repo.On("GetAccountBasics", mock.Anything, userID).Return("Ada", "Lovelace", "0414", "a@b.c", nil)

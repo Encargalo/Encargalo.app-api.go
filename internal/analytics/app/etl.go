@@ -9,6 +9,7 @@ import (
 	"Encargalo.app-api.go/internal/analytics/domain/models"
 	"Encargalo.app-api.go/internal/analytics/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"github.com/google/uuid"
 )
 
 type Lookbacks struct {
@@ -111,6 +112,87 @@ func (a *etlApp) Run(ctx context.Context, from, to time.Time, entities []models.
 	return result, nil
 }
 
+// SyncOrderByID re-sincroniza una sola orden contra OLAP, junto con todo su
+// historial de status_history (alimentado por trigger en OLTP, no requiere
+// evento propio). La llama el consumidor de eventos (cmd/etl) al recibir
+// order_status_changed.
+func (a *etlApp) SyncOrderByID(ctx context.Context, orderID uuid.UUID) error {
+	row, err := a.source.FetchOrderByID(ctx, orderID)
+	if err != nil {
+		return err
+	}
+	row.GMV = models.GMV(row.TotalPrice, row.DeliveryFee)
+	if err := a.sink.UpsertOrders(ctx, []models.CubeOrder{*row}); err != nil {
+		return err
+	}
+
+	history, err := a.source.FetchOrderStatusChangesByOrderID(ctx, orderID)
+	if err != nil {
+		return err
+	}
+	return a.sink.UpsertOrderStatusChanges(ctx, history)
+}
+
+// SyncFareQuoteByID re-sincroniza una sola cotización contra OLAP. La llama
+// el consumidor de eventos (cmd/etl) al recibir fare_quote_created.
+func (a *etlApp) SyncFareQuoteByID(ctx context.Context, quoteID uuid.UUID) error {
+	row, err := a.source.FetchFareQuoteByID(ctx, quoteID)
+	if err != nil {
+		return err
+	}
+	return a.sink.UpsertFareQuotes(ctx, []models.CubeFareQuote{*row})
+}
+
+// SyncDeliveryQuoteByID re-sincroniza una sola cotización de delivery contra
+// OLAP. La llama el consumidor de eventos (cmd/etl) al recibir delivery_quote_created.
+func (a *etlApp) SyncDeliveryQuoteByID(ctx context.Context, quoteID uuid.UUID) error {
+	row, err := a.source.FetchDeliveryQuoteByID(ctx, quoteID)
+	if err != nil {
+		return err
+	}
+	return a.sink.UpsertDeliveryQuotes(ctx, []models.CubeDeliveryQuote{*row})
+}
+
+// SyncTripByID re-sincroniza un solo viaje contra OLAP. La llama el
+// consumidor de eventos (cmd/etl) al recibir trip_status_changed.
+func (a *etlApp) SyncTripByID(ctx context.Context, tripID uuid.UUID) error {
+	row, err := a.source.FetchTripByID(ctx, tripID)
+	if err != nil {
+		return err
+	}
+	return a.sink.UpsertTrips(ctx, []models.CubeTrip{*row})
+}
+
+// SyncShopByID re-sincroniza un solo local contra OLAP. La llama el
+// consumidor de eventos (cmd/etl) al recibir shop_updated.
+func (a *etlApp) SyncShopByID(ctx context.Context, shopID uuid.UUID) error {
+	row, err := a.source.FetchShopByID(ctx, shopID)
+	if err != nil {
+		return err
+	}
+	return a.sink.UpsertShops(ctx, []models.DimShop{*row})
+}
+
+// SyncRiderByID re-sincroniza un solo conductor contra OLAP. La llama el
+// consumidor de eventos (cmd/etl) al recibir rider_updated.
+func (a *etlApp) SyncRiderByID(ctx context.Context, riderID uuid.UUID) error {
+	row, err := a.source.FetchRiderByID(ctx, riderID)
+	if err != nil {
+		return err
+	}
+	return a.sink.UpsertRiders(ctx, []models.DimRider{*row})
+}
+
+// SyncUserByID re-sincroniza una sola cuenta contra OLAP. La llama el
+// consumidor de eventos (cmd/etl) al recibir user_updated.
+func (a *etlApp) SyncUserByID(ctx context.Context, userID uuid.UUID) error {
+	row, err := a.source.FetchUserByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	return a.sink.UpsertUsers(ctx, []models.DimUser{*row})
+}
+
 func (a *etlApp) syncEntity(ctx context.Context, entity models.ETLEntity, from, to time.Time) (int, error) {
 	switch entity {
 	case models.EntityDimShop:
@@ -164,6 +246,12 @@ func (a *etlApp) syncEntity(ctx context.Context, entity models.ETLEntity, from, 
 			return 0, err
 		}
 		return len(rows), a.sink.UpsertTrackingEvents(ctx, rows)
+	case models.EntityFactOrderStatusChange:
+		rows, err := a.source.FetchOrderStatusChanges(ctx, from, to)
+		if err != nil {
+			return 0, err
+		}
+		return len(rows), a.sink.UpsertOrderStatusChanges(ctx, rows)
 	default:
 		return 0, errcustom.ErrUnknownETLEntity
 	}

@@ -513,6 +513,7 @@ func (a *tripsApp) CancelTrip(ctx context.Context, tripID, requesterID uuid.UUID
 
 	verifiedPagoMovil := trip.HasVerifiedPagoMovil()
 	trip.Status = models.TripStatusCancelled
+	a.publishTripEvent(ctx, models.EventTripStatusChanged, trip)
 	saveCancelReason(ctx, trip, models.CancelReasonCustomerCancelled, a.repo.SaveTripCancelReason)
 	if verifiedPagoMovil {
 		CreditUnservedPagoMovil(ctx, a.balance, trip, a.repo.SaveTripPayment)
@@ -731,6 +732,19 @@ func (a *tripsApp) recordFareQuote(ctx context.Context, quote *models.TripQuote)
 
 	if err := a.fareQuotes.Insert(ctx, record); err != nil {
 		slog.Error("recordFareQuote failed", "quoteID", quote.QuoteID, "error", err)
+		return
+	}
+	a.publishFareQuoteCreated(ctx, quote.QuoteID)
+}
+
+func (a *tripsApp) publishFareQuoteCreated(ctx context.Context, quoteID uuid.UUID) {
+	if a.events == nil {
+		return
+	}
+	event := models.DataEventFareQuoteCreated{}
+	event.BuildFromQuoteID(quoteID.String())
+	if err := a.events.PublisherEvent(ctx, event); err != nil {
+		slog.Error("error publishing fare_quote_created event", "quoteID", quoteID, "error", err)
 	}
 }
 
