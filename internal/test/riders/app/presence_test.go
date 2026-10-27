@@ -23,7 +23,7 @@ func newPresenceMgr(t *testing.T) (ridersPorts.RidersApp, *mocksriders.RiderPres
 	vehicles := mocksriders.NewVehicleLookup(t)
 	presence := mocksriders.NewRiderPresenceStore(t)
 	svc := app.New(repo, newRidersStream(t), mockbcvports.NewBcvApp(t), mocksriders.NewTripsStore(t),
-		mocksriders.NewTripEarningRecorder(t), nil, nil, nil, vehicles, presence)
+		mocksriders.NewTripEarningRecorder(t), nil, nil, nil, vehicles, presence, newOfferTimeoutStore(t))
 	return svc, presence, vehicles
 }
 

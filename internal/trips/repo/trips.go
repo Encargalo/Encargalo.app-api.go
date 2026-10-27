@@ -266,6 +266,24 @@ func (r *tripsRepo) ListActiveTripsByRider(ctx context.Context, riderID uuid.UUI
 	return trips, nil
 }
 
+// ListSearchingTripIDs usa idx_trips_status_searching (parcial, ver
+// migración 00096): el índice general sobre status se tumbó en 00071 por
+// costoso, pero uno acotado a "searching" se mantiene chico porque pocos
+// viajes están en ese estado a la vez.
+func (r *tripsRepo) ListSearchingTripIDs(ctx context.Context) ([]uuid.UUID, error) {
+	var ids []uuid.UUID
+	err := r.db.NewSelect().
+		Model((*models.Trip)(nil)).
+		Column("id").
+		Where("status = ?", models.TripStatusSearching).
+		Scan(ctx, &ids)
+	if err != nil {
+		slog.Error("trips ListSearchingTripIDs failed", "error", err)
+		return nil, errcustom.Unexpected(err)
+	}
+	return ids, nil
+}
+
 func (r *tripsRepo) AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID, pickupCode string) (bool, error) {
 	res, err := r.db.NewUpdate().
 		TableExpr("trips.trips").

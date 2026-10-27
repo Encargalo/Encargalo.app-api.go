@@ -47,6 +47,10 @@ type TripsRepo interface {
 	// setea status = completed, fare y completed_at en un solo movimiento
 	// atómico. RowsAffected == 0 => el estado ya cambió (CAS).
 	CompleteTrip(ctx context.Context, tripID uuid.UUID, fare float64, dropoffCode string) (bool, error)
+	// ListSearchingTripIDs devuelve los viajes en "searching", para el barrido
+	// de rescate que reprograma el vencimiento de los que quedaron sin uno
+	// (ver #359: riders/app.TripOfferTimeoutWorker).
+	ListSearchingTripIDs(ctx context.Context) ([]uuid.UUID, error)
 }
 
 // CustomerConn es el WebSocket del cliente que sigue un viaje.

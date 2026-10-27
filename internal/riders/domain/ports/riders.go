@@ -81,4 +81,26 @@ type TripsStore interface {
 	ReleaseTripRider(ctx context.Context, tripID, riderID uuid.UUID) (bool, error)
 	CompleteTrip(ctx context.Context, tripID uuid.UUID, fare float64, dropoffCode string) (bool, error)
 	ListActiveTripsByRider(ctx context.Context, riderID uuid.UUID) ([]tripsModels.Trip, error)
+	// ListSearchingTripIDs alimenta el barrido de rescate del
+	// TripOfferTimeoutWorker (ver #359).
+	ListSearchingTripIDs(ctx context.Context) ([]uuid.UUID, error)
+}
+
+// TripOfferTimeoutStore guarda fuera del proceso cuándo vence la ronda de
+// oferta de cada viaje, para que un reinicio no la pierda (ver #359: antes
+// vivía en un time.AfterFunc en memoria).
+type TripOfferTimeoutStore interface {
+	// Schedule programa (o reprograma, pisando el score anterior) el
+	// vencimiento de tripID para el instante at.
+	Schedule(ctx context.Context, tripID uuid.UUID, at time.Time) error
+	// Cancel saca a tripID de la cola: se aceptó, se canceló, o ya no aplica.
+	Cancel(ctx context.Context, tripID uuid.UUID) error
+	// PopDue reclama hasta limit vencimientos ya cumplidos de forma atómica
+	// (ZRANGEBYSCORE+ZREM en un solo script): con varias réplicas corriendo
+	// esto al mismo tiempo, cada trip_id vencido solo puede salir una vez.
+	PopDue(ctx context.Context, limit int64) ([]uuid.UUID, error)
+	// ScheduleIfAbsent programa at solo si tripID no tiene ya un vencimiento
+	// pendiente — lo usa el barrido de rescate para no adelantar el de un
+	// viaje que ya está esperando su ronda real.
+	ScheduleIfAbsent(ctx context.Context, tripID uuid.UUID, at time.Time) error
 }
