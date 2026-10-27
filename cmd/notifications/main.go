@@ -38,7 +38,7 @@ func main() {
 
 	container := providers.BuildContainer()
 	if err := container.Invoke(func(notificationHand handler.Notification, grafanaWebhookHand handler.GrafanaWebhook) {
-		consumer := redisStream.NewConsumerRedisStreamConnection(ctx, *cfg)
+		consumer := redisStream.NewConsumerRedisStreamConnection(ctx, cfg.Redis.URL, cfg.RedisStream)
 
 		go startHTTPServer(cfg.Server.Port, grafanaWebhookHand)
 

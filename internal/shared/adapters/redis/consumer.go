@@ -13,16 +13,17 @@ import (
 	"github.com/andresxlp/redsumer/pkg/consumer"
 )
 
-func NewConsumerRedisStreamConnection(ctx context.Context, cfg config.NotificationsConfig) *consumer.Consumer {
-	u, err := url.Parse(cfg.Redis.URL)
+// NewConsumerRedisStreamConnection conecta un consumer al stream compartido
+// usando el group/consumer propios del worker que llama (cmd/notifications,
+// cmd/etl, ...) — cada uno lee el mismo stream de forma independiente.
+func NewConsumerRedisStreamConnection(ctx context.Context, redisURL string, configRedis config.RedisConsumerGroup) *consumer.Consumer {
+	u, err := url.Parse(redisURL)
 	if err != nil {
 		slog.Error("error parseando redis URL", "error", err)
 		os.Exit(1)
 	}
 	port, _ := strconv.Atoi(u.Port())
 	password, _ := u.User.Password()
-
-	configRedis := cfg.RedisStream
 
 	redisArgs := client.RedisArgs{
 		RedisHost:  u.Hostname(),

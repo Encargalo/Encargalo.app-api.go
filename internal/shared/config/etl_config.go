@@ -15,14 +15,16 @@ var (
 	etlCfg  *ETLConfig
 )
 
-// ETLConfig es la configuración mínima del worker cmd/etl (sin JWT/Redis/Google/Cloudinary).
+// ETLConfig es la configuración mínima del worker cmd/etl (sin JWT/Google/Cloudinary).
 type ETLConfig struct {
-	Server        Server        `env:"server"`
-	Postgres      Postgres      `env:"postgres"`
-	OlapPostgres  OlapPostgres  `env:"olap_postgres"`
-	ETL           ETLSettings   `env:"etl"`
-	Environment   Environment   `env:"environment"`
-	Observability Observability `env:"observability"`
+	Server        Server             `env:"server"`
+	Postgres      Postgres           `env:"postgres"`
+	OlapPostgres  OlapPostgres       `env:"olap_postgres"`
+	ETL           ETLSettings        `env:"etl"`
+	Environment   Environment        `env:"environment"`
+	Observability Observability      `env:"observability"`
+	Redis         Redis              `env:"redis"`
+	RedisStream   RedisConsumerGroup `env:"redis_stream"`
 }
 
 // OlapPostgres destino del warehouse analytics.

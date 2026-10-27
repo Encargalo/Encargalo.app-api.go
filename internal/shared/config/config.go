@@ -57,6 +57,17 @@ type RedisStream struct {
 	Db         int    `validate:"min=0" env:"db"`
 }
 
+// RedisConsumerGroup agrega al stream el grupo y consumer que solo necesita
+// el lado consumidor (la API únicamente produce). Cada worker consumidor
+// (cmd/notifications, cmd/etl) define su propio group_name/consumer_name
+// para leer el mismo stream de forma independiente.
+type RedisConsumerGroup struct {
+	StreamName   string `validate:"required" env:"stream_name"`
+	GroupName    string `validate:"required" env:"group_name"`
+	ConsumerName string `validate:"required" env:"consumer_name"`
+	Db           int    `validate:"min=0" env:"db"`
+}
+
 type JWT struct {
 	Secret string `validate:"required" env:"secret"`
 }

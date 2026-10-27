@@ -17,24 +17,15 @@ var (
 // NotificationsConfig es la configuración del consumer cmd/notifications
 // (sin JWT/Google/Cloudinary, con los destinos de notificación y Grafana).
 type NotificationsConfig struct {
-	Server        Server                  `env:"server"`
-	Environment   Environment             `env:"environment"`
-	Postgres      Postgres                `env:"postgres"`
-	Redis         Redis                   `env:"redis"`
-	RedisStream   NotificationsRedisGroup `env:"redis_stream"`
-	Discord       Discord                 `env:"discord"`
-	Slack         Slack                   `env:"slack"`
-	Observability Observability           `env:"observability"`
-	Grafana       Grafana                 `env:"grafana"`
-}
-
-// NotificationsRedisGroup agrega al stream el grupo y consumer que solo
-// necesita el lado consumidor (la API únicamente produce).
-type NotificationsRedisGroup struct {
-	StreamName   string `validate:"required" env:"stream_name"`
-	GroupName    string `validate:"required" env:"group_name"`
-	ConsumerName string `validate:"required" env:"consumer_name"`
-	Db           int    `validate:"min=0" env:"db"`
+	Server        Server             `env:"server"`
+	Environment   Environment        `env:"environment"`
+	Postgres      Postgres           `env:"postgres"`
+	Redis         Redis              `env:"redis"`
+	RedisStream   RedisConsumerGroup `env:"redis_stream"`
+	Discord       Discord            `env:"discord"`
+	Slack         Slack              `env:"slack"`
+	Observability Observability      `env:"observability"`
+	Grafana       Grafana            `env:"grafana"`
 }
 
 type Discord struct {
