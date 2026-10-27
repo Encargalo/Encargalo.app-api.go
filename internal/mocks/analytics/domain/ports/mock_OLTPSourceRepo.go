@@ -288,6 +288,36 @@ func (_m *OLTPSourceRepo) FetchTrackingEvents(ctx context.Context, from time.Tim
 	return r0, r1
 }
 
+// FetchTripByID provides a mock function with given fields: ctx, tripID
+func (_m *OLTPSourceRepo) FetchTripByID(ctx context.Context, tripID uuid.UUID) (*models.CubeTrip, error) {
+	ret := _m.Called(ctx, tripID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FetchTripByID")
+	}
+
+	var r0 *models.CubeTrip
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*models.CubeTrip, error)); ok {
+		return rf(ctx, tripID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) *models.CubeTrip); ok {
+		r0 = rf(ctx, tripID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.CubeTrip)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, tripID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // FetchTrips provides a mock function with given fields: ctx, from, to
 func (_m *OLTPSourceRepo) FetchTrips(ctx context.Context, from time.Time, to time.Time) ([]models.CubeTrip, error) {
 	ret := _m.Called(ctx, from, to)

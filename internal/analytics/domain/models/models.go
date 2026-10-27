@@ -41,7 +41,6 @@ var CronETLEntities = []ETLEntity{
 	EntityDimShop,
 	EntityDimUser,
 	EntityDimRider,
-	EntityCubeTrip,
 	EntityFactTrackingEvent,
 }
 

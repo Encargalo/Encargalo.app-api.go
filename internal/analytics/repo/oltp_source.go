@@ -264,15 +264,33 @@ type tripRow struct {
 	CreatedAt         time.Time  `bun:"created_at"`
 }
 
+var tripColumns = []string{
+	"t.id", "t.quote_id", "t.customer_id", "t.rider_id", "t.status", "t.fare",
+	"t.pickup_h3_cell_zone", "t.dropoff_h3_cell_zone", "t.created_at",
+}
+
+func tripRowToCubeTrip(row tripRow, syncedAt time.Time) models.CubeTrip {
+	return models.CubeTrip{
+		TripID:        row.ID,
+		QuoteID:       row.QuoteID,
+		CustomerID:    row.CustomerID,
+		RiderID:       row.RiderID,
+		Status:        row.Status,
+		Fare:          row.Fare,
+		PickupH3Cell:  row.PickupH3CellZone,
+		DropoffH3Cell: row.DropoffH3CellZone,
+		TripDate:      row.CreatedAt.UTC().Truncate(24 * time.Hour),
+		CreatedAt:     row.CreatedAt,
+		SyncedAt:      syncedAt,
+	}
+}
+
 // Sin updated_at en trips: re-sincronizamos por ventana de created_at (lookback cubre status tardíos).
 func (r *oltpSourceRepo) FetchTrips(ctx context.Context, from, to time.Time) ([]models.CubeTrip, error) {
 	var rows []tripRow
 	err := r.db.NewSelect().
 		TableExpr("trips.trips AS t").
-		Column(
-			"t.id", "t.quote_id", "t.customer_id", "t.rider_id", "t.status", "t.fare",
-			"t.pickup_h3_cell_zone", "t.dropoff_h3_cell_zone", "t.created_at",
-		).
+		Column(tripColumns...).
 		Where("t.created_at >= ? AND t.created_at < ?", from, to).
 		Scan(ctx, &rows)
 	if err != nil {
@@ -282,21 +300,29 @@ func (r *oltpSourceRepo) FetchTrips(ctx context.Context, from, to time.Time) ([]
 	now := time.Now().UTC()
 	out := make([]models.CubeTrip, len(rows))
 	for i, row := range rows {
-		out[i] = models.CubeTrip{
-			TripID:        row.ID,
-			QuoteID:       row.QuoteID,
-			CustomerID:    row.CustomerID,
-			RiderID:       row.RiderID,
-			Status:        row.Status,
-			Fare:          row.Fare,
-			PickupH3Cell:  row.PickupH3CellZone,
-			DropoffH3Cell: row.DropoffH3CellZone,
-			TripDate:      row.CreatedAt.UTC().Truncate(24 * time.Hour),
-			CreatedAt:     row.CreatedAt,
-			SyncedAt:      now,
-		}
+		out[i] = tripRowToCubeTrip(row, now)
 	}
 	return out, nil
+}
+
+// FetchTripByID resincroniza un solo viaje puntualmente, en reacción a
+// trip_status_changed.
+func (r *oltpSourceRepo) FetchTripByID(ctx context.Context, tripID uuid.UUID) (*models.CubeTrip, error) {
+	var row tripRow
+	err := r.db.NewSelect().
+		TableExpr("trips.trips AS t").
+		Column(tripColumns...).
+		Where("t.id = ?", tripID).
+		Scan(ctx, &row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errcustom.ErrNotFound
+		}
+		return nil, errcustom.Unexpected(err)
+	}
+
+	cube := tripRowToCubeTrip(row, time.Now().UTC())
+	return &cube, nil
 }
 
 type trackingEventRow struct {

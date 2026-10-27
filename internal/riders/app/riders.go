@@ -958,6 +958,21 @@ func (r *appRidersManager) publishTripNoDriver(ctx context.Context, trip *tripsM
 	}
 }
 
+// publishTripStatusChanged avisa al ETL que CubeTrip debe resincronizarse.
+// Las transiciones que lleva el rider (aceptar, avanzar, completar) viven
+// acá y no en trips/app — ver "Trips & Riders" en CLAUDE.md — así que
+// necesitan su propio punto de publicación, no pueden reusar publishTripEvent.
+func (r *appRidersManager) publishTripStatusChanged(ctx context.Context, trip *tripsModels.Trip) {
+	if r.stream == nil {
+		return
+	}
+	event := tripsModels.DataEventTrip{}
+	event.BuildFromTrip(tripsModels.EventTripStatusChanged, *trip)
+	if err := r.stream.PublisherEvent(ctx, event); err != nil {
+		slog.Error("error publishing trip_status_changed event", "tripID", trip.ID, "error", err)
+	}
+}
+
 func (r *appRidersManager) clearTripOfferState(tripID uuid.UUID) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -1085,6 +1100,7 @@ func (r *appRidersManager) AcceptTrip(ctx context.Context, riderID, tripID uuid.
 	trip.AcceptedAt = &acceptedAt
 	trip.PickupCode = &pickupCode
 	r.rememberRiderTrip(riderID, trip.ID, trip.CustomerID)
+	r.publishTripStatusChanged(ctx, trip)
 	accepted, _ := json.Marshal(tripBroadcast{Type: "trip_accepted", Trip: r.riderTripDTO(ctx, trip)})
 	conn.Send(accepted)
 	r.notifyCustomer(ctx, trip)
@@ -1135,6 +1151,7 @@ func (r *appRidersManager) CancelAcceptedTrip(ctx context.Context, riderID, trip
 	trip.RiderID = nil
 	trip.AcceptedAt = nil
 	trip.PickupCode = nil
+	r.publishTripStatusChanged(ctx, trip)
 	released, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: r.riderTripDTO(ctx, trip)})
 	conn.Send(released)
 	r.notifyCustomer(ctx, trip)
@@ -1189,6 +1206,7 @@ func (r *appRidersManager) AdvanceTrip(ctx context.Context, riderID, tripID uuid
 	}
 
 	trip.Status = next
+	r.publishTripStatusChanged(ctx, trip)
 	data, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: r.riderTripDTO(ctx, trip)})
 	conn.Send(data)
 	r.notifyCustomer(ctx, trip)
@@ -1217,6 +1235,7 @@ func (r *appRidersManager) startTrip(ctx context.Context, trip *tripsModels.Trip
 	trip.PickupCodeUsedAt = &usedAt
 	trip.StartedAt = &usedAt
 	trip.DropoffCode = &dropoffCode
+	r.publishTripStatusChanged(ctx, trip)
 	data, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: r.riderTripDTO(ctx, trip)})
 	conn.Send(data)
 	r.notifyCustomer(ctx, trip)
@@ -1251,6 +1270,7 @@ func (r *appRidersManager) completeTrip(ctx context.Context, trip *tripsModels.T
 	trip.CompletedAt = &completedAt
 	trip.DropoffCodeUsedAt = &completedAt
 	trip.ApplyFrozenBsFare()
+	r.publishTripStatusChanged(ctx, trip)
 	data, _ := json.Marshal(tripBroadcast{Type: "trip_status", Trip: r.riderTripDTO(ctx, trip)})
 	conn.Send(data)
 	if trip.RiderID != nil {

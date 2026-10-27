@@ -18,7 +18,7 @@ import (
 
 func TestOfferTrip_CashTripSendsBsAtFrozenRate(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)

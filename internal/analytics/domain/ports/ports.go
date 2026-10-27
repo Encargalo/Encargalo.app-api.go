@@ -21,6 +21,10 @@ type ETLApp interface {
 	// SyncDeliveryQuoteByID re-sincroniza una sola cotización de delivery
 	// contra OLAP, en reacción a delivery_quote_created.
 	SyncDeliveryQuoteByID(ctx context.Context, quoteID uuid.UUID) error
+	// SyncTripByID re-sincroniza un solo viaje contra OLAP, en reacción a
+	// trip_status_changed (publicado tanto desde trips/app como desde
+	// riders/app, ver CLAUDE.md "Trips & Riders").
+	SyncTripByID(ctx context.Context, tripID uuid.UUID) error
 }
 
 type SyncLogRepo interface {
@@ -35,6 +39,7 @@ type OLTPSourceRepo interface {
 	FetchOrders(ctx context.Context, from, to time.Time) ([]models.CubeOrder, error)
 	FetchOrderByID(ctx context.Context, orderID uuid.UUID) (*models.CubeOrder, error)
 	FetchTrips(ctx context.Context, from, to time.Time) ([]models.CubeTrip, error)
+	FetchTripByID(ctx context.Context, tripID uuid.UUID) (*models.CubeTrip, error)
 	FetchTrackingEvents(ctx context.Context, from, to time.Time) ([]models.FactTrackingEvent, error)
 	FetchFareQuotes(ctx context.Context, from, to time.Time) ([]models.CubeFareQuote, error)
 	FetchFareQuoteByID(ctx context.Context, quoteID uuid.UUID) (*models.CubeFareQuote, error)

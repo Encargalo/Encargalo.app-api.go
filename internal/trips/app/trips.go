@@ -513,6 +513,7 @@ func (a *tripsApp) CancelTrip(ctx context.Context, tripID, requesterID uuid.UUID
 
 	verifiedPagoMovil := trip.HasVerifiedPagoMovil()
 	trip.Status = models.TripStatusCancelled
+	a.publishTripEvent(ctx, models.EventTripStatusChanged, trip)
 	saveCancelReason(ctx, trip, models.CancelReasonCustomerCancelled, a.repo.SaveTripCancelReason)
 	if verifiedPagoMovil {
 		CreditUnservedPagoMovil(ctx, a.balance, trip, a.repo.SaveTripPayment)

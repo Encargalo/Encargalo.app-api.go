@@ -239,3 +239,37 @@ func TestSyncDeliveryQuoteByID_FetchError(t *testing.T) {
 	require.ErrorIs(t, err, errcustom.ErrNotFound)
 	sink.AssertNotCalled(t, "UpsertDeliveryQuotes", mock.Anything, mock.Anything)
 }
+
+func TestSyncTripByID_Success(t *testing.T) {
+	source := new(mocks.OLTPSourceRepo)
+	sink := new(mocks.OLAPSinkRepo)
+	syncLog := new(mocks.SyncLogRepo)
+
+	tripID := uuid.New()
+	trip := &models.CubeTrip{TripID: tripID, Status: "completed"}
+
+	source.On("FetchTripByID", mock.Anything, tripID).Return(trip, nil)
+	sink.On("UpsertTrips", mock.Anything, []models.CubeTrip{*trip}).Return(nil)
+
+	etl := newETLApp(source, sink, syncLog)
+	err := etl.SyncTripByID(context.Background(), tripID)
+
+	require.NoError(t, err)
+	source.AssertExpectations(t)
+	sink.AssertExpectations(t)
+}
+
+func TestSyncTripByID_FetchError(t *testing.T) {
+	source := new(mocks.OLTPSourceRepo)
+	sink := new(mocks.OLAPSinkRepo)
+	syncLog := new(mocks.SyncLogRepo)
+
+	tripID := uuid.New()
+	source.On("FetchTripByID", mock.Anything, tripID).Return((*models.CubeTrip)(nil), errcustom.ErrNotFound)
+
+	etl := newETLApp(source, sink, syncLog)
+	err := etl.SyncTripByID(context.Background(), tripID)
+
+	require.ErrorIs(t, err, errcustom.ErrNotFound)
+	sink.AssertNotCalled(t, "UpsertTrips", mock.Anything, mock.Anything)
+}

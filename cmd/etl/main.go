@@ -127,6 +127,17 @@ var deliveryQuoteSyncEventTypes = map[string]bool{
 	"delivery_quote_created": true,
 }
 
+// tripSyncEventTypes son los tipos de mensaje del stream de trips que
+// implican que CubeTrip puede haber cambiado. trip_status_changed lo publican
+// tanto trips/app (RequestTrip, CancelTrip) como riders/app (accept_trip,
+// advance_trip) — ver "Trips & Riders" en CLAUDE.md. trip_no_driver también
+// cambia el status a no_driver (expireTripIfStillSearching).
+var tripSyncEventTypes = map[string]bool{
+	"trip_created":        true,
+	"trip_status_changed": true,
+	"trip_no_driver":      true,
+}
+
 // startOrderEventConsumer lee el stream con su propio consumer group y
 // resincroniza puntualmente la entidad de cada evento relevante contra OLAP.
 func startOrderEventConsumer(ctx context.Context, cfg config.ETLConfig, etlApp ports.ETLApp) {
@@ -171,6 +182,8 @@ func processStreamEvent(ctx context.Context, msg redis.XMessage, etlApp ports.ET
 		return processFareQuoteEvent(ctx, msg, messageType, etlApp)
 	case deliveryQuoteSyncEventTypes[messageType]:
 		return processDeliveryQuoteEvent(ctx, msg, messageType, etlApp)
+	case tripSyncEventTypes[messageType]:
+		return processTripEvent(ctx, msg, messageType, etlApp)
 	default:
 		return nil
 	}
@@ -212,6 +225,19 @@ func processDeliveryQuoteEvent(ctx context.Context, msg redis.XMessage, messageT
 		return err
 	}
 	slog.Info("etl consumer: cotización de delivery resincronizada", "quote_id", quoteID, "type", messageType)
+	return nil
+}
+
+func processTripEvent(ctx context.Context, msg redis.XMessage, messageType string, etlApp ports.ETLApp) error {
+	tripID, ok := parseEventID(msg, messageType, "trip_id")
+	if !ok {
+		return nil
+	}
+
+	if err := etlApp.SyncTripByID(ctx, tripID); err != nil {
+		return err
+	}
+	slog.Info("etl consumer: viaje resincronizado", "trip_id", tripID, "type", messageType)
 	return nil
 }
 

@@ -143,6 +143,16 @@ func (a *etlApp) SyncDeliveryQuoteByID(ctx context.Context, quoteID uuid.UUID) e
 	return a.sink.UpsertDeliveryQuotes(ctx, []models.CubeDeliveryQuote{*row})
 }
 
+// SyncTripByID re-sincroniza un solo viaje contra OLAP. La llama el
+// consumidor de eventos (cmd/etl) al recibir trip_status_changed.
+func (a *etlApp) SyncTripByID(ctx context.Context, tripID uuid.UUID) error {
+	row, err := a.source.FetchTripByID(ctx, tripID)
+	if err != nil {
+		return err
+	}
+	return a.sink.UpsertTrips(ctx, []models.CubeTrip{*row})
+}
+
 func (a *etlApp) syncEntity(ctx context.Context, entity models.ETLEntity, from, to time.Time) (int, error) {
 	switch entity {
 	case models.EntityDimShop:

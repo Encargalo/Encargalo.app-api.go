@@ -33,7 +33,7 @@ func newNearbyMgr(t *testing.T) ridersPorts.RidersApp {
 func newNearbyMgrWithStore(t *testing.T) (ridersPorts.RidersApp, ridersPorts.RiderPresenceStore) {
 	t.Helper()
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mocksriders.NewTripsStore(t)
 	earnings := mocksriders.NewTripEarningRecorder(t)
@@ -50,6 +50,17 @@ func newPresenceStore(t *testing.T) ridersPorts.RiderPresenceStore {
 	client := redis.NewClient(&redis.Options{Addr: miniredis.RunT(t).Addr()})
 	t.Cleanup(func() { _ = client.Close() })
 	return ridersRepo.NewRiderPresenceRepo(client)
+}
+
+// newRidersStream arma el mock de stream con un catch-all para
+// PublisherEvent: casi ninguno de estos tests le importa qué evento se
+// publicó (trip_status_changed, trip_no_driver...), solo que no explote.
+// Un test que sí le importa stubea PublisherEvent explícitamente aparte.
+func newRidersStream(t *testing.T) *mocksriders.RidersStream {
+	t.Helper()
+	stream := mocksriders.NewRidersStream(t)
+	stream.On("PublisherEvent", mock.Anything, mock.Anything).Return(nil).Maybe()
+	return stream
 }
 
 // ageStoredLocation reescribe la presencia con una marca vieja: la frescura del

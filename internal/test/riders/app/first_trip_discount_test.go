@@ -21,7 +21,7 @@ import (
 // Viaje de $8 con $4 de descuento pagado en efectivo: el rider cobra $4 y su pago es $7.20.
 func TestAdvanceTrip_DiscountedCashTripCreditsRiderTheDifference(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -59,7 +59,7 @@ func TestAdvanceTrip_DiscountedCashTripCreditsRiderTheDifference(t *testing.T) {
 
 func TestAdvanceTrip_DiscountedBankTripPaysOnGrossFare(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)

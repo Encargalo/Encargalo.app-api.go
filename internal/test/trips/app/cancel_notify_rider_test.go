@@ -37,6 +37,30 @@ func TestCancelTrip_NotifiesRidersWithCancelledTrip(t *testing.T) {
 	require.Equal(t, string(models.TripStatusCancelled), resp.Status)
 }
 
+// El ETL resincroniza CubeTrip por evento, no por el batch horario.
+func TestCancelTrip_PublishesTripStatusChanged(t *testing.T) {
+	d := newTripsDeps(t)
+	events := &fakeTripEvents{}
+	svc := app.NewTripsApp(d.repo, d.matcher, d.bcv, d.quotes, d.upload, d.reviews, d.hub, d.riders, d.balance, nil, nil, nil, events, nil)
+
+	tripID, customerID := uuid.New(), uuid.New()
+	d.repo.On("GetTripByID", mock.Anything, tripID).Return(&models.Trip{
+		ID: tripID, CustomerID: customerID, Status: models.TripStatusSearching,
+	}, nil)
+	d.repo.On("UpdateTripStatus", mock.Anything, tripID, models.TripStatusSearching, models.TripStatusCancelled).Return(true, nil)
+	d.repo.On("SaveTripCancelReason", mock.Anything, tripID, mock.Anything).Return(nil).Maybe()
+	mockBcvRate(d.bcv, 40)
+
+	_, err := svc.CancelTrip(context.Background(), tripID, customerID)
+
+	require.NoError(t, err)
+	require.Equal(t, []any{models.DataEventTrip{
+		MessageType: models.EventTripStatusChanged,
+		TripID:      tripID.String(),
+		CustomerID:  customerID.String(),
+	}}, events.events)
+}
+
 func TestCancelTrip_DoesNotNotifyRidersWhenNotCancellable(t *testing.T) {
 	d := newTripsDeps(t)
 	notifier := mockstrips.NewTripRiderNotifier(t)
