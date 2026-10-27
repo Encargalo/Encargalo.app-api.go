@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.10.1](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.10.0...v2.10.1) (2026-10-27)
+
+
+### Bug Fixes
+
+* **riders:** distribuye el vencimiento de la ronda de oferta a Redis ([9f596ec](https://github.com/Encargalo/Encargalo.app-api.go/commit/9f596ec29e6413994fddc6c8a0e6f8f08b008171))
+
 ## [2.10.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.9.0...v2.10.0) (2026-10-27)
 
 
