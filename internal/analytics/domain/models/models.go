@@ -31,6 +31,19 @@ var DefaultETLEntities = []ETLEntity{
 	EntityCubeDeliveryQuote,
 }
 
+// CronETLEntities es lo que sincroniza el cron del worker: todo menos
+// EntityCubeOrder, que ya no espera al batch — se resincroniza por evento
+// (ver ports.ETLApp.SyncOrderByID) en cuanto una orden se crea o cambia de estado.
+var CronETLEntities = []ETLEntity{
+	EntityDimShop,
+	EntityDimUser,
+	EntityDimRider,
+	EntityCubeTrip,
+	EntityFactTrackingEvent,
+	EntityCubeFareQuote,
+	EntityCubeDeliveryQuote,
+}
+
 type DateRange struct {
 	From time.Time
 	To   time.Time

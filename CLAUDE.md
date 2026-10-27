@@ -111,7 +111,7 @@ Do **not** regenerate or rewrite documentation for endpoints that were not touch
 
 ## Orders & Event Streaming
 
-When an order is created or its status transitions to `On The Way`, events are published to a Redis Stream (`ports.RedisStream.PublisherEvent`). The stream integration is in [internal/orders/repo/redis_stream.go](internal/orders/repo/redis_stream.go).
+Order lifecycle events are published to a shared Redis Stream (`ports.RedisStream.PublisherEvent`) from [internal/orders/app/order.go](internal/orders/app/order.go); the stream integration is in [internal/orders/repo/redis_stream.go](internal/orders/repo/redis_stream.go). Current event types: `order_created`, `order_status_changed` (Rejected by the shop or Completed on delivery — carries just `order_id` + `status`, not the full order), `order_auto_rejected`, `order_pending_unassigned`, `payment_proof_pending`. Each consumer reads the same stream with its own consumer group (`redis_stream.group_name` / `consumer_name` in config) so they don't compete for messages — see `cmd/notifications` and `cmd/etl` below.
 
 A credit commission (10% of `totalPrice - deliveryFee`) is sent via HTTP to the `CreditManager` external service when an order reaches `On The Way` status.
 
@@ -148,6 +148,14 @@ Tres invariantes que no son obvias y conviene tener presentes antes de tocar est
 El listado del CRM (`GET /riders/staff/finance/withdrawals`) expone `amount_bs` y `payable_bs` **por separado**, más `payable_frozen`. Mostrar un solo número es como se produce un descuadre. Las solicitudes no aparecen en `/riders/staff/finance/payables`, que filtra por saldo > 0: una solicitud retiene el saldo, así que el rider desaparecería de ahí justo cuando hay que pagarle.
 
 El destino de pago sale de `users.accounts.pago_movil` (`GET`/`PUT /users/pago-movil`, habilitado para `Customer` y `Rider`) y se congela en cada solicitud, para que el comprobante corresponda siempre a la cuenta a la que se transfirió.
+
+## ETL / OLAP Worker
+
+`cmd/etl` syncs OLTP → OLAP (`internal/analytics`) two ways at once:
+- **Cron** (`robfig/cron`, `ETL_SCHEDULE`): syncs `models.CronETLEntities` — every entity except `CubeOrder` (shops, users, riders, trips, fare quotes, delivery quotes, tracking events). These still wait for the batch; they don't have event producers yet.
+- **Event-driven** (same Redis Stream as `cmd/notifications`, its own consumer group): reacts to `order_created`, `order_status_changed`, `order_auto_rejected` by calling `ports.ETLApp.SyncOrderByID`, which re-reads that one order from OLTP and upserts it into `analytics.cube_order` immediately — no batch wait for `CubeOrder`.
+
+Both paths funnel through the same `OLAPSinkRepo.UpsertOrders` (`INSERT ... ON CONFLICT DO UPDATE`) — the sink never deletes rows. Any message type on the stream that isn't one of those three is acked and ignored (the stream is shared with other consumers, e.g. `withdrawal_requested`, `trip_created`); it is not treated as an error.
 
 ## Notifications Service
 
