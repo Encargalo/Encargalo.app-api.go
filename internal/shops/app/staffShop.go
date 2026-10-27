@@ -13,6 +13,7 @@ import (
 	"Encargalo.app-api.go/internal/shops/domain/dtos"
 	shopsmodels "Encargalo.app-api.go/internal/shops/domain/models/shops"
 	portsShops "Encargalo.app-api.go/internal/shops/domain/ports"
+	usersmodels "Encargalo.app-api.go/internal/users/domain/models"
 	"github.com/google/uuid"
 )
 
@@ -20,10 +21,37 @@ type staffShopApp struct {
 	repo             portsShops.StaffShopRepo
 	categoriesSeeder portsShops.ShopCategoriesSeeder
 	uploader         uploadimage.UploadImage
+	events           portsShops.ShopEventPublisher
 }
 
-func NewStaffShopApp(repo portsShops.StaffShopRepo, categoriesSeeder portsShops.ShopCategoriesSeeder, uploader uploadimage.UploadImage) portsShops.StaffShopApp {
-	return &staffShopApp{repo: repo, categoriesSeeder: categoriesSeeder, uploader: uploader}
+func NewStaffShopApp(repo portsShops.StaffShopRepo, categoriesSeeder portsShops.ShopCategoriesSeeder, uploader uploadimage.UploadImage, events portsShops.ShopEventPublisher) portsShops.StaffShopApp {
+	return &staffShopApp{repo: repo, categoriesSeeder: categoriesSeeder, uploader: uploader, events: events}
+}
+
+func (a *staffShopApp) publishShopUpdated(ctx context.Context, shopID uuid.UUID) {
+	if a.events == nil {
+		return
+	}
+	event := shopsmodels.DataEventShopUpdated{}
+	event.BuildFromShopID(shopID.String())
+	if err := a.events.PublisherEvent(ctx, event); err != nil {
+		slog.Error("error publishing shop_updated event", "shopID", shopID, "error", err)
+	}
+}
+
+// publishUserUpdated avisa a DimUser que el rol Owner de la cuenta cambió.
+// CreateDraftShop otorga el rol vía EnsureOwnerRole, que muta
+// users.user_roles, no business.shops, así que DimUser.Roles necesita su
+// propio evento (reusa el mismo stream ya conectado para shop_updated).
+func (a *staffShopApp) publishUserUpdated(ctx context.Context, userID uuid.UUID) {
+	if a.events == nil {
+		return
+	}
+	event := usersmodels.DataEventUserUpdated{}
+	event.BuildFromUserID(userID.String())
+	if err := a.events.PublisherEvent(ctx, event); err != nil {
+		slog.Error("error publishing user_updated event", "userID", userID, "error", err)
+	}
 }
 
 // resolveImageField sube a Cloudinary el data-URL recibido en un campo
@@ -88,6 +116,8 @@ func (a *staffShopApp) CreateDraftShop(ctx context.Context, req dtos.CreateDraft
 			slog.Error("error al sembrar categorías default del shop", "error", err, "shopID", shop.ID, "shopType", shop.Type)
 		}
 	}
+	a.publishShopUpdated(ctx, shop.ID)
+	a.publishUserUpdated(ctx, req.OwnerID)
 	return a.GetShop(ctx, shop.ID)
 }
 
@@ -178,6 +208,7 @@ func (a *staffShopApp) UpdateDraftShop(ctx context.Context, shopID uuid.UUID, re
 	if err := a.repo.UpdateDraftShop(ctx, shop); err != nil {
 		return dtos.StaffShopResponse{}, err
 	}
+	a.publishShopUpdated(ctx, shopID)
 	return a.GetShop(ctx, shopID)
 }
 
@@ -195,5 +226,6 @@ func (a *staffShopApp) ActivateShop(ctx context.Context, shopID, staffID uuid.UU
 	if err := a.repo.ActivateShop(ctx, shopID, staffID, time.Now()); err != nil {
 		return dtos.StaffShopResponse{}, err
 	}
+	a.publishShopUpdated(ctx, shopID)
 	return a.GetShop(ctx, shopID)
 }

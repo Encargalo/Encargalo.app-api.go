@@ -21,7 +21,7 @@ import (
 
 func TestOfferTrip_IncludesPassengerNameWithoutPhone(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -59,7 +59,7 @@ func TestOfferTrip_IncludesPassengerNameWithoutPhone(t *testing.T) {
 
 func TestOfferTrip_OmitsCustomerWhenPassengerLookupFails(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -95,7 +95,7 @@ func TestOfferTrip_OmitsCustomerWhenPassengerLookupFails(t *testing.T) {
 
 func TestAcceptTrip_SendsPassengerPhoneOnlyToAccepter(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -148,7 +148,7 @@ func TestAcceptTrip_SendsPassengerPhoneOnlyToAccepter(t *testing.T) {
 
 func TestActiveTrips_IncludesPassengerWhileInProgress(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -178,7 +178,7 @@ func TestActiveTrips_IncludesPassengerWhileInProgress(t *testing.T) {
 
 func TestCompleteTrip_DropsPassengerPhoneKeepsName(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)

@@ -19,10 +19,22 @@ type shopsApp struct {
 	repo        portsShops.ShopsRepo
 	broadcaster portsShops.ShopStatusBroadcaster
 	bcv         bcvPorts.BcvApp
+	events      portsShops.ShopEventPublisher
 }
 
-func NewShopsApp(repo portsShops.ShopsRepo, broadcaster portsShops.ShopStatusBroadcaster, bcv bcvPorts.BcvApp) portsShops.ShopsApp {
-	return &shopsApp{repo, broadcaster, bcv}
+func NewShopsApp(repo portsShops.ShopsRepo, broadcaster portsShops.ShopStatusBroadcaster, bcv bcvPorts.BcvApp, events portsShops.ShopEventPublisher) portsShops.ShopsApp {
+	return &shopsApp{repo, broadcaster, bcv, events}
+}
+
+func (s *shopsApp) publishShopUpdated(ctx context.Context, shopID uuid.UUID) {
+	if s.events == nil {
+		return
+	}
+	event := shopsmodels.DataEventShopUpdated{}
+	event.BuildFromShopID(shopID.String())
+	if err := s.events.PublisherEvent(ctx, event); err != nil {
+		slog.Error("error publishing shop_updated event", "shopID", shopID, "error", err)
+	}
 }
 
 func (s *shopsApp) bcvRate(ctx context.Context) float64 {
@@ -87,6 +99,7 @@ func (s *shopsApp) SetOpenClose(ctx context.Context, shopID *uuid.UUID, open boo
 	if err := s.broadcaster.BroadcastShopStatus(*shopID, open); err != nil {
 		slog.Error("error al hacer broadcast del estado del local", "error", err, "shopID", shopID)
 	}
+	s.publishShopUpdated(ctx, *shopID)
 	return nil
 }
 

@@ -18,10 +18,20 @@ import (
 
 func TestRegisterCustomerFromGoogle_Success(t *testing.T) {
 	repo := mockports.NewUsersRepo(t)
-	svc := app.NewUserApp(repo, bycript.NewHashPassword())
+	stream := mockports.NewStreamPublisher(t)
+	svc := app.NewUserApp(repo, bycript.NewHashPassword(), stream)
 
 	req := dto.RegisterCustomerFromGoogle{Name: "Carlos", SurName: "Ramírez", Email: "carlos@example.com"}
-	repo.On("RegisterCustomerFromGoogle", mock.Anything, mock.AnythingOfType("*models.Account")).Return(nil)
+	var registeredID uuid.UUID
+	repo.On("RegisterCustomerFromGoogle", mock.Anything, mock.AnythingOfType("*models.Account")).
+		Run(func(args mock.Arguments) {
+			acc := args.Get(1).(*models.Account)
+			acc.ID = uuid.New()
+			registeredID = acc.ID
+		}).Return(nil)
+	stream.On("PublisherEvent", mock.Anything, mock.MatchedBy(func(event models.DataEventUserUpdated) bool {
+		return event.MessageType == "user_updated" && event.UserID == registeredID.String()
+	})).Return(nil)
 
 	acc, err := svc.RegisterCustomerFromGoogle(context.Background(), req)
 
@@ -31,7 +41,7 @@ func TestRegisterCustomerFromGoogle_Success(t *testing.T) {
 
 func TestRegisterCustomerFromGoogle_RepoError(t *testing.T) {
 	repo := mockports.NewUsersRepo(t)
-	svc := app.NewUserApp(repo, bycript.NewHashPassword())
+	svc := app.NewUserApp(repo, bycript.NewHashPassword(), nil)
 
 	req := dto.RegisterCustomerFromGoogle{Name: "Carlos", Email: "carlos@example.com"}
 	repo.On("RegisterCustomerFromGoogle", mock.Anything, mock.AnythingOfType("*models.Account")).
@@ -44,7 +54,7 @@ func TestRegisterCustomerFromGoogle_RepoError(t *testing.T) {
 
 func TestSearchCustomerProfileByID_DelegatesToRepo(t *testing.T) {
 	repo := mockports.NewUsersRepo(t)
-	svc := app.NewUserApp(repo, bycript.NewHashPassword())
+	svc := app.NewUserApp(repo, bycript.NewHashPassword(), nil)
 
 	userID := uuid.New()
 	repo.On("SearchCustomerProfileByID", mock.Anything, userID).Return(&models.Account{ID: userID}, nil)
@@ -57,7 +67,7 @@ func TestSearchCustomerProfileByID_DelegatesToRepo(t *testing.T) {
 
 func TestGetUserRoles_DelegatesToRepo(t *testing.T) {
 	repo := mockports.NewUsersRepo(t)
-	svc := app.NewUserApp(repo, bycript.NewHashPassword())
+	svc := app.NewUserApp(repo, bycript.NewHashPassword(), nil)
 
 	userID := uuid.New()
 	repo.On("GetUserRoles", mock.Anything, userID).Return([]string{"Customer"}, nil)
@@ -70,7 +80,7 @@ func TestGetUserRoles_DelegatesToRepo(t *testing.T) {
 
 func TestSearchAccountByPhone_DelegatesToRepo(t *testing.T) {
 	repo := mockports.NewUsersRepo(t)
-	svc := app.NewUserApp(repo, bycript.NewHashPassword())
+	svc := app.NewUserApp(repo, bycript.NewHashPassword(), nil)
 
 	roles := []string{"OrderManager"}
 	repo.On("SearchAccountByPhone", mock.Anything, "0414", roles).Return(&models.Account{Phone: new("0414")}, nil)

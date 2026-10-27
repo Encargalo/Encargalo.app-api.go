@@ -111,7 +111,7 @@ Do **not** regenerate or rewrite documentation for endpoints that were not touch
 
 ## Orders & Event Streaming
 
-When an order is created or its status transitions to `On The Way`, events are published to a Redis Stream (`ports.RedisStream.PublisherEvent`). The stream integration is in [internal/orders/repo/redis_stream.go](internal/orders/repo/redis_stream.go).
+Order lifecycle events are published to a shared Redis Stream (`ports.RedisStream.PublisherEvent`) from [internal/orders/app/order.go](internal/orders/app/order.go); the stream integration is in [internal/orders/repo/redis_stream.go](internal/orders/repo/redis_stream.go). Current event types: `order_created`, `order_status_changed` (Rejected by the shop or Completed on delivery — carries just `order_id` + `status`, not the full order), `order_auto_rejected`, `order_pending_unassigned`, `payment_proof_pending`. Each consumer reads the same stream with its own consumer group (`redis_stream.group_name` / `consumer_name` in config) so they don't compete for messages — see `cmd/notifications` and `cmd/etl` below.
 
 A credit commission (10% of `totalPrice - deliveryFee`) is sent via HTTP to the `CreditManager` external service when an order reaches `On The Way` status.
 
@@ -148,6 +148,23 @@ Tres invariantes que no son obvias y conviene tener presentes antes de tocar est
 El listado del CRM (`GET /riders/staff/finance/withdrawals`) expone `amount_bs` y `payable_bs` **por separado**, más `payable_frozen`. Mostrar un solo número es como se produce un descuadre. Las solicitudes no aparecen en `/riders/staff/finance/payables`, que filtra por saldo > 0: una solicitud retiene el saldo, así que el rider desaparecería de ahí justo cuando hay que pagarle.
 
 El destino de pago sale de `users.accounts.pago_movil` (`GET`/`PUT /users/pago-movil`, habilitado para `Customer` y `Rider`) y se congela en cada solicitud, para que el comprobante corresponda siempre a la cuenta a la que se transfirió.
+
+## ETL / OLAP Worker
+
+`cmd/etl` syncs OLTP → OLAP (`internal/analytics`) two ways at once:
+- **Cron** (`robfig/cron`, `ETL_SCHEDULE`): syncs `models.CronETLEntities`, which is now just `{EntityFactTrackingEvent}` — tracking events have no event producer yet, so they still wait for the hourly batch. Every other entity is event-driven and has been fully removed from the cron.
+- **Event-driven** (same Redis Stream as `cmd/notifications`, its own consumer group in `startOrderEventConsumer`): `processStreamEvent` dispatches each message's `type` to the `ports.ETLApp.SyncXByID` of the matching entity, which re-reads just that one row from OLTP and upserts it into OLAP immediately — no batch wait. Event types per entity (see `cmd/etl/main.go`):
+  - `CubeOrder` ← `order_created`, `order_status_changed`, `order_auto_rejected`
+  - `CubeTrip` ← `trip_created`, `trip_status_changed`, `trip_no_driver`
+  - `CubeFareQuote` ← `fare_quote_created` (immutable, no "changed" variant)
+  - `CubeDeliveryQuote` ← `delivery_quote_created` (immutable, no "changed" variant)
+  - `DimShop` ← `shop_updated`, published from `shops/app`
+  - `DimRider` ← `rider_updated`, published from `riders/app`
+  - `DimUser` ← `user_updated`, published from `users/app` **and** from `riders/app`/`shops/app` when they grant the Rider/Owner role (that mutates `users.user_roles`, which `DimUser.Roles` depends on) — same precedent as `DataEventTrip` being published from both `trips/app` and `riders/app` (see "Trips & Riders" above).
+
+Every event struct lives in the domain that owns the analytical entity (e.g. `DataEventUserUpdated` lives in `users/domain/models` even though `riders/app` and `shops/app` also publish it), not necessarily in the domain that publishes it. Publishers reuse whatever stream port is already wired into that app struct for its own domain's events — no dedicated port per analytical entity.
+
+All sync paths funnel through the same `OLAPSinkRepo.UpsertX` (`INSERT ... ON CONFLICT DO UPDATE`) — the sink never deletes rows. A message type on the stream that doesn't match any of the above is acked and ignored (the stream is shared with other consumers, e.g. `withdrawal_requested`); it is not treated as an error. If `SyncXByID` returns `errcustom.ErrNotFound` (entity deleted or a race between the event and processing), the consumer loop logs a warning and still Acks the message instead of leaving it to be reclaimed and retried forever by `XAutoClaim`.
 
 ## Notifications Service
 

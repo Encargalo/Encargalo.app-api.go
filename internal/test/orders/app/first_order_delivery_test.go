@@ -141,6 +141,7 @@ func TestConfirmDelivery_FreeDeliveryBankPaysRiderOnFullFee(t *testing.T) {
 	m.shopCommission.On("RecordSaleCommission", mock.Anything, shopID, orderID, 20.0, 0.0, "PagoMovil", false, false, 0.0).Return(nil)
 	m.riderMgr.On("BroadcastOrderUpdate", mock.Anything, mock.Anything).Return()
 	m.shops.On("TryCloseOpenBatch", mock.Anything, shopID).Return(nil)
+	m.stream.On("PublisherEvent", mock.Anything, mock.Anything).Return(nil)
 
 	_, err := svc.ConfirmDelivery(context.Background(), orderID, code, riderID)
 
@@ -165,6 +166,7 @@ func TestConfirmDelivery_FreeDeliveryCashUsesCashCollected(t *testing.T) {
 	m.shopCommission.On("RecordSaleCommission", mock.Anything, shopID, orderID, 5.0, 0.0, string(ordermodels.MethodEfectivo), false, false, 0.0).Return(nil)
 	m.riderMgr.On("BroadcastOrderUpdate", mock.Anything, mock.Anything).Return()
 	m.shops.On("TryCloseOpenBatch", mock.Anything, shopID).Return(nil)
+	m.stream.On("PublisherEvent", mock.Anything, mock.Anything).Return(nil)
 
 	_, err := svc.ConfirmDelivery(context.Background(), orderID, code, riderID)
 

@@ -40,7 +40,7 @@ func asBroadcaster(t *testing.T, svc ridersPorts.RidersApp) ordersPorts.OrderRid
 
 func TestRegister_SendsActiveAndAvailableOrders(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -65,7 +65,7 @@ func TestRegister_SendsActiveAndAvailableOrders(t *testing.T) {
 
 func TestRegister_NoActiveOrNotFoundIsNotAnError(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -84,7 +84,7 @@ func TestRegister_NoActiveOrNotFoundIsNotAnError(t *testing.T) {
 
 func TestRegister_RepoErrorPropagates(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -102,7 +102,7 @@ func TestRegister_RepoErrorPropagates(t *testing.T) {
 
 func TestUnregister_ClosesConnAndRemovesOnlyIfSameConn(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -117,7 +117,7 @@ func TestUnregister_ClosesConnAndRemovesOnlyIfSameConn(t *testing.T) {
 
 func TestBroadcastNewOrder_SendsToAvailableRiders(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -141,7 +141,7 @@ func TestBroadcastNewOrder_SendsToAvailableRiders(t *testing.T) {
 
 func TestBroadcastOrderUpdate_OnlySendsToAssignedRider(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -167,7 +167,7 @@ func TestBroadcastOrderUpdate_OnlySendsToAssignedRider(t *testing.T) {
 
 func TestAcceptOrder_Success(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -192,7 +192,7 @@ func TestAcceptOrder_Success(t *testing.T) {
 
 func TestAcceptOrder_InvalidStatus(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -208,7 +208,7 @@ func TestAcceptOrder_InvalidStatus(t *testing.T) {
 
 func TestAcceptOrder_AlreadyAssignedNotifiesOrderTaken(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -228,7 +228,7 @@ func TestAcceptOrder_AlreadyAssignedNotifiesOrderTaken(t *testing.T) {
 
 func TestAcceptOrder_OrderNotFound(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -272,7 +272,7 @@ func TestOfferTrip_ReachesRiderTooStaleForTheMap(t *testing.T) {
 }
 func TestBroadcastNewOrder_SkipsRidersInTripsMode(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -318,7 +318,7 @@ func samplePickupTrip(t *testing.T) tripsModels.Trip {
 
 func TestOfferTrip_OffersNearestCandidatesSortedByDistance(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -358,7 +358,7 @@ func TestOfferTrip_OffersNearestCandidatesSortedByDistance(t *testing.T) {
 
 func TestOfferTrip_StaleRiderDoesNotTakeACandidateSlot(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -402,7 +402,7 @@ func TestOfferTrip_StaleRiderDoesNotTakeACandidateSlot(t *testing.T) {
 
 func TestOfferTrip_NoCandidatesWaitsFullRoundsBeforeNoDriver(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -432,7 +432,7 @@ func TestOfferTrip_NoCandidatesWaitsFullRoundsBeforeNoDriver(t *testing.T) {
 
 func TestOfferTrip_NoPickupCellExpiresImmediately(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -451,7 +451,7 @@ func TestOfferTrip_NoPickupCellExpiresImmediately(t *testing.T) {
 
 func TestAcceptTrip_Success(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -477,9 +477,43 @@ func TestAcceptTrip_Success(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// El ETL resincroniza CubeTrip por evento, no por el batch horario. Esta
+// transición vive en riders/app (no en trips/app) a propósito — ver "Trips &
+// Riders" en CLAUDE.md — así que necesita su propio punto de publicación.
+func TestAcceptTrip_PublishesTripStatusChanged(t *testing.T) {
+	repo := mocksriders.NewRidersRepo(t)
+	stream := newRidersStream(t)
+	bcv := mockbcvports.NewBcvApp(t)
+	tripsRepo := mockstrips.NewTripsRepo(t)
+	tripEarnings := mocksriders.NewTripEarningRecorder(t)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t))
+	matcher := asMatcher(t, svc)
+
+	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
+	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound)
+
+	riderID := uuid.New()
+	conn := mocksriders.NewRiderConn(t)
+	conn.On("Send", mock.Anything).Return()
+	require.NoError(t, svc.Register(context.Background(), riderID, conn, riderModels.RiderModeTrips))
+	require.NoError(t, svc.UpdateLocation(context.Background(), riderID, 10.4806, -66.9036))
+
+	trip := samplePickupTrip(t)
+	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&tripsModels.Trip{ID: trip.ID, Status: tripsModels.TripStatusSearching}, nil)
+	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything).Return(true, nil)
+	matcher.OfferTrip(context.Background(), trip)
+
+	err := svc.AcceptTrip(context.Background(), riderID, trip.ID, conn)
+
+	require.NoError(t, err)
+	stream.AssertCalled(t, "PublisherEvent", mock.Anything, mock.MatchedBy(func(event tripsModels.DataEventTrip) bool {
+		return event.MessageType == tripsModels.EventTripStatusChanged && event.TripID == trip.ID.String()
+	}))
+}
+
 func TestAcceptTrip_AlreadyTakenNotifiesTripTaken(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -510,7 +544,7 @@ func TestAcceptTrip_AlreadyTakenNotifiesTripTaken(t *testing.T) {
 
 func TestAcceptTrip_RejectsWhenNotSearching(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -526,7 +560,7 @@ func TestAcceptTrip_RejectsWhenNotSearching(t *testing.T) {
 
 func TestAdvanceTrip_AcceptedMovesToArriving(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -542,11 +576,14 @@ func TestAdvanceTrip_AcceptedMovesToArriving(t *testing.T) {
 	err := svc.AdvanceTrip(context.Background(), riderID, tripID, "", conn)
 
 	require.NoError(t, err)
+	stream.AssertCalled(t, "PublisherEvent", mock.Anything, mock.MatchedBy(func(event tripsModels.DataEventTrip) bool {
+		return event.MessageType == tripsModels.EventTripStatusChanged && event.TripID == tripID.String()
+	}))
 }
 
 func TestAdvanceTrip_ArrivingMovesToInProgress(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -575,11 +612,14 @@ func TestAdvanceTrip_ArrivingMovesToInProgress(t *testing.T) {
 	require.NoError(t, json.Unmarshal(sent, &msg))
 	assert.Equal(t, string(tripsModels.TripStatusInProgress), msg.Trip.Status)
 	assert.NotNil(t, msg.Trip.StartedAt)
+	stream.AssertCalled(t, "PublisherEvent", mock.Anything, mock.MatchedBy(func(event tripsModels.DataEventTrip) bool {
+		return event.MessageType == tripsModels.EventTripStatusChanged && event.TripID == tripID.String()
+	}))
 }
 
 func TestAdvanceTrip_InProgressCompletesAndRecordsEarning(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -599,11 +639,14 @@ func TestAdvanceTrip_InProgressCompletesAndRecordsEarning(t *testing.T) {
 	err := svc.AdvanceTrip(context.Background(), riderID, tripID, "5678", conn)
 
 	require.NoError(t, err)
+	stream.AssertCalled(t, "PublisherEvent", mock.Anything, mock.MatchedBy(func(event tripsModels.DataEventTrip) bool {
+		return event.MessageType == tripsModels.EventTripStatusChanged && event.TripID == tripID.String()
+	}))
 }
 
 func TestAdvanceTrip_RejectsWhenRiderNotAssigned(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -619,7 +662,7 @@ func TestAdvanceTrip_RejectsWhenRiderNotAssigned(t *testing.T) {
 
 func TestAdvanceTrip_RejectsTerminalStatus(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -642,7 +685,7 @@ func TestAdvanceTrip_RejectsTerminalStatus(t *testing.T) {
 // sin volver a invocar CompleteTrip (el mock .Once() lo garantiza).
 func TestAdvanceTrip_ConcurrentCompletionIsSerialized(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -685,7 +728,7 @@ func TestCancelAcceptedTrip_ReoffersExcludingCancellingRider(t *testing.T) {
 	for _, status := range []tripsModels.TripStatus{tripsModels.TripStatusAccepted, tripsModels.TripStatusArriving} {
 		t.Run(string(status), func(t *testing.T) {
 			repo := mocksriders.NewRidersRepo(t)
-			stream := mocksriders.NewRidersStream(t)
+			stream := newRidersStream(t)
 			bcv := mockbcvports.NewBcvApp(t)
 			tripsRepo := mockstrips.NewTripsRepo(t)
 			tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -735,7 +778,7 @@ func TestCancelAcceptedTrip_ReoffersExcludingCancellingRider(t *testing.T) {
 
 func TestCancelAcceptedTrip_NoOtherRidersKeepsSearching(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -761,11 +804,14 @@ func TestCancelAcceptedTrip_NoOtherRidersKeepsSearching(t *testing.T) {
 
 	require.NoError(t, err)
 	tripsRepo.AssertNotCalled(t, "UpdateTripStatus", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	stream.AssertCalled(t, "PublisherEvent", mock.Anything, mock.MatchedBy(func(event tripsModels.DataEventTrip) bool {
+		return event.MessageType == tripsModels.EventTripStatusChanged && event.TripID == trip.ID.String()
+	}))
 }
 
 func TestCancelAcceptedTrip_RejectsWhenNotAssigned(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -787,7 +833,7 @@ func TestCancelAcceptedTrip_RejectsAfterPickup(t *testing.T) {
 	for _, status := range []tripsModels.TripStatus{tripsModels.TripStatusInProgress, tripsModels.TripStatusCompleted} {
 		t.Run(string(status), func(t *testing.T) {
 			repo := mocksriders.NewRidersRepo(t)
-			stream := mocksriders.NewRidersStream(t)
+			stream := newRidersStream(t)
 			bcv := mockbcvports.NewBcvApp(t)
 			tripsRepo := mockstrips.NewTripsRepo(t)
 			tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -825,7 +871,7 @@ func newTripOfferSvc(t *testing.T) (ridersPorts.RidersApp, *mockstrips.TripsRepo
 func newTripOfferSvcWithStore(t *testing.T) (ridersPorts.RidersApp, *mockstrips.TripsRepo, *mocksriders.RidersRepo, ridersPorts.RiderPresenceStore) {
 	t.Helper()
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -1040,7 +1086,7 @@ func (r *recordingCustomer) NotifyRiderLocation(_ context.Context, _, tripID uui
 
 func TestAcceptTrip_NotifiesCustomerCodeHiddenFromRider(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
@@ -1085,7 +1131,7 @@ func TestAcceptTrip_NotifiesCustomerCodeHiddenFromRider(t *testing.T) {
 
 func TestAdvanceTrip_WrongPickupCodeDoesNotStartTrip(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
-	stream := mocksriders.NewRidersStream(t)
+	stream := newRidersStream(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)

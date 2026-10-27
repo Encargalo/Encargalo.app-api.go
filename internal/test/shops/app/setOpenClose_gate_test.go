@@ -18,7 +18,7 @@ func TestSetOpenClose_RejectsOpenWhenDraft(t *testing.T) {
 	repo := mocksshops.NewShopsRepo(t)
 	broadcaster := mocksshops.NewShopStatusBroadcaster(t)
 	bcv := mocksbcv.NewBcvApp(t)
-	shopsApp := app.NewShopsApp(repo, broadcaster, bcv)
+	shopsApp := app.NewShopsApp(repo, broadcaster, bcv, nil)
 
 	shopID := uuid.New()
 	repo.On("GetShopStatus", context.Background(), shopID).Return(string(shopsmodels.ShopStatusDraft), nil)
@@ -33,7 +33,7 @@ func TestSetOpenClose_AllowsOpenWhenActive(t *testing.T) {
 	repo := mocksshops.NewShopsRepo(t)
 	broadcaster := mocksshops.NewShopStatusBroadcaster(t)
 	bcv := mocksbcv.NewBcvApp(t)
-	shopsApp := app.NewShopsApp(repo, broadcaster, bcv)
+	shopsApp := app.NewShopsApp(repo, broadcaster, bcv, nil)
 
 	shopID := uuid.New()
 	repo.On("GetShopStatus", context.Background(), shopID).Return(string(shopsmodels.ShopStatusActive), nil)
@@ -45,11 +45,33 @@ func TestSetOpenClose_AllowsOpenWhenActive(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// El ETL resincroniza DimShop por evento, no por el batch horario.
+func TestSetOpenClose_PublishesShopUpdated(t *testing.T) {
+	repo := mocksshops.NewShopsRepo(t)
+	broadcaster := mocksshops.NewShopStatusBroadcaster(t)
+	bcv := mocksbcv.NewBcvApp(t)
+	events := mocksshops.NewShopEventPublisher(t)
+	shopsApp := app.NewShopsApp(repo, broadcaster, bcv, events)
+
+	shopID := uuid.New()
+	repo.On("GetShopStatus", context.Background(), shopID).Return(string(shopsmodels.ShopStatusActive), nil)
+	repo.On("SetOpenClose", context.Background(), &shopID, true).Return(nil)
+	broadcaster.On("BroadcastShopStatus", shopID, true).Return(nil)
+	events.On("PublisherEvent", context.Background(), shopsmodels.DataEventShopUpdated{
+		MessageType: "shop_updated",
+		ShopID:      shopID.String(),
+	}).Return(nil)
+
+	err := shopsApp.SetOpenClose(context.Background(), &shopID, true)
+
+	require.NoError(t, err)
+}
+
 func TestSetOpenClose_ClosingSkipsStatusCheck(t *testing.T) {
 	repo := mocksshops.NewShopsRepo(t)
 	broadcaster := mocksshops.NewShopStatusBroadcaster(t)
 	bcv := mocksbcv.NewBcvApp(t)
-	shopsApp := app.NewShopsApp(repo, broadcaster, bcv)
+	shopsApp := app.NewShopsApp(repo, broadcaster, bcv, nil)
 
 	shopID := uuid.New()
 	repo.On("SetOpenClose", context.Background(), &shopID, false).Return(nil)

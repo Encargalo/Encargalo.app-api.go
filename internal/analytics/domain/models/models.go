@@ -10,14 +10,15 @@ import (
 type ETLEntity string
 
 const (
-	EntityDimShop           ETLEntity = "dim_shop"
-	EntityDimUser           ETLEntity = "dim_user"
-	EntityDimRider          ETLEntity = "dim_rider"
-	EntityCubeOrder         ETLEntity = "cube_order"
-	EntityCubeTrip          ETLEntity = "cube_trip"
-	EntityFactTrackingEvent ETLEntity = "fact_tracking_event"
-	EntityCubeFareQuote     ETLEntity = "cube_fare_quote"
-	EntityCubeDeliveryQuote ETLEntity = "cube_delivery_quote"
+	EntityDimShop               ETLEntity = "dim_shop"
+	EntityDimUser               ETLEntity = "dim_user"
+	EntityDimRider              ETLEntity = "dim_rider"
+	EntityCubeOrder             ETLEntity = "cube_order"
+	EntityCubeTrip              ETLEntity = "cube_trip"
+	EntityFactTrackingEvent     ETLEntity = "fact_tracking_event"
+	EntityCubeFareQuote         ETLEntity = "cube_fare_quote"
+	EntityCubeDeliveryQuote     ETLEntity = "cube_delivery_quote"
+	EntityFactOrderStatusChange ETLEntity = "fact_order_status_change"
 )
 
 var DefaultETLEntities = []ETLEntity{
@@ -29,6 +30,17 @@ var DefaultETLEntities = []ETLEntity{
 	EntityFactTrackingEvent,
 	EntityCubeFareQuote,
 	EntityCubeDeliveryQuote,
+	EntityFactOrderStatusChange,
+}
+
+// CronETLEntities es lo que sincroniza el cron del worker. Cada entidad sale
+// de esta lista a medida que gana su propio productor de eventos (ver
+// ports.ETLApp.SyncXByID) y se resincroniza en tiempo real en vez de esperar
+// al batch horario. EntityFactTrackingEvent es la única que queda, a
+// propósito: es telemetría genérica de alto volumen sin status de negocio,
+// no amerita tiempo real ni inflar el stream compartido con notifications.
+var CronETLEntities = []ETLEntity{
+	EntityFactTrackingEvent,
 }
 
 type DateRange struct {
@@ -175,6 +187,20 @@ type CubeDeliveryQuote struct {
 	QuoteHour      int16     `bun:"quote_hour,notnull"`
 	CreatedAt      time.Time `bun:"created_at,notnull"`
 	SyncedAt       time.Time `bun:"synced_at,notnull"`
+}
+
+// FactOrderStatusChange es un espejo crudo de orders.order_status_history
+// (alimentada por trigger en OLTP ante cualquier cambio de status). No se
+// interpreta ni se filtra aquí: una orden puede reentrar a un status ya
+// visitado, y corresponde a cada query de Grafana decidir cómo agregarlo.
+type FactOrderStatusChange struct {
+	bun.BaseModel `bun:"table:analytics.fact_order_status_change"`
+
+	ID       int64     `bun:"id,pk"`
+	OrderID  uuid.UUID `bun:"order_id,type:uuid,notnull"`
+	Status   string    `bun:"status,notnull"`
+	At       time.Time `bun:"at,notnull"`
+	SyncedAt time.Time `bun:"synced_at,notnull"`
 }
 
 type ETLEntityResult struct {

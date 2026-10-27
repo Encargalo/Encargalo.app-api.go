@@ -277,6 +277,9 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(appCustomer.NewRefundAlertWorker)
 	_ = Container.Provide(appCustomer.NewAccountDeletionWorker)
 	_ = Container.Provide(appAuth.NewAuthApp)
+	_ = Container.Provide(func(s ordersPorts.RedisStream) shopsPorts.ShopEventPublisher {
+		return s
+	})
 	_ = Container.Provide(appShops.NewShopsApp)
 	_ = Container.Provide(appShops.NewStaffShopApp)
 	_ = Container.Provide(appShops.NewBatchCloseWorker)

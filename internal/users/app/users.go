@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"Encargalo.app-api.go/internal/pkg/bycript"
@@ -14,14 +15,27 @@ import (
 )
 
 type customersApp struct {
-	repo ports.UsersRepo
-	pass bycript.Password
+	repo   ports.UsersRepo
+	pass   bycript.Password
+	stream ports.StreamPublisher
 }
 
-func NewUserApp(repo ports.UsersRepo, pass bycript.Password) ports.UsersApp {
+func NewUserApp(repo ports.UsersRepo, pass bycript.Password, stream ports.StreamPublisher) ports.UsersApp {
 	return &customersApp{
 		repo,
 		pass,
+		stream,
+	}
+}
+
+func (c *customersApp) publishUserUpdated(ctx context.Context, userID uuid.UUID) {
+	if c.stream == nil {
+		return
+	}
+	event := models.DataEventUserUpdated{}
+	event.BuildFromUserID(userID.String())
+	if err := c.stream.PublisherEvent(ctx, event); err != nil {
+		slog.Error("error publishing user_updated event", "userID", userID, "error", err)
 	}
 }
 
@@ -50,6 +64,7 @@ func (c *customersApp) RegisterCustomer(ctx context.Context, customer dto.Regist
 		return err
 	}
 
+	c.publishUserUpdated(ctx, customerModel.ID)
 	return nil
 }
 
@@ -62,6 +77,7 @@ func (c *customersApp) RegisterCustomerFromGoogle(ctx context.Context, customer 
 		return nil, err
 	}
 
+	c.publishUserUpdated(ctx, customerModel.ID)
 	return &customerModel, nil
 }
 
@@ -108,7 +124,11 @@ func (c *customersApp) UpdateCustomer(ctx context.Context, customer_id uuid.UUID
 	customerModel := models.Account{}
 	customerModel.BuildCustomerUpdateModel(customer)
 
-	return c.repo.UpdateCustomer(ctx, customer_id, &customerModel)
+	if err := c.repo.UpdateCustomer(ctx, customer_id, &customerModel); err != nil {
+		return err
+	}
+	c.publishUserUpdated(ctx, customer_id)
+	return nil
 }
 
 func (c *customersApp) UpdatePassword(ctx context.Context, customer_id uuid.UUID, pass dto.UpdatePassword) error {
@@ -133,16 +153,27 @@ func (c *customersApp) UpdatePassword(ctx context.Context, customer_id uuid.UUID
 		return errcustom.ErrUnexpectedError
 	}
 
-	return c.repo.UpdatePassword(ctx, customer_id, &customerModel)
-
+	if err := c.repo.UpdatePassword(ctx, customer_id, &customerModel); err != nil {
+		return err
+	}
+	c.publishUserUpdated(ctx, customer_id)
+	return nil
 }
 
 func (c *customersApp) RequestAccountDeletion(ctx context.Context, userID uuid.UUID) error {
-	return c.repo.RequestAccountDeletion(ctx, userID)
+	if err := c.repo.RequestAccountDeletion(ctx, userID); err != nil {
+		return err
+	}
+	c.publishUserUpdated(ctx, userID)
+	return nil
 }
 
 func (c *customersApp) CancelPendingDeletionIfAny(ctx context.Context, userID uuid.UUID) error {
-	return c.repo.CancelAccountDeletion(ctx, userID)
+	if err := c.repo.CancelAccountDeletion(ctx, userID); err != nil {
+		return err
+	}
+	c.publishUserUpdated(ctx, userID)
+	return nil
 }
 
 func (c *customersApp) FinalizePendingDeletions(ctx context.Context) (int64, error) {

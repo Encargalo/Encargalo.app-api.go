@@ -12,6 +12,7 @@ import (
 	"Encargalo.app-api.go/internal/riders/domain/models"
 	"Encargalo.app-api.go/internal/riders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	usersmodels "Encargalo.app-api.go/internal/users/domain/models"
 	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
 )
@@ -19,10 +20,36 @@ import (
 type riderProfileApp struct {
 	repo     ports.RiderProfileRepo
 	uploader uploadimage.UploadImage
+	stream   ports.RidersStream
 }
 
-func NewRiderProfileApp(repo ports.RiderProfileRepo, uploader uploadimage.UploadImage) ports.RiderProfileApp {
-	return &riderProfileApp{repo: repo, uploader: uploader}
+func NewRiderProfileApp(repo ports.RiderProfileRepo, uploader uploadimage.UploadImage, stream ports.RidersStream) ports.RiderProfileApp {
+	return &riderProfileApp{repo: repo, uploader: uploader, stream: stream}
+}
+
+func (a *riderProfileApp) publishRiderUpdated(ctx context.Context, userID uuid.UUID) {
+	if a.stream == nil {
+		return
+	}
+	event := models.DataEventRiderUpdated{}
+	event.BuildFromRiderID(userID.String())
+	if err := a.stream.PublisherEvent(ctx, event); err != nil {
+		slog.Error("error publishing rider_updated event", "userID", userID, "error", err)
+	}
+}
+
+// publishUserUpdated avisa a DimUser que el rol Rider de la cuenta cambió.
+// Activate/Suspend mutan users.user_roles vía EnsureRiderRole/DisableRiderRole,
+// no solo riders.profiles, así que DimUser.Roles necesita su propio evento.
+func (a *riderProfileApp) publishUserUpdated(ctx context.Context, userID uuid.UUID) {
+	if a.stream == nil {
+		return
+	}
+	event := usersmodels.DataEventUserUpdated{}
+	event.BuildFromUserID(userID.String())
+	if err := a.stream.PublisherEvent(ctx, event); err != nil {
+		slog.Error("error publishing user_updated event", "userID", userID, "error", err)
+	}
 }
 
 func (a *riderProfileApp) FindCandidate(ctx context.Context, phone string) (dtos.CandidateResponse, error) {
@@ -152,6 +179,7 @@ func (a *riderProfileApp) UpsertProfile(ctx context.Context, userID uuid.UUID, r
 		return dtos.RiderProfileResponse{}, err
 	}
 	a.deleteImages(ctx, profile.UserID, photos.replaced)
+	a.publishRiderUpdated(ctx, userID)
 	return a.GetProfile(ctx, userID)
 }
 
@@ -279,6 +307,7 @@ func (a *riderProfileApp) DeletePhoto(ctx context.Context, userID uuid.UUID, fie
 		if err := a.repo.ClearPhoto(ctx, userID, field); err != nil {
 			return dtos.RiderProfileResponse{}, err
 		}
+		a.publishRiderUpdated(ctx, userID)
 	}
 
 	return a.GetProfile(ctx, userID)
@@ -304,6 +333,8 @@ func (a *riderProfileApp) Activate(ctx context.Context, userID, staffID uuid.UUI
 	if err := a.repo.Activate(ctx, userID, staffID, now); err != nil {
 		return dtos.RiderProfileResponse{}, err
 	}
+	a.publishRiderUpdated(ctx, userID)
+	a.publishUserUpdated(ctx, userID)
 	return a.GetProfile(ctx, userID)
 }
 
@@ -312,6 +343,8 @@ func (a *riderProfileApp) Suspend(ctx context.Context, userID uuid.UUID) (dtos.R
 		return dtos.RiderProfileResponse{}, err
 	}
 	_ = a.repo.DisableRiderRole(ctx, userID)
+	a.publishRiderUpdated(ctx, userID)
+	a.publishUserUpdated(ctx, userID)
 	return a.GetProfile(ctx, userID)
 }
 
@@ -324,6 +357,7 @@ func (a *riderProfileApp) TouchContact(ctx context.Context, userID uuid.UUID, no
 	if err := a.repo.TouchContact(ctx, userID, time.Now(), n); err != nil {
 		return dtos.RiderProfileResponse{}, err
 	}
+	a.publishRiderUpdated(ctx, userID)
 	return a.GetProfile(ctx, userID)
 }
 
