@@ -3524,7 +3524,7 @@
                         "SessionCookie": []
                     }
                 ],
-                "description": "Devuelve la solicitud del customer autenticado: estado, datos del vehículo, fotos subidas y `completion` con lo que falta. Si aún no tiene solicitud, responde una vacía en `draft`.\n`can_edit` indica si puede guardar y enviar (`draft` o `changes_requested`). `review_reason` trae el motivo cuando el staff rechaza o pide cambios.",
+                "description": "Devuelve la solicitud del customer autenticado: estado, datos del vehículo, fotos subidas y `completion` con lo que falta. Si aún no tiene solicitud, responde una vacía en `draft`.\n`can_edit` indica si puede guardar y enviar (`draft` o `changes_requested`). `review_reason` trae el motivo cuando el staff rechaza o pide cambios.\nSi el staff ya aprobó la solicitud, responde 200 con `status: active` (no 409): el 409 `already_rider` queda solo para cuentas rider legacy sin expediente en `riders.profiles`.",
                 "produces": [
                     "application/json"
                 ],
@@ -3552,7 +3552,7 @@
                         }
                     },
                     "409": {
-                        "description": "La cuenta ya es rider (already_rider)",
+                        "description": "Cuenta rider legacy sin expediente (already_rider)",
                         "schema": {
                             "type": "string"
                         }

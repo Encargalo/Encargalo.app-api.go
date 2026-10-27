@@ -18,11 +18,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetOwnApplication_RiderIsRejected(t *testing.T) {
+func TestGetOwnApplication_LegacyRiderWithoutProfileIsRejected(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
 	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 	userID := uuid.New()
 
+	repo.On("GetByUserID", mock.Anything, userID).Return(nil, errcustom.ErrNotFound)
 	repo.On("HasRiderRole", mock.Anything, userID).Return(true, nil)
 
 	_, err := svc.GetOwnApplication(context.Background(), userID)
@@ -35,11 +36,50 @@ func TestGetOwnApplication_RoleLookupFails(t *testing.T) {
 	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 	userID := uuid.New()
 
+	repo.On("GetByUserID", mock.Anything, userID).Return(nil, errcustom.ErrNotFound)
 	repo.On("HasRiderRole", mock.Anything, userID).Return(false, errcustom.ErrUnexpectedError)
 
 	_, err := svc.GetOwnApplication(context.Background(), userID)
 
 	assert.ErrorIs(t, err, errcustom.ErrUnexpectedError)
+}
+
+func TestGetOwnApplication_ApprovedRiderSeesActiveStatus(t *testing.T) {
+	repo := mocksriders.NewRiderProfileRepo(t)
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
+	userID := uuid.New()
+	activatedAt := time.Date(2026, 10, 20, 15, 0, 0, 0, time.UTC)
+
+	profile := completeProfile(userID, "moto")
+	profile.Status = models.RiderProfileActive
+	profile.ActivatedAt = &activatedAt
+
+	repo.On("GetByUserID", mock.Anything, userID).Return(profile, nil)
+
+	resp, err := svc.GetOwnApplication(context.Background(), userID)
+
+	require.NoError(t, err)
+	assert.Equal(t, string(models.RiderProfileActive), resp.Status)
+	assert.False(t, resp.CanEdit)
+	repo.AssertNotCalled(t, "HasRiderRole", mock.Anything, mock.Anything)
+}
+
+func TestGetOwnApplication_SuspendedRiderSeesSuspendedStatus(t *testing.T) {
+	repo := mocksriders.NewRiderProfileRepo(t)
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
+	userID := uuid.New()
+
+	profile := completeProfile(userID, "moto")
+	profile.Status = models.RiderProfileSuspended
+
+	repo.On("GetByUserID", mock.Anything, userID).Return(profile, nil)
+
+	resp, err := svc.GetOwnApplication(context.Background(), userID)
+
+	require.NoError(t, err)
+	assert.Equal(t, string(models.RiderProfileSuspended), resp.Status)
+	assert.False(t, resp.CanEdit)
+	repo.AssertNotCalled(t, "HasRiderRole", mock.Anything, mock.Anything)
 }
 
 func TestGetOwnApplication_NoProfileReturnsEditableDraft(t *testing.T) {
@@ -70,7 +110,6 @@ func TestGetOwnApplication_PendingReviewIsNotEditable(t *testing.T) {
 	profile.SubmittedAt = &submittedAt
 	profile.Notes = new("nota interna del staff")
 
-	repo.On("HasRiderRole", mock.Anything, userID).Return(false, nil)
 	repo.On("GetByUserID", mock.Anything, userID).Return(profile, nil)
 
 	resp, err := svc.GetOwnApplication(context.Background(), userID)
