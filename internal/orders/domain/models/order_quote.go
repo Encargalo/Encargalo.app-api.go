@@ -114,6 +114,7 @@ func SnapshotLinesFromOrder(order *Order) []QuoteLineSnapshot {
 }
 
 func ApplyQuoteSnapshot(order *Order, quote *OrderQuote) {
+	order.QuoteID = &quote.QuoteID
 	order.ShopID = quote.ShopID
 	order.Address = quote.Address.Address
 	order.Latitude = quote.Address.Latitude

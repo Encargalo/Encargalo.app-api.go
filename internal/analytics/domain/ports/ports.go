@@ -25,6 +25,7 @@ type OLTPSourceRepo interface {
 	FetchTrips(ctx context.Context, from, to time.Time) ([]models.CubeTrip, error)
 	FetchTrackingEvents(ctx context.Context, from, to time.Time) ([]models.FactTrackingEvent, error)
 	FetchFareQuotes(ctx context.Context, from, to time.Time) ([]models.CubeFareQuote, error)
+	FetchDeliveryQuotes(ctx context.Context, from, to time.Time) ([]models.CubeDeliveryQuote, error)
 }
 
 type OLAPSinkRepo interface {
@@ -35,4 +36,5 @@ type OLAPSinkRepo interface {
 	UpsertTrips(ctx context.Context, rows []models.CubeTrip) error
 	UpsertTrackingEvents(ctx context.Context, rows []models.FactTrackingEvent) error
 	UpsertFareQuotes(ctx context.Context, rows []models.CubeFareQuote) error
+	UpsertDeliveryQuotes(ctx context.Context, rows []models.CubeDeliveryQuote) error
 }

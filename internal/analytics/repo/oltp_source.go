@@ -167,6 +167,7 @@ func (r *oltpSourceRepo) FetchRiders(ctx context.Context, from, to time.Time) ([
 
 type orderRow struct {
 	ID                 uuid.UUID  `bun:"id"`
+	QuoteID            *uuid.UUID `bun:"quote_id"`
 	ShopID             uuid.UUID  `bun:"shop_id"`
 	CustomerID         uuid.UUID  `bun:"customer_id"`
 	RiderID            *uuid.UUID `bun:"rider_id"`
@@ -187,7 +188,7 @@ func (r *oltpSourceRepo) FetchOrders(ctx context.Context, from, to time.Time) ([
 	err := r.db.NewSelect().
 		TableExpr("orders.orders AS o").
 		Column(
-			"o.id", "o.shop_id", "o.customer_id", "o.rider_id", "o.status", "o.method_payment",
+			"o.id", "o.quote_id", "o.shop_id", "o.customer_id", "o.rider_id", "o.status", "o.method_payment",
 			"o.total_price", "o.delivery_fee", "o.promo_subsidy_amount", "o.is_launch_promo",
 			"o.is_zero_commission", "o.created_at", "o.h3_cell",
 		).
@@ -202,6 +203,7 @@ func (r *oltpSourceRepo) FetchOrders(ctx context.Context, from, to time.Time) ([
 	for i, row := range rows {
 		out[i] = models.CubeOrder{
 			OrderID:            row.ID,
+			QuoteID:            row.QuoteID,
 			ShopID:             row.ShopID,
 			CustomerID:         row.CustomerID,
 			RiderID:            row.RiderID,
@@ -346,6 +348,52 @@ func (r *oltpSourceRepo) FetchFareQuotes(ctx context.Context, from, to time.Time
 			FareBand:       row.FareBand,
 			PickupH3Cell:   row.PickupH3CellZone,
 			DropoffH3Cell:  row.DropoffH3CellZone,
+			QuoteDate:      time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, time.UTC),
+			QuoteHour:      int16(local.Hour()),
+			CreatedAt:      row.CreatedAt,
+			SyncedAt:       now,
+		}
+	}
+	return out, nil
+}
+
+type deliveryQuoteRow struct {
+	QuoteID        uuid.UUID `bun:"quote_id"`
+	CustomerID     uuid.UUID `bun:"customer_id"`
+	ShopID         uuid.UUID `bun:"shop_id"`
+	DistanceMeters float64   `bun:"distance_meters"`
+	FeeUSD         float64   `bun:"fee_usd"`
+	FareBand       string    `bun:"fare_band"`
+	CreatedAt      time.Time `bun:"created_at"`
+}
+
+// Las cotizaciones son inmutables: una vez escritas no cambian, así que la
+// ventana de created_at las cubre sin necesitar lookback por updated_at.
+func (r *oltpSourceRepo) FetchDeliveryQuotes(ctx context.Context, from, to time.Time) ([]models.CubeDeliveryQuote, error) {
+	var rows []deliveryQuoteRow
+	err := r.db.NewSelect().
+		TableExpr("orders.fare_quotes AS q").
+		Column(
+			"q.quote_id", "q.customer_id", "q.shop_id", "q.distance_meters",
+			"q.fee_usd", "q.fare_band", "q.created_at",
+		).
+		Where("q.created_at >= ? AND q.created_at < ?", from, to).
+		Scan(ctx, &rows)
+	if err != nil {
+		return nil, errcustom.Unexpected(err)
+	}
+
+	now := time.Now().UTC()
+	out := make([]models.CubeDeliveryQuote, len(rows))
+	for i, row := range rows {
+		local := row.CreatedAt.In(bizclock.Location())
+		out[i] = models.CubeDeliveryQuote{
+			QuoteID:        row.QuoteID,
+			CustomerID:     row.CustomerID,
+			ShopID:         row.ShopID,
+			DistanceMeters: row.DistanceMeters,
+			FeeUSD:         row.FeeUSD,
+			FareBand:       row.FareBand,
 			QuoteDate:      time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, time.UTC),
 			QuoteHour:      int16(local.Hour()),
 			CreatedAt:      row.CreatedAt,

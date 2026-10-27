@@ -555,7 +555,7 @@ func newShopOrderApp(t *testing.T) ordersports.OrdersApp {
 	shops.On("TryCloseOpenBatch", mock.Anything, shopID).Return(nil).Maybe()
 	return ordersapp.NewOrderApp(
 		ordersRepo, shops, nil, nil, nil, quietRider{}, nil, nil, fixedBCV{},
-		reviewsRepo, hub, reviewsApp, nil, nil,
+		reviewsRepo, hub, reviewsApp, nil, nil, nil,
 	)
 }
 
