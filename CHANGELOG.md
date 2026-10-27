@@ -1,5 +1,34 @@
 # Changelog
 
+## [2.10.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.9.0...v2.10.0) (2026-10-27)
+
+
+### Features
+
+* **analytics:** agrega sincronización puntual de una orden a OLAP ([ad95c55](https://github.com/Encargalo/Encargalo.app-api.go/commit/ad95c55af632eb8adb3daf34c51232f657944a58))
+* **config:** agrega configuración de Redis Stream para cmd/etl ([ff3eaff](https://github.com/Encargalo/Encargalo.app-api.go/commit/ff3eaffb8a52ac6a05c38183f5e80020008780a2))
+* **etl:** modelo OLAP dirigido por eventos en tiempo real ([b049a7f](https://github.com/Encargalo/Encargalo.app-api.go/commit/b049a7f10266b901a572aa76bbbde1bc9f136a0f))
+* **etl:** sincroniza cube_delivery_quote por evento y lo saca del cron ([f096c25](https://github.com/Encargalo/Encargalo.app-api.go/commit/f096c256942d035e9117dfad564aca928b881123))
+* **etl:** sincroniza cube_fare_quote por evento y lo saca del cron ([3d85dcf](https://github.com/Encargalo/Encargalo.app-api.go/commit/3d85dcf48f8106b69cc591fe555556a8f4ea638a))
+* **etl:** sincroniza cube_order por evento y acota el cron a las demás entidades ([91d9f6d](https://github.com/Encargalo/Encargalo.app-api.go/commit/91d9f6dd5b6cd483adc78ee12481cf5324d19520))
+* **etl:** sincroniza cube_trip por evento y lo saca del cron ([a4937bb](https://github.com/Encargalo/Encargalo.app-api.go/commit/a4937bb77d0931b505495377d476b73b448b0cdf))
+* **etl:** sincroniza dim_rider por evento y lo saca del cron ([59835ba](https://github.com/Encargalo/Encargalo.app-api.go/commit/59835bafc309ec6693bdf7581c168513f945aa67))
+* **etl:** sincroniza dim_shop por evento y lo saca del cron ([a184a3f](https://github.com/Encargalo/Encargalo.app-api.go/commit/a184a3fdde68764b6fe2cb67e7361f7e2e3137b6))
+* **etl:** sincroniza dim_user por evento y elimina el cron por completo ([bd3addf](https://github.com/Encargalo/Encargalo.app-api.go/commit/bd3addfd4954a65004644f65ccf66f32baa0a14d))
+* **etl:** sincroniza fact_order_status_change para medir tiempo de ciclo del pedido ([3616937](https://github.com/Encargalo/Encargalo.app-api.go/commit/3616937e8c145997ede8f3ed499a2aa59f5d249d))
+* **etl:** sincroniza OLAP por eventos en vez de cron horario ([a755a2e](https://github.com/Encargalo/Encargalo.app-api.go/commit/a755a2eafa8d0332fafde8f2f633f851a7f7a2b8))
+* **orders:** publica order_status_changed al rechazar o completar una orden ([8c17447](https://github.com/Encargalo/Encargalo.app-api.go/commit/8c174479e10bffac61526bb28ceaa4a480ff600b))
+
+
+### Bug Fixes
+
+* **notifications:** ackea tipos de mensaje que no reconoce en vez de reintentarlos para siempre ([c655a7d](https://github.com/Encargalo/Encargalo.app-api.go/commit/c655a7d41539638d472ee9332dbddc5bc48fecfe))
+
+
+### Documentation
+
+* documenta el modelo ETL final por eventos en CLAUDE.md ([a37a9be](https://github.com/Encargalo/Encargalo.app-api.go/commit/a37a9be5cf3ccf632e3f1b4e5ba7aa418383e07a))
+
 ## [2.9.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.8.0...v2.9.0) (2026-10-26)
 
 
