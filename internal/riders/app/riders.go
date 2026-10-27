@@ -62,7 +62,6 @@ type appRidersManager struct {
 	tripOfferRounds    map[uuid.UUID]int
 	tripOfferTrip      map[uuid.UUID]tripsModels.Trip
 	tripExcluded       map[uuid.UUID]map[uuid.UUID]struct{}
-	tripTimers         map[uuid.UUID]*time.Timer
 	// tripWithdrawn marca viajes que el cliente ya canceló. Una ronda que ya
 	// pasó el chequeo de status no puede volver a publicar la oferta.
 	tripWithdrawn   map[uuid.UUID]struct{}
@@ -81,6 +80,7 @@ type appRidersManager struct {
 	presence        ridersPorts.RiderPresenceStore
 	riderTrips      map[uuid.UUID]riderAssignment
 	orderNotifier   ridersPorts.OrderCustomerNotifier
+	offerTimeouts   ridersPorts.TripOfferTimeoutStore
 }
 
 type riderAssignment struct {
@@ -88,7 +88,7 @@ type riderAssignment struct {
 	customerID uuid.UUID
 }
 
-func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPorts.BcvApp, tripsRepo ridersPorts.TripsStore, tripEarnings ridersPorts.TripEarningRecorder, customers tripsPorts.CustomerTripNotifier, balance paymentsPorts.CustomerBalanceCreditor, passengers ridersPorts.PassengerLookup, vehicles ridersPorts.VehicleLookup, presence ridersPorts.RiderPresenceStore) ridersPorts.RidersApp {
+func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPorts.BcvApp, tripsRepo ridersPorts.TripsStore, tripEarnings ridersPorts.TripEarningRecorder, customers tripsPorts.CustomerTripNotifier, balance paymentsPorts.CustomerBalanceCreditor, passengers ridersPorts.PassengerLookup, vehicles ridersPorts.VehicleLookup, presence ridersPorts.RiderPresenceStore, offerTimeouts ridersPorts.TripOfferTimeoutStore) ridersPorts.RidersApp {
 	return &appRidersManager{
 		availableRiders:    make(map[uuid.UUID]ridersPorts.RiderConn),
 		assignedOrders:     make(map[uuid.UUID][]uuid.UUID),
@@ -101,7 +101,6 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 		tripOfferRounds:    make(map[uuid.UUID]int),
 		tripOfferTrip:      make(map[uuid.UUID]tripsModels.Trip),
 		tripExcluded:       make(map[uuid.UUID]map[uuid.UUID]struct{}),
-		tripTimers:         make(map[uuid.UUID]*time.Timer),
 		tripWithdrawn:      make(map[uuid.UUID]struct{}),
 		completingTrips:    make(map[uuid.UUID]struct{}),
 		acceptingRiders:    make(map[uuid.UUID]struct{}),
@@ -116,6 +115,7 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 		vehicles:           vehicles,
 		presence:           presence,
 		riderTrips:         make(map[uuid.UUID]riderAssignment),
+		offerTimeouts:      offerTimeouts,
 	}
 }
 
@@ -779,7 +779,7 @@ func (r *appRidersManager) offerTripRound(trip tripsModels.Trip, round int) {
 		r.tripOfferRounds[trip.ID] = round
 		r.tripOfferTrip[trip.ID] = trip
 		r.mu.Unlock()
-		r.scheduleOfferTimeout(trip, tripEmptyRoundTimeout)
+		r.scheduleOfferTimeout(ctx, trip, tripEmptyRoundTimeout)
 		return
 	}
 
@@ -819,41 +819,37 @@ func (r *appRidersManager) offerTripRound(trip tripsModels.Trip, round int) {
 	}
 	r.mu.RUnlock()
 
-	r.scheduleOfferTimeout(trip, tripAcceptTimeout)
+	r.scheduleOfferTimeout(ctx, trip, tripAcceptTimeout)
 }
 
-func (r *appRidersManager) scheduleOfferTimeout(trip tripsModels.Trip, timeout time.Duration) {
-	timer := time.AfterFunc(timeout, func() {
-		r.onTripOfferTimeout(trip)
-	})
-	r.mu.Lock()
-	if _, withdrawn := r.tripWithdrawn[trip.ID]; withdrawn {
-		timer.Stop()
-		r.mu.Unlock()
+// scheduleOfferTimeout programa el vencimiento de la ronda en Redis en vez de
+// un time.AfterFunc en memoria, para que un reinicio del proceso no lo pierda
+// (ver #359). El TripOfferTimeoutWorker es quien lo dispara.
+func (r *appRidersManager) scheduleOfferTimeout(ctx context.Context, trip tripsModels.Trip, timeout time.Duration) {
+	r.mu.RLock()
+	_, withdrawn := r.tripWithdrawn[trip.ID]
+	r.mu.RUnlock()
+	if withdrawn {
 		return
 	}
-	if prev, ok := r.tripTimers[trip.ID]; ok {
-		prev.Stop()
+	if err := r.offerTimeouts.Schedule(ctx, trip.ID, time.Now().Add(timeout)); err != nil {
+		slog.Error("error scheduling trip offer timeout", "tripID", trip.ID, "error", err)
 	}
-	r.tripTimers[trip.ID] = timer
-	r.mu.Unlock()
 }
 
-func (r *appRidersManager) onTripOfferTimeout(offered tripsModels.Trip) {
-	ctx := context.Background()
-	current, err := r.tripsRepo.GetTripByID(ctx, offered.ID)
+// onTripOfferTimeout corre cuando el TripOfferTimeoutWorker reclama un
+// vencimiento ya cumplido. Relee el viaje desde Postgres en vez de confiar en
+// un snapshot en memoria: por diseño, PickupH3Cell ya está garantizado no-nil
+// acá (offerTripRound expira el viaje sin programar nada si viene nil).
+func (r *appRidersManager) onTripOfferTimeout(ctx context.Context, tripID uuid.UUID) {
+	current, err := r.tripsRepo.GetTripByID(ctx, tripID)
 	if err != nil {
-		slog.Error("error reading trip on offer timeout", "tripID", offered.ID, "error", err)
+		slog.Error("error reading trip on offer timeout", "tripID", tripID, "error", err)
 		return
 	}
 	if current.Status != tripsModels.TripStatusSearching {
-		r.clearTripOfferState(current.ID)
+		r.clearTripOfferState(ctx, current.ID)
 		return
-	}
-	if current.PickupH3Cell == nil {
-		current.PickupH3Cell = offered.PickupH3Cell
-		current.PickupLatitude = offered.PickupLatitude
-		current.PickupLongitude = offered.PickupLongitude
 	}
 	if r.offerRound(current.ID) >= tripOfferMaxRounds {
 		r.expireTripIfStillSearching(current.ID)
@@ -919,7 +915,7 @@ func (r *appRidersManager) expireTripIfStillSearching(tripID uuid.UUID) {
 		slog.Error("error expiring trip to no_driver", "tripID", tripID, "error", err)
 	}
 
-	r.clearTripOfferState(tripID)
+	r.clearTripOfferState(ctx, tripID)
 	if err != nil || !ok {
 		return
 	}
@@ -973,17 +969,16 @@ func (r *appRidersManager) publishTripStatusChanged(ctx context.Context, trip *t
 	}
 }
 
-func (r *appRidersManager) clearTripOfferState(tripID uuid.UUID) {
+func (r *appRidersManager) clearTripOfferState(ctx context.Context, tripID uuid.UUID) {
 	r.mu.Lock()
-	defer r.mu.Unlock()
 	delete(r.tripOffers, tripID)
 	delete(r.tripAlreadyOffered, tripID)
 	delete(r.tripOfferRounds, tripID)
 	delete(r.tripOfferTrip, tripID)
 	delete(r.tripExcluded, tripID)
-	if timer, ok := r.tripTimers[tripID]; ok {
-		timer.Stop()
-		delete(r.tripTimers, tripID)
+	r.mu.Unlock()
+	if err := r.offerTimeouts.Cancel(ctx, tripID); err != nil {
+		slog.Error("error cancelling trip offer timeout", "tripID", tripID, "error", err)
 	}
 }
 
@@ -1092,7 +1087,7 @@ func (r *appRidersManager) AcceptTrip(ctx context.Context, riderID, tripID uuid.
 		return r.rejectAssignment(ctx, tripID, conn)
 	}
 
-	r.clearTripOfferState(tripID)
+	r.clearTripOfferState(ctx, tripID)
 
 	acceptedAt := time.Now()
 	trip.RiderID = &riderID
@@ -1314,7 +1309,7 @@ func (r *appRidersManager) forgetRiderTrip(riderID uuid.UUID) {
 // NotifyTripCancelled avisa al rider asignado y a quienes tienen la oferta,
 // deja de reenviar la ubicación del asignado y retira la búsqueda en memoria.
 // El mensaje no incluye motivo ni quién canceló.
-func (r *appRidersManager) NotifyTripCancelled(_ context.Context, trip tripsModels.Trip) {
+func (r *appRidersManager) NotifyTripCancelled(ctx context.Context, trip tripsModels.Trip) {
 	payload, err := json.Marshal(tripCancelledNotice{
 		Type:   "trip_cancelled",
 		TripID: trip.ID.String(),
@@ -1347,11 +1342,11 @@ func (r *appRidersManager) NotifyTripCancelled(_ context.Context, trip tripsMode
 	delete(r.tripOfferRounds, trip.ID)
 	delete(r.tripOfferTrip, trip.ID)
 	delete(r.tripExcluded, trip.ID)
-	if timer, ok := r.tripTimers[trip.ID]; ok {
-		timer.Stop()
-		delete(r.tripTimers, trip.ID)
-	}
 	r.mu.Unlock()
+
+	if err := r.offerTimeouts.Cancel(ctx, trip.ID); err != nil {
+		slog.Error("error cancelling trip offer timeout", "tripID", trip.ID, "error", err)
+	}
 
 	for _, conn := range recipients {
 		conn.Send(payload)
@@ -1396,17 +1391,17 @@ type tripCancelledNotice struct {
 	TripID string `json:"trip_id"`
 }
 
-// AdvanceTripOfferTimeout corre el mismo camino que el timer de oferta (tripAcceptTimeout o tripEmptyRoundTimeout).
-// Los tests lo usan para pasar de ronda sin esperar el timeout real.
+// AdvanceTripOfferTimeout corre el mismo camino que el vencimiento de ronda
+// (tripAcceptTimeout o tripEmptyRoundTimeout), sin esperar al
+// TripOfferTimeoutWorker. Los tests lo usan para pasar de ronda sin esperar
+// el timeout real.
 func AdvanceTripOfferTimeout(svc ridersPorts.RidersApp, trip tripsModels.Trip) {
 	mgr := svc.(*appRidersManager)
-	mgr.mu.Lock()
-	if timer, ok := mgr.tripTimers[trip.ID]; ok {
-		timer.Stop()
-		delete(mgr.tripTimers, trip.ID)
+	ctx := context.Background()
+	if err := mgr.offerTimeouts.Cancel(ctx, trip.ID); err != nil {
+		slog.Error("error cancelling trip offer timeout in test", "tripID", trip.ID, "error", err)
 	}
-	mgr.mu.Unlock()
-	mgr.onTripOfferTimeout(trip)
+	mgr.onTripOfferTimeout(ctx, trip.ID)
 }
 
 // TripSearchMaxRingsForTest expone el tope de anillos de la primera ronda, para
@@ -1416,14 +1411,11 @@ const TripSearchMaxRingsForTest = tripSearchMaxRings
 // TripOfferCandidateCountForTest expone cuántos candidatos entran por ronda.
 const TripOfferCandidateCountForTest = tripOfferCandidateCount
 
-// StopTripOfferTimerForTest detiene el timer de oferta para que no dispare
-// después de que el test ya terminó.
+// StopTripOfferTimerForTest cancela el vencimiento de oferta en cola para que
+// no dispare después de que el test ya terminó.
 func StopTripOfferTimerForTest(svc ridersPorts.RidersApp, tripID uuid.UUID) {
 	mgr := svc.(*appRidersManager)
-	mgr.mu.Lock()
-	defer mgr.mu.Unlock()
-	if timer, ok := mgr.tripTimers[tripID]; ok {
-		timer.Stop()
-		delete(mgr.tripTimers, tripID)
+	if err := mgr.offerTimeouts.Cancel(context.Background(), tripID); err != nil {
+		slog.Error("error cancelling trip offer timeout in test", "tripID", tripID, "error", err)
 	}
 }
