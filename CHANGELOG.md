@@ -1,5 +1,42 @@
 # Changelog
 
+## [2.9.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.8.0...v2.9.0) (2026-10-26)
+
+
+### Features
+
+* **banners:** agrega dominio de banners publicitarios ([f5a6a5b](https://github.com/Encargalo/Encargalo.app-api.go/commit/f5a6a5bce6597b637c32095dfc67ffe78ae86fd1))
+* **banners:** dominio de banners publicitarios ([440f036](https://github.com/Encargalo/Encargalo.app-api.go/commit/440f03644f7b0195a6be28c9e0b3e2f2f451bcad))
+* **riders:** la bici no lleva pedidos Turbo ni de supermercado ([d67d20c](https://github.com/Encargalo/Encargalo.app-api.go/commit/d67d20cf7fb29abb4f6f68e47e7a3127067d3989))
+* **riders:** la bici no lleva pedidos Turbo ni de supermercado ([a473ca7](https://github.com/Encargalo/Encargalo.app-api.go/commit/a473ca7c115f8df105ed10af49aafed4f6f2279d))
+* **trips:** el cliente elige el vehículo del viaje y queda congelado en la cotización ([664dd0c](https://github.com/Encargalo/Encargalo.app-api.go/commit/664dd0cd59863b0ec9b656a1da5433346a9464f6))
+* **trips:** el cliente elige el vehículo del viaje y queda congelado en la cotización ([784fcfa](https://github.com/Encargalo/Encargalo.app-api.go/commit/784fcfa8240732977b5a3659f82d3434054d7432))
+
+
+### Bug Fixes
+
+* **retiros,viajes:** el anulado automático no se revierte y la bici no acepta pasajeros ([4002cf4](https://github.com/Encargalo/Encargalo.app-api.go/commit/4002cf4c96867167c28156d20444b42654dd2185))
+* **retiros,viajes:** el anulado automático no se revierte y la bici no acepta pasajeros ([16dfb5c](https://github.com/Encargalo/Encargalo.app-api.go/commit/16dfb5c423906074d456d5b61261f62cb0ccc98d))
+* **riders:** la bici ya no aparece como disponible en el mapa del cliente ([7ff5f4d](https://github.com/Encargalo/Encargalo.app-api.go/commit/7ff5f4dc5ffc413d0cf66aa03e69a89cab6d392d))
+* **riders:** no ofertar viajes a riders sin conexion en esta replica ([3ee2e71](https://github.com/Encargalo/Encargalo.app-api.go/commit/3ee2e71991b6c6337e0811b353a103cc032b6b6c))
+* **uploadImage:** conversión a WebP no se aplicaba por conflicto con AllowedFormats ([763c36e](https://github.com/Encargalo/Encargalo.app-api.go/commit/763c36e8c51c71f98b6db9e5da6f4c1a161970f8))
+* **uploadImage:** las imágenes subidas a Cloudinary no quedaban en WebP ([6e6ad5d](https://github.com/Encargalo/Encargalo.app-api.go/commit/6e6ad5d22c8f98f2520405de11495d3bf3348c85))
+* **viajes:** descartar ubicaciones viejas en el matching de riders ([77f2e54](https://github.com/Encargalo/Encargalo.app-api.go/commit/77f2e54c3b8fdbc3483506a18afc3c9de9e37970))
+* **viajes:** descartar ubicaciones viejas en el matching de riders ([2469ad7](https://github.com/Encargalo/Encargalo.app-api.go/commit/2469ad7f8e82bd8fb6b6226c9d4dba7fb740a4f1))
+* **viajes:** la bici no recibe viajes de pasajeros ([b2043c3](https://github.com/Encargalo/Encargalo.app-api.go/commit/b2043c3fb58dfd2a5a75b309f3f824476940674d))
+* **viajes:** la bici no recibe viajes de pasajeros ([588b262](https://github.com/Encargalo/Encargalo.app-api.go/commit/588b26287cfc958871e0e62aa399be761be35e2e))
+
+
+### Refactors
+
+* **riders:** borra el indice H3 de riders en memoria ([e1186c9](https://github.com/Encargalo/Encargalo.app-api.go/commit/e1186c977d230b98f05437e889b14cdf4454db68))
+* **riders:** borra SnapshotTripsRiders del puerto de riders ([e9fb333](https://github.com/Encargalo/Encargalo.app-api.go/commit/e9fb333c62c04a2bba25f90ae5c4d6778644e520))
+* **riders:** el mapa de riders cercanos se resuelve en Redis ([3a42374](https://github.com/Encargalo/Encargalo.app-api.go/commit/3a42374d16f6280c76cb2dd352e5fac43ac05ce1))
+* **riders:** el matching de viajes se resuelve en Redis ([6cb1774](https://github.com/Encargalo/Encargalo.app-api.go/commit/6cb17749017b42ac70700ace3d6451bde243c027))
+* **riders:** la presencia y la búsqueda de riders salen del proceso a Redis ([e980f38](https://github.com/Encargalo/Encargalo.app-api.go/commit/e980f38ffbf82720e54541b9d1dd64b4319ee9f4))
+* **riders:** publica la presencia del rider en Redis junto a la memoria ([947b543](https://github.com/Encargalo/Encargalo.app-api.go/commit/947b54370f5782f45ea7cca12299aa87012bd64b))
+* **riders:** puerto y adapter Redis para la presencia de riders ([9e1487c](https://github.com/Encargalo/Encargalo.app-api.go/commit/9e1487c21515978c2bb684f19af717899d1870f9))
+
 ## [2.8.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.7.0...v2.8.0) (2026-10-23)
 
 
