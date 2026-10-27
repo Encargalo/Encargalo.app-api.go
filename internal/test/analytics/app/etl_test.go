@@ -9,6 +9,7 @@ import (
 	"Encargalo.app-api.go/internal/analytics/domain/models"
 	"Encargalo.app-api.go/internal/analytics/domain/ports"
 	mocks "Encargalo.app-api.go/internal/mocks/analytics/domain/ports"
+	"Encargalo.app-api.go/internal/shared/errcustom"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -133,4 +134,40 @@ func TestRun_SyncsAllEntities(t *testing.T) {
 func TestGMV(t *testing.T) {
 	require.Equal(t, 90.0, models.GMV(100, 10))
 	require.Equal(t, 0.0, models.GMV(5, 10))
+}
+
+func TestSyncOrderByID_Success(t *testing.T) {
+	source := new(mocks.OLTPSourceRepo)
+	sink := new(mocks.OLAPSinkRepo)
+	syncLog := new(mocks.SyncLogRepo)
+
+	orderID := uuid.New()
+	order := &models.CubeOrder{OrderID: orderID, Status: "Completed", TotalPrice: 100, DeliveryFee: 10}
+
+	source.On("FetchOrderByID", mock.Anything, orderID).Return(order, nil)
+	sink.On("UpsertOrders", mock.Anything, mock.MatchedBy(func(rows []models.CubeOrder) bool {
+		return len(rows) == 1 && rows[0].OrderID == orderID && rows[0].GMV == 90
+	})).Return(nil)
+
+	etl := newETLApp(source, sink, syncLog)
+	err := etl.SyncOrderByID(context.Background(), orderID)
+
+	require.NoError(t, err)
+	source.AssertExpectations(t)
+	sink.AssertExpectations(t)
+}
+
+func TestSyncOrderByID_FetchError(t *testing.T) {
+	source := new(mocks.OLTPSourceRepo)
+	sink := new(mocks.OLAPSinkRepo)
+	syncLog := new(mocks.SyncLogRepo)
+
+	orderID := uuid.New()
+	source.On("FetchOrderByID", mock.Anything, orderID).Return((*models.CubeOrder)(nil), errcustom.ErrNotFound)
+
+	etl := newETLApp(source, sink, syncLog)
+	err := etl.SyncOrderByID(context.Background(), orderID)
+
+	require.ErrorIs(t, err, errcustom.ErrNotFound)
+	sink.AssertNotCalled(t, "UpsertOrders", mock.Anything, mock.Anything)
 }

@@ -2,6 +2,8 @@ package repo
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"time"
 
 	"Encargalo.app-api.go/internal/analytics/domain/models"
@@ -182,16 +184,39 @@ type orderRow struct {
 	H3Cell             *string    `bun:"h3_cell"`
 }
 
+var orderColumns = []string{
+	"o.id", "o.quote_id", "o.shop_id", "o.customer_id", "o.rider_id", "o.status", "o.method_payment",
+	"o.total_price", "o.delivery_fee", "o.promo_subsidy_amount", "o.is_launch_promo",
+	"o.is_zero_commission", "o.created_at", "o.h3_cell",
+}
+
+func orderRowToCubeOrder(row orderRow, syncedAt time.Time) models.CubeOrder {
+	return models.CubeOrder{
+		OrderID:            row.ID,
+		QuoteID:            row.QuoteID,
+		ShopID:             row.ShopID,
+		CustomerID:         row.CustomerID,
+		RiderID:            row.RiderID,
+		Status:             row.Status,
+		MethodPayment:      row.MethodPayment,
+		TotalPrice:         row.TotalPrice,
+		DeliveryFee:        row.DeliveryFee,
+		PromoSubsidyAmount: row.PromoSubsidyAmount,
+		IsLaunchPromo:      row.IsLaunchPromo,
+		IsZeroCommission:   row.IsZeroCommission,
+		OrderDate:          row.CreatedAt.UTC().Truncate(24 * time.Hour),
+		CreatedAt:          row.CreatedAt,
+		SyncedAt:           syncedAt,
+		H3Cell:             row.H3Cell,
+	}
+}
+
 func (r *oltpSourceRepo) FetchOrders(ctx context.Context, from, to time.Time) ([]models.CubeOrder, error) {
 	// Sin updated_at en orders: re-sincronizamos por ventana de created_at (lookback cubre status tardíos).
 	var rows []orderRow
 	err := r.db.NewSelect().
 		TableExpr("orders.orders AS o").
-		Column(
-			"o.id", "o.quote_id", "o.shop_id", "o.customer_id", "o.rider_id", "o.status", "o.method_payment",
-			"o.total_price", "o.delivery_fee", "o.promo_subsidy_amount", "o.is_launch_promo",
-			"o.is_zero_commission", "o.created_at", "o.h3_cell",
-		).
+		Column(orderColumns...).
 		Where("o.created_at >= ? AND o.created_at < ?", from, to).
 		Scan(ctx, &rows)
 	if err != nil {
@@ -201,26 +226,30 @@ func (r *oltpSourceRepo) FetchOrders(ctx context.Context, from, to time.Time) ([
 	now := time.Now().UTC()
 	out := make([]models.CubeOrder, len(rows))
 	for i, row := range rows {
-		out[i] = models.CubeOrder{
-			OrderID:            row.ID,
-			QuoteID:            row.QuoteID,
-			ShopID:             row.ShopID,
-			CustomerID:         row.CustomerID,
-			RiderID:            row.RiderID,
-			Status:             row.Status,
-			MethodPayment:      row.MethodPayment,
-			TotalPrice:         row.TotalPrice,
-			DeliveryFee:        row.DeliveryFee,
-			PromoSubsidyAmount: row.PromoSubsidyAmount,
-			IsLaunchPromo:      row.IsLaunchPromo,
-			IsZeroCommission:   row.IsZeroCommission,
-			OrderDate:          row.CreatedAt.UTC().Truncate(24 * time.Hour),
-			CreatedAt:          row.CreatedAt,
-			SyncedAt:           now,
-			H3Cell:             row.H3Cell,
-		}
+		out[i] = orderRowToCubeOrder(row, now)
 	}
 	return out, nil
+}
+
+// FetchOrderByID resincroniza una sola orden puntualmente: lo usa el
+// consumidor de eventos para reaccionar a order_status_changed sin esperar
+// a que la orden caiga en la ventana del próximo batch por fecha.
+func (r *oltpSourceRepo) FetchOrderByID(ctx context.Context, orderID uuid.UUID) (*models.CubeOrder, error) {
+	var row orderRow
+	err := r.db.NewSelect().
+		TableExpr("orders.orders AS o").
+		Column(orderColumns...).
+		Where("o.id = ?", orderID).
+		Scan(ctx, &row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errcustom.ErrNotFound
+		}
+		return nil, errcustom.Unexpected(err)
+	}
+
+	cube := orderRowToCubeOrder(row, time.Now().UTC())
+	return &cube, nil
 }
 
 type tripRow struct {

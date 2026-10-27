@@ -9,6 +9,7 @@ import (
 	"Encargalo.app-api.go/internal/analytics/domain/models"
 	"Encargalo.app-api.go/internal/analytics/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"github.com/google/uuid"
 )
 
 type Lookbacks struct {
@@ -109,6 +110,17 @@ func (a *etlApp) Run(ctx context.Context, from, to time.Time, entities []models.
 	}
 	result.Message = fmt.Sprintf("%d/%d entities synced", ok, len(result.Results))
 	return result, nil
+}
+
+// SyncOrderByID re-sincroniza una sola orden contra OLAP. La llama el
+// consumidor de eventos (cmd/etl) al recibir order_status_changed.
+func (a *etlApp) SyncOrderByID(ctx context.Context, orderID uuid.UUID) error {
+	row, err := a.source.FetchOrderByID(ctx, orderID)
+	if err != nil {
+		return err
+	}
+	row.GMV = models.GMV(row.TotalPrice, row.DeliveryFee)
+	return a.sink.UpsertOrders(ctx, []models.CubeOrder{*row})
 }
 
 func (a *etlApp) syncEntity(ctx context.Context, entity models.ETLEntity, from, to time.Time) (int, error) {
