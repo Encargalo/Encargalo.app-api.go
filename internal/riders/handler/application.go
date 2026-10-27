@@ -31,13 +31,14 @@ func NewRiderApplicationHandler(svc ports.RiderProfileApp) RiderApplicationHandl
 // @Summary      Ver la propia solicitud para ser conductor
 // @Description  Devuelve la solicitud del customer autenticado: estado, datos del vehículo, fotos subidas y `completion` con lo que falta. Si aún no tiene solicitud, responde una vacía en `draft`.
 // @Description  `can_edit` indica si puede guardar y enviar (`draft` o `changes_requested`). `review_reason` trae el motivo cuando el staff rechaza o pide cambios.
+// @Description  Si el staff ya aprobó la solicitud, responde 200 con `status: active` (no 409): el 409 `already_rider` queda solo para cuentas rider legacy sin expediente en `riders.profiles`.
 // @Tags         Riders Application
 // @Produce      json
 // @Security     SessionCookie
 // @Success      200  {object}  dtos.RiderApplicationResponse
 // @Failure      401  {string}  string  "Sesión no encontrada o inválida"
 // @Failure      403  {string}  string  "Acceso denegado"
-// @Failure      409  {string}  string  "La cuenta ya es rider (already_rider)"
+// @Failure      409  {string}  string  "Cuenta rider legacy sin expediente (already_rider)"
 // @Failure      500  {string}  string  "Error interno del servidor"
 // @Router       /riders/application [get]
 func (h *riderApplicationHandler) GetApplication(c echo.Context) error {

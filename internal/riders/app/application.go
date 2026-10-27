@@ -12,12 +12,18 @@ import (
 	"github.com/google/uuid"
 )
 
+// GetOwnApplication, a diferencia de Save/Submit, no bloquea con ensureNotRider a cualquier
+// cuenta con rol Rider: un solicitante aprobado también tiene ese rol, y necesita ver su propio
+// status real (active) en vez de un 409 indistinguible del caso legacy. Solo se trata como
+// "legacy sin expediente" cuando no hay fila en riders.profiles.
 func (a *riderProfileApp) GetOwnApplication(ctx context.Context, userID uuid.UUID) (dtos.RiderApplicationResponse, error) {
-	if err := a.ensureNotRider(ctx, userID); err != nil {
-		return dtos.RiderApplicationResponse{}, err
+	profile, err := a.repo.GetByUserID(ctx, userID)
+	if errors.Is(err, errcustom.ErrNotFound) {
+		if err := a.ensureNotRider(ctx, userID); err != nil {
+			return dtos.RiderApplicationResponse{}, err
+		}
+		return toApplicationResponse(&models.RiderProfile{UserID: userID, Status: models.RiderProfileDraft}), nil
 	}
-
-	profile, err := a.ownApplication(ctx, userID)
 	if err != nil {
 		return dtos.RiderApplicationResponse{}, err
 	}
