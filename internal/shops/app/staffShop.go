@@ -20,10 +20,22 @@ type staffShopApp struct {
 	repo             portsShops.StaffShopRepo
 	categoriesSeeder portsShops.ShopCategoriesSeeder
 	uploader         uploadimage.UploadImage
+	events           portsShops.ShopEventPublisher
 }
 
-func NewStaffShopApp(repo portsShops.StaffShopRepo, categoriesSeeder portsShops.ShopCategoriesSeeder, uploader uploadimage.UploadImage) portsShops.StaffShopApp {
-	return &staffShopApp{repo: repo, categoriesSeeder: categoriesSeeder, uploader: uploader}
+func NewStaffShopApp(repo portsShops.StaffShopRepo, categoriesSeeder portsShops.ShopCategoriesSeeder, uploader uploadimage.UploadImage, events portsShops.ShopEventPublisher) portsShops.StaffShopApp {
+	return &staffShopApp{repo: repo, categoriesSeeder: categoriesSeeder, uploader: uploader, events: events}
+}
+
+func (a *staffShopApp) publishShopUpdated(ctx context.Context, shopID uuid.UUID) {
+	if a.events == nil {
+		return
+	}
+	event := shopsmodels.DataEventShopUpdated{}
+	event.BuildFromShopID(shopID.String())
+	if err := a.events.PublisherEvent(ctx, event); err != nil {
+		slog.Error("error publishing shop_updated event", "shopID", shopID, "error", err)
+	}
 }
 
 // resolveImageField sube a Cloudinary el data-URL recibido en un campo
@@ -88,6 +100,7 @@ func (a *staffShopApp) CreateDraftShop(ctx context.Context, req dtos.CreateDraft
 			slog.Error("error al sembrar categorías default del shop", "error", err, "shopID", shop.ID, "shopType", shop.Type)
 		}
 	}
+	a.publishShopUpdated(ctx, shop.ID)
 	return a.GetShop(ctx, shop.ID)
 }
 
@@ -178,6 +191,7 @@ func (a *staffShopApp) UpdateDraftShop(ctx context.Context, shopID uuid.UUID, re
 	if err := a.repo.UpdateDraftShop(ctx, shop); err != nil {
 		return dtos.StaffShopResponse{}, err
 	}
+	a.publishShopUpdated(ctx, shopID)
 	return a.GetShop(ctx, shopID)
 }
 
@@ -195,5 +209,6 @@ func (a *staffShopApp) ActivateShop(ctx context.Context, shopID, staffID uuid.UU
 	if err := a.repo.ActivateShop(ctx, shopID, staffID, time.Now()); err != nil {
 		return dtos.StaffShopResponse{}, err
 	}
+	a.publishShopUpdated(ctx, shopID)
 	return a.GetShop(ctx, shopID)
 }

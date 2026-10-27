@@ -38,7 +38,6 @@ var DefaultETLEntities = []ETLEntity{
 // telemetría genérica de alto volumen sin status de negocio, no amerita
 // tiempo real ni inflar el stream compartido con notifications.
 var CronETLEntities = []ETLEntity{
-	EntityDimShop,
 	EntityDimUser,
 	EntityDimRider,
 	EntityFactTrackingEvent,

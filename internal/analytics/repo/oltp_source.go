@@ -35,11 +35,32 @@ type shopRow struct {
 	H3Cell        *string   `bun:"h3_cell"`
 }
 
+var shopColumns = []string{
+	"s.id", "s.name", "s.slug", "s.address", "s.type", "s.license_status",
+	"s.opened", "s.created_at", "s.updated_at", "s.h3_cell",
+}
+
+func shopRowToDimShop(row shopRow, syncedAt time.Time) models.DimShop {
+	return models.DimShop{
+		ShopID:        row.ID,
+		Name:          row.Name,
+		Slug:          row.Slug,
+		Address:       row.Address,
+		Type:          row.Type,
+		LicenseStatus: row.LicenseStatus,
+		Opened:        row.Opened,
+		CreatedAt:     row.CreatedAt,
+		UpdatedAt:     row.UpdatedAt,
+		SyncedAt:      syncedAt,
+		H3Cell:        row.H3Cell,
+	}
+}
+
 func (r *oltpSourceRepo) FetchShops(ctx context.Context, from, to time.Time) ([]models.DimShop, error) {
 	var rows []shopRow
 	err := r.db.NewSelect().
 		TableExpr("business.shops AS s").
-		Column("s.id", "s.name", "s.slug", "s.address", "s.type", "s.license_status", "s.opened", "s.created_at", "s.updated_at", "s.h3_cell").
+		Column(shopColumns...).
 		Where("s.deleted_at IS NULL").
 		Where("s.updated_at >= ? AND s.updated_at < ?", from, to).
 		Scan(ctx, &rows)
@@ -50,21 +71,30 @@ func (r *oltpSourceRepo) FetchShops(ctx context.Context, from, to time.Time) ([]
 	now := time.Now().UTC()
 	out := make([]models.DimShop, len(rows))
 	for i, row := range rows {
-		out[i] = models.DimShop{
-			ShopID:        row.ID,
-			Name:          row.Name,
-			Slug:          row.Slug,
-			Address:       row.Address,
-			Type:          row.Type,
-			LicenseStatus: row.LicenseStatus,
-			Opened:        row.Opened,
-			CreatedAt:     row.CreatedAt,
-			UpdatedAt:     row.UpdatedAt,
-			SyncedAt:      now,
-			H3Cell:        row.H3Cell,
-		}
+		out[i] = shopRowToDimShop(row, now)
 	}
 	return out, nil
+}
+
+// FetchShopByID resincroniza un solo local puntualmente, en reacción a
+// shop_updated.
+func (r *oltpSourceRepo) FetchShopByID(ctx context.Context, shopID uuid.UUID) (*models.DimShop, error) {
+	var row shopRow
+	err := r.db.NewSelect().
+		TableExpr("business.shops AS s").
+		Column(shopColumns...).
+		Where("s.id = ?", shopID).
+		Where("s.deleted_at IS NULL").
+		Scan(ctx, &row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errcustom.ErrNotFound
+		}
+		return nil, errcustom.Unexpected(err)
+	}
+
+	dim := shopRowToDimShop(row, time.Now().UTC())
+	return &dim, nil
 }
 
 type userRow struct {

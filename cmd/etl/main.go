@@ -138,6 +138,12 @@ var tripSyncEventTypes = map[string]bool{
 	"trip_no_driver":      true,
 }
 
+// shopSyncEventTypes son los tipos de mensaje que implican que DimShop
+// puede haber cambiado (alta, edición de datos, activación, abrir/cerrar).
+var shopSyncEventTypes = map[string]bool{
+	"shop_updated": true,
+}
+
 // startOrderEventConsumer lee el stream con su propio consumer group y
 // resincroniza puntualmente la entidad de cada evento relevante contra OLAP.
 func startOrderEventConsumer(ctx context.Context, cfg config.ETLConfig, etlApp ports.ETLApp) {
@@ -184,6 +190,8 @@ func processStreamEvent(ctx context.Context, msg redis.XMessage, etlApp ports.ET
 		return processDeliveryQuoteEvent(ctx, msg, messageType, etlApp)
 	case tripSyncEventTypes[messageType]:
 		return processTripEvent(ctx, msg, messageType, etlApp)
+	case shopSyncEventTypes[messageType]:
+		return processShopEvent(ctx, msg, messageType, etlApp)
 	default:
 		return nil
 	}
@@ -238,6 +246,19 @@ func processTripEvent(ctx context.Context, msg redis.XMessage, messageType strin
 		return err
 	}
 	slog.Info("etl consumer: viaje resincronizado", "trip_id", tripID, "type", messageType)
+	return nil
+}
+
+func processShopEvent(ctx context.Context, msg redis.XMessage, messageType string, etlApp ports.ETLApp) error {
+	shopID, ok := parseEventID(msg, messageType, "shop_id")
+	if !ok {
+		return nil
+	}
+
+	if err := etlApp.SyncShopByID(ctx, shopID); err != nil {
+		return err
+	}
+	slog.Info("etl consumer: local resincronizado", "shop_id", shopID, "type", messageType)
 	return nil
 }
 

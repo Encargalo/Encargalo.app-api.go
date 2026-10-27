@@ -153,6 +153,16 @@ func (a *etlApp) SyncTripByID(ctx context.Context, tripID uuid.UUID) error {
 	return a.sink.UpsertTrips(ctx, []models.CubeTrip{*row})
 }
 
+// SyncShopByID re-sincroniza un solo local contra OLAP. La llama el
+// consumidor de eventos (cmd/etl) al recibir shop_updated.
+func (a *etlApp) SyncShopByID(ctx context.Context, shopID uuid.UUID) error {
+	row, err := a.source.FetchShopByID(ctx, shopID)
+	if err != nil {
+		return err
+	}
+	return a.sink.UpsertShops(ctx, []models.DimShop{*row})
+}
+
 func (a *etlApp) syncEntity(ctx context.Context, entity models.ETLEntity, from, to time.Time) (int, error) {
 	switch entity {
 	case models.EntityDimShop:

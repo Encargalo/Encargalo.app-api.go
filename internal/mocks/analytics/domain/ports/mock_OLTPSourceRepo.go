@@ -228,6 +228,36 @@ func (_m *OLTPSourceRepo) FetchRiders(ctx context.Context, from time.Time, to ti
 	return r0, r1
 }
 
+// FetchShopByID provides a mock function with given fields: ctx, shopID
+func (_m *OLTPSourceRepo) FetchShopByID(ctx context.Context, shopID uuid.UUID) (*models.DimShop, error) {
+	ret := _m.Called(ctx, shopID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FetchShopByID")
+	}
+
+	var r0 *models.DimShop
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*models.DimShop, error)); ok {
+		return rf(ctx, shopID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) *models.DimShop); ok {
+		r0 = rf(ctx, shopID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.DimShop)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, shopID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // FetchShops provides a mock function with given fields: ctx, from, to
 func (_m *OLTPSourceRepo) FetchShops(ctx context.Context, from time.Time, to time.Time) ([]models.DimShop, error) {
 	ret := _m.Called(ctx, from, to)

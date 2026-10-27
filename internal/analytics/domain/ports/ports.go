@@ -25,6 +25,9 @@ type ETLApp interface {
 	// trip_status_changed (publicado tanto desde trips/app como desde
 	// riders/app, ver CLAUDE.md "Trips & Riders").
 	SyncTripByID(ctx context.Context, tripID uuid.UUID) error
+	// SyncShopByID re-sincroniza un solo local contra OLAP, en reacción a
+	// shop_updated.
+	SyncShopByID(ctx context.Context, shopID uuid.UUID) error
 }
 
 type SyncLogRepo interface {
@@ -34,6 +37,7 @@ type SyncLogRepo interface {
 
 type OLTPSourceRepo interface {
 	FetchShops(ctx context.Context, from, to time.Time) ([]models.DimShop, error)
+	FetchShopByID(ctx context.Context, shopID uuid.UUID) (*models.DimShop, error)
 	FetchUsers(ctx context.Context, from, to time.Time) ([]models.DimUser, error)
 	FetchRiders(ctx context.Context, from, to time.Time) ([]models.DimRider, error)
 	FetchOrders(ctx context.Context, from, to time.Time) ([]models.CubeOrder, error)

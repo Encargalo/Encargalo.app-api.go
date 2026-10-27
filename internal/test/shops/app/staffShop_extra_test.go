@@ -15,7 +15,7 @@ import (
 
 func TestFindOwnerCandidate_Success(t *testing.T) {
 	repo := mocksshops.NewStaffShopRepo(t)
-	staffApp := app.NewStaffShopApp(repo, nil, nil)
+	staffApp := app.NewStaffShopApp(repo, nil, nil, nil)
 
 	userID := uuid.New()
 	repo.On("FindOwnerCandidateByPhone", context.Background(), "04141234567").
@@ -31,7 +31,7 @@ func TestFindOwnerCandidate_Success(t *testing.T) {
 
 func TestFindOwnerCandidate_NotFound(t *testing.T) {
 	repo := mocksshops.NewStaffShopRepo(t)
-	staffApp := app.NewStaffShopApp(repo, nil, nil)
+	staffApp := app.NewStaffShopApp(repo, nil, nil, nil)
 
 	repo.On("FindOwnerCandidateByPhone", context.Background(), "0000").
 		Return(uuid.Nil, "", "", "", "", errcustom.ErrNotFound)
@@ -43,7 +43,7 @@ func TestFindOwnerCandidate_NotFound(t *testing.T) {
 
 func TestFindOwnerCandidate_HasAnyOwnerRoleError(t *testing.T) {
 	repo := mocksshops.NewStaffShopRepo(t)
-	staffApp := app.NewStaffShopApp(repo, nil, nil)
+	staffApp := app.NewStaffShopApp(repo, nil, nil, nil)
 
 	userID := uuid.New()
 	repo.On("FindOwnerCandidateByPhone", context.Background(), "0414").
@@ -57,7 +57,7 @@ func TestFindOwnerCandidate_HasAnyOwnerRoleError(t *testing.T) {
 
 func TestListShops_DefaultsToDraftStatus(t *testing.T) {
 	repo := mocksshops.NewStaffShopRepo(t)
-	staffApp := app.NewStaffShopApp(repo, nil, nil)
+	staffApp := app.NewStaffShopApp(repo, nil, nil, nil)
 
 	repo.On("ListShopsByStatus", context.Background(), shopsmodels.ShopStatusDraft, 1, 10).
 		Return(shopsmodels.Shops{{ID: uuid.New(), Name: "Pizzería Don Luigi"}}, 1, nil)
@@ -71,7 +71,7 @@ func TestListShops_DefaultsToDraftStatus(t *testing.T) {
 
 func TestListShops_PropagatesExplicitStatus(t *testing.T) {
 	repo := mocksshops.NewStaffShopRepo(t)
-	staffApp := app.NewStaffShopApp(repo, nil, nil)
+	staffApp := app.NewStaffShopApp(repo, nil, nil, nil)
 
 	repo.On("ListShopsByStatus", context.Background(), shopsmodels.ShopStatusActive, 2, 5).
 		Return(shopsmodels.Shops{}, 0, nil)
@@ -85,7 +85,7 @@ func TestListShops_PropagatesExplicitStatus(t *testing.T) {
 
 func TestListShops_RepoError(t *testing.T) {
 	repo := mocksshops.NewStaffShopRepo(t)
-	staffApp := app.NewStaffShopApp(repo, nil, nil)
+	staffApp := app.NewStaffShopApp(repo, nil, nil, nil)
 
 	repo.On("ListShopsByStatus", context.Background(), shopsmodels.ShopStatusDraft, 1, 10).
 		Return(nil, 0, errcustom.ErrUnexpectedError)
@@ -100,7 +100,7 @@ func TestListShops_RepoError(t *testing.T) {
 // cubren incompleto/activo-idempotente/éxito).
 func TestActivateShop_RepoErrorOnActivate(t *testing.T) {
 	repo := mocksshops.NewStaffShopRepo(t)
-	staffApp := app.NewStaffShopApp(repo, nil, nil)
+	staffApp := app.NewStaffShopApp(repo, nil, nil, nil)
 
 	shopID, staffID := uuid.New(), uuid.New()
 	lat, lon := 10.4806, -66.9036

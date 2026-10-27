@@ -36,7 +36,7 @@ var _ uploadimage.UploadImage = (*stubUploader)(nil)
 
 func TestCreateDraftShop_CreatesAndLinksOwner(t *testing.T) {
 	repo := mocksshops.NewStaffShopRepo(t)
-	staffApp := app.NewStaffShopApp(repo, nil, nil)
+	staffApp := app.NewStaffShopApp(repo, nil, nil, nil)
 
 	ownerID := uuid.New()
 	req := dtos.CreateDraftShopRequest{Name: "Pizzería Don Luigi", Type: "Restaurant", OwnerID: ownerID}
@@ -60,9 +60,37 @@ func TestCreateDraftShop_CreatesAndLinksOwner(t *testing.T) {
 	repo.AssertExpectations(t)
 }
 
+// El ETL resincroniza DimShop por evento, no por el batch horario.
+func TestCreateDraftShop_PublishesShopUpdated(t *testing.T) {
+	repo := mocksshops.NewStaffShopRepo(t)
+	events := mocksshops.NewShopEventPublisher(t)
+	staffApp := app.NewStaffShopApp(repo, nil, nil, events)
+
+	ownerID := uuid.New()
+	req := dtos.CreateDraftShopRequest{Name: "Pizzería Don Luigi", Type: "Restaurant", OwnerID: ownerID}
+
+	var createdID uuid.UUID
+	repo.On("CreateDraftShop", context.Background(), mock.AnythingOfType("*shops.Shop")).Run(func(args mock.Arguments) {
+		shop := args.Get(1).(*shopsmodels.Shop)
+		shop.ID = uuid.New()
+		createdID = shop.ID
+	}).Return(nil)
+	repo.On("EnsureOwnerRole", context.Background(), ownerID, mock.AnythingOfType("uuid.UUID")).Return(nil)
+	repo.On("GetShopByID", context.Background(), mock.AnythingOfType("uuid.UUID")).Return(&shopsmodels.Shop{
+		OwnerID: ownerID, Name: "Pizzería Don Luigi", Type: "Restaurant", Status: shopsmodels.ShopStatusDraft,
+	}, nil)
+	events.On("PublisherEvent", context.Background(), mock.MatchedBy(func(event shopsmodels.DataEventShopUpdated) bool {
+		return event.MessageType == "shop_updated" && event.ShopID == createdID.String()
+	})).Return(nil)
+
+	_, err := staffApp.CreateDraftShop(context.Background(), req)
+
+	require.NoError(t, err)
+}
+
 func TestUpdateDraftShop_RejectsWhenShopIsOpen(t *testing.T) {
 	repo := mocksshops.NewStaffShopRepo(t)
-	staffApp := app.NewStaffShopApp(repo, nil, nil)
+	staffApp := app.NewStaffShopApp(repo, nil, nil, nil)
 
 	shopID := uuid.New()
 	existing := &shopsmodels.Shop{ID: shopID, Name: "Pizzería Don Luigi", Type: "Restaurant", Opened: true}
@@ -77,8 +105,9 @@ func TestUpdateDraftShop_RejectsWhenShopIsOpen(t *testing.T) {
 
 func TestUpdateDraftShop_PartialUpdatesDoNotClobberExistingFields(t *testing.T) {
 	repo := mocksshops.NewStaffShopRepo(t)
+	events := mocksshops.NewShopEventPublisher(t)
 	uploaderURL := "https://res.cloudinary.com/demo/image/upload/v1/shops/logo.png"
-	staffApp := app.NewStaffShopApp(repo, nil, &stubUploader{secureURL: uploaderURL})
+	staffApp := app.NewStaffShopApp(repo, nil, &stubUploader{secureURL: uploaderURL}, events)
 
 	shopID := uuid.New()
 	existing := &shopsmodels.Shop{ID: shopID, Name: "Pizzería Don Luigi", Type: "Restaurant", Address: "Dirección vieja"}
@@ -89,6 +118,11 @@ func TestUpdateDraftShop_PartialUpdatesDoNotClobberExistingFields(t *testing.T) 
 		return s.LogoImage == uploaderURL && s.Address == "Dirección vieja"
 	})).Return(nil)
 	repo.On("GetShopByID", context.Background(), shopID).Return(existing, nil).Once()
+	// El ETL resincroniza DimShop por evento, no por el batch horario.
+	events.On("PublisherEvent", context.Background(), shopsmodels.DataEventShopUpdated{
+		MessageType: "shop_updated",
+		ShopID:      shopID.String(),
+	}).Return(nil)
 
 	_, err := staffApp.UpdateDraftShop(context.Background(), shopID, dtos.UpdateDraftShopRequest{
 		LogoImage: jsonutil.Nullable[string]{Set: true, Valid: true, Value: logo},
@@ -100,7 +134,7 @@ func TestUpdateDraftShop_PartialUpdatesDoNotClobberExistingFields(t *testing.T) 
 
 func TestUpdateDraftShop_LogoImageUploadFailureIsPropagated(t *testing.T) {
 	repo := mocksshops.NewStaffShopRepo(t)
-	staffApp := app.NewStaffShopApp(repo, nil, nil)
+	staffApp := app.NewStaffShopApp(repo, nil, nil, nil)
 
 	shopID := uuid.New()
 	existing := &shopsmodels.Shop{ID: shopID, Name: "Pizzería Don Luigi", Type: "Restaurant"}
@@ -117,7 +151,7 @@ func TestUpdateDraftShop_LogoImageUploadFailureIsPropagated(t *testing.T) {
 
 func TestUpdateDraftShop_ExplicitNullClearsField(t *testing.T) {
 	repo := mocksshops.NewStaffShopRepo(t)
-	staffApp := app.NewStaffShopApp(repo, nil, nil)
+	staffApp := app.NewStaffShopApp(repo, nil, nil, nil)
 
 	shopID := uuid.New()
 	lat, lon := 10.4806, -66.9036
@@ -145,7 +179,7 @@ func TestUpdateDraftShop_ExplicitNullClearsField(t *testing.T) {
 
 func TestUpdateDraftShop_OmittedFieldsAreNotTouched(t *testing.T) {
 	repo := mocksshops.NewStaffShopRepo(t)
-	staffApp := app.NewStaffShopApp(repo, nil, nil)
+	staffApp := app.NewStaffShopApp(repo, nil, nil, nil)
 
 	shopID := uuid.New()
 	lat, lon := 10.4806, -66.9036
@@ -168,7 +202,7 @@ func TestUpdateDraftShop_OmittedFieldsAreNotTouched(t *testing.T) {
 
 func TestActivateShop_IncompleteReturnsError(t *testing.T) {
 	repo := mocksshops.NewStaffShopRepo(t)
-	staffApp := app.NewStaffShopApp(repo, nil, nil)
+	staffApp := app.NewStaffShopApp(repo, nil, nil, nil)
 
 	shopID, staffID := uuid.New(), uuid.New()
 	repo.On("GetShopByID", context.Background(), shopID).Return(&shopsmodels.Shop{
@@ -183,7 +217,8 @@ func TestActivateShop_IncompleteReturnsError(t *testing.T) {
 
 func TestActivateShop_CompleteActivates(t *testing.T) {
 	repo := mocksshops.NewStaffShopRepo(t)
-	staffApp := app.NewStaffShopApp(repo, nil, nil)
+	events := mocksshops.NewShopEventPublisher(t)
+	staffApp := app.NewStaffShopApp(repo, nil, nil, events)
 
 	shopID, staffID := uuid.New(), uuid.New()
 	lat, lon := 10.4806, -66.9036
@@ -197,6 +232,11 @@ func TestActivateShop_CompleteActivates(t *testing.T) {
 	repo.On("GetShopByID", context.Background(), shopID).Return(&shopsmodels.Shop{
 		ID: shopID, Status: shopsmodels.ShopStatusActive,
 	}, nil).Once()
+	// El ETL resincroniza DimShop por evento, no por el batch horario.
+	events.On("PublisherEvent", context.Background(), shopsmodels.DataEventShopUpdated{
+		MessageType: "shop_updated",
+		ShopID:      shopID.String(),
+	}).Return(nil)
 
 	resp, err := staffApp.ActivateShop(context.Background(), shopID, staffID)
 
@@ -207,7 +247,7 @@ func TestActivateShop_CompleteActivates(t *testing.T) {
 
 func TestActivateShop_AlreadyActiveIsIdempotent(t *testing.T) {
 	repo := mocksshops.NewStaffShopRepo(t)
-	staffApp := app.NewStaffShopApp(repo, nil, nil)
+	staffApp := app.NewStaffShopApp(repo, nil, nil, nil)
 
 	shopID, staffID := uuid.New(), uuid.New()
 	repo.On("GetShopByID", context.Background(), shopID).Return(&shopsmodels.Shop{
@@ -223,7 +263,7 @@ func TestActivateShop_AlreadyActiveIsIdempotent(t *testing.T) {
 
 func TestUpdateDraftShop_ComputesH3CellFromCoordinates(t *testing.T) {
 	repo := mocksshops.NewStaffShopRepo(t)
-	staffApp := app.NewStaffShopApp(repo, nil, nil)
+	staffApp := app.NewStaffShopApp(repo, nil, nil, nil)
 
 	shopID := uuid.New()
 	existing := &shopsmodels.Shop{ID: shopID, Name: "Pizzería Don Luigi", Type: "Restaurant"}
@@ -248,7 +288,7 @@ func TestUpdateDraftShop_ComputesH3CellFromCoordinates(t *testing.T) {
 
 func TestUpdateDraftShop_ClearsH3CellWhenCoordinateRemoved(t *testing.T) {
 	repo := mocksshops.NewStaffShopRepo(t)
-	staffApp := app.NewStaffShopApp(repo, nil, nil)
+	staffApp := app.NewStaffShopApp(repo, nil, nil, nil)
 
 	shopID := uuid.New()
 	lat, lon := 10.4806, -66.9036
