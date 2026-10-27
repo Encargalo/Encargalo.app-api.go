@@ -731,6 +731,19 @@ func (a *tripsApp) recordFareQuote(ctx context.Context, quote *models.TripQuote)
 
 	if err := a.fareQuotes.Insert(ctx, record); err != nil {
 		slog.Error("recordFareQuote failed", "quoteID", quote.QuoteID, "error", err)
+		return
+	}
+	a.publishFareQuoteCreated(ctx, quote.QuoteID)
+}
+
+func (a *tripsApp) publishFareQuoteCreated(ctx context.Context, quoteID uuid.UUID) {
+	if a.events == nil {
+		return
+	}
+	event := models.DataEventFareQuoteCreated{}
+	event.BuildFromQuoteID(quoteID.String())
+	if err := a.events.PublisherEvent(ctx, event); err != nil {
+		slog.Error("error publishing fare_quote_created event", "quoteID", quoteID, "error", err)
 	}
 }
 

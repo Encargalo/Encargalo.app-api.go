@@ -15,6 +15,9 @@ type ETLApp interface {
 	// consumidor de eventos (cmd/etl) para reaccionar a order_status_changed
 	// sin esperar al batch.
 	SyncOrderByID(ctx context.Context, orderID uuid.UUID) error
+	// SyncFareQuoteByID re-sincroniza una sola cotización de viaje contra OLAP,
+	// en reacción a fare_quote_created.
+	SyncFareQuoteByID(ctx context.Context, quoteID uuid.UUID) error
 }
 
 type SyncLogRepo interface {
@@ -31,6 +34,7 @@ type OLTPSourceRepo interface {
 	FetchTrips(ctx context.Context, from, to time.Time) ([]models.CubeTrip, error)
 	FetchTrackingEvents(ctx context.Context, from, to time.Time) ([]models.FactTrackingEvent, error)
 	FetchFareQuotes(ctx context.Context, from, to time.Time) ([]models.CubeFareQuote, error)
+	FetchFareQuoteByID(ctx context.Context, quoteID uuid.UUID) (*models.CubeFareQuote, error)
 	FetchDeliveryQuotes(ctx context.Context, from, to time.Time) ([]models.CubeDeliveryQuote, error)
 }
 

@@ -48,6 +48,36 @@ func (_m *OLTPSourceRepo) FetchDeliveryQuotes(ctx context.Context, from time.Tim
 	return r0, r1
 }
 
+// FetchFareQuoteByID provides a mock function with given fields: ctx, quoteID
+func (_m *OLTPSourceRepo) FetchFareQuoteByID(ctx context.Context, quoteID uuid.UUID) (*models.CubeFareQuote, error) {
+	ret := _m.Called(ctx, quoteID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FetchFareQuoteByID")
+	}
+
+	var r0 *models.CubeFareQuote
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*models.CubeFareQuote, error)); ok {
+		return rf(ctx, quoteID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) *models.CubeFareQuote); ok {
+		r0 = rf(ctx, quoteID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.CubeFareQuote)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, quoteID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // FetchFareQuotes provides a mock function with given fields: ctx, from, to
 func (_m *OLTPSourceRepo) FetchFareQuotes(ctx context.Context, from time.Time, to time.Time) ([]models.CubeFareQuote, error) {
 	ret := _m.Called(ctx, from, to)

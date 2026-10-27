@@ -115,8 +115,14 @@ var orderSyncEventTypes = map[string]bool{
 	"order_auto_rejected":  true,
 }
 
+// fareQuoteSyncEventTypes: las cotizaciones de viaje son inmutables, un solo
+// tipo de evento basta (no hay "changed").
+var fareQuoteSyncEventTypes = map[string]bool{
+	"fare_quote_created": true,
+}
+
 // startOrderEventConsumer lee el stream con su propio consumer group y
-// resincroniza puntualmente la orden de cada evento relevante contra OLAP.
+// resincroniza puntualmente la entidad de cada evento relevante contra OLAP.
 func startOrderEventConsumer(ctx context.Context, cfg config.ETLConfig, etlApp ports.ETLApp) {
 	consumer := redisStream.NewConsumerRedisStreamConnection(ctx, cfg.Redis.URL, cfg.RedisStream)
 
@@ -135,7 +141,7 @@ func startOrderEventConsumer(ctx context.Context, cfg config.ETLConfig, etlApp p
 				slog.Error("etl consumer: mensaje ya no es mío", "msg_id", msg.ID)
 			}
 
-			if err := processOrderEvent(ctx, msg, etlApp); err != nil {
+			if err := processStreamEvent(ctx, msg, etlApp); err != nil {
 				slog.Error("etl consumer: error procesando evento", "msg_id", msg.ID, "error", err)
 				continue
 			}
@@ -147,23 +153,24 @@ func startOrderEventConsumer(ctx context.Context, cfg config.ETLConfig, etlApp p
 	}
 }
 
-func processOrderEvent(ctx context.Context, msg redis.XMessage, etlApp ports.ETLApp) error {
+// processStreamEvent despacha por tipo de mensaje a la entidad que le
+// corresponde. Un tipo que no es de ninguna entidad sincronizada por evento
+// (p.ej. withdrawal_requested, trip_created) se confirma sin procesar.
+func processStreamEvent(ctx context.Context, msg redis.XMessage, etlApp ports.ETLApp) error {
 	messageType, _ := msg.Values["type"].(string)
-	if !orderSyncEventTypes[messageType] {
-		// No es un evento que afecte a CubeOrder (p.ej. withdrawal_requested,
-		// trip_created): se confirma sin procesar, no es un fallo.
+	switch {
+	case orderSyncEventTypes[messageType]:
+		return processOrderEvent(ctx, msg, messageType, etlApp)
+	case fareQuoteSyncEventTypes[messageType]:
+		return processFareQuoteEvent(ctx, msg, messageType, etlApp)
+	default:
 		return nil
 	}
+}
 
-	orderIDStr, ok := msg.Values["order_id"].(string)
-	if !ok || orderIDStr == "" {
-		slog.Warn("etl consumer: evento sin order_id válido, se descarta", "msg_id", msg.ID, "type", messageType)
-		return nil
-	}
-
-	orderID, err := uuid.Parse(orderIDStr)
-	if err != nil {
-		slog.Warn("etl consumer: order_id inválido, se descarta", "msg_id", msg.ID, "order_id", orderIDStr)
+func processOrderEvent(ctx context.Context, msg redis.XMessage, messageType string, etlApp ports.ETLApp) error {
+	orderID, ok := parseEventID(msg, messageType, "order_id")
+	if !ok {
 		return nil
 	}
 
@@ -172,4 +179,35 @@ func processOrderEvent(ctx context.Context, msg redis.XMessage, etlApp ports.ETL
 	}
 	slog.Info("etl consumer: orden resincronizada", "order_id", orderID, "type", messageType)
 	return nil
+}
+
+func processFareQuoteEvent(ctx context.Context, msg redis.XMessage, messageType string, etlApp ports.ETLApp) error {
+	quoteID, ok := parseEventID(msg, messageType, "quote_id")
+	if !ok {
+		return nil
+	}
+
+	if err := etlApp.SyncFareQuoteByID(ctx, quoteID); err != nil {
+		return err
+	}
+	slog.Info("etl consumer: cotización resincronizada", "quote_id", quoteID, "type", messageType)
+	return nil
+}
+
+// parseEventID extrae y parsea el campo de ID del payload. Un campo ausente
+// o inválido se descarta con warning (no se reintenta indefinidamente): un
+// payload malformado no se arregla solo reintentándolo.
+func parseEventID(msg redis.XMessage, messageType, field string) (uuid.UUID, bool) {
+	raw, ok := msg.Values[field].(string)
+	if !ok || raw == "" {
+		slog.Warn("etl consumer: evento sin "+field+" válido, se descarta", "msg_id", msg.ID, "type", messageType)
+		return uuid.UUID{}, false
+	}
+
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		slog.Warn("etl consumer: "+field+" inválido, se descarta", "msg_id", msg.ID, field, raw)
+		return uuid.UUID{}, false
+	}
+	return id, true
 }

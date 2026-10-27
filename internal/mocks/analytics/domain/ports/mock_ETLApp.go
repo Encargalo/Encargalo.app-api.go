@@ -74,6 +74,24 @@ func (_m *ETLApp) Run(ctx context.Context, from time.Time, to time.Time, entitie
 	return r0, r1
 }
 
+// SyncFareQuoteByID provides a mock function with given fields: ctx, quoteID
+func (_m *ETLApp) SyncFareQuoteByID(ctx context.Context, quoteID uuid.UUID) error {
+	ret := _m.Called(ctx, quoteID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SyncFareQuoteByID")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = rf(ctx, quoteID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // SyncOrderByID provides a mock function with given fields: ctx, orderID
 func (_m *ETLApp) SyncOrderByID(ctx context.Context, orderID uuid.UUID) error {
 	ret := _m.Called(ctx, orderID)

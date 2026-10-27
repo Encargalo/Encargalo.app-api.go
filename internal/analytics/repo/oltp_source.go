@@ -347,17 +347,37 @@ type fareQuoteRow struct {
 	CreatedAt         time.Time `bun:"created_at"`
 }
 
+var fareQuoteColumns = []string{
+	"q.quote_id", "q.customer_id", "q.distance_meters", "q.duration_min",
+	"q.fare_usd", "q.fare_band", "q.pickup_h3_cell_zone",
+	"q.dropoff_h3_cell_zone", "q.created_at",
+}
+
+func fareQuoteRowToCubeFareQuote(row fareQuoteRow, syncedAt time.Time) models.CubeFareQuote {
+	local := row.CreatedAt.In(bizclock.Location())
+	return models.CubeFareQuote{
+		QuoteID:        row.QuoteID,
+		CustomerID:     row.CustomerID,
+		DistanceMeters: row.DistanceMeters,
+		DurationMin:    row.DurationMin,
+		FareUSD:        row.FareUSD,
+		FareBand:       row.FareBand,
+		PickupH3Cell:   row.PickupH3CellZone,
+		DropoffH3Cell:  row.DropoffH3CellZone,
+		QuoteDate:      time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, time.UTC),
+		QuoteHour:      int16(local.Hour()),
+		CreatedAt:      row.CreatedAt,
+		SyncedAt:       syncedAt,
+	}
+}
+
 // Las cotizaciones son inmutables: una vez escritas no cambian, así que la
 // ventana de created_at las cubre sin necesitar lookback por updated_at.
 func (r *oltpSourceRepo) FetchFareQuotes(ctx context.Context, from, to time.Time) ([]models.CubeFareQuote, error) {
 	var rows []fareQuoteRow
 	err := r.db.NewSelect().
 		TableExpr("trips.fare_quotes AS q").
-		Column(
-			"q.quote_id", "q.customer_id", "q.distance_meters", "q.duration_min",
-			"q.fare_usd", "q.fare_band", "q.pickup_h3_cell_zone",
-			"q.dropoff_h3_cell_zone", "q.created_at",
-		).
+		Column(fareQuoteColumns...).
 		Where("q.created_at >= ? AND q.created_at < ?", from, to).
 		Scan(ctx, &rows)
 	if err != nil {
@@ -367,23 +387,29 @@ func (r *oltpSourceRepo) FetchFareQuotes(ctx context.Context, from, to time.Time
 	now := time.Now().UTC()
 	out := make([]models.CubeFareQuote, len(rows))
 	for i, row := range rows {
-		local := row.CreatedAt.In(bizclock.Location())
-		out[i] = models.CubeFareQuote{
-			QuoteID:        row.QuoteID,
-			CustomerID:     row.CustomerID,
-			DistanceMeters: row.DistanceMeters,
-			DurationMin:    row.DurationMin,
-			FareUSD:        row.FareUSD,
-			FareBand:       row.FareBand,
-			PickupH3Cell:   row.PickupH3CellZone,
-			DropoffH3Cell:  row.DropoffH3CellZone,
-			QuoteDate:      time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, time.UTC),
-			QuoteHour:      int16(local.Hour()),
-			CreatedAt:      row.CreatedAt,
-			SyncedAt:       now,
-		}
+		out[i] = fareQuoteRowToCubeFareQuote(row, now)
 	}
 	return out, nil
+}
+
+// FetchFareQuoteByID resincroniza una sola cotización puntualmente, en
+// reacción a fare_quote_created.
+func (r *oltpSourceRepo) FetchFareQuoteByID(ctx context.Context, quoteID uuid.UUID) (*models.CubeFareQuote, error) {
+	var row fareQuoteRow
+	err := r.db.NewSelect().
+		TableExpr("trips.fare_quotes AS q").
+		Column(fareQuoteColumns...).
+		Where("q.quote_id = ?", quoteID).
+		Scan(ctx, &row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errcustom.ErrNotFound
+		}
+		return nil, errcustom.Unexpected(err)
+	}
+
+	cube := fareQuoteRowToCubeFareQuote(row, time.Now().UTC())
+	return &cube, nil
 }
 
 type deliveryQuoteRow struct {

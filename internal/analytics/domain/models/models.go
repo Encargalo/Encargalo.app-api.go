@@ -31,16 +31,18 @@ var DefaultETLEntities = []ETLEntity{
 	EntityCubeDeliveryQuote,
 }
 
-// CronETLEntities es lo que sincroniza el cron del worker: todo menos
-// EntityCubeOrder, que ya no espera al batch — se resincroniza por evento
-// (ver ports.ETLApp.SyncOrderByID) en cuanto una orden se crea o cambia de estado.
+// CronETLEntities es lo que sincroniza el cron del worker. Cada entidad sale
+// de esta lista a medida que gana su propio productor de eventos (ver
+// ports.ETLApp.SyncXByID) y se resincroniza en tiempo real en vez de esperar
+// al batch horario. EntityFactTrackingEvent se queda aquí a propósito: es
+// telemetría genérica de alto volumen sin status de negocio, no amerita
+// tiempo real ni inflar el stream compartido con notifications.
 var CronETLEntities = []ETLEntity{
 	EntityDimShop,
 	EntityDimUser,
 	EntityDimRider,
 	EntityCubeTrip,
 	EntityFactTrackingEvent,
-	EntityCubeFareQuote,
 	EntityCubeDeliveryQuote,
 }
 

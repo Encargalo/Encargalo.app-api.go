@@ -123,6 +123,16 @@ func (a *etlApp) SyncOrderByID(ctx context.Context, orderID uuid.UUID) error {
 	return a.sink.UpsertOrders(ctx, []models.CubeOrder{*row})
 }
 
+// SyncFareQuoteByID re-sincroniza una sola cotización contra OLAP. La llama
+// el consumidor de eventos (cmd/etl) al recibir fare_quote_created.
+func (a *etlApp) SyncFareQuoteByID(ctx context.Context, quoteID uuid.UUID) error {
+	row, err := a.source.FetchFareQuoteByID(ctx, quoteID)
+	if err != nil {
+		return err
+	}
+	return a.sink.UpsertFareQuotes(ctx, []models.CubeFareQuote{*row})
+}
+
 func (a *etlApp) syncEntity(ctx context.Context, entity models.ETLEntity, from, to time.Time) (int, error) {
 	switch entity {
 	case models.EntityDimShop:
