@@ -12,6 +12,7 @@ import (
 	"Encargalo.app-api.go/internal/riders/domain/models"
 	"Encargalo.app-api.go/internal/riders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	usersmodels "Encargalo.app-api.go/internal/users/domain/models"
 	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
 )
@@ -34,6 +35,20 @@ func (a *riderProfileApp) publishRiderUpdated(ctx context.Context, userID uuid.U
 	event.BuildFromRiderID(userID.String())
 	if err := a.stream.PublisherEvent(ctx, event); err != nil {
 		slog.Error("error publishing rider_updated event", "userID", userID, "error", err)
+	}
+}
+
+// publishUserUpdated avisa a DimUser que el rol Rider de la cuenta cambió.
+// Activate/Suspend mutan users.user_roles vía EnsureRiderRole/DisableRiderRole,
+// no solo riders.profiles, así que DimUser.Roles necesita su propio evento.
+func (a *riderProfileApp) publishUserUpdated(ctx context.Context, userID uuid.UUID) {
+	if a.stream == nil {
+		return
+	}
+	event := usersmodels.DataEventUserUpdated{}
+	event.BuildFromUserID(userID.String())
+	if err := a.stream.PublisherEvent(ctx, event); err != nil {
+		slog.Error("error publishing user_updated event", "userID", userID, "error", err)
 	}
 }
 
@@ -319,6 +334,7 @@ func (a *riderProfileApp) Activate(ctx context.Context, userID, staffID uuid.UUI
 		return dtos.RiderProfileResponse{}, err
 	}
 	a.publishRiderUpdated(ctx, userID)
+	a.publishUserUpdated(ctx, userID)
 	return a.GetProfile(ctx, userID)
 }
 
@@ -328,6 +344,7 @@ func (a *riderProfileApp) Suspend(ctx context.Context, userID uuid.UUID) (dtos.R
 	}
 	_ = a.repo.DisableRiderRole(ctx, userID)
 	a.publishRiderUpdated(ctx, userID)
+	a.publishUserUpdated(ctx, userID)
 	return a.GetProfile(ctx, userID)
 }
 

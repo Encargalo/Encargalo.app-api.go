@@ -109,17 +109,42 @@ type userRow struct {
 	Roles     []string  `bun:"roles,array"`
 }
 
-func (r *oltpSourceRepo) FetchUsers(ctx context.Context, from, to time.Time) ([]models.DimUser, error) {
-	var rows []userRow
-	err := r.db.NewSelect().
+// userSelectQuery arma el select con el agregado de roles, compartido entre
+// FetchUsers y FetchUserByID; cada caller aplica su propio Where.
+func (r *oltpSourceRepo) userSelectQuery() *bun.SelectQuery {
+	return r.db.NewSelect().
 		TableExpr("users.accounts AS a").
 		Column("a.id", "a.name", "a.sur_name", "a.phone", "a.email", "a.enabled", "a.created_at", "a.updated_at").
 		ColumnExpr("COALESCE(array_agg(DISTINCT r.name) FILTER (WHERE r.name IS NOT NULL), '{}') AS roles").
 		Join("LEFT JOIN users.user_roles ur ON ur.user_id = a.id AND ur.enabled = TRUE").
 		Join("LEFT JOIN users.roles r ON r.id = ur.role_id").
 		Where("a.deleted_at IS NULL").
+		GroupExpr("a.id, a.name, a.sur_name, a.phone, a.email, a.enabled, a.created_at, a.updated_at")
+}
+
+func userRowToDimUser(row userRow, syncedAt time.Time) models.DimUser {
+	roles := row.Roles
+	if roles == nil {
+		roles = []string{}
+	}
+	return models.DimUser{
+		UserID:       row.ID,
+		Name:         row.Name,
+		SurName:      row.SurName,
+		Phone:        row.Phone,
+		Email:        row.Email,
+		Roles:        roles,
+		Enabled:      row.Enabled,
+		RegisteredAt: row.CreatedAt,
+		UpdatedAt:    row.UpdatedAt,
+		SyncedAt:     syncedAt,
+	}
+}
+
+func (r *oltpSourceRepo) FetchUsers(ctx context.Context, from, to time.Time) ([]models.DimUser, error) {
+	var rows []userRow
+	err := r.userSelectQuery().
 		Where("a.updated_at >= ? AND a.updated_at < ?", from, to).
-		GroupExpr("a.id, a.name, a.sur_name, a.phone, a.email, a.enabled, a.created_at, a.updated_at").
 		Scan(ctx, &rows)
 	if err != nil {
 		return nil, errcustom.Unexpected(err)
@@ -128,24 +153,27 @@ func (r *oltpSourceRepo) FetchUsers(ctx context.Context, from, to time.Time) ([]
 	now := time.Now().UTC()
 	out := make([]models.DimUser, len(rows))
 	for i, row := range rows {
-		roles := row.Roles
-		if roles == nil {
-			roles = []string{}
-		}
-		out[i] = models.DimUser{
-			UserID:       row.ID,
-			Name:         row.Name,
-			SurName:      row.SurName,
-			Phone:        row.Phone,
-			Email:        row.Email,
-			Roles:        roles,
-			Enabled:      row.Enabled,
-			RegisteredAt: row.CreatedAt,
-			UpdatedAt:    row.UpdatedAt,
-			SyncedAt:     now,
-		}
+		out[i] = userRowToDimUser(row, now)
 	}
 	return out, nil
+}
+
+// FetchUserByID no devuelve nada para una cuenta ya eliminada (soft delete):
+// no hay nada que resincronizar, igual que ya ignora el cron.
+func (r *oltpSourceRepo) FetchUserByID(ctx context.Context, userID uuid.UUID) (*models.DimUser, error) {
+	var row userRow
+	err := r.userSelectQuery().
+		Where("a.id = ?", userID).
+		Scan(ctx, &row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errcustom.ErrNotFound
+		}
+		return nil, errcustom.Unexpected(err)
+	}
+
+	dim := userRowToDimUser(row, time.Now().UTC())
+	return &dim, nil
 }
 
 type riderRow struct {

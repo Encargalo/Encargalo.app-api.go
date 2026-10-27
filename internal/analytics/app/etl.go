@@ -173,6 +173,16 @@ func (a *etlApp) SyncRiderByID(ctx context.Context, riderID uuid.UUID) error {
 	return a.sink.UpsertRiders(ctx, []models.DimRider{*row})
 }
 
+// SyncUserByID re-sincroniza una sola cuenta contra OLAP. La llama el
+// consumidor de eventos (cmd/etl) al recibir user_updated.
+func (a *etlApp) SyncUserByID(ctx context.Context, userID uuid.UUID) error {
+	row, err := a.source.FetchUserByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	return a.sink.UpsertUsers(ctx, []models.DimUser{*row})
+}
+
 func (a *etlApp) syncEntity(ctx context.Context, entity models.ETLEntity, from, to time.Time) (int, error) {
 	switch entity {
 	case models.EntityDimShop:

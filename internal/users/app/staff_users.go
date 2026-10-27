@@ -20,11 +20,23 @@ const (
 )
 
 type staffUsersApp struct {
-	repo ports.StaffUsersRepo
+	repo   ports.StaffUsersRepo
+	stream ports.StreamPublisher
 }
 
-func NewStaffUsersApp(repo ports.StaffUsersRepo) ports.StaffUsersApp {
-	return &staffUsersApp{repo: repo}
+func NewStaffUsersApp(repo ports.StaffUsersRepo, stream ports.StreamPublisher) ports.StaffUsersApp {
+	return &staffUsersApp{repo: repo, stream: stream}
+}
+
+func (a *staffUsersApp) publishUserUpdated(ctx context.Context, userID uuid.UUID) {
+	if a.stream == nil {
+		return
+	}
+	event := models.DataEventUserUpdated{}
+	event.BuildFromUserID(userID.String())
+	if err := a.stream.PublisherEvent(ctx, event); err != nil {
+		slog.Error("error publishing user_updated event", "userID", userID, "error", err)
+	}
 }
 
 func (a *staffUsersApp) ListUsers(ctx context.Context, query dto.ListStaffUsersQuery) (dto.StaffUserListResponse, error) {
@@ -178,6 +190,7 @@ func (a *staffUsersApp) UpdateUser(ctx context.Context, staffID, userID uuid.UUI
 		return dto.StaffUserDetailResponse{}, err
 	}
 
+	a.publishUserUpdated(ctx, userID)
 	slog.Info("staff actualizó usuario", "staffID", staffID, "userID", userID)
 	return a.GetUser(ctx, userID)
 }
@@ -195,6 +208,7 @@ func (a *staffUsersApp) BlockUser(ctx context.Context, staffID, userID uuid.UUID
 		return dto.StaffUserDetailResponse{}, err
 	}
 
+	a.publishUserUpdated(ctx, userID)
 	slog.Info("staff bloqueó usuario", "staffID", staffID, "userID", userID)
 	return a.GetUser(ctx, userID)
 }
@@ -212,6 +226,7 @@ func (a *staffUsersApp) UnblockUser(ctx context.Context, staffID, userID uuid.UU
 		return dto.StaffUserDetailResponse{}, err
 	}
 
+	a.publishUserUpdated(ctx, userID)
 	slog.Info("staff desbloqueó usuario", "staffID", staffID, "userID", userID)
 	return a.GetUser(ctx, userID)
 }
@@ -233,6 +248,7 @@ func (a *staffUsersApp) GrantStaff(ctx context.Context, staffID, userID uuid.UUI
 		return dto.StaffUserDetailResponse{}, err
 	}
 
+	a.publishUserUpdated(ctx, userID)
 	slog.Info("staff otorgó rol Staff", "staffID", staffID, "userID", userID)
 	return a.GetUser(ctx, userID)
 }
@@ -267,6 +283,7 @@ func (a *staffUsersApp) RevokeStaff(ctx context.Context, staffID, userID uuid.UU
 		return dto.StaffUserDetailResponse{}, false, err
 	}
 
+	a.publishUserUpdated(ctx, userID)
 	slog.Info("staff revocó rol Staff", "staffID", staffID, "userID", userID)
 	resp, err := a.GetUser(ctx, userID)
 	return resp, true, err

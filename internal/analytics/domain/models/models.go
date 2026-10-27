@@ -34,11 +34,10 @@ var DefaultETLEntities = []ETLEntity{
 // CronETLEntities es lo que sincroniza el cron del worker. Cada entidad sale
 // de esta lista a medida que gana su propio productor de eventos (ver
 // ports.ETLApp.SyncXByID) y se resincroniza en tiempo real en vez de esperar
-// al batch horario. EntityFactTrackingEvent se queda aquí a propósito: es
-// telemetría genérica de alto volumen sin status de negocio, no amerita
-// tiempo real ni inflar el stream compartido con notifications.
+// al batch horario. EntityFactTrackingEvent es la única que queda, a
+// propósito: es telemetría genérica de alto volumen sin status de negocio,
+// no amerita tiempo real ni inflar el stream compartido con notifications.
 var CronETLEntities = []ETLEntity{
-	EntityDimUser,
 	EntityFactTrackingEvent,
 }
 

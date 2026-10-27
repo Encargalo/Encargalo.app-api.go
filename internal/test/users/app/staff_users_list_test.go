@@ -17,7 +17,7 @@ import (
 
 func TestStaffUsersApp_ListUsers_Success(t *testing.T) {
 	repo := mocksusersports.NewStaffUsersRepo(t)
-	svc := app.NewStaffUsersApp(repo)
+	svc := app.NewStaffUsersApp(repo, nil)
 
 	userID := uuid.New()
 	acc := models.Account{ID: userID, Name: "Ana", Enabled: true}
@@ -36,7 +36,7 @@ func TestStaffUsersApp_ListUsers_Success(t *testing.T) {
 
 func TestStaffUsersApp_ListUsers_InvalidStatus(t *testing.T) {
 	repo := mocksusersports.NewStaffUsersRepo(t)
-	svc := app.NewStaffUsersApp(repo)
+	svc := app.NewStaffUsersApp(repo, nil)
 
 	_, err := svc.ListUsers(context.Background(), dto.ListStaffUsersQuery{Status: "banned"})
 
@@ -45,7 +45,7 @@ func TestStaffUsersApp_ListUsers_InvalidStatus(t *testing.T) {
 
 func TestStaffUsersApp_ListUsers_QueryTooShort(t *testing.T) {
 	repo := mocksusersports.NewStaffUsersRepo(t)
-	svc := app.NewStaffUsersApp(repo)
+	svc := app.NewStaffUsersApp(repo, nil)
 
 	_, err := svc.ListUsers(context.Background(), dto.ListStaffUsersQuery{Query: "a"})
 
@@ -54,7 +54,7 @@ func TestStaffUsersApp_ListUsers_QueryTooShort(t *testing.T) {
 
 func TestStaffUsersApp_ListUsers_InvalidCursor(t *testing.T) {
 	repo := mocksusersports.NewStaffUsersRepo(t)
-	svc := app.NewStaffUsersApp(repo)
+	svc := app.NewStaffUsersApp(repo, nil)
 
 	_, err := svc.ListUsers(context.Background(), dto.ListStaffUsersQuery{Cursor: "not-a-valid-cursor"})
 
@@ -63,7 +63,7 @@ func TestStaffUsersApp_ListUsers_InvalidCursor(t *testing.T) {
 
 func TestStaffUsersApp_FindCandidate_Success(t *testing.T) {
 	repo := mocksusersports.NewStaffUsersRepo(t)
-	svc := app.NewStaffUsersApp(repo)
+	svc := app.NewStaffUsersApp(repo, nil)
 
 	userID := uuid.New()
 	acc := &models.Account{ID: userID, Name: "Ana", Enabled: true}
@@ -80,7 +80,7 @@ func TestStaffUsersApp_FindCandidate_Success(t *testing.T) {
 
 func TestStaffUsersApp_FindCandidate_EmptyPhone(t *testing.T) {
 	repo := mocksusersports.NewStaffUsersRepo(t)
-	svc := app.NewStaffUsersApp(repo)
+	svc := app.NewStaffUsersApp(repo, nil)
 
 	_, err := svc.FindCandidate(context.Background(), "   ")
 
@@ -89,7 +89,7 @@ func TestStaffUsersApp_FindCandidate_EmptyPhone(t *testing.T) {
 
 func TestStaffUsersApp_FindCandidate_NotFound(t *testing.T) {
 	repo := mocksusersports.NewStaffUsersRepo(t)
-	svc := app.NewStaffUsersApp(repo)
+	svc := app.NewStaffUsersApp(repo, nil)
 
 	repo.On("FindManagedCustomerByPhone", context.Background(), "04141234567").Return(nil, errcustom.ErrNotFound)
 
@@ -100,7 +100,8 @@ func TestStaffUsersApp_FindCandidate_NotFound(t *testing.T) {
 
 func TestStaffUsersApp_UnblockUser_EnablesAccount(t *testing.T) {
 	repo := mocksusersports.NewStaffUsersRepo(t)
-	svc := app.NewStaffUsersApp(repo)
+	stream := mocksusersports.NewStreamPublisher(t)
+	svc := app.NewStaffUsersApp(repo, stream)
 
 	staffID := uuid.New()
 	userID := uuid.New()
@@ -112,6 +113,11 @@ func TestStaffUsersApp_UnblockUser_EnablesAccount(t *testing.T) {
 		Return(&models.Account{ID: userID, Name: "Ana", Enabled: true}, nil).Once()
 	repo.On("GetRolesForUserIDs", context.Background(), []uuid.UUID{userID}).
 		Return(map[uuid.UUID][]string{userID: {"Customer"}}, nil).Once()
+	// El ETL resincroniza DimUser por evento, no por el batch horario.
+	stream.On("PublisherEvent", context.Background(), models.DataEventUserUpdated{
+		MessageType: "user_updated",
+		UserID:      userID.String(),
+	}).Return(nil)
 
 	resp, err := svc.UnblockUser(context.Background(), staffID, userID)
 
@@ -121,7 +127,7 @@ func TestStaffUsersApp_UnblockUser_EnablesAccount(t *testing.T) {
 
 func TestStaffUsersApp_UnblockUser_AlreadyEnabledIsNoop(t *testing.T) {
 	repo := mocksusersports.NewStaffUsersRepo(t)
-	svc := app.NewStaffUsersApp(repo)
+	svc := app.NewStaffUsersApp(repo, nil)
 
 	staffID := uuid.New()
 	userID := uuid.New()

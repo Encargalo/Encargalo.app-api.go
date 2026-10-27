@@ -341,3 +341,37 @@ func TestSyncRiderByID_FetchError(t *testing.T) {
 	require.ErrorIs(t, err, errcustom.ErrNotFound)
 	sink.AssertNotCalled(t, "UpsertRiders", mock.Anything, mock.Anything)
 }
+
+func TestSyncUserByID_Success(t *testing.T) {
+	source := new(mocks.OLTPSourceRepo)
+	sink := new(mocks.OLAPSinkRepo)
+	syncLog := new(mocks.SyncLogRepo)
+
+	userID := uuid.New()
+	user := &models.DimUser{UserID: userID, Name: "Ada", Roles: []string{"Customer"}}
+
+	source.On("FetchUserByID", mock.Anything, userID).Return(user, nil)
+	sink.On("UpsertUsers", mock.Anything, []models.DimUser{*user}).Return(nil)
+
+	etl := newETLApp(source, sink, syncLog)
+	err := etl.SyncUserByID(context.Background(), userID)
+
+	require.NoError(t, err)
+	source.AssertExpectations(t)
+	sink.AssertExpectations(t)
+}
+
+func TestSyncUserByID_FetchError(t *testing.T) {
+	source := new(mocks.OLTPSourceRepo)
+	sink := new(mocks.OLAPSinkRepo)
+	syncLog := new(mocks.SyncLogRepo)
+
+	userID := uuid.New()
+	source.On("FetchUserByID", mock.Anything, userID).Return((*models.DimUser)(nil), errcustom.ErrNotFound)
+
+	etl := newETLApp(source, sink, syncLog)
+	err := etl.SyncUserByID(context.Background(), userID)
+
+	require.ErrorIs(t, err, errcustom.ErrNotFound)
+	sink.AssertNotCalled(t, "UpsertUsers", mock.Anything, mock.Anything)
+}

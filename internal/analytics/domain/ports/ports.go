@@ -31,6 +31,10 @@ type ETLApp interface {
 	// SyncRiderByID re-sincroniza un solo conductor contra OLAP, en reacción a
 	// rider_updated.
 	SyncRiderByID(ctx context.Context, riderID uuid.UUID) error
+	// SyncUserByID re-sincroniza una sola cuenta contra OLAP, en reacción a
+	// user_updated (publicado también desde riders/app y shops/app cuando
+	// otorgan el rol Rider u Owner, ya que eso muta DimUser.Roles).
+	SyncUserByID(ctx context.Context, userID uuid.UUID) error
 }
 
 type SyncLogRepo interface {
@@ -42,6 +46,7 @@ type OLTPSourceRepo interface {
 	FetchShops(ctx context.Context, from, to time.Time) ([]models.DimShop, error)
 	FetchShopByID(ctx context.Context, shopID uuid.UUID) (*models.DimShop, error)
 	FetchUsers(ctx context.Context, from, to time.Time) ([]models.DimUser, error)
+	FetchUserByID(ctx context.Context, userID uuid.UUID) (*models.DimUser, error)
 	FetchRiders(ctx context.Context, from, to time.Time) ([]models.DimRider, error)
 	FetchRiderByID(ctx context.Context, riderID uuid.UUID) (*models.DimRider, error)
 	FetchOrders(ctx context.Context, from, to time.Time) ([]models.CubeOrder, error)

@@ -13,6 +13,7 @@ import (
 	"Encargalo.app-api.go/internal/shops/domain/dtos"
 	shopsmodels "Encargalo.app-api.go/internal/shops/domain/models/shops"
 	portsShops "Encargalo.app-api.go/internal/shops/domain/ports"
+	usersmodels "Encargalo.app-api.go/internal/users/domain/models"
 	"github.com/google/uuid"
 )
 
@@ -35,6 +36,21 @@ func (a *staffShopApp) publishShopUpdated(ctx context.Context, shopID uuid.UUID)
 	event.BuildFromShopID(shopID.String())
 	if err := a.events.PublisherEvent(ctx, event); err != nil {
 		slog.Error("error publishing shop_updated event", "shopID", shopID, "error", err)
+	}
+}
+
+// publishUserUpdated avisa a DimUser que el rol Owner de la cuenta cambió.
+// CreateDraftShop otorga el rol vía EnsureOwnerRole, que muta
+// users.user_roles, no business.shops, así que DimUser.Roles necesita su
+// propio evento (reusa el mismo stream ya conectado para shop_updated).
+func (a *staffShopApp) publishUserUpdated(ctx context.Context, userID uuid.UUID) {
+	if a.events == nil {
+		return
+	}
+	event := usersmodels.DataEventUserUpdated{}
+	event.BuildFromUserID(userID.String())
+	if err := a.events.PublisherEvent(ctx, event); err != nil {
+		slog.Error("error publishing user_updated event", "userID", userID, "error", err)
 	}
 }
 
@@ -101,6 +117,7 @@ func (a *staffShopApp) CreateDraftShop(ctx context.Context, req dtos.CreateDraft
 		}
 	}
 	a.publishShopUpdated(ctx, shop.ID)
+	a.publishUserUpdated(ctx, req.OwnerID)
 	return a.GetShop(ctx, shop.ID)
 }
 

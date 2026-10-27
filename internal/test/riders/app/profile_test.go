@@ -10,6 +10,7 @@ import (
 	"Encargalo.app-api.go/internal/riders/domain/dtos"
 	"Encargalo.app-api.go/internal/riders/domain/models"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	usersmodels "Encargalo.app-api.go/internal/users/domain/models"
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -221,6 +222,12 @@ func TestActivate_Success(t *testing.T) {
 		MessageType: "rider_updated",
 		RiderID:     userID.String(),
 	}).Return(nil)
+	// EnsureRiderRole otorga el rol Rider (muta users.user_roles), así que
+	// DimUser.Roles también necesita resincronizarse.
+	stream.On("PublisherEvent", mock.Anything, usersmodels.DataEventUserUpdated{
+		MessageType: "user_updated",
+		UserID:      userID.String(),
+	}).Return(nil)
 
 	resp, err := svc.Activate(context.Background(), userID, staffID)
 
@@ -254,6 +261,11 @@ func TestSuspend_Success(t *testing.T) {
 	stream.On("PublisherEvent", mock.Anything, models.DataEventRiderUpdated{
 		MessageType: "rider_updated",
 		RiderID:     userID.String(),
+	}).Return(nil)
+	// DisableRiderRole también muta users.user_roles.
+	stream.On("PublisherEvent", mock.Anything, usersmodels.DataEventUserUpdated{
+		MessageType: "user_updated",
+		UserID:      userID.String(),
 	}).Return(nil)
 
 	resp, err := svc.Suspend(context.Background(), userID)

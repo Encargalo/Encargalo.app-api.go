@@ -15,6 +15,7 @@ import (
 	redisStream "Encargalo.app-api.go/internal/shared/adapters/redis"
 	"Encargalo.app-api.go/internal/shared/applog"
 	"Encargalo.app-api.go/internal/shared/config"
+	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shared/otelsetup"
 	"Encargalo.app-api.go/internal/shared/reqctx"
 	"github.com/google/uuid"
@@ -151,6 +152,15 @@ var riderSyncEventTypes = map[string]bool{
 	"rider_updated": true,
 }
 
+// userSyncEventTypes son los tipos de mensaje que implican que DimUser puede
+// haber cambiado. Lo publican tanto users/app (datos de la cuenta, bloqueo,
+// rol Staff) como riders/app y shops/app (rol Rider/Owner, que también muta
+// users.user_roles — ver "Trips & Riders" en CLAUDE.md para el precedente de
+// un mismo evento publicado desde varios dominios).
+var userSyncEventTypes = map[string]bool{
+	"user_updated": true,
+}
+
 // startOrderEventConsumer lee el stream con su propio consumer group y
 // resincroniza puntualmente la entidad de cada evento relevante contra OLAP.
 func startOrderEventConsumer(ctx context.Context, cfg config.ETLConfig, etlApp ports.ETLApp) {
@@ -172,8 +182,15 @@ func startOrderEventConsumer(ctx context.Context, cfg config.ETLConfig, etlApp p
 			}
 
 			if err := processStreamEvent(ctx, msg, etlApp); err != nil {
-				slog.Error("etl consumer: error procesando evento", "msg_id", msg.ID, "error", err)
-				continue
+				// Una entidad que ya no existe (borrada, condición de carrera
+				// con el evento) no tiene nada que resincronizar: reintentarla
+				// para siempre solo atasca el consumer group con el mismo
+				// mensaje (ver el fix equivalente en cmd/notifications).
+				if !errors.Is(err, errcustom.ErrNotFound) {
+					slog.Error("etl consumer: error procesando evento", "msg_id", msg.ID, "error", err)
+					continue
+				}
+				slog.Warn("etl consumer: entidad no encontrada, se descarta", "msg_id", msg.ID, "error", err)
 			}
 
 			if err := consumer.Ack(ctx, msg.ID); err != nil {
@@ -201,6 +218,8 @@ func processStreamEvent(ctx context.Context, msg redis.XMessage, etlApp ports.ET
 		return processShopEvent(ctx, msg, messageType, etlApp)
 	case riderSyncEventTypes[messageType]:
 		return processRiderEvent(ctx, msg, messageType, etlApp)
+	case userSyncEventTypes[messageType]:
+		return processUserEvent(ctx, msg, messageType, etlApp)
 	default:
 		return nil
 	}
@@ -281,6 +300,19 @@ func processRiderEvent(ctx context.Context, msg redis.XMessage, messageType stri
 		return err
 	}
 	slog.Info("etl consumer: conductor resincronizado", "rider_id", riderID, "type", messageType)
+	return nil
+}
+
+func processUserEvent(ctx context.Context, msg redis.XMessage, messageType string, etlApp ports.ETLApp) error {
+	userID, ok := parseEventID(msg, messageType, "user_id")
+	if !ok {
+		return nil
+	}
+
+	if err := etlApp.SyncUserByID(ctx, userID); err != nil {
+		return err
+	}
+	slog.Info("etl consumer: cuenta resincronizada", "user_id", userID, "type", messageType)
 	return nil
 }
 

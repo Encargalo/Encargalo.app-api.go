@@ -12,6 +12,7 @@ import (
 	"Encargalo.app-api.go/internal/shops/app"
 	"Encargalo.app-api.go/internal/shops/domain/dtos"
 	shopsmodels "Encargalo.app-api.go/internal/shops/domain/models/shops"
+	usersmodels "Encargalo.app-api.go/internal/users/domain/models"
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
@@ -82,6 +83,12 @@ func TestCreateDraftShop_PublishesShopUpdated(t *testing.T) {
 	events.On("PublisherEvent", context.Background(), mock.MatchedBy(func(event shopsmodels.DataEventShopUpdated) bool {
 		return event.MessageType == "shop_updated" && event.ShopID == createdID.String()
 	})).Return(nil)
+	// EnsureOwnerRole otorga el rol Owner (muta users.user_roles), así que
+	// DimUser.Roles también necesita resincronizarse.
+	events.On("PublisherEvent", context.Background(), usersmodels.DataEventUserUpdated{
+		MessageType: "user_updated",
+		UserID:      ownerID.String(),
+	}).Return(nil)
 
 	_, err := staffApp.CreateDraftShop(context.Background(), req)
 

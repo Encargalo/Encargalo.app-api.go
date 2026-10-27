@@ -182,6 +182,24 @@ func (_m *ETLApp) SyncTripByID(ctx context.Context, tripID uuid.UUID) error {
 	return r0
 }
 
+// SyncUserByID provides a mock function with given fields: ctx, userID
+func (_m *ETLApp) SyncUserByID(ctx context.Context, userID uuid.UUID) error {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SyncUserByID")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // NewETLApp creates a new instance of ETLApp. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewETLApp(t interface {
