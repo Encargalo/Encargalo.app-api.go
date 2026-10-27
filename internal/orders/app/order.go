@@ -294,6 +294,19 @@ func (o *orderApp) recordFareQuote(ctx context.Context, quote *models.OrderQuote
 	}
 	if err := o.fareQuotes.Insert(ctx, record); err != nil {
 		slog.Error("recordFareQuote failed", "quoteID", quote.QuoteID, "error", err)
+		return
+	}
+	o.publishDeliveryQuoteCreated(ctx, quote.QuoteID)
+}
+
+func (o *orderApp) publishDeliveryQuoteCreated(ctx context.Context, quoteID uuid.UUID) {
+	if o.stream == nil {
+		return
+	}
+	event := models.DataEventDeliveryQuoteCreated{}
+	event.BuildFromQuoteID(quoteID.String())
+	if err := o.stream.PublisherEvent(ctx, event); err != nil {
+		slog.Error("error publishing delivery_quote_created event", "quoteID", quoteID, "error", err)
 	}
 }
 

@@ -205,3 +205,37 @@ func TestSyncFareQuoteByID_FetchError(t *testing.T) {
 	require.ErrorIs(t, err, errcustom.ErrNotFound)
 	sink.AssertNotCalled(t, "UpsertFareQuotes", mock.Anything, mock.Anything)
 }
+
+func TestSyncDeliveryQuoteByID_Success(t *testing.T) {
+	source := new(mocks.OLTPSourceRepo)
+	sink := new(mocks.OLAPSinkRepo)
+	syncLog := new(mocks.SyncLogRepo)
+
+	quoteID := uuid.New()
+	quote := &models.CubeDeliveryQuote{QuoteID: quoteID, FeeUSD: 1, FareBand: "day"}
+
+	source.On("FetchDeliveryQuoteByID", mock.Anything, quoteID).Return(quote, nil)
+	sink.On("UpsertDeliveryQuotes", mock.Anything, []models.CubeDeliveryQuote{*quote}).Return(nil)
+
+	etl := newETLApp(source, sink, syncLog)
+	err := etl.SyncDeliveryQuoteByID(context.Background(), quoteID)
+
+	require.NoError(t, err)
+	source.AssertExpectations(t)
+	sink.AssertExpectations(t)
+}
+
+func TestSyncDeliveryQuoteByID_FetchError(t *testing.T) {
+	source := new(mocks.OLTPSourceRepo)
+	sink := new(mocks.OLAPSinkRepo)
+	syncLog := new(mocks.SyncLogRepo)
+
+	quoteID := uuid.New()
+	source.On("FetchDeliveryQuoteByID", mock.Anything, quoteID).Return((*models.CubeDeliveryQuote)(nil), errcustom.ErrNotFound)
+
+	etl := newETLApp(source, sink, syncLog)
+	err := etl.SyncDeliveryQuoteByID(context.Background(), quoteID)
+
+	require.ErrorIs(t, err, errcustom.ErrNotFound)
+	sink.AssertNotCalled(t, "UpsertDeliveryQuotes", mock.Anything, mock.Anything)
+}

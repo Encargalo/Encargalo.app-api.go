@@ -43,7 +43,6 @@ var CronETLEntities = []ETLEntity{
 	EntityDimRider,
 	EntityCubeTrip,
 	EntityFactTrackingEvent,
-	EntityCubeDeliveryQuote,
 }
 
 type DateRange struct {

@@ -18,6 +18,9 @@ type ETLApp interface {
 	// SyncFareQuoteByID re-sincroniza una sola cotización de viaje contra OLAP,
 	// en reacción a fare_quote_created.
 	SyncFareQuoteByID(ctx context.Context, quoteID uuid.UUID) error
+	// SyncDeliveryQuoteByID re-sincroniza una sola cotización de delivery
+	// contra OLAP, en reacción a delivery_quote_created.
+	SyncDeliveryQuoteByID(ctx context.Context, quoteID uuid.UUID) error
 }
 
 type SyncLogRepo interface {
@@ -36,6 +39,7 @@ type OLTPSourceRepo interface {
 	FetchFareQuotes(ctx context.Context, from, to time.Time) ([]models.CubeFareQuote, error)
 	FetchFareQuoteByID(ctx context.Context, quoteID uuid.UUID) (*models.CubeFareQuote, error)
 	FetchDeliveryQuotes(ctx context.Context, from, to time.Time) ([]models.CubeDeliveryQuote, error)
+	FetchDeliveryQuoteByID(ctx context.Context, quoteID uuid.UUID) (*models.CubeDeliveryQuote, error)
 }
 
 type OLAPSinkRepo interface {

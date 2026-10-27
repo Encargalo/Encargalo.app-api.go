@@ -56,6 +56,8 @@ func newOrderAppFixture(t *testing.T) (ports.OrdersApp, *orderAppMocks) {
 	// recordFareQuote es fire-and-forget (ver CreateQuote): no todos los tests
 	// lo disparan, así que la expectativa es opcional.
 	m.fareQuotes.On("Insert", mock.Anything, mock.Anything).Return(nil).Maybe()
+	// recordFareQuote publica delivery_quote_created tras el Insert; mismo motivo.
+	m.stream.On("PublisherEvent", mock.Anything, mock.Anything).Return(nil).Maybe()
 	svc := app.NewOrderApp(
 		m.repo, m.shops, m.users, m.stream, m.upload, m.riderMgr, m.finance,
 		m.shopCommission, m.bcv, m.reviewsRepo, m.staffHub, m.customerBalance,

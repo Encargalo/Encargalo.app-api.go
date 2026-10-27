@@ -422,16 +422,34 @@ type deliveryQuoteRow struct {
 	CreatedAt      time.Time `bun:"created_at"`
 }
 
+var deliveryQuoteColumns = []string{
+	"q.quote_id", "q.customer_id", "q.shop_id", "q.distance_meters",
+	"q.fee_usd", "q.fare_band", "q.created_at",
+}
+
+func deliveryQuoteRowToCubeDeliveryQuote(row deliveryQuoteRow, syncedAt time.Time) models.CubeDeliveryQuote {
+	local := row.CreatedAt.In(bizclock.Location())
+	return models.CubeDeliveryQuote{
+		QuoteID:        row.QuoteID,
+		CustomerID:     row.CustomerID,
+		ShopID:         row.ShopID,
+		DistanceMeters: row.DistanceMeters,
+		FeeUSD:         row.FeeUSD,
+		FareBand:       row.FareBand,
+		QuoteDate:      time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, time.UTC),
+		QuoteHour:      int16(local.Hour()),
+		CreatedAt:      row.CreatedAt,
+		SyncedAt:       syncedAt,
+	}
+}
+
 // Las cotizaciones son inmutables: una vez escritas no cambian, así que la
 // ventana de created_at las cubre sin necesitar lookback por updated_at.
 func (r *oltpSourceRepo) FetchDeliveryQuotes(ctx context.Context, from, to time.Time) ([]models.CubeDeliveryQuote, error) {
 	var rows []deliveryQuoteRow
 	err := r.db.NewSelect().
 		TableExpr("orders.fare_quotes AS q").
-		Column(
-			"q.quote_id", "q.customer_id", "q.shop_id", "q.distance_meters",
-			"q.fee_usd", "q.fare_band", "q.created_at",
-		).
+		Column(deliveryQuoteColumns...).
 		Where("q.created_at >= ? AND q.created_at < ?", from, to).
 		Scan(ctx, &rows)
 	if err != nil {
@@ -441,19 +459,27 @@ func (r *oltpSourceRepo) FetchDeliveryQuotes(ctx context.Context, from, to time.
 	now := time.Now().UTC()
 	out := make([]models.CubeDeliveryQuote, len(rows))
 	for i, row := range rows {
-		local := row.CreatedAt.In(bizclock.Location())
-		out[i] = models.CubeDeliveryQuote{
-			QuoteID:        row.QuoteID,
-			CustomerID:     row.CustomerID,
-			ShopID:         row.ShopID,
-			DistanceMeters: row.DistanceMeters,
-			FeeUSD:         row.FeeUSD,
-			FareBand:       row.FareBand,
-			QuoteDate:      time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, time.UTC),
-			QuoteHour:      int16(local.Hour()),
-			CreatedAt:      row.CreatedAt,
-			SyncedAt:       now,
-		}
+		out[i] = deliveryQuoteRowToCubeDeliveryQuote(row, now)
 	}
 	return out, nil
+}
+
+// FetchDeliveryQuoteByID resincroniza una sola cotización puntualmente, en
+// reacción a delivery_quote_created.
+func (r *oltpSourceRepo) FetchDeliveryQuoteByID(ctx context.Context, quoteID uuid.UUID) (*models.CubeDeliveryQuote, error) {
+	var row deliveryQuoteRow
+	err := r.db.NewSelect().
+		TableExpr("orders.fare_quotes AS q").
+		Column(deliveryQuoteColumns...).
+		Where("q.quote_id = ?", quoteID).
+		Scan(ctx, &row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errcustom.ErrNotFound
+		}
+		return nil, errcustom.Unexpected(err)
+	}
+
+	cube := deliveryQuoteRowToCubeDeliveryQuote(row, time.Now().UTC())
+	return &cube, nil
 }

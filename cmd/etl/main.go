@@ -121,6 +121,12 @@ var fareQuoteSyncEventTypes = map[string]bool{
 	"fare_quote_created": true,
 }
 
+// deliveryQuoteSyncEventTypes: igual que las de viaje, las cotizaciones de
+// delivery son inmutables.
+var deliveryQuoteSyncEventTypes = map[string]bool{
+	"delivery_quote_created": true,
+}
+
 // startOrderEventConsumer lee el stream con su propio consumer group y
 // resincroniza puntualmente la entidad de cada evento relevante contra OLAP.
 func startOrderEventConsumer(ctx context.Context, cfg config.ETLConfig, etlApp ports.ETLApp) {
@@ -163,6 +169,8 @@ func processStreamEvent(ctx context.Context, msg redis.XMessage, etlApp ports.ET
 		return processOrderEvent(ctx, msg, messageType, etlApp)
 	case fareQuoteSyncEventTypes[messageType]:
 		return processFareQuoteEvent(ctx, msg, messageType, etlApp)
+	case deliveryQuoteSyncEventTypes[messageType]:
+		return processDeliveryQuoteEvent(ctx, msg, messageType, etlApp)
 	default:
 		return nil
 	}
@@ -191,6 +199,19 @@ func processFareQuoteEvent(ctx context.Context, msg redis.XMessage, messageType 
 		return err
 	}
 	slog.Info("etl consumer: cotización resincronizada", "quote_id", quoteID, "type", messageType)
+	return nil
+}
+
+func processDeliveryQuoteEvent(ctx context.Context, msg redis.XMessage, messageType string, etlApp ports.ETLApp) error {
+	quoteID, ok := parseEventID(msg, messageType, "quote_id")
+	if !ok {
+		return nil
+	}
+
+	if err := etlApp.SyncDeliveryQuoteByID(ctx, quoteID); err != nil {
+		return err
+	}
+	slog.Info("etl consumer: cotización de delivery resincronizada", "quote_id", quoteID, "type", messageType)
 	return nil
 }
 
