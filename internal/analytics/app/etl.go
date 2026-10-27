@@ -112,15 +112,25 @@ func (a *etlApp) Run(ctx context.Context, from, to time.Time, entities []models.
 	return result, nil
 }
 
-// SyncOrderByID re-sincroniza una sola orden contra OLAP. La llama el
-// consumidor de eventos (cmd/etl) al recibir order_status_changed.
+// SyncOrderByID re-sincroniza una sola orden contra OLAP, junto con todo su
+// historial de status_history (alimentado por trigger en OLTP, no requiere
+// evento propio). La llama el consumidor de eventos (cmd/etl) al recibir
+// order_status_changed.
 func (a *etlApp) SyncOrderByID(ctx context.Context, orderID uuid.UUID) error {
 	row, err := a.source.FetchOrderByID(ctx, orderID)
 	if err != nil {
 		return err
 	}
 	row.GMV = models.GMV(row.TotalPrice, row.DeliveryFee)
-	return a.sink.UpsertOrders(ctx, []models.CubeOrder{*row})
+	if err := a.sink.UpsertOrders(ctx, []models.CubeOrder{*row}); err != nil {
+		return err
+	}
+
+	history, err := a.source.FetchOrderStatusChangesByOrderID(ctx, orderID)
+	if err != nil {
+		return err
+	}
+	return a.sink.UpsertOrderStatusChanges(ctx, history)
 }
 
 // SyncFareQuoteByID re-sincroniza una sola cotización contra OLAP. La llama
@@ -236,6 +246,12 @@ func (a *etlApp) syncEntity(ctx context.Context, entity models.ETLEntity, from, 
 			return 0, err
 		}
 		return len(rows), a.sink.UpsertTrackingEvents(ctx, rows)
+	case models.EntityFactOrderStatusChange:
+		rows, err := a.source.FetchOrderStatusChanges(ctx, from, to)
+		if err != nil {
+			return 0, err
+		}
+		return len(rows), a.sink.UpsertOrderStatusChanges(ctx, rows)
 	default:
 		return 0, errcustom.ErrUnknownETLEntity
 	}

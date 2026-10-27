@@ -90,6 +90,10 @@ func TestRun_SyncsAllEntities(t *testing.T) {
 		FeeUSD: 1, FareBand: "day", QuoteHour: 12,
 	}}
 
+	statusChanges := []models.FactOrderStatusChange{{
+		ID: 1, OrderID: orderID, Status: "Completed", At: to,
+	}}
+
 	source.On("FetchShops", mock.Anything, from, to).Return(shops, nil)
 	source.On("FetchUsers", mock.Anything, from, to).Return(users, nil)
 	source.On("FetchRiders", mock.Anything, from, to).Return(riders, nil)
@@ -98,6 +102,7 @@ func TestRun_SyncsAllEntities(t *testing.T) {
 	source.On("FetchTrackingEvents", mock.Anything, from, to).Return(events, nil)
 	source.On("FetchFareQuotes", mock.Anything, from, to).Return(quotes, nil)
 	source.On("FetchDeliveryQuotes", mock.Anything, from, to).Return(deliveryQuotes, nil)
+	source.On("FetchOrderStatusChanges", mock.Anything, from, to).Return(statusChanges, nil)
 
 	sink.On("UpsertShops", mock.Anything, shops).Return(nil)
 	sink.On("UpsertUsers", mock.Anything, users).Return(nil)
@@ -109,6 +114,7 @@ func TestRun_SyncsAllEntities(t *testing.T) {
 	sink.On("UpsertTrackingEvents", mock.Anything, events).Return(nil)
 	sink.On("UpsertFareQuotes", mock.Anything, quotes).Return(nil)
 	sink.On("UpsertDeliveryQuotes", mock.Anything, deliveryQuotes).Return(nil)
+	sink.On("UpsertOrderStatusChanges", mock.Anything, statusChanges).Return(nil)
 
 	syncLog.On("Upsert", mock.Anything, models.EntityDimShop, to).Return(nil)
 	syncLog.On("Upsert", mock.Anything, models.EntityDimUser, to).Return(nil)
@@ -118,11 +124,12 @@ func TestRun_SyncsAllEntities(t *testing.T) {
 	syncLog.On("Upsert", mock.Anything, models.EntityFactTrackingEvent, to).Return(nil)
 	syncLog.On("Upsert", mock.Anything, models.EntityCubeFareQuote, to).Return(nil)
 	syncLog.On("Upsert", mock.Anything, models.EntityCubeDeliveryQuote, to).Return(nil)
+	syncLog.On("Upsert", mock.Anything, models.EntityFactOrderStatusChange, to).Return(nil)
 
 	etl := newETLApp(source, sink, syncLog)
 	result, err := etl.Run(context.Background(), from, to, nil)
 	require.NoError(t, err)
-	require.Equal(t, 8, len(result.Results))
+	require.Equal(t, 9, len(result.Results))
 	for _, item := range result.Results {
 		require.True(t, item.Success, item.Entity)
 	}
@@ -143,16 +150,66 @@ func TestSyncOrderByID_Success(t *testing.T) {
 
 	orderID := uuid.New()
 	order := &models.CubeOrder{OrderID: orderID, Status: "Completed", TotalPrice: 100, DeliveryFee: 10}
+	history := []models.FactOrderStatusChange{
+		{ID: 1, OrderID: orderID, Status: "Pending"},
+		{ID: 2, OrderID: orderID, Status: "Completed"},
+	}
 
 	source.On("FetchOrderByID", mock.Anything, orderID).Return(order, nil)
 	sink.On("UpsertOrders", mock.Anything, mock.MatchedBy(func(rows []models.CubeOrder) bool {
 		return len(rows) == 1 && rows[0].OrderID == orderID && rows[0].GMV == 90
 	})).Return(nil)
+	source.On("FetchOrderStatusChangesByOrderID", mock.Anything, orderID).Return(history, nil)
+	sink.On("UpsertOrderStatusChanges", mock.Anything, history).Return(nil)
 
 	etl := newETLApp(source, sink, syncLog)
 	err := etl.SyncOrderByID(context.Background(), orderID)
 
 	require.NoError(t, err)
+	source.AssertExpectations(t)
+	sink.AssertExpectations(t)
+}
+
+// insertInChunks ya no-opea en un slice vacío, así que SyncOrderByID no
+// necesita un guard propio: delega el caso vacío al sink sin problema.
+func TestSyncOrderByID_NoHistoryIsNoop(t *testing.T) {
+	source := new(mocks.OLTPSourceRepo)
+	sink := new(mocks.OLAPSinkRepo)
+	syncLog := new(mocks.SyncLogRepo)
+
+	orderID := uuid.New()
+	order := &models.CubeOrder{OrderID: orderID, Status: "Pending"}
+
+	source.On("FetchOrderByID", mock.Anything, orderID).Return(order, nil)
+	sink.On("UpsertOrders", mock.Anything, mock.Anything).Return(nil)
+	source.On("FetchOrderStatusChangesByOrderID", mock.Anything, orderID).Return([]models.FactOrderStatusChange{}, nil)
+	sink.On("UpsertOrderStatusChanges", mock.Anything, []models.FactOrderStatusChange{}).Return(nil)
+
+	etl := newETLApp(source, sink, syncLog)
+	err := etl.SyncOrderByID(context.Background(), orderID)
+
+	require.NoError(t, err)
+	source.AssertExpectations(t)
+	sink.AssertExpectations(t)
+}
+
+func TestSyncOrderByID_HistoryFetchError(t *testing.T) {
+	source := new(mocks.OLTPSourceRepo)
+	sink := new(mocks.OLAPSinkRepo)
+	syncLog := new(mocks.SyncLogRepo)
+
+	orderID := uuid.New()
+	order := &models.CubeOrder{OrderID: orderID, Status: "Completed", TotalPrice: 100, DeliveryFee: 10}
+
+	source.On("FetchOrderByID", mock.Anything, orderID).Return(order, nil)
+	sink.On("UpsertOrders", mock.Anything, mock.Anything).Return(nil)
+	source.On("FetchOrderStatusChangesByOrderID", mock.Anything, orderID).
+		Return(nil, errcustom.ErrUnexpectedError)
+
+	etl := newETLApp(source, sink, syncLog)
+	err := etl.SyncOrderByID(context.Background(), orderID)
+
+	require.ErrorIs(t, err, errcustom.ErrUnexpectedError)
 	source.AssertExpectations(t)
 	sink.AssertExpectations(t)
 }

@@ -58,6 +58,11 @@ type OLTPSourceRepo interface {
 	FetchFareQuoteByID(ctx context.Context, quoteID uuid.UUID) (*models.CubeFareQuote, error)
 	FetchDeliveryQuotes(ctx context.Context, from, to time.Time) ([]models.CubeDeliveryQuote, error)
 	FetchDeliveryQuoteByID(ctx context.Context, quoteID uuid.UUID) (*models.CubeDeliveryQuote, error)
+	FetchOrderStatusChanges(ctx context.Context, from, to time.Time) ([]models.FactOrderStatusChange, error)
+	// FetchOrderStatusChangesByOrderID trae TODO el historial de una orden (no
+	// una sola fila): a diferencia de las demás entidades, cada orden tiene
+	// varias filas de status_history.
+	FetchOrderStatusChangesByOrderID(ctx context.Context, orderID uuid.UUID) ([]models.FactOrderStatusChange, error)
 }
 
 type OLAPSinkRepo interface {
@@ -69,4 +74,5 @@ type OLAPSinkRepo interface {
 	UpsertTrackingEvents(ctx context.Context, rows []models.FactTrackingEvent) error
 	UpsertFareQuotes(ctx context.Context, rows []models.CubeFareQuote) error
 	UpsertDeliveryQuotes(ctx context.Context, rows []models.CubeDeliveryQuote) error
+	UpsertOrderStatusChanges(ctx context.Context, rows []models.FactOrderStatusChange) error
 }

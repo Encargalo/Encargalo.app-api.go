@@ -168,6 +168,66 @@ func (_m *OLTPSourceRepo) FetchOrderByID(ctx context.Context, orderID uuid.UUID)
 	return r0, r1
 }
 
+// FetchOrderStatusChanges provides a mock function with given fields: ctx, from, to
+func (_m *OLTPSourceRepo) FetchOrderStatusChanges(ctx context.Context, from time.Time, to time.Time) ([]models.FactOrderStatusChange, error) {
+	ret := _m.Called(ctx, from, to)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FetchOrderStatusChanges")
+	}
+
+	var r0 []models.FactOrderStatusChange
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time) ([]models.FactOrderStatusChange, error)); ok {
+		return rf(ctx, from, to)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time) []models.FactOrderStatusChange); ok {
+		r0 = rf(ctx, from, to)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.FactOrderStatusChange)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, time.Time, time.Time) error); ok {
+		r1 = rf(ctx, from, to)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// FetchOrderStatusChangesByOrderID provides a mock function with given fields: ctx, orderID
+func (_m *OLTPSourceRepo) FetchOrderStatusChangesByOrderID(ctx context.Context, orderID uuid.UUID) ([]models.FactOrderStatusChange, error) {
+	ret := _m.Called(ctx, orderID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FetchOrderStatusChangesByOrderID")
+	}
+
+	var r0 []models.FactOrderStatusChange
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) ([]models.FactOrderStatusChange, error)); ok {
+		return rf(ctx, orderID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) []models.FactOrderStatusChange); ok {
+		r0 = rf(ctx, orderID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.FactOrderStatusChange)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, orderID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // FetchOrders provides a mock function with given fields: ctx, from, to
 func (_m *OLTPSourceRepo) FetchOrders(ctx context.Context, from time.Time, to time.Time) ([]models.CubeOrder, error) {
 	ret := _m.Called(ctx, from, to)

@@ -596,3 +596,66 @@ func (r *oltpSourceRepo) FetchDeliveryQuoteByID(ctx context.Context, quoteID uui
 	cube := deliveryQuoteRowToCubeDeliveryQuote(row, time.Now().UTC())
 	return &cube, nil
 }
+
+type orderStatusChangeRow struct {
+	ID      int64     `bun:"id"`
+	OrderID uuid.UUID `bun:"order_id"`
+	Status  string    `bun:"status"`
+	At      time.Time `bun:"at"`
+}
+
+var orderStatusChangeColumns = []string{"h.id", "h.order_id", "h.status", "h.at"}
+
+func orderStatusChangeRowToFact(row orderStatusChangeRow, syncedAt time.Time) models.FactOrderStatusChange {
+	return models.FactOrderStatusChange{
+		ID:       row.ID,
+		OrderID:  row.OrderID,
+		Status:   row.Status,
+		At:       row.At,
+		SyncedAt: syncedAt,
+	}
+}
+
+// FetchOrderStatusChanges trae el historial crudo de orders.order_status_history,
+// alimentada por trigger en OLTP (cubre local, rider, auto-rechazo, revisión
+// de pago). No se interpreta la secuencia aquí: una orden puede reentrar a un
+// status ya visitado.
+func (r *oltpSourceRepo) FetchOrderStatusChanges(ctx context.Context, from, to time.Time) ([]models.FactOrderStatusChange, error) {
+	var rows []orderStatusChangeRow
+	err := r.db.NewSelect().
+		TableExpr("orders.order_status_history AS h").
+		Column(orderStatusChangeColumns...).
+		Where("h.at >= ? AND h.at < ?", from, to).
+		Scan(ctx, &rows)
+	if err != nil {
+		return nil, errcustom.Unexpected(err)
+	}
+
+	now := time.Now().UTC()
+	out := make([]models.FactOrderStatusChange, len(rows))
+	for i, row := range rows {
+		out[i] = orderStatusChangeRowToFact(row, now)
+	}
+	return out, nil
+}
+
+// FetchOrderStatusChangesByOrderID trae todo el historial de una orden
+// puntual, en reacción a order_created/order_status_changed/order_auto_rejected.
+func (r *oltpSourceRepo) FetchOrderStatusChangesByOrderID(ctx context.Context, orderID uuid.UUID) ([]models.FactOrderStatusChange, error) {
+	var rows []orderStatusChangeRow
+	err := r.db.NewSelect().
+		TableExpr("orders.order_status_history AS h").
+		Column(orderStatusChangeColumns...).
+		Where("h.order_id = ?", orderID).
+		Scan(ctx, &rows)
+	if err != nil {
+		return nil, errcustom.Unexpected(err)
+	}
+
+	now := time.Now().UTC()
+	out := make([]models.FactOrderStatusChange, len(rows))
+	for i, row := range rows {
+		out[i] = orderStatusChangeRowToFact(row, now)
+	}
+	return out, nil
+}
