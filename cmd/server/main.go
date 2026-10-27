@@ -16,6 +16,7 @@ import (
 	appPayments "Encargalo.app-api.go/internal/payments/app"
 	paymentsModels "Encargalo.app-api.go/internal/payments/domain/models"
 	paymentsPorts "Encargalo.app-api.go/internal/payments/domain/ports"
+	appRiders "Encargalo.app-api.go/internal/riders/app"
 	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/adapters/redis"
 	"Encargalo.app-api.go/internal/shared/applog"
@@ -87,6 +88,7 @@ func run() error {
 		orderMgr ordersPorts.AppManagerOrder,
 		ridersMgr ridersPorts.RidersApp,
 		streamTrimWorker *redis.StreamTrimWorker,
+		tripOfferTimeoutWorker *appRiders.TripOfferTimeoutWorker,
 	) error {
 		registry.Register(paymentsModels.ReferenceTypeOrder, orderSubject)
 		registry.Register(tripsModels.ReferenceTypeTrip, tripSubject)
@@ -107,6 +109,7 @@ func run() error {
 		refundAlertWorker.Start(context.Background())
 		accountDeletionWorker.Start(context.Background())
 		streamTrimWorker.Start(context.Background())
+		tripOfferTimeoutWorker.Start(context.Background())
 		router.Init()
 
 		addr := fmt.Sprintf(":%d", cfg.Server.Port)

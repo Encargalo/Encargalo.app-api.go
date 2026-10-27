@@ -19,7 +19,9 @@ func TestExpireTripIfStillSearching_CreditsPagoMovil(t *testing.T) {
 	tripsRepo := mocksriders.NewTripsStore(t)
 	earnings := mocksriders.NewTripEarningRecorder(t)
 	balance := mockpayments.NewCustomerBalanceCreditor(t)
-	mgr := New(repo, stream, bcv, tripsRepo, earnings, nil, balance, nil, nil, nil).(*appRidersManager)
+	offerTimeouts := mocksriders.NewTripOfferTimeoutStore(t)
+	offerTimeouts.On("Cancel", mock.Anything, mock.Anything).Return(nil)
+	mgr := New(repo, stream, bcv, tripsRepo, earnings, nil, balance, nil, nil, nil, offerTimeouts).(*appRidersManager)
 
 	fare := 5.0
 	rate := 40.0
@@ -54,7 +56,9 @@ func TestExpireTripIfStillSearching_WritesNoDriverReason(t *testing.T) {
 	tripsRepo := mocksriders.NewTripsStore(t)
 	earnings := mocksriders.NewTripEarningRecorder(t)
 	balance := mockpayments.NewCustomerBalanceCreditor(t)
-	mgr := New(repo, stream, bcv, tripsRepo, earnings, nil, balance, nil, nil, nil).(*appRidersManager)
+	offerTimeouts := mocksriders.NewTripOfferTimeoutStore(t)
+	offerTimeouts.On("Cancel", mock.Anything, mock.Anything).Return(nil)
+	mgr := New(repo, stream, bcv, tripsRepo, earnings, nil, balance, nil, nil, nil, offerTimeouts).(*appRidersManager)
 
 	tripID := uuid.New()
 	trip := &tripsModels.Trip{ID: tripID, CustomerID: uuid.New(), Status: tripsModels.TripStatusNoDriver}

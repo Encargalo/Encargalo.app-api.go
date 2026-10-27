@@ -227,6 +227,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(repoRiders.NewRiderPublicInfoLookup)
 	_ = Container.Provide(repoRiders.NewPassengerLookup)
 	_ = Container.Provide(repoRiders.NewRiderPresenceRepo)
+	_ = Container.Provide(repoRiders.NewTripOfferTimeoutRepo)
 	_ = Container.Provide(appRiders.NewRiderProfileApp)
 	_ = Container.Provide(func(mgr ridersPorts.RidersApp) ordersPorts.OrderRiderBroadcaster {
 		return mgr.(ordersPorts.OrderRiderBroadcaster)
@@ -308,6 +309,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(redis.NewStreamTrimWorker)
 	_ = Container.Provide(appRiders.New)
 	_ = Container.Provide(appRiders.NewFinanceApp)
+	_ = Container.Provide(appRiders.NewTripOfferTimeoutWorker)
 
 	_ = Container.Provide(repoAuth.NewAuthRepo)
 	_ = Container.Provide(repoShops.NewShopsRepository)

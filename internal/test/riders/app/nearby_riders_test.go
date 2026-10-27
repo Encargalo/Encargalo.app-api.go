@@ -41,7 +41,7 @@ func newNearbyMgrWithStore(t *testing.T) (ridersPorts.RidersApp, ridersPorts.Rid
 	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound).Maybe()
 
 	store := newPresenceStore(t)
-	return app.New(repo, stream, bcv, tripsRepo, earnings, nil, nil, nil, nil, store), store
+	return app.New(repo, stream, bcv, tripsRepo, earnings, nil, nil, nil, nil, store, newOfferTimeoutStore(t)), store
 }
 
 // newPresenceStore arma el adapter real contra un Redis en memoria.
@@ -50,6 +50,15 @@ func newPresenceStore(t *testing.T) ridersPorts.RiderPresenceStore {
 	client := redis.NewClient(&redis.Options{Addr: miniredis.RunT(t).Addr()})
 	t.Cleanup(func() { _ = client.Close() })
 	return ridersRepo.NewRiderPresenceRepo(client)
+}
+
+// newOfferTimeoutStore arma el adapter real de TripOfferTimeoutStore (ver
+// #359) contra un Redis en memoria, igual que newPresenceStore.
+func newOfferTimeoutStore(t *testing.T) ridersPorts.TripOfferTimeoutStore {
+	t.Helper()
+	client := redis.NewClient(&redis.Options{Addr: miniredis.RunT(t).Addr()})
+	t.Cleanup(func() { _ = client.Close() })
+	return ridersRepo.NewTripOfferTimeoutRepo(client)
 }
 
 // newRidersStream arma el mock de stream con un catch-all para

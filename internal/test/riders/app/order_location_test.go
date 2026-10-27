@@ -56,7 +56,7 @@ func newOrderLocationSvc(t *testing.T) (ridersPorts.RidersApp, *mocksriders.Ride
 	bcv := mockbcvports.NewBcvApp(t)
 	bcv.On("GetRate", mock.Anything).Return(nil, errors.New("bcv down")).Maybe()
 	repo.On("SearchShopByID", mock.Anything, mock.Anything).Return(&ordersModels.ShopOrder{}, nil).Maybe()
-	svc := app.New(repo, newRidersStream(t), bcv, mockstrips.NewTripsRepo(t), mocksriders.NewTripEarningRecorder(t), nil, nil, nil, nil, newPresenceStore(t))
+	svc := app.New(repo, newRidersStream(t), bcv, mockstrips.NewTripsRepo(t), mocksriders.NewTripEarningRecorder(t), nil, nil, nil, nil, newPresenceStore(t), newOfferTimeoutStore(t))
 	mockNotifier, notifier := newRecordingOrderNotifier(t)
 	setter, ok := svc.(ridersPorts.OrderCustomerNotifierSetter)
 	require.True(t, ok, "appRidersManager debe implementar OrderCustomerNotifierSetter")
