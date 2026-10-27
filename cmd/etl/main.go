@@ -144,6 +144,13 @@ var shopSyncEventTypes = map[string]bool{
 	"shop_updated": true,
 }
 
+// riderSyncEventTypes son los tipos de mensaje que implican que DimRider
+// puede haber cambiado (perfil, solicitud, revisión, activación/suspensión,
+// contacto).
+var riderSyncEventTypes = map[string]bool{
+	"rider_updated": true,
+}
+
 // startOrderEventConsumer lee el stream con su propio consumer group y
 // resincroniza puntualmente la entidad de cada evento relevante contra OLAP.
 func startOrderEventConsumer(ctx context.Context, cfg config.ETLConfig, etlApp ports.ETLApp) {
@@ -192,6 +199,8 @@ func processStreamEvent(ctx context.Context, msg redis.XMessage, etlApp ports.ET
 		return processTripEvent(ctx, msg, messageType, etlApp)
 	case shopSyncEventTypes[messageType]:
 		return processShopEvent(ctx, msg, messageType, etlApp)
+	case riderSyncEventTypes[messageType]:
+		return processRiderEvent(ctx, msg, messageType, etlApp)
 	default:
 		return nil
 	}
@@ -259,6 +268,19 @@ func processShopEvent(ctx context.Context, msg redis.XMessage, messageType strin
 		return err
 	}
 	slog.Info("etl consumer: local resincronizado", "shop_id", shopID, "type", messageType)
+	return nil
+}
+
+func processRiderEvent(ctx context.Context, msg redis.XMessage, messageType string, etlApp ports.ETLApp) error {
+	riderID, ok := parseEventID(msg, messageType, "rider_id")
+	if !ok {
+		return nil
+	}
+
+	if err := etlApp.SyncRiderByID(ctx, riderID); err != nil {
+		return err
+	}
+	slog.Info("etl consumer: conductor resincronizado", "rider_id", riderID, "type", messageType)
 	return nil
 }
 

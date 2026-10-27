@@ -161,16 +161,38 @@ type riderRow struct {
 	UpdatedAt   time.Time  `bun:"updated_at"`
 }
 
-func (r *oltpSourceRepo) FetchRiders(ctx context.Context, from, to time.Time) ([]models.DimRider, error) {
-	var rows []riderRow
-	err := r.db.NewSelect().
+// riderSelectQuery arma el select con el join a la cuenta, compartido entre
+// FetchRiders y FetchRiderByID; cada caller aplica su propio Where.
+func (r *oltpSourceRepo) riderSelectQuery() *bun.SelectQuery {
+	return r.db.NewSelect().
 		TableExpr("riders.profiles AS p").
 		Column("p.user_id", "p.status", "p.vehicle_type", "p.created_at", "p.activated_at", "p.updated_at").
 		ColumnExpr("a.name AS name").
 		ColumnExpr("a.sur_name AS sur_name").
 		ColumnExpr("a.phone AS phone").
 		ColumnExpr("a.email AS email").
-		Join("JOIN users.accounts AS a ON a.id = p.user_id").
+		Join("JOIN users.accounts AS a ON a.id = p.user_id")
+}
+
+func riderRowToDimRider(row riderRow, syncedAt time.Time) models.DimRider {
+	return models.DimRider{
+		RiderID:      row.UserID,
+		Name:         row.Name,
+		SurName:      row.SurName,
+		Phone:        row.Phone,
+		Email:        row.Email,
+		Status:       row.Status,
+		VehicleType:  row.VehicleType,
+		RegisteredAt: row.CreatedAt,
+		ActivatedAt:  row.ActivatedAt,
+		UpdatedAt:    row.UpdatedAt,
+		SyncedAt:     syncedAt,
+	}
+}
+
+func (r *oltpSourceRepo) FetchRiders(ctx context.Context, from, to time.Time) ([]models.DimRider, error) {
+	var rows []riderRow
+	err := r.riderSelectQuery().
 		Where("p.updated_at >= ? AND p.updated_at < ?", from, to).
 		Scan(ctx, &rows)
 	if err != nil {
@@ -180,21 +202,28 @@ func (r *oltpSourceRepo) FetchRiders(ctx context.Context, from, to time.Time) ([
 	now := time.Now().UTC()
 	out := make([]models.DimRider, len(rows))
 	for i, row := range rows {
-		out[i] = models.DimRider{
-			RiderID:      row.UserID,
-			Name:         row.Name,
-			SurName:      row.SurName,
-			Phone:        row.Phone,
-			Email:        row.Email,
-			Status:       row.Status,
-			VehicleType:  row.VehicleType,
-			RegisteredAt: row.CreatedAt,
-			ActivatedAt:  row.ActivatedAt,
-			UpdatedAt:    row.UpdatedAt,
-			SyncedAt:     now,
-		}
+		out[i] = riderRowToDimRider(row, now)
 	}
 	return out, nil
+}
+
+// FetchRiderByID no exige fila en riders.profiles solo para conductores
+// legacy sin expediente KYC (ver IsActiveRider): si no hay perfil, no hay
+// nada que resincronizar en DimRider.
+func (r *oltpSourceRepo) FetchRiderByID(ctx context.Context, riderID uuid.UUID) (*models.DimRider, error) {
+	var row riderRow
+	err := r.riderSelectQuery().
+		Where("p.user_id = ?", riderID).
+		Scan(ctx, &row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errcustom.ErrNotFound
+		}
+		return nil, errcustom.Unexpected(err)
+	}
+
+	dim := riderRowToDimRider(row, time.Now().UTC())
+	return &dim, nil
 }
 
 type orderRow struct {

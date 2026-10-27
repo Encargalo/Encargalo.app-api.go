@@ -273,3 +273,71 @@ func TestSyncTripByID_FetchError(t *testing.T) {
 	require.ErrorIs(t, err, errcustom.ErrNotFound)
 	sink.AssertNotCalled(t, "UpsertTrips", mock.Anything, mock.Anything)
 }
+
+func TestSyncShopByID_Success(t *testing.T) {
+	source := new(mocks.OLTPSourceRepo)
+	sink := new(mocks.OLAPSinkRepo)
+	syncLog := new(mocks.SyncLogRepo)
+
+	shopID := uuid.New()
+	shop := &models.DimShop{ShopID: shopID, Name: "Pizzería Don Luigi"}
+
+	source.On("FetchShopByID", mock.Anything, shopID).Return(shop, nil)
+	sink.On("UpsertShops", mock.Anything, []models.DimShop{*shop}).Return(nil)
+
+	etl := newETLApp(source, sink, syncLog)
+	err := etl.SyncShopByID(context.Background(), shopID)
+
+	require.NoError(t, err)
+	source.AssertExpectations(t)
+	sink.AssertExpectations(t)
+}
+
+func TestSyncShopByID_FetchError(t *testing.T) {
+	source := new(mocks.OLTPSourceRepo)
+	sink := new(mocks.OLAPSinkRepo)
+	syncLog := new(mocks.SyncLogRepo)
+
+	shopID := uuid.New()
+	source.On("FetchShopByID", mock.Anything, shopID).Return((*models.DimShop)(nil), errcustom.ErrNotFound)
+
+	etl := newETLApp(source, sink, syncLog)
+	err := etl.SyncShopByID(context.Background(), shopID)
+
+	require.ErrorIs(t, err, errcustom.ErrNotFound)
+	sink.AssertNotCalled(t, "UpsertShops", mock.Anything, mock.Anything)
+}
+
+func TestSyncRiderByID_Success(t *testing.T) {
+	source := new(mocks.OLTPSourceRepo)
+	sink := new(mocks.OLAPSinkRepo)
+	syncLog := new(mocks.SyncLogRepo)
+
+	riderID := uuid.New()
+	rider := &models.DimRider{RiderID: riderID, Status: "active"}
+
+	source.On("FetchRiderByID", mock.Anything, riderID).Return(rider, nil)
+	sink.On("UpsertRiders", mock.Anything, []models.DimRider{*rider}).Return(nil)
+
+	etl := newETLApp(source, sink, syncLog)
+	err := etl.SyncRiderByID(context.Background(), riderID)
+
+	require.NoError(t, err)
+	source.AssertExpectations(t)
+	sink.AssertExpectations(t)
+}
+
+func TestSyncRiderByID_FetchError(t *testing.T) {
+	source := new(mocks.OLTPSourceRepo)
+	sink := new(mocks.OLAPSinkRepo)
+	syncLog := new(mocks.SyncLogRepo)
+
+	riderID := uuid.New()
+	source.On("FetchRiderByID", mock.Anything, riderID).Return((*models.DimRider)(nil), errcustom.ErrNotFound)
+
+	etl := newETLApp(source, sink, syncLog)
+	err := etl.SyncRiderByID(context.Background(), riderID)
+
+	require.ErrorIs(t, err, errcustom.ErrNotFound)
+	sink.AssertNotCalled(t, "UpsertRiders", mock.Anything, mock.Anything)
+}

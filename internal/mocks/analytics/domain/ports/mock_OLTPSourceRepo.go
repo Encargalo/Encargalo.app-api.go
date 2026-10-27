@@ -198,6 +198,36 @@ func (_m *OLTPSourceRepo) FetchOrders(ctx context.Context, from time.Time, to ti
 	return r0, r1
 }
 
+// FetchRiderByID provides a mock function with given fields: ctx, riderID
+func (_m *OLTPSourceRepo) FetchRiderByID(ctx context.Context, riderID uuid.UUID) (*models.DimRider, error) {
+	ret := _m.Called(ctx, riderID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FetchRiderByID")
+	}
+
+	var r0 *models.DimRider
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*models.DimRider, error)); ok {
+		return rf(ctx, riderID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) *models.DimRider); ok {
+		r0 = rf(ctx, riderID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.DimRider)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, riderID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // FetchRiders provides a mock function with given fields: ctx, from, to
 func (_m *OLTPSourceRepo) FetchRiders(ctx context.Context, from time.Time, to time.Time) ([]models.DimRider, error) {
 	ret := _m.Called(ctx, from, to)

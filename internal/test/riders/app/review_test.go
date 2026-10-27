@@ -24,7 +24,8 @@ func pendingProfile(userID uuid.UUID) *models.RiderProfile {
 
 func TestRequestApplicationChanges_LeavesChangesRequested(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	stream := mocksriders.NewRidersStream(t)
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), stream)
 	userID, staffID := uuid.New(), uuid.New()
 	reason := "La foto de la licencia está borrosa"
 
@@ -38,6 +39,12 @@ func TestRequestApplicationChanges_LeavesChangesRequested(t *testing.T) {
 	repo.On("GetByUserID", mock.Anything, userID).Return(reviewed, nil).Once()
 	repo.On("GetAccountBasics", mock.Anything, userID).Return("Rider", "Prueba", "+584120000284", "r@x.com", nil)
 	repo.On("HasRiderRole", mock.Anything, userID).Return(false, nil)
+	// El ETL resincroniza DimRider por evento, no por el batch horario; cubre
+	// también RejectApplication, que comparte el helper review().
+	stream.On("PublisherEvent", mock.Anything, models.DataEventRiderUpdated{
+		MessageType: "rider_updated",
+		RiderID:     userID.String(),
+	}).Return(nil)
 
 	resp, err := svc.RequestApplicationChanges(context.Background(), userID, staffID, reason)
 
@@ -50,7 +57,7 @@ func TestRequestApplicationChanges_LeavesChangesRequested(t *testing.T) {
 
 func TestRejectApplication_LeavesRejected(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 	userID, staffID := uuid.New(), uuid.New()
 	reason := "Los documentos no corresponden al titular"
 
@@ -73,7 +80,7 @@ func TestRejectApplication_LeavesRejected(t *testing.T) {
 
 func TestReview_TrimsReasonBeforeSaving(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 	userID, staffID := uuid.New(), uuid.New()
 
 	repo.On("GetByUserID", mock.Anything, userID).Return(pendingProfile(userID), nil).Once()
@@ -90,7 +97,7 @@ func TestReview_TrimsReasonBeforeSaving(t *testing.T) {
 
 func TestReview_EmptyReasonIsRejectedBeforeTouchingTheProfile(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 
 	_, err := svc.RequestApplicationChanges(context.Background(), uuid.New(), uuid.New(), "   ")
 
@@ -107,7 +114,7 @@ func TestReview_OnlyPendingReviewCanBeDecided(t *testing.T) {
 	} {
 		t.Run(string(status), func(t *testing.T) {
 			repo := mocksriders.NewRiderProfileRepo(t)
-			svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+			svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 			userID := uuid.New()
 
 			profile := pendingProfile(userID)
@@ -123,7 +130,7 @@ func TestReview_OnlyPendingReviewCanBeDecided(t *testing.T) {
 
 func TestReview_MissingProfileIsNotFound(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 	userID := uuid.New()
 
 	repo.On("GetByUserID", mock.Anything, userID).Return(nil, errcustom.ErrNotFound)
@@ -136,7 +143,7 @@ func TestReview_MissingProfileIsNotFound(t *testing.T) {
 // El repo condiciona el UPDATE a pending_review: si alguien decidió en paralelo, el error sube tal cual.
 func TestReview_ConcurrentDecisionBubblesUp(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 	userID, staffID := uuid.New(), uuid.New()
 
 	repo.On("GetByUserID", mock.Anything, userID).Return(pendingProfile(userID), nil)

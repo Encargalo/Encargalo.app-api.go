@@ -163,6 +163,16 @@ func (a *etlApp) SyncShopByID(ctx context.Context, shopID uuid.UUID) error {
 	return a.sink.UpsertShops(ctx, []models.DimShop{*row})
 }
 
+// SyncRiderByID re-sincroniza un solo conductor contra OLAP. La llama el
+// consumidor de eventos (cmd/etl) al recibir rider_updated.
+func (a *etlApp) SyncRiderByID(ctx context.Context, riderID uuid.UUID) error {
+	row, err := a.source.FetchRiderByID(ctx, riderID)
+	if err != nil {
+		return err
+	}
+	return a.sink.UpsertRiders(ctx, []models.DimRider{*row})
+}
+
 func (a *etlApp) syncEntity(ctx context.Context, entity models.ETLEntity, from, to time.Time) (int, error) {
 	switch entity {
 	case models.EntityDimShop:

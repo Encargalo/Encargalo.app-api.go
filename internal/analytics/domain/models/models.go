@@ -39,7 +39,6 @@ var DefaultETLEntities = []ETLEntity{
 // tiempo real ni inflar el stream compartido con notifications.
 var CronETLEntities = []ETLEntity{
 	EntityDimUser,
-	EntityDimRider,
 	EntityFactTrackingEvent,
 }
 

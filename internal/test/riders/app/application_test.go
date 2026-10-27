@@ -20,7 +20,7 @@ import (
 
 func TestGetOwnApplication_RiderIsRejected(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 	userID := uuid.New()
 
 	repo.On("HasRiderRole", mock.Anything, userID).Return(true, nil)
@@ -32,7 +32,7 @@ func TestGetOwnApplication_RiderIsRejected(t *testing.T) {
 
 func TestGetOwnApplication_RoleLookupFails(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 	userID := uuid.New()
 
 	repo.On("HasRiderRole", mock.Anything, userID).Return(false, errcustom.ErrUnexpectedError)
@@ -44,7 +44,7 @@ func TestGetOwnApplication_RoleLookupFails(t *testing.T) {
 
 func TestGetOwnApplication_NoProfileReturnsEditableDraft(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 	userID := uuid.New()
 
 	repo.On("HasRiderRole", mock.Anything, userID).Return(false, nil)
@@ -61,7 +61,7 @@ func TestGetOwnApplication_NoProfileReturnsEditableDraft(t *testing.T) {
 
 func TestGetOwnApplication_PendingReviewIsNotEditable(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 	userID := uuid.New()
 	submittedAt := time.Date(2026, 10, 20, 15, 0, 0, 0, time.UTC)
 
@@ -85,7 +85,8 @@ func TestGetOwnApplication_PendingReviewIsNotEditable(t *testing.T) {
 func TestSaveOwnApplication_NewApplicationIsSavedAsDraft(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
 	up := mockuploadimage.NewUploadImage(t)
-	svc := app.NewRiderProfileApp(repo, up)
+	stream := mocksriders.NewRidersStream(t)
+	svc := app.NewRiderProfileApp(repo, up, stream)
 	userID := uuid.New()
 
 	repo.On("HasRiderRole", mock.Anything, userID).Return(false, nil)
@@ -99,6 +100,11 @@ func TestSaveOwnApplication_NewApplicationIsSavedAsDraft(t *testing.T) {
 			p.LicensePhotoURL != nil && *p.LicensePhotoURL == "https://cdn/license.jpg" &&
 			p.Notes == nil
 	})).Return(nil)
+	// El ETL resincroniza DimRider por evento, no por el batch horario.
+	stream.On("PublisherEvent", mock.Anything, models.DataEventRiderUpdated{
+		MessageType: "rider_updated",
+		RiderID:     userID.String(),
+	}).Return(nil)
 
 	resp, err := svc.SaveOwnApplication(context.Background(), userID, dtos.RiderApplicationRequest{
 		VehicleType:  new(" moto "),
@@ -113,7 +119,7 @@ func TestSaveOwnApplication_NewApplicationIsSavedAsDraft(t *testing.T) {
 
 func TestSaveOwnApplication_ChangesRequestedKeepsStatus(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 	userID := uuid.New()
 
 	profile := &models.RiderProfile{UserID: userID, Status: models.RiderProfileChangesRequested}
@@ -141,7 +147,7 @@ func TestSaveOwnApplication_LockedStatusesDoNotUpload(t *testing.T) {
 	for _, status := range statuses {
 		t.Run(string(status), func(t *testing.T) {
 			repo := mocksriders.NewRiderProfileRepo(t)
-			svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+			svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 			userID := uuid.New()
 
 			repo.On("HasRiderRole", mock.Anything, userID).Return(false, nil)
@@ -158,7 +164,7 @@ func TestSaveOwnApplication_LockedStatusesDoNotUpload(t *testing.T) {
 
 func TestSaveOwnApplication_RiderIsRejected(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 	userID := uuid.New()
 
 	repo.On("HasRiderRole", mock.Anything, userID).Return(true, nil)
@@ -170,7 +176,7 @@ func TestSaveOwnApplication_RiderIsRejected(t *testing.T) {
 
 func TestSaveOwnApplication_StatusChangedDuringSave(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 	userID := uuid.New()
 
 	repo.On("HasRiderRole", mock.Anything, userID).Return(false, nil)
@@ -185,7 +191,7 @@ func TestSaveOwnApplication_StatusChangedDuringSave(t *testing.T) {
 func TestSaveOwnApplication_ReplacedPhotoIsDeletedAfterSave(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
 	up := mockuploadimage.NewUploadImage(t)
-	svc := app.NewRiderProfileApp(repo, up)
+	svc := app.NewRiderProfileApp(repo, up, nil)
 	userID := uuid.New()
 
 	repo.On("HasRiderRole", mock.Anything, userID).Return(false, nil)
@@ -211,7 +217,7 @@ func TestSaveOwnApplication_ReplacedPhotoIsDeletedAfterSave(t *testing.T) {
 func TestSaveOwnApplication_LockedDuringSaveDeletesUploadedPhotos(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
 	up := mockuploadimage.NewUploadImage(t)
-	svc := app.NewRiderProfileApp(repo, up)
+	svc := app.NewRiderProfileApp(repo, up, nil)
 	userID := uuid.New()
 
 	repo.On("HasRiderRole", mock.Anything, userID).Return(false, nil)
@@ -236,7 +242,7 @@ func TestSaveOwnApplication_LockedDuringSaveDeletesUploadedPhotos(t *testing.T) 
 func TestSaveOwnApplication_PartialUploadFailureDeletesUploadedPhotos(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
 	up := mockuploadimage.NewUploadImage(t)
-	svc := app.NewRiderProfileApp(repo, up)
+	svc := app.NewRiderProfileApp(repo, up, nil)
 	userID := uuid.New()
 
 	repo.On("HasRiderRole", mock.Anything, userID).Return(false, nil)
@@ -258,7 +264,7 @@ func TestSaveOwnApplication_PartialUploadFailureDeletesUploadedPhotos(t *testing
 func TestSaveOwnApplication_UploadFails(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
 	up := mockuploadimage.NewUploadImage(t)
-	svc := app.NewRiderProfileApp(repo, up)
+	svc := app.NewRiderProfileApp(repo, up, nil)
 	userID := uuid.New()
 
 	repo.On("HasRiderRole", mock.Anything, userID).Return(false, nil)
@@ -274,12 +280,17 @@ func TestSaveOwnApplication_UploadFails(t *testing.T) {
 
 func TestSubmitOwnApplication_CompleteDraftGoesToReview(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	stream := mocksriders.NewRidersStream(t)
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), stream)
 	userID := uuid.New()
 
 	repo.On("HasRiderRole", mock.Anything, userID).Return(false, nil)
 	repo.On("GetByUserID", mock.Anything, userID).Return(completeProfile(userID, "moto"), nil).Once()
 	repo.On("SubmitApplication", mock.Anything, userID, mock.AnythingOfType("time.Time")).Return(nil)
+	stream.On("PublisherEvent", mock.Anything, models.DataEventRiderUpdated{
+		MessageType: "rider_updated",
+		RiderID:     userID.String(),
+	}).Return(nil)
 
 	resp, err := svc.SubmitOwnApplication(context.Background(), userID)
 
@@ -295,7 +306,7 @@ func TestSubmitOwnApplication_CompleteDraftGoesToReview(t *testing.T) {
 
 func TestSubmitOwnApplication_ChangesRequestedCanResubmit(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 	userID := uuid.New()
 
 	profile := completeProfile(userID, "bici")
@@ -313,7 +324,7 @@ func TestSubmitOwnApplication_ChangesRequestedCanResubmit(t *testing.T) {
 
 func TestSubmitOwnApplication_IncompleteIsRejected(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 	userID := uuid.New()
 
 	repo.On("HasRiderRole", mock.Anything, userID).Return(false, nil)
@@ -333,7 +344,7 @@ func TestSubmitOwnApplication_IncompleteIsRejected(t *testing.T) {
 
 func TestSubmitOwnApplication_WithoutApplicationIsIncomplete(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 	userID := uuid.New()
 
 	repo.On("HasRiderRole", mock.Anything, userID).Return(false, nil)
@@ -346,7 +357,7 @@ func TestSubmitOwnApplication_WithoutApplicationIsIncomplete(t *testing.T) {
 
 func TestSubmitOwnApplication_AlreadySubmittedIsLocked(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 	userID := uuid.New()
 
 	profile := completeProfile(userID, "moto")
@@ -362,7 +373,7 @@ func TestSubmitOwnApplication_AlreadySubmittedIsLocked(t *testing.T) {
 
 func TestSubmitOwnApplication_RiderIsRejected(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t))
+	svc := app.NewRiderProfileApp(repo, mockuploadimage.NewUploadImage(t), nil)
 	userID := uuid.New()
 
 	repo.On("HasRiderRole", mock.Anything, userID).Return(true, nil)

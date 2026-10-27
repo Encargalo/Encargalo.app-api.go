@@ -34,8 +34,9 @@ var _ uploadimage.UploadImage = (*stubUploader)(nil)
 
 func TestDeletePhoto_ClearsDBAndCloudinary(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
+	stream := mocksriders.NewRidersStream(t)
 	up := &stubUploader{}
-	svc := app.NewRiderProfileApp(repo, up)
+	svc := app.NewRiderProfileApp(repo, up, stream)
 
 	userID := uuid.New()
 	url := "https://res.cloudinary.com/demo/image/upload/v1/folder/id.jpg"
@@ -52,6 +53,11 @@ func TestDeletePhoto_ClearsDBAndCloudinary(t *testing.T) {
 	repo.On("GetByUserID", mock.Anything, userID).Return(cleared, nil).Once()
 	repo.On("GetAccountBasics", mock.Anything, userID).Return("Ada", "Lovelace", "+58000", "a@b.c", nil)
 	repo.On("HasRiderRole", mock.Anything, userID).Return(false, nil)
+	// El ETL resincroniza DimRider por evento, no por el batch horario.
+	stream.On("PublisherEvent", mock.Anything, models.DataEventRiderUpdated{
+		MessageType: "rider_updated",
+		RiderID:     userID.String(),
+	}).Return(nil)
 
 	resp, err := svc.DeletePhoto(context.Background(), userID, "id_photo")
 	require.NoError(t, err)
@@ -62,7 +68,7 @@ func TestDeletePhoto_ClearsDBAndCloudinary(t *testing.T) {
 func TestDeletePhoto_NoURL_Noop(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
 	up := &stubUploader{}
-	svc := app.NewRiderProfileApp(repo, up)
+	svc := app.NewRiderProfileApp(repo, up, nil)
 
 	userID := uuid.New()
 	profile := &models.RiderProfile{UserID: userID, Status: models.RiderProfileDraft}
@@ -79,7 +85,7 @@ func TestDeletePhoto_NoURL_Noop(t *testing.T) {
 
 func TestDeletePhoto_InvalidField(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
-	svc := app.NewRiderProfileApp(repo, &stubUploader{})
+	svc := app.NewRiderProfileApp(repo, &stubUploader{}, nil)
 
 	_, err := svc.DeletePhoto(context.Background(), uuid.New(), "nope")
 	assert.ErrorIs(t, err, errcustom.ErrNotFound)
@@ -88,7 +94,7 @@ func TestDeletePhoto_InvalidField(t *testing.T) {
 func TestDeletePhoto_CloudinaryFails_StillClearsDB(t *testing.T) {
 	repo := mocksriders.NewRiderProfileRepo(t)
 	up := &stubUploader{err: assert.AnError}
-	svc := app.NewRiderProfileApp(repo, up)
+	svc := app.NewRiderProfileApp(repo, up, nil)
 
 	userID := uuid.New()
 	url := "https://res.cloudinary.com/demo/image/upload/v1/folder/id.jpg"
