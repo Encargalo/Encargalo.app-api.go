@@ -54,6 +54,24 @@ func (_m *RiderProfileRepo) ClearPhoto(ctx context.Context, userID uuid.UUID, fi
 	return r0
 }
 
+// DeleteDeviceToken provides a mock function with given fields: ctx, riderID
+func (_m *RiderProfileRepo) DeleteDeviceToken(ctx context.Context, riderID uuid.UUID) error {
+	ret := _m.Called(ctx, riderID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteDeviceToken")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = rf(ctx, riderID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // DisableRiderRole provides a mock function with given fields: ctx, userID
 func (_m *RiderProfileRepo) DisableRiderRole(ctx context.Context, userID uuid.UUID) error {
 	ret := _m.Called(ctx, userID)
@@ -227,6 +245,36 @@ func (_m *RiderProfileRepo) GetByUserID(ctx context.Context, userID uuid.UUID) (
 	return r0, r1
 }
 
+// GetDeviceTokensByRiderIDs provides a mock function with given fields: ctx, riderIDs
+func (_m *RiderProfileRepo) GetDeviceTokensByRiderIDs(ctx context.Context, riderIDs []uuid.UUID) ([]models.RiderDeviceToken, error) {
+	ret := _m.Called(ctx, riderIDs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetDeviceTokensByRiderIDs")
+	}
+
+	var r0 []models.RiderDeviceToken
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []uuid.UUID) ([]models.RiderDeviceToken, error)); ok {
+		return rf(ctx, riderIDs)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []uuid.UUID) []models.RiderDeviceToken); ok {
+		r0 = rf(ctx, riderIDs)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.RiderDeviceToken)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []uuid.UUID) error); ok {
+		r1 = rf(ctx, riderIDs)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // HasRiderRole provides a mock function with given fields: ctx, userID
 func (_m *RiderProfileRepo) HasRiderRole(ctx context.Context, userID uuid.UUID) (bool, error) {
 	ret := _m.Called(ctx, userID)
@@ -386,6 +434,24 @@ func (_m *RiderProfileRepo) Upsert(ctx context.Context, profile *models.RiderPro
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, *models.RiderProfile) error); ok {
 		r0 = rf(ctx, profile)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// UpsertDeviceToken provides a mock function with given fields: ctx, token
+func (_m *RiderProfileRepo) UpsertDeviceToken(ctx context.Context, token models.RiderDeviceToken) error {
+	ret := _m.Called(ctx, token)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpsertDeviceToken")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, models.RiderDeviceToken) error); ok {
+		r0 = rf(ctx, token)
 	} else {
 		r0 = ret.Error(0)
 	}

@@ -3754,6 +3754,114 @@ const docTemplate = `{
                 }
             }
         },
+        "/riders/device-token": {
+            "put": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Registra o reemplaza el token FCM del dispositivo del rider autenticado. La app lo llama al iniciar sesión y cada vez que el token rota. Un rider tiene un solo token activo — un login nuevo pisa el anterior. Se usa para mandarle push cuando se le oferta un viaje o un pedido, en paralelo al WebSocket.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders"
+                ],
+                "summary": "Registrar token de push (FCM)",
+                "parameters": [
+                    {
+                        "description": "Token FCM y plataforma",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.UpsertDeviceTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Sin contenido"
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Sesión no encontrada o inválida",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/riders/location": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Equivalente REST de update_location, para cuando la app está en background y el WebSocket no está vivo. ` + "`" + `mode` + "`" + ` es obligatorio (` + "`" + `orders` + "`" + ` o ` + "`" + `trips` + "`" + `): sin conexión el backend no tiene de dónde inferirlo. Publica la misma presencia (Redis, TTL 45s) y última ubicación conocida (Postgres) que el WebSocket, y notifica al cliente si el rider tiene un viaje o pedido asignado en curso. No mete al rider en rondas de oferta nuevas: eso sigue exigiendo un socket conectado. Requiere cookie ` + "`" + `encargalo-session` + "`" + `. Rol: Rider.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders"
+                ],
+                "summary": "Reportar ubicación en background",
+                "parameters": [
+                    {
+                        "description": "Ubicación y modo actual",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.ReportLocationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Sin contenido"
+                    },
+                    "400": {
+                        "description": "Datos inválidos o coordenadas fuera del área de servicio",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Sesión no encontrada o inválida",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/riders/profile": {
             "get": {
                 "security": [
@@ -10284,6 +10392,32 @@ const docTemplate = `{
                 }
             }
         },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.ReportLocationRequest": {
+            "type": "object",
+            "required": [
+                "latitude",
+                "longitude",
+                "mode"
+            ],
+            "properties": {
+                "latitude": {
+                    "type": "number",
+                    "example": 10.4806
+                },
+                "longitude": {
+                    "type": "number",
+                    "example": -66.9036
+                },
+                "mode": {
+                    "type": "string",
+                    "enum": [
+                        "orders",
+                        "trips"
+                    ],
+                    "example": "trips"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_riders_domain_dtos.ReviewApplicationRequest": {
             "type": "object",
             "required": [
@@ -10674,6 +10808,27 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO"
                     }
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.UpsertDeviceTokenRequest": {
+            "type": "object",
+            "required": [
+                "fcm_token",
+                "platform"
+            ],
+            "properties": {
+                "fcm_token": {
+                    "type": "string",
+                    "example": "d_9x...token"
+                },
+                "platform": {
+                    "type": "string",
+                    "enum": [
+                        "android",
+                        "ios"
+                    ],
+                    "example": "android"
                 }
             }
         },

@@ -47,6 +47,16 @@ const (
 	tripEmptyRoundTimeout = 5 * time.Minute
 	// tripOfferMaxRounds es el tope de rondas, con o sin candidatos, antes de no_driver.
 	tripOfferMaxRounds = 4
+	// offlineOrderFallbackRadiusKm es el radio del respaldo de última ubicación
+	// conocida para pedidos: a diferencia de viajes, new_order no filtra por
+	// distancia a los riders conectados, así que no hay un radio "en vivo" que
+	// reusar — se fija uno razonable para el reparto a pie/moto/bici.
+	offlineOrderFallbackRadiusKm = 5.0
+	// lastKnownLocationTimeout acota cuánto puede vivir cada goroutine que
+	// toca riders.last_known_locations (guardado en cada update_location,
+	// búsqueda en cada ronda de oferta) — sin tope, una degradación de
+	// Postgres las acumula indefinidamente.
+	lastKnownLocationTimeout = 5 * time.Second
 )
 
 type appRidersManager struct {
@@ -81,6 +91,8 @@ type appRidersManager struct {
 	riderTrips      map[uuid.UUID]riderAssignment
 	orderNotifier   ridersPorts.OrderCustomerNotifier
 	offerTimeouts   ridersPorts.TripOfferTimeoutStore
+	lastKnown       ridersPorts.LastKnownLocationStore
+	push            ridersPorts.PushNotifier
 }
 
 type riderAssignment struct {
@@ -88,7 +100,7 @@ type riderAssignment struct {
 	customerID uuid.UUID
 }
 
-func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPorts.BcvApp, tripsRepo ridersPorts.TripsStore, tripEarnings ridersPorts.TripEarningRecorder, customers tripsPorts.CustomerTripNotifier, balance paymentsPorts.CustomerBalanceCreditor, passengers ridersPorts.PassengerLookup, vehicles ridersPorts.VehicleLookup, presence ridersPorts.RiderPresenceStore, offerTimeouts ridersPorts.TripOfferTimeoutStore) ridersPorts.RidersApp {
+func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPorts.BcvApp, tripsRepo ridersPorts.TripsStore, tripEarnings ridersPorts.TripEarningRecorder, customers tripsPorts.CustomerTripNotifier, balance paymentsPorts.CustomerBalanceCreditor, passengers ridersPorts.PassengerLookup, vehicles ridersPorts.VehicleLookup, presence ridersPorts.RiderPresenceStore, offerTimeouts ridersPorts.TripOfferTimeoutStore, lastKnown ridersPorts.LastKnownLocationStore, push ridersPorts.PushNotifier) ridersPorts.RidersApp {
 	return &appRidersManager{
 		availableRiders:    make(map[uuid.UUID]ridersPorts.RiderConn),
 		assignedOrders:     make(map[uuid.UUID][]uuid.UUID),
@@ -116,6 +128,8 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 		presence:           presence,
 		riderTrips:         make(map[uuid.UUID]riderAssignment),
 		offerTimeouts:      offerTimeouts,
+		lastKnown:          lastKnown,
+		push:               push,
 	}
 }
 
@@ -287,6 +301,34 @@ func (r *appRidersManager) savePresence(ctx context.Context, riderID uuid.UUID, 
 	if err := r.presence.SaveLocation(ctx, presence); err != nil {
 		slog.Error("error publicando la presencia del rider", "riderID", riderID, "error", err)
 	}
+	r.saveLastKnownLocation(riderID, location, mode, presence.Vehicle)
+}
+
+// saveLastKnownLocation persiste sin TTL lo mismo que savePresence manda a
+// Redis, para que el matching tenga un respaldo cuando la presencia viva
+// expira (rider sin la app abierta). Fire-and-forget: nunca debe frenar el
+// loop de mensajes del WS por una escritura a Postgres.
+func (r *appRidersManager) saveLastKnownLocation(riderID uuid.UUID, location riderModels.RiderLocation, mode riderModels.RiderMode, vehicle string) {
+	if r.lastKnown == nil {
+		return
+	}
+	go func() {
+		// Un timeout acotado evita que esta goroutine quede viva indefinidamente
+		// si Postgres se degrada — se dispara en cada update_location de cada
+		// rider conectado, así que sin tope el volumen acumula goroutines rápido.
+		ctx, cancel := context.WithTimeout(context.Background(), lastKnownLocationTimeout)
+		defer cancel()
+		loc := riderModels.RiderLastKnownLocation{
+			RiderID:   riderID,
+			Latitude:  location.Latitude,
+			Longitude: location.Longitude,
+			Mode:      mode,
+			Vehicle:   vehicle,
+		}
+		if err := r.lastKnown.Save(ctx, loc); err != nil {
+			slog.Error("error guardando la última ubicación conocida del rider", "riderID", riderID, "error", err)
+		}
+	}()
 }
 
 // removePresence corre con su propio contexto: cuando se llega acá el socket ya
@@ -320,6 +362,36 @@ func (r *appRidersManager) Unregister(riderID uuid.UUID, conn ridersPorts.RiderC
 }
 
 func (r *appRidersManager) UpdateLocation(ctx context.Context, riderID uuid.UUID, lat, lng float64) error {
+	r.mu.RLock()
+	mode := r.riderMode[riderID]
+	vehicle := r.riderVehicle[riderID]
+	r.mu.RUnlock()
+	return r.applyLocationUpdate(ctx, riderID, lat, lng, mode, vehicle)
+}
+
+// ReportLocation guarda la ubicación del rider fuera del WebSocket: la app la
+// manda también en background, cuando el socket ya no está vivo (se congela o
+// el OS lo mata). mode viene explícito del body porque sin conexión no hay de
+// dónde inferirlo — a diferencia de update_location, que lo lee del rider ya
+// registrado. vehicle reusa el caché en memoria si ya existe (de una conexión
+// WS previa) y solo golpea el perfil cuando no hay nada cacheado — este
+// endpoint puede llamarse con mucha más frecuencia que una conexión nueva.
+func (r *appRidersManager) ReportLocation(ctx context.Context, riderID uuid.UUID, lat, lng float64, mode riderModels.RiderMode) error {
+	r.mu.RLock()
+	vehicle, cached := r.riderVehicle[riderID]
+	r.mu.RUnlock()
+	if !cached {
+		vehicle = r.cacheRiderVehicle(ctx, riderID)
+	}
+	return r.applyLocationUpdate(ctx, riderID, lat, lng, mode, vehicle)
+}
+
+// applyLocationUpdate es el núcleo que comparten update_location (WebSocket) y
+// ReportLocation (background): valida y guarda la ubicación, publica presencia
+// y última ubicación conocida, y notifica a quien tenga un viaje o pedido
+// asignado. No depende de un socket vivo — offerOpenTripsToRider ya valida la
+// conexión por su cuenta y es un no-op sin ella.
+func (r *appRidersManager) applyLocationUpdate(ctx context.Context, riderID uuid.UUID, lat, lng float64, mode riderModels.RiderMode, vehicle string) error {
 	// LatLngToCell acepta cualquier coordenada del planeta: el área de servicio se exige aparte.
 	if !geo.InVenezuela(lat, lng) {
 		return errcustom.ErrInvalidCoordinates
@@ -340,8 +412,7 @@ func (r *appRidersManager) UpdateLocation(ctx context.Context, riderID uuid.UUID
 	r.mu.Lock()
 	prev, hadLocation := r.riderLocation[riderID]
 	r.riderLocation[riderID] = location
-	mode := r.riderMode[riderID]
-	vehicle := r.riderVehicle[riderID]
+	r.riderMode[riderID] = mode
 	inTripsMode := mode == riderModels.RiderModeTrips
 	assignment, onTrip := r.riderTrips[riderID]
 	r.mu.Unlock()
@@ -546,6 +617,8 @@ func (r *appRidersManager) BroadcastNewOrder(ctx context.Context, order ordersMo
 
 	r.mu.RLock()
 	clients := make([]ridersPorts.RiderConn, 0, len(r.availableRiders))
+	riderIDs := make([]uuid.UUID, 0, len(r.availableRiders))
+	seen := make(map[uuid.UUID]struct{}, len(r.availableRiders))
 	for riderID, c := range r.availableRiders {
 		if r.riderMode[riderID] == riderModels.RiderModeTrips {
 			continue
@@ -554,12 +627,16 @@ func (r *appRidersManager) BroadcastNewOrder(ctx context.Context, order ordersMo
 			continue
 		}
 		clients = append(clients, c)
+		riderIDs = append(riderIDs, riderID)
+		seen[riderID] = struct{}{}
 	}
 	r.mu.RUnlock()
 
 	for _, c := range clients {
 		c.Send(data)
 	}
+
+	r.pushNewOrder(order, msg.Shop, shopType, riderIDs, seen)
 
 	orderID := order.ID
 	go func() {
@@ -577,6 +654,50 @@ func (r *appRidersManager) BroadcastNewOrder(ctx context.Context, order ordersMo
 	}()
 }
 
+// pushNewOrder manda el push a los riders conectados en modo pedidos (mismo
+// pool que ya recibe el new_order por WS) más el respaldo de última ubicación
+// conocida alrededor del shop, para riders sin presencia viva. Sin shop no
+// hay centro para el respaldo geográfico: se pushea solo a los conectados.
+// pushNewOrder nunca corre en el camino síncrono del llamador: BroadcastNewOrder
+// se invoca directo desde el handler de cambio de estado de la orden, así que
+// hasta el fallback por última ubicación conocida (consulta a Postgres) tiene
+// que quedar en su propia goroutine — una consulta lenta no debe agregar
+// latencia a la petición HTTP del shop.
+func (r *appRidersManager) pushNewOrder(order ordersModels.Order, shop *ordersModels.ShopOrder, shopType string, riderIDs []uuid.UUID, exclude map[uuid.UUID]struct{}) {
+	if r.push == nil {
+		return
+	}
+	go func() {
+		if shop != nil && r.lastKnown != nil {
+			queryCtx, cancel := context.WithTimeout(context.Background(), lastKnownLocationTimeout)
+			entries, err := r.lastKnown.SearchNearby(queryCtx, riderModels.LastKnownLocationQuery{
+				Latitude:  shop.Latitude,
+				Longitude: shop.Longitude,
+				RadiusKm:  offlineOrderFallbackRadiusKm,
+				Mode:      riderModels.RiderModeOrders,
+				MaxAge:    riderModels.LastKnownLocationMaxAge,
+				Exclude:   exclude,
+			})
+			cancel()
+			if err != nil {
+				slog.Error("error buscando riders por última ubicación conocida para new_order", "orderID", order.ID, "error", err)
+			} else {
+				for _, e := range entries {
+					if !riderModels.VehicleCanCarryShopType(e.Vehicle, shopType) {
+						continue
+					}
+					riderIDs = append(riderIDs, e.RiderID)
+				}
+			}
+		}
+		if len(riderIDs) == 0 {
+			return
+		}
+		ctx := context.Background()
+		r.push.NotifyNewOrder(ctx, riderIDs, order)
+	}()
+}
+
 func (r *appRidersManager) BroadcastOrderUpdate(ctx context.Context, order ordersModels.Order) {
 	data, err := json.Marshal(r.orderBroadcast(ctx, "order_update", order, true))
 	if err != nil {
@@ -585,18 +706,38 @@ func (r *appRidersManager) BroadcastOrderUpdate(ctx context.Context, order order
 	}
 
 	r.mu.Lock()
-	defer r.mu.Unlock()
-
+	var assignedRiderID *uuid.UUID
 	for riderID, orderIDs := range r.assignedOrders {
-		if slices.Contains(orderIDs, order.ID) {
-			if c, ok := r.availableRiders[riderID]; ok {
-				c.Send(data)
-			}
+		if !slices.Contains(orderIDs, order.ID) {
+			continue
+		}
+		id := riderID
+		assignedRiderID = &id
+		if c, ok := r.availableRiders[riderID]; ok {
+			c.Send(data)
 		}
 	}
 	if isTerminalOrderStatus(order.Status) {
 		r.forgetOrderLocked(order.ID)
 	}
+	r.mu.Unlock()
+
+	// Solo Rejected/Cancelled son mala noticia para quien ya la tenía asignada:
+	// Completed ocurre con el rider entregando, de seguro con la app abierta.
+	status := ordersModels.OrderStatus(order.Status)
+	if status == ordersModels.StatusRejected || status == ordersModels.StatusCancelled {
+		r.pushOrderCancelled(order, assignedRiderID)
+	}
+}
+
+// pushOrderCancelled corre en su propia goroutine por la misma razón que
+// pushTripCancelled: no puede agregar latencia al camino síncrono del cambio
+// de estado de la orden.
+func (r *appRidersManager) pushOrderCancelled(order ordersModels.Order, riderID *uuid.UUID) {
+	if r.push == nil || riderID == nil {
+		return
+	}
+	go r.push.NotifyOrderCancelled(context.Background(), []uuid.UUID{*riderID}, order)
 }
 
 func (r *appRidersManager) AcceptOrder(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, conn ridersPorts.RiderConn) error {
@@ -760,13 +901,18 @@ func (r *appRidersManager) offerTripRound(trip tripsModels.Trip, round int) {
 	// Las rondas sobreviven al request que pidió el viaje: siguen en timers.
 	ctx := context.Background()
 	maxRings := tripSearchMaxRings + round - 1
-	candidates := r.nearestTripsRiders(ctx, trip, r.offerExclusions(trip.ID), maxRings)
+	exclusions := r.offerExclusions(trip.ID)
+	candidates := r.nearestTripsRiders(ctx, trip, exclusions, maxRings)
 	if len(candidates) == 0 {
 		// Sin celda H3 el viaje nunca va a matchear: no tiene sentido esperar.
 		if trip.PickupH3Cell == nil {
 			r.expireTripIfStillSearching(trip.ID)
 			return
 		}
+		// Riders sin presencia viva pero cerca por su última ubicación conocida:
+		// no entran a la ronda en vivo (no hay a quién mandarle WS), pero sí
+		// reciben el push — es justo el caso que esta ronda vacía no cubre.
+		r.pushTripOfferToOfflineCandidates(trip, exclusions, maxRings)
 		// Ronda vacía: igual espera tripEmptyRoundTimeout (puede conectarse un rider
 		// elegible) y cuenta como ronda; los ofertados de la ronda anterior ya
 		// no pueden aceptar.
@@ -819,7 +965,91 @@ func (r *appRidersManager) offerTripRound(trip tripsModels.Trip, round int) {
 	}
 	r.mu.RUnlock()
 
+	r.pushTripOffer(trip, candidates, exclusions, maxRings)
 	r.scheduleOfferTimeout(ctx, trip, tripAcceptTimeout)
+}
+
+// pushTripOffer manda el push a toda la ronda: los candidatos en vivo (hayan
+// quedado conectados o no en el instante del WS send) más el respaldo de
+// última ubicación conocida para riders sin presencia viva. El pool nunca se
+// amplía más allá de lo que ya calcula el matching en vivo (mismo radio).
+// Corre entero en su propia goroutine: offerTripRound se llama directo desde
+// el handler de creación de viajes, y offlineTripCandidates pega contra
+// Postgres — eso no puede agregar latencia a la petición del cliente.
+func (r *appRidersManager) pushTripOffer(trip tripsModels.Trip, candidates []riderModels.RiderLocationEntry, exclusions map[uuid.UUID]struct{}, maxRings int) {
+	if r.push == nil {
+		return
+	}
+	go func() {
+		ctx := context.Background()
+		riderIDs := make([]uuid.UUID, 0, len(candidates))
+		seen := make(map[uuid.UUID]struct{}, len(candidates))
+		for _, c := range candidates {
+			riderIDs = append(riderIDs, c.RiderID)
+			seen[c.RiderID] = struct{}{}
+		}
+		riderIDs = append(riderIDs, r.offlineTripCandidates(ctx, trip, seen, exclusions, maxRings)...)
+		r.push.NotifyTripOffer(ctx, riderIDs, trip)
+	}()
+}
+
+// pushTripOfferToOfflineCandidates cubre la ronda vacía: no hay nadie en vivo
+// para WS, pero puede haber riders cerca por última ubicación conocida.
+// Misma razón que pushTripOffer para correr en su propia goroutine.
+func (r *appRidersManager) pushTripOfferToOfflineCandidates(trip tripsModels.Trip, exclusions map[uuid.UUID]struct{}, maxRings int) {
+	if r.push == nil {
+		return
+	}
+	go func() {
+		ctx := context.Background()
+		riderIDs := r.offlineTripCandidates(ctx, trip, nil, exclusions, maxRings)
+		if len(riderIDs) == 0 {
+			return
+		}
+		r.push.NotifyTripOffer(ctx, riderIDs, trip)
+	}()
+}
+
+// offlineTripCandidates busca en la última ubicación conocida (sin TTL) a los
+// riders que SearchNearby no puede ver porque ya no tienen presencia viva en
+// Redis. Mismo radio que la ronda en vivo, acotado por LastKnownLocationMaxAge.
+func (r *appRidersManager) offlineTripCandidates(ctx context.Context, trip tripsModels.Trip, alreadyLive map[uuid.UUID]struct{}, exclusions map[uuid.UUID]struct{}, maxRings int) []uuid.UUID {
+	if r.lastKnown == nil {
+		return nil
+	}
+	exclude := make(map[uuid.UUID]struct{}, len(exclusions)+len(alreadyLive))
+	for id := range exclusions {
+		exclude[id] = struct{}{}
+	}
+	for id := range alreadyLive {
+		exclude[id] = struct{}{}
+	}
+	queryCtx, cancel := context.WithTimeout(ctx, lastKnownLocationTimeout)
+	defer cancel()
+	entries, err := r.lastKnown.SearchNearby(queryCtx, riderModels.LastKnownLocationQuery{
+		Latitude:        trip.PickupLatitude,
+		Longitude:       trip.PickupLongitude,
+		RadiusKm:        geo.RingsToKm(maxRings),
+		Mode:            riderModels.RiderModeTrips,
+		MaxAge:          riderModels.LastKnownLocationMaxAge,
+		ExcludeVehicles: []string{riderModels.VehicleTypeBike},
+		Exclude:         exclude,
+	})
+	if err != nil {
+		slog.Error("error buscando riders por última ubicación conocida para oferta de viaje", "tripID", trip.ID, "error", err)
+		return nil
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	riderIDs := make([]uuid.UUID, 0, len(entries))
+	for _, e := range entries {
+		if r.riderBusyLocked(e.RiderID) {
+			continue
+		}
+		riderIDs = append(riderIDs, e.RiderID)
+	}
+	return riderIDs
 }
 
 // scheduleOfferTimeout programa el vencimiento de la ronda en Redis en vez de
@@ -969,6 +1199,50 @@ func (r *appRidersManager) publishTripStatusChanged(ctx context.Context, trip *t
 	}
 }
 
+// notifyOtherCandidatesTripTaken avisa trip_taken a los demás riders que
+// tenían la oferta viva de este viaje (no solo al que intenta aceptar y
+// pierde la carrera, que ya lo recibe vía rejectAssignment) y limpia el
+// estado de la ronda, igual que clearTripOfferState.
+func (r *appRidersManager) notifyOtherCandidatesTripTaken(ctx context.Context, tripID, winnerID uuid.UUID) {
+	msg, err := json.Marshal(map[string]string{"type": "trip_taken", "trip_id": tripID.String()})
+	if err != nil {
+		slog.Error("error marshaling trip_taken", "tripID", tripID, "error", err)
+	}
+
+	r.mu.Lock()
+	recipients := make(map[uuid.UUID]ridersPorts.RiderConn)
+	collect := func(riderID uuid.UUID) {
+		if riderID == winnerID {
+			return
+		}
+		if conn, ok := r.availableRiders[riderID]; ok {
+			recipients[riderID] = conn
+		}
+	}
+	for riderID := range r.tripOffers[tripID] {
+		collect(riderID)
+	}
+	for riderID := range r.tripAlreadyOffered[tripID] {
+		collect(riderID)
+	}
+	delete(r.tripOffers, tripID)
+	delete(r.tripAlreadyOffered, tripID)
+	delete(r.tripOfferRounds, tripID)
+	delete(r.tripOfferTrip, tripID)
+	delete(r.tripExcluded, tripID)
+	r.mu.Unlock()
+
+	if msg != nil {
+		for _, conn := range recipients {
+			conn.Send(msg)
+		}
+	}
+
+	if err := r.offerTimeouts.Cancel(ctx, tripID); err != nil {
+		slog.Error("error cancelling trip offer timeout", "tripID", tripID, "error", err)
+	}
+}
+
 func (r *appRidersManager) clearTripOfferState(ctx context.Context, tripID uuid.UUID) {
 	r.mu.Lock()
 	delete(r.tripOffers, tripID)
@@ -1087,7 +1361,7 @@ func (r *appRidersManager) AcceptTrip(ctx context.Context, riderID, tripID uuid.
 		return r.rejectAssignment(ctx, tripID, conn)
 	}
 
-	r.clearTripOfferState(ctx, tripID)
+	r.notifyOtherCandidatesTripTaken(ctx, tripID, riderID)
 
 	acceptedAt := time.Now()
 	trip.RiderID = &riderID
@@ -1332,9 +1606,10 @@ func (r *appRidersManager) NotifyTripCancelled(ctx context.Context, trip tripsMo
 	for riderID := range r.tripAlreadyOffered[trip.ID] {
 		collect(riderID)
 	}
-	if trip.RiderID != nil {
-		collect(*trip.RiderID)
-		delete(r.riderTrips, *trip.RiderID)
+	assignedRiderID := trip.RiderID
+	if assignedRiderID != nil {
+		collect(*assignedRiderID)
+		delete(r.riderTrips, *assignedRiderID)
 	}
 	r.tripWithdrawn[trip.ID] = struct{}{}
 	delete(r.tripOffers, trip.ID)
@@ -1351,6 +1626,19 @@ func (r *appRidersManager) NotifyTripCancelled(ctx context.Context, trip tripsMo
 	for _, conn := range recipients {
 		conn.Send(payload)
 	}
+
+	// Solo al rider ya asignado: quien apenas tenía la oferta no perdió nada
+	// que requiera avisarle fuera del WS.
+	r.pushTripCancelled(trip, assignedRiderID)
+}
+
+// pushTripCancelled corre en su propia goroutine por la misma razón que
+// pushTripOffer: no puede agregar latencia al camino síncrono de CancelTrip.
+func (r *appRidersManager) pushTripCancelled(trip tripsModels.Trip, riderID *uuid.UUID) {
+	if r.push == nil || riderID == nil {
+		return
+	}
+	go r.push.NotifyTripCancelled(context.Background(), []uuid.UUID{*riderID}, trip)
 }
 
 func (r *appRidersManager) notifyCustomer(ctx context.Context, trip *tripsModels.Trip) {

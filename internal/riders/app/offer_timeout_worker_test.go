@@ -31,7 +31,7 @@ func TestTripOfferTimeoutWorker_ProcessDue_AdvancesEachClaimedTrip(t *testing.T)
 	tripsRepo.On("GetTripByID", mock.Anything, tripB).Return(&tripsModels.Trip{ID: tripB, Status: tripsModels.TripStatusCancelled}, nil).Once()
 	offerTimeouts.On("Cancel", mock.Anything, mock.AnythingOfType("uuid.UUID")).Return(nil)
 
-	svc := New(repo, stream, bcv, tripsRepo, earnings, nil, nil, nil, nil, nil, offerTimeouts)
+	svc := New(repo, stream, bcv, tripsRepo, earnings, nil, nil, nil, nil, nil, offerTimeouts, nil, nil)
 	worker := NewTripOfferTimeoutWorker(svc, offerTimeouts, tripsRepo)
 
 	worker.processDue(context.Background())
@@ -57,7 +57,7 @@ func TestTripOfferTimeoutWorker_RescueOrphans_SchedulesOnlyAbsentOnes(t *testing
 	offerTimeouts.On("ScheduleIfAbsent", mock.Anything, orphan, mock.AnythingOfType("time.Time")).Return(nil).Once()
 	offerTimeouts.On("ScheduleIfAbsent", mock.Anything, withTimer, mock.AnythingOfType("time.Time")).Return(nil).Once()
 
-	svc := New(repo, stream, bcv, tripsRepo, earnings, nil, nil, nil, nil, nil, offerTimeouts)
+	svc := New(repo, stream, bcv, tripsRepo, earnings, nil, nil, nil, nil, nil, offerTimeouts, nil, nil)
 	worker := NewTripOfferTimeoutWorker(svc, offerTimeouts, tripsRepo)
 
 	worker.rescueOrphans(context.Background())

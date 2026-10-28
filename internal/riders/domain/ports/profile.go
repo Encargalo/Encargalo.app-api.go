@@ -31,6 +31,13 @@ type RiderProfileRepo interface {
 	DisableRiderRole(ctx context.Context, userID uuid.UUID) error
 	FindAccountByPhone(ctx context.Context, phone string) (userID uuid.UUID, name, surName, phoneOut, email string, err error)
 	GetAccountBasics(ctx context.Context, userID uuid.UUID) (name, surName, phone, email string, err error)
+	// UpsertDeviceToken guarda o reemplaza el token FCM del rider (uno solo por rider).
+	UpsertDeviceToken(ctx context.Context, token models.RiderDeviceToken) error
+	// GetDeviceTokensByRiderIDs trae los tokens de varios riders en una sola consulta (lo usa el push, nunca N+1).
+	GetDeviceTokensByRiderIDs(ctx context.Context, riderIDs []uuid.UUID) ([]models.RiderDeviceToken, error)
+	// DeleteDeviceToken borra el token de un rider — lo usa el adapter de push cuando FCM
+	// responde que el token ya no está registrado.
+	DeleteDeviceToken(ctx context.Context, riderID uuid.UUID) error
 }
 
 type RiderProfileApp interface {
@@ -59,4 +66,6 @@ type RiderProfileApp interface {
 	RejectApplication(ctx context.Context, userID, staffID uuid.UUID, reason string) (dtos.RiderProfileResponse, error)
 	// IsActiveRider used by auth SignInRider gate.
 	IsActiveRider(ctx context.Context, userID uuid.UUID) (bool, error)
+	// UpsertDeviceToken registra o actualiza el token FCM del rider autenticado.
+	UpsertDeviceToken(ctx context.Context, userID uuid.UUID, req dtos.UpsertDeviceTokenRequest) error
 }

@@ -33,6 +33,7 @@ type Config struct {
 	Observability   Observability   `env:"observability"`
 	ExternalAPI     ExternalAPI     `env:"external_api"`
 	InternalGateway InternalGateway `env:"internal_gateway"`
+	Firebase        Firebase        `env:"firebase"`
 }
 
 type Server struct {
@@ -100,6 +101,17 @@ type Google struct {
 	// LanguageCode/RegionCode fijan el idioma y el país que se le piden a Places API; vacíos usan los defaults del adapter (es/VE).
 	LanguageCode string `env:"language_code"`
 	RegionCode   string `env:"region_code"`
+}
+
+// Firebase trae las credenciales del service account para mandar push por
+// FCM HTTP v1. CredentialsJSON es el JSON completo de la cuenta de servicio
+// (no un path: en Railway no hay filesystem persistente para montarlo).
+// Deliberadamente opcional (sin validate:"required"): el push es un canal
+// best-effort sobre el WebSocket, nunca debe poder tirar abajo el arranque
+// de todo el servidor por un secret ausente o mal configurado — sin esta env
+// var, fcm.NewClient devuelve un cliente nil y el push queda en no-op.
+type Firebase struct {
+	CredentialsJSON string `env:"credentials_json"`
 }
 
 type Cloudinary struct {
