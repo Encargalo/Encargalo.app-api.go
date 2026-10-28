@@ -183,6 +183,17 @@ type TouchContactRequest struct {
 	Notes *string `json:"notes"`
 }
 
+// UpsertDeviceTokenRequest registra o actualiza el token FCM del rider para
+// recibir push de ofertas de viaje/pedido.
+type UpsertDeviceTokenRequest struct {
+	FCMToken string `json:"fcm_token" validate:"required" example:"d_9x...token"`
+	Platform string `json:"platform" validate:"required,oneof=android ios" example:"android" enums:"android,ios"`
+}
+
+func (r *UpsertDeviceTokenRequest) Validate() error {
+	return applicationValidate.StructCtx(context.Background(), r)
+}
+
 // ActivateErrorResponse también se usa al enviar una solicitud incompleta.
 type ActivateErrorResponse struct {
 	Message string   `json:"message"`

@@ -24,6 +24,9 @@ type RidersApp interface {
 	Unregister(riderID uuid.UUID, conn RiderConn)
 	AcceptOrder(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, conn RiderConn) error
 	UpdateLocation(ctx context.Context, riderID uuid.UUID, lat, lng float64) error
+	// ReportLocation es el equivalente de UpdateLocation para cuando no hay
+	// socket vivo (la app en background) — ver #push-notifications-background.
+	ReportLocation(ctx context.Context, riderID uuid.UUID, lat, lng float64, mode riderModels.RiderMode) error
 	AcceptTrip(ctx context.Context, riderID, tripID uuid.UUID, conn RiderConn) error
 	// CancelAcceptedTrip libera un viaje accepted o arriving y lo vuelve a ofertar,
 	// excluyendo al rider que canceló. in_progress y completed no se pueden cancelar aquí.

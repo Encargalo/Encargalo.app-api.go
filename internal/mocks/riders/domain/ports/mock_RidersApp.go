@@ -140,6 +140,24 @@ func (_m *RidersApp) Register(ctx context.Context, riderID uuid.UUID, conn ports
 	return r0
 }
 
+// ReportLocation provides a mock function with given fields: ctx, riderID, lat, lng, mode
+func (_m *RidersApp) ReportLocation(ctx context.Context, riderID uuid.UUID, lat float64, lng float64, mode models.RiderMode) error {
+	ret := _m.Called(ctx, riderID, lat, lng, mode)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReportLocation")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, float64, float64, models.RiderMode) error); ok {
+		r0 = rf(ctx, riderID, lat, lng, mode)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // SendActiveTrips provides a mock function with given fields: ctx, riderID, conn
 func (_m *RidersApp) SendActiveTrips(ctx context.Context, riderID uuid.UUID, conn ports.RiderConn) error {
 	ret := _m.Called(ctx, riderID, conn)

@@ -1313,6 +1313,25 @@ definitions:
       user_id:
         type: string
     type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.ReportLocationRequest:
+    properties:
+      latitude:
+        example: 10.4806
+        type: number
+      longitude:
+        example: -66.9036
+        type: number
+      mode:
+        enum:
+        - orders
+        - trips
+        example: trips
+        type: string
+    required:
+    - latitude
+    - longitude
+    - mode
+    type: object
   Encargalo_app-api_go_internal_riders_domain_dtos.ReviewApplicationRequest:
     properties:
       reason:
@@ -1580,6 +1599,21 @@ definitions:
         items:
           $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO'
         type: array
+    type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.UpsertDeviceTokenRequest:
+    properties:
+      fcm_token:
+        example: d_9x...token
+        type: string
+      platform:
+        enum:
+        - android
+        - ios
+        example: android
+        type: string
+    required:
+    - fcm_token
+    - platform
     type: object
   Encargalo_app-api_go_internal_riders_domain_dtos.UpsertRiderProfileRequest:
     properties:
@@ -5334,6 +5368,83 @@ paths:
       summary: Balance del rider
       tags:
       - Riders Finance
+  /riders/device-token:
+    put:
+      consumes:
+      - application/json
+      description: Registra o reemplaza el token FCM del dispositivo del rider autenticado.
+        La app lo llama al iniciar sesión y cada vez que el token rota. Un rider tiene
+        un solo token activo — un login nuevo pisa el anterior. Se usa para mandarle
+        push cuando se le oferta un viaje o un pedido, en paralelo al WebSocket.
+      parameters:
+      - description: Token FCM y plataforma
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.UpsertDeviceTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Sin contenido
+        "400":
+          description: Datos inválidos
+          schema:
+            type: string
+        "401":
+          description: Sesión no encontrada o inválida
+          schema:
+            type: string
+        "403":
+          description: Acceso denegado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Registrar token de push (FCM)
+      tags:
+      - Riders
+  /riders/location:
+    post:
+      consumes:
+      - application/json
+      description: 'Equivalente REST de update_location, para cuando la app está en
+        background y el WebSocket no está vivo. `mode` es obligatorio (`orders` o
+        `trips`): sin conexión el backend no tiene de dónde inferirlo. Publica la
+        misma presencia (Redis, TTL 45s) y última ubicación conocida (Postgres) que
+        el WebSocket, y notifica al cliente si el rider tiene un viaje o pedido asignado
+        en curso. No mete al rider en rondas de oferta nuevas: eso sigue exigiendo
+        un socket conectado. Requiere cookie `encargalo-session`. Rol: Rider.'
+      parameters:
+      - description: Ubicación y modo actual
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.ReportLocationRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Sin contenido
+        "400":
+          description: Datos inválidos o coordenadas fuera del área de servicio
+          schema:
+            type: string
+        "401":
+          description: Sesión no encontrada o inválida
+          schema:
+            type: string
+        "403":
+          description: Acceso denegado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Reportar ubicación en background
+      tags:
+      - Riders
   /riders/profile:
     get:
       consumes:

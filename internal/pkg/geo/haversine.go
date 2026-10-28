@@ -17,3 +17,14 @@ func HaversineKm(lat1, lon1, lat2, lon2 float64) float64 {
 
 	return earthRadiusKm * c
 }
+
+// BoundingBoxDeltas da el delta de latitud/longitud (en grados) que cubre
+// radiusKm alrededor de lat — un pre-filtro barato en SQL antes de la
+// distancia exacta por Haversine (sin PostGIS, no evalúa trigonometría fila
+// por fila en la base).
+func BoundingBoxDeltas(lat, radiusKm float64) (latDelta, lngDelta float64) {
+	const kmPerDegreeLat = earthRadiusKm * math.Pi / 180
+	latDelta = radiusKm / kmPerDegreeLat
+	lngDelta = radiusKm / (kmPerDegreeLat * math.Cos(lat*math.Pi/180))
+	return latDelta, lngDelta
+}

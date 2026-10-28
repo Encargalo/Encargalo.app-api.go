@@ -57,7 +57,9 @@ func (r *ridersGroup) Resource(g *echo.Echo) {
 
 	riders := g.Group("/riders", r.middle.Auth, r.middle.Require(models.Rider))
 	riders.GET("/profile", r.handlerProfile.GetProfile)
+	riders.PUT("/device-token", r.handlerProfile.UpsertDeviceToken)
 	riders.GET("/trips/active", r.handlerRiders.GetActiveTrips)
+	riders.POST("/location", r.handlerRiders.ReportLocation)
 	riders.GET("/balance", r.handlerFinance.GetBalance)
 	riders.POST("/withdrawal", r.handlerFinance.RequestWithdrawal)
 	riders.GET("/transactions", r.handlerFinance.ListTransactions)

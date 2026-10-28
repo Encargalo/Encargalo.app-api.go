@@ -362,3 +362,41 @@ func (r *riderProfileRepo) GetAccountBasics(ctx context.Context, userID uuid.UUI
 	}
 	return acc.Name, sur, ph, em, nil
 }
+
+func (r *riderProfileRepo) UpsertDeviceToken(ctx context.Context, token models.RiderDeviceToken) error {
+	token.UpdatedAt = time.Now()
+	_, err := r.db.NewInsert().
+		Model(&token).
+		On("CONFLICT (rider_id) DO UPDATE").
+		Set("fcm_token = EXCLUDED.fcm_token").
+		Set("platform = EXCLUDED.platform").
+		Set("updated_at = EXCLUDED.updated_at").
+		Exec(ctx)
+	if err != nil {
+		slog.Error("rider UpsertDeviceToken failed", "riderID", token.RiderID, "error", err)
+		return errcustom.Unexpected(err)
+	}
+	return nil
+}
+
+func (r *riderProfileRepo) GetDeviceTokensByRiderIDs(ctx context.Context, riderIDs []uuid.UUID) ([]models.RiderDeviceToken, error) {
+	if len(riderIDs) == 0 {
+		return nil, nil
+	}
+	var tokens []models.RiderDeviceToken
+	err := r.db.NewSelect().Model(&tokens).Where("rider_id IN (?)", bun.In(riderIDs)).Scan(ctx)
+	if err != nil {
+		slog.Error("rider GetDeviceTokensByRiderIDs failed", "error", err)
+		return nil, errcustom.Unexpected(err)
+	}
+	return tokens, nil
+}
+
+func (r *riderProfileRepo) DeleteDeviceToken(ctx context.Context, riderID uuid.UUID) error {
+	_, err := r.db.NewDelete().Model((*models.RiderDeviceToken)(nil)).Where("rider_id = ?", riderID).Exec(ctx)
+	if err != nil {
+		slog.Error("rider DeleteDeviceToken failed", "riderID", riderID, "error", err)
+		return errcustom.Unexpected(err)
+	}
+	return nil
+}

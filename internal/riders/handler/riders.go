@@ -22,6 +22,7 @@ import (
 type RiderHandler interface {
 	HandleWebSocket(c echo.Context) error
 	GetActiveTrips(c echo.Context) error
+	ReportLocation(c echo.Context) error
 }
 
 type riderHandler struct {
@@ -311,6 +312,38 @@ func (h *riderHandler) GetActiveTrips(c echo.Context) error {
 		return errcustom.ToHTTPError(err)
 	}
 	return response.Send(c, http.StatusOK, dtos.ActiveTripsResponse{Trips: trips})
+}
+
+// ReportLocation godoc
+//
+// @Summary      Reportar ubicación en background
+// @Description  Equivalente REST de update_location, para cuando la app está en background y el WebSocket no está vivo. `mode` es obligatorio (`orders` o `trips`): sin conexión el backend no tiene de dónde inferirlo. Publica la misma presencia (Redis, TTL 45s) y última ubicación conocida (Postgres) que el WebSocket, y notifica al cliente si el rider tiene un viaje o pedido asignado en curso. No mete al rider en rondas de oferta nuevas: eso sigue exigiendo un socket conectado. Requiere cookie `encargalo-session`. Rol: Rider.
+// @Tags         Riders
+// @Accept       json
+// @Produce      json
+// @Security     SessionCookie
+// @Param        body  body  dtos.ReportLocationRequest  true  "Ubicación y modo actual"
+// @Success      204  "Sin contenido"
+// @Failure      400  {string}  string  "Datos inválidos o coordenadas fuera del área de servicio"
+// @Failure      401  {string}  string  "Sesión no encontrada o inválida"
+// @Failure      403  {string}  string  "Acceso denegado"
+// @Router       /riders/location [post]
+func (h *riderHandler) ReportLocation(c echo.Context) error {
+	ctx := c.Request().Context()
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
+
+	var req dtos.ReportLocationRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "payload inválido")
+	}
+	if err := req.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "payload inválido")
+	}
+
+	if err := h.svc.ReportLocation(ctx, session.UserID, req.Latitude, req.Longitude, riderModels.RiderMode(req.Mode)); err != nil {
+		return errcustom.ToHTTPError(err)
+	}
+	return c.NoContent(http.StatusNoContent)
 }
 
 func safeErrorMessage(err error) string {
