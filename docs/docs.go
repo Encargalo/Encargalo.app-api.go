@@ -3717,6 +3717,60 @@ const docTemplate = `{
                 }
             }
         },
+        "/riders/availability": {
+            "put": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "El rider sigue conectado y conserva su orden o viaje activo, pero mientras accepting_new_work sea false deja de recibir nuevas órdenes (new_order) y ofertas de viaje (trip_offer). No afecta lo ya asignado ni ofertas que le hayan llegado antes de pausar.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Riders"
+                ],
+                "summary": "Pausar o reanudar nuevas asignaciones",
+                "parameters": [
+                    {
+                        "description": "Estado de disponibilidad",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.SetAvailabilityRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Sin contenido"
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Sesión no encontrada o inválida",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/riders/balance": {
             "get": {
                 "security": [
@@ -10733,6 +10787,15 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_riders_domain_dtos.SetAvailabilityRequest": {
+            "type": "object",
+            "properties": {
+                "accepting_new_work": {
+                    "type": "boolean",
+                    "example": false
                 }
             }
         },

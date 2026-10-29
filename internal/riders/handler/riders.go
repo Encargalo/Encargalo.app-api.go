@@ -23,6 +23,7 @@ type RiderHandler interface {
 	HandleWebSocket(c echo.Context) error
 	GetActiveTrips(c echo.Context) error
 	ReportLocation(c echo.Context) error
+	SetAvailability(c echo.Context) error
 }
 
 type riderHandler struct {
@@ -341,6 +342,38 @@ func (h *riderHandler) ReportLocation(c echo.Context) error {
 	}
 
 	if err := h.svc.ReportLocation(ctx, session.UserID, req.Latitude, req.Longitude, riderModels.RiderMode(req.Mode)); err != nil {
+		return errcustom.ToHTTPError(err)
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+// SetAvailability godoc
+//
+// @Summary      Pausar o reanudar nuevas asignaciones
+// @Description  El rider sigue conectado y conserva su orden o viaje activo, pero mientras accepting_new_work sea false deja de recibir nuevas órdenes (new_order) y ofertas de viaje (trip_offer). No afecta lo ya asignado ni ofertas que le hayan llegado antes de pausar.
+// @Tags         Riders
+// @Accept       json
+// @Produce      json
+// @Security     SessionCookie
+// @Param        body  body  dtos.SetAvailabilityRequest  true  "Estado de disponibilidad"
+// @Success      204  "Sin contenido"
+// @Failure      400  {string}  string  "Datos inválidos"
+// @Failure      401  {string}  string  "Sesión no encontrada o inválida"
+// @Failure      403  {string}  string  "Acceso denegado"
+// @Router       /riders/availability [put]
+func (h *riderHandler) SetAvailability(c echo.Context) error {
+	ctx := c.Request().Context()
+	session := ctx.Value(authModels.SessionKey).(authModels.ActiveSession)
+
+	var req dtos.SetAvailabilityRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "payload inválido")
+	}
+	if err := req.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "payload inválido")
+	}
+
+	if err := h.svc.SetAvailability(ctx, session.UserID, req.AcceptingNewWork); err != nil {
 		return errcustom.ToHTTPError(err)
 	}
 	return c.NoContent(http.StatusNoContent)

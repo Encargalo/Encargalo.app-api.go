@@ -78,21 +78,24 @@ type appRidersManager struct {
 	completingTrips map[uuid.UUID]struct{}
 	// acceptingRiders evita que un rider acepte dos viajes a la vez antes de quedar en riderTrips.
 	acceptingRiders map[uuid.UUID]struct{}
-	repo            ridersPorts.RidersRepo
-	stream          ridersPorts.RidersStream
-	bcv             bcvPorts.BcvApp
-	tripsRepo       ridersPorts.TripsStore
-	tripEarnings    ridersPorts.TripEarningRecorder
-	customers       tripsPorts.CustomerTripNotifier
-	balance         paymentsPorts.CustomerBalanceCreditor
-	passengers      ridersPorts.PassengerLookup
-	vehicles        ridersPorts.VehicleLookup
-	presence        ridersPorts.RiderPresenceStore
-	riderTrips      map[uuid.UUID]riderAssignment
-	orderNotifier   ridersPorts.OrderCustomerNotifier
-	offerTimeouts   ridersPorts.TripOfferTimeoutStore
-	lastKnown       ridersPorts.LastKnownLocationStore
-	push            ridersPorts.PushNotifier
+	// pausedRiders espeja en memoria la pausa de nuevas asignaciones (fuente de
+	// verdad en Redis, ver RiderPresenceStore) para no pedirle a Redis en cada oferta.
+	pausedRiders  map[uuid.UUID]struct{}
+	repo          ridersPorts.RidersRepo
+	stream        ridersPorts.RidersStream
+	bcv           bcvPorts.BcvApp
+	tripsRepo     ridersPorts.TripsStore
+	tripEarnings  ridersPorts.TripEarningRecorder
+	customers     tripsPorts.CustomerTripNotifier
+	balance       paymentsPorts.CustomerBalanceCreditor
+	passengers    ridersPorts.PassengerLookup
+	vehicles      ridersPorts.VehicleLookup
+	presence      ridersPorts.RiderPresenceStore
+	riderTrips    map[uuid.UUID]riderAssignment
+	orderNotifier ridersPorts.OrderCustomerNotifier
+	offerTimeouts ridersPorts.TripOfferTimeoutStore
+	lastKnown     ridersPorts.LastKnownLocationStore
+	push          ridersPorts.PushNotifier
 }
 
 type riderAssignment struct {
@@ -116,6 +119,7 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 		tripWithdrawn:      make(map[uuid.UUID]struct{}),
 		completingTrips:    make(map[uuid.UUID]struct{}),
 		acceptingRiders:    make(map[uuid.UUID]struct{}),
+		pausedRiders:       make(map[uuid.UUID]struct{}),
 		repo:               repo,
 		stream:             stream,
 		bcv:                bcv,
@@ -211,6 +215,8 @@ func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn
 	r.riderMode[riderID] = mode
 	r.mu.Unlock()
 
+	r.restorePaused(ctx, riderID)
+
 	vehicle := r.cacheRiderVehicle(ctx, riderID)
 
 	// Un rider que se reconecta puede venir en otro modo: su ubicación ya
@@ -301,7 +307,63 @@ func (r *appRidersManager) savePresence(ctx context.Context, riderID uuid.UUID, 
 	if err := r.presence.SaveLocation(ctx, presence); err != nil {
 		slog.Error("error publicando la presencia del rider", "riderID", riderID, "error", err)
 	}
+	r.refreshPausedTTL(ctx, riderID)
 	r.saveLastKnownLocation(riderID, location, mode, presence.Vehicle)
+}
+
+// refreshPausedTTL extiende la pausa junto con la presencia: sin esto, un rider
+// pausado por más de PresenceTTL volvería a aparecer disponible solo porque
+// sigue reportando ubicación.
+func (r *appRidersManager) refreshPausedTTL(ctx context.Context, riderID uuid.UUID) {
+	r.mu.RLock()
+	_, paused := r.pausedRiders[riderID]
+	r.mu.RUnlock()
+	if !paused {
+		return
+	}
+	if err := r.presence.SetPaused(ctx, riderID, true); err != nil {
+		slog.Error("error refrescando la pausa del rider", "riderID", riderID, "error", err)
+	}
+}
+
+// restorePaused releva en memoria el estado de pausa persistido en Redis al
+// (re)conectar: una caída de red no debe obligar al rider a pausar de nuevo.
+func (r *appRidersManager) restorePaused(ctx context.Context, riderID uuid.UUID) {
+	if r.presence == nil {
+		return
+	}
+	paused, err := r.presence.IsPaused(ctx, riderID)
+	if err != nil {
+		slog.Error("error leyendo la pausa del rider", "riderID", riderID, "error", err)
+		return
+	}
+	r.mu.Lock()
+	if paused {
+		r.pausedRiders[riderID] = struct{}{}
+	} else {
+		delete(r.pausedRiders, riderID)
+	}
+	r.mu.Unlock()
+}
+
+// SetAvailability pausa o reanuda la recepción de nuevas órdenes y viajes. El
+// rider sigue conectado y conserva lo que ya tiene asignado.
+func (r *appRidersManager) SetAvailability(ctx context.Context, riderID uuid.UUID, acceptingNewWork bool) error {
+	paused := !acceptingNewWork
+	if r.presence == nil {
+		return errcustom.ErrUnexpectedError
+	}
+	if err := r.presence.SetPaused(ctx, riderID, paused); err != nil {
+		return err
+	}
+	r.mu.Lock()
+	if paused {
+		r.pausedRiders[riderID] = struct{}{}
+	} else {
+		delete(r.pausedRiders, riderID)
+	}
+	r.mu.Unlock()
+	return nil
 }
 
 // saveLastKnownLocation persiste sin TTL lo mismo que savePresence manda a
@@ -351,6 +413,7 @@ func (r *appRidersManager) Unregister(riderID uuid.UUID, conn ridersPorts.RiderC
 		delete(r.riderMode, riderID)
 		delete(r.riderLocation, riderID)
 		delete(r.riderVehicle, riderID)
+		delete(r.pausedRiders, riderID)
 	}
 	r.mu.Unlock()
 
@@ -621,6 +684,12 @@ func (r *appRidersManager) BroadcastNewOrder(ctx context.Context, order ordersMo
 	seen := make(map[uuid.UUID]struct{}, len(r.availableRiders))
 	for riderID, c := range r.availableRiders {
 		if r.riderMode[riderID] == riderModels.RiderModeTrips {
+			continue
+		}
+		if _, paused := r.pausedRiders[riderID]; paused {
+			// Pausado pero conectado: no recibe el broadcast, y tampoco el
+			// fallback de push por última ubicación conocida más abajo.
+			seen[riderID] = struct{}{}
 			continue
 		}
 		if !riderModels.VehicleCanCarryShopType(r.riderVehicle[riderID], shopType) {
@@ -1110,12 +1179,18 @@ func (r *appRidersManager) offerExclusions(tripID uuid.UUID) map[uuid.UUID]struc
 	for id := range r.acceptingRiders {
 		out[id] = struct{}{}
 	}
+	for id := range r.pausedRiders {
+		out[id] = struct{}{}
+	}
 	return out
 }
 
 // riderBusyLocked requiere r.mu tomado.
 func (r *appRidersManager) riderBusyLocked(riderID uuid.UUID) bool {
 	if _, onTrip := r.riderTrips[riderID]; onTrip {
+		return true
+	}
+	if _, paused := r.pausedRiders[riderID]; paused {
 		return true
 	}
 	_, accepting := r.acceptingRiders[riderID]

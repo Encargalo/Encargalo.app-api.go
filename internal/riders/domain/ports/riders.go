@@ -42,6 +42,9 @@ type RidersApp interface {
 	SendActiveTrips(ctx context.Context, riderID uuid.UUID, conn RiderConn) error
 	// ActiveTrips devuelve esos mismos viajes por REST, sin códigos de subida/bajada.
 	ActiveTrips(ctx context.Context, riderID uuid.UUID) ([]tripsDtos.TripResponse, error)
+	// SetAvailability pausa o reanuda la recepción de nuevas órdenes y viajes.
+	// El rider sigue conectado y conserva lo que ya tiene asignado.
+	SetAvailability(ctx context.Context, riderID uuid.UUID, acceptingNewWork bool) error
 }
 
 // OrderCustomerNotifier entrega al cliente de una orden la ubicación en vivo de su rider.

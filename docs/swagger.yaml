@@ -1551,6 +1551,12 @@ definitions:
       type:
         type: string
     type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.SetAvailabilityRequest:
+    properties:
+      accepting_new_work:
+        example: false
+        type: boolean
+    type: object
   Encargalo_app-api_go_internal_riders_domain_dtos.TouchContactRequest:
     properties:
       notes:
@@ -5341,6 +5347,43 @@ paths:
       summary: Enviar a revisión la propia solicitud para ser conductor
       tags:
       - Riders Application
+  /riders/availability:
+    put:
+      consumes:
+      - application/json
+      description: El rider sigue conectado y conserva su orden o viaje activo, pero
+        mientras accepting_new_work sea false deja de recibir nuevas órdenes (new_order)
+        y ofertas de viaje (trip_offer). No afecta lo ya asignado ni ofertas que le
+        hayan llegado antes de pausar.
+      parameters:
+      - description: Estado de disponibilidad
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.SetAvailabilityRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Sin contenido
+        "400":
+          description: Datos inválidos
+          schema:
+            type: string
+        "401":
+          description: Sesión no encontrada o inválida
+          schema:
+            type: string
+        "403":
+          description: Acceso denegado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Pausar o reanudar nuevas asignaciones
+      tags:
+      - Riders
   /riders/balance:
     get:
       description: Retorna balance_bs y balance_usd (tasa BCV vigente en bcv_rate),
