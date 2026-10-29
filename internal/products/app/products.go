@@ -78,7 +78,7 @@ func applyLaunchDiscount(item *dtos.ItemResponse, endsAt *time.Time) {
 	if endsAt == nil || !time.Now().Before(*endsAt) {
 		return
 	}
-	item.EffectiveRef = money.RoundBs(item.EffectiveRef * 0.5)
+	item.EffectiveRef = money.RoundUSD(item.EffectiveRef * 0.5)
 	item.HasLaunchPromo = true
 }
 

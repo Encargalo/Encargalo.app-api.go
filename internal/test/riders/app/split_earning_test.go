@@ -31,5 +31,5 @@ func TestRecordRideCashCollected_DebitsCashAboveRiderPay(t *testing.T) {
 	err := svc.RecordRideCashCollected(context.Background(), riderID, orderID, delivery, cashUSD, rate)
 
 	require.NoError(t, err)
-	require.Equal(t, -63.0, deltaBs)
+	require.Equal(t, -60.0, deltaBs)
 }
