@@ -16,6 +16,34 @@ type RiderPresenceStore struct {
 	mock.Mock
 }
 
+// IsPaused provides a mock function with given fields: ctx, riderID
+func (_m *RiderPresenceStore) IsPaused(ctx context.Context, riderID uuid.UUID) (bool, error) {
+	ret := _m.Called(ctx, riderID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsPaused")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (bool, error)); ok {
+		return rf(ctx, riderID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) bool); ok {
+		r0 = rf(ctx, riderID)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, riderID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Remove provides a mock function with given fields: ctx, riderID
 func (_m *RiderPresenceStore) Remove(ctx context.Context, riderID uuid.UUID) error {
 	ret := _m.Called(ctx, riderID)
@@ -80,6 +108,24 @@ func (_m *RiderPresenceStore) SearchNearby(ctx context.Context, query models.Pre
 	}
 
 	return r0, r1
+}
+
+// SetPaused provides a mock function with given fields: ctx, riderID, paused
+func (_m *RiderPresenceStore) SetPaused(ctx context.Context, riderID uuid.UUID, paused bool) error {
+	ret := _m.Called(ctx, riderID, paused)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetPaused")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, bool) error); ok {
+		r0 = rf(ctx, riderID, paused)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // NewRiderPresenceStore creates a new instance of RiderPresenceStore. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

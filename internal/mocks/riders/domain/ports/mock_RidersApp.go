@@ -176,6 +176,24 @@ func (_m *RidersApp) SendActiveTrips(ctx context.Context, riderID uuid.UUID, con
 	return r0
 }
 
+// SetAvailability provides a mock function with given fields: ctx, riderID, acceptingNewWork
+func (_m *RidersApp) SetAvailability(ctx context.Context, riderID uuid.UUID, acceptingNewWork bool) error {
+	ret := _m.Called(ctx, riderID, acceptingNewWork)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetAvailability")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, bool) error); ok {
+		r0 = rf(ctx, riderID, acceptingNewWork)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // Unregister provides a mock function with given fields: riderID, conn
 func (_m *RidersApp) Unregister(riderID uuid.UUID, conn ports.RiderConn) {
 	_m.Called(riderID, conn)

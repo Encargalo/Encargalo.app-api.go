@@ -18,6 +18,10 @@ import (
 const (
 	presenceKeyPrefix = "riders:presence:"
 	presenceGeoPrefix = "riders:geo:"
+	// pausedKeyPrefix es una clave aparte del hash de presencia: ese hash se
+	// borra entero en cada Unregister, y una reconexión de red no debe
+	// quitarle la pausa al rider sin que la pida.
+	pausedKeyPrefix = "riders:paused:"
 )
 
 type riderPresenceRepo struct {
@@ -34,6 +38,10 @@ func presenceKey(riderID uuid.UUID) string {
 
 func presenceGeoKey(mode models.RiderMode) string {
 	return presenceGeoPrefix + string(mode)
+}
+
+func pausedKey(riderID uuid.UUID) string {
+	return pausedKeyPrefix + riderID.String()
 }
 
 // otherMode es el índice del que hay que sacar al rider al guardar, para que un
@@ -180,6 +188,31 @@ func (r *riderPresenceRepo) dropStale(ctx context.Context, geoKey string, member
 	if err := r.redis.ZRem(ctx, geoKey, members...).Err(); err != nil {
 		slog.Error("riderPresence dropStale redis failed", "error", err)
 	}
+}
+
+func (r *riderPresenceRepo) SetPaused(ctx context.Context, riderID uuid.UUID, paused bool) error {
+	key := pausedKey(riderID)
+	if !paused {
+		if err := r.redis.Del(ctx, key).Err(); err != nil {
+			slog.Error("riderPresence SetPaused(false) redis failed", "riderID", riderID, "error", err)
+			return errcustom.ErrUnexpectedError
+		}
+		return nil
+	}
+	if err := r.redis.Set(ctx, key, "1", models.PresenceTTL).Err(); err != nil {
+		slog.Error("riderPresence SetPaused(true) redis failed", "riderID", riderID, "error", err)
+		return errcustom.ErrUnexpectedError
+	}
+	return nil
+}
+
+func (r *riderPresenceRepo) IsPaused(ctx context.Context, riderID uuid.UUID) (bool, error) {
+	exists, err := r.redis.Exists(ctx, pausedKey(riderID)).Result()
+	if err != nil {
+		slog.Error("riderPresence IsPaused redis failed", "riderID", riderID, "error", err)
+		return false, errcustom.ErrUnexpectedError
+	}
+	return exists > 0, nil
 }
 
 func decodePresence(member string, fields map[string]string) (models.RiderPresence, bool) {

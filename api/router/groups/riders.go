@@ -60,6 +60,7 @@ func (r *ridersGroup) Resource(g *echo.Echo) {
 	riders.PUT("/device-token", r.handlerProfile.UpsertDeviceToken)
 	riders.GET("/trips/active", r.handlerRiders.GetActiveTrips)
 	riders.POST("/location", r.handlerRiders.ReportLocation)
+	riders.PUT("/availability", r.handlerRiders.SetAvailability)
 	riders.GET("/balance", r.handlerFinance.GetBalance)
 	riders.POST("/withdrawal", r.handlerFinance.RequestWithdrawal)
 	riders.GET("/transactions", r.handlerFinance.ListTransactions)
