@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.11.2](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.11.1...v2.11.2) (2026-10-30)
+
+
+### Bug Fixes
+
+* **riders:** alinea tests con el bono de acercamiento y redondeo a la decena ([ae8f021](https://github.com/Encargalo/Encargalo.app-api.go/commit/ae8f0219f3e10fa4eb9771c238c1a9aeffe982d7))
+
 ## [2.11.1](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.11.0...v2.11.1) (2026-10-30)
 
 
