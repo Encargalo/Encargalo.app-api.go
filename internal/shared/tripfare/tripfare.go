@@ -38,6 +38,15 @@ const (
 	// DevPlaceholderFee es la tarifa fija que se usa fuera de production, para
 	// no gastar cuota de la API de Google Maps en desarrollo.
 	DevPlaceholderFee = 2.0
+
+	// PickupDistanceThresholdKm es el acercamiento al pickup a partir del cual ya no lo absorbe el rider solo.
+	PickupDistanceThresholdKm = 3.0
+
+	// PickupBonusRatePerKm es lo que se le paga al rider por km de acercamiento una vez superado el umbral.
+	PickupBonusRatePerKm = 0.40
+
+	// PickupUserSurchargeKm son los km de acercamiento que el cargo al usuario cubre, como monto fijo.
+	PickupUserSurchargeKm = 2.0
 )
 
 // Band es el tramo horario que determina el multiplicador de la tarifa.
@@ -94,6 +103,22 @@ func FromDistanceAt(distanceMeters float64, now time.Time) float64 {
 	}
 
 	return money.RoundUSD(fare * BandAt(now).Multiplier())
+}
+
+// PickupBonus paga al rider su distancia real de acercamiento; 0 si no supera el umbral.
+func PickupBonus(pickupDistanceKm float64) float64 {
+	if pickupDistanceKm <= PickupDistanceThresholdKm {
+		return 0
+	}
+	return money.RoundUSD(pickupDistanceKm * PickupBonusRatePerKm)
+}
+
+// PickupSurcharge es un monto fijo, no escala con la distancia real, para no trasladarle al usuario la variabilidad de qué rider termine aceptando.
+func PickupSurcharge(avgPickupDistanceKm float64) float64 {
+	if avgPickupDistanceKm <= PickupDistanceThresholdKm {
+		return 0
+	}
+	return money.RoundUSD(PickupUserSurchargeKm * PickupBonusRatePerKm)
 }
 
 // Estimate agrega la distancia y duración estimadas del trayecto junto con la

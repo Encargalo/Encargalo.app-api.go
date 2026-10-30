@@ -16,6 +16,7 @@ import (
 	"Encargalo.app-api.go/internal/riders/domain/models"
 	"Encargalo.app-api.go/internal/riders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/shared/tripfare"
 	"github.com/google/uuid"
 )
 
@@ -100,14 +101,16 @@ func (f *financeApp) RecordRideCashCollected(ctx context.Context, riderID uuid.U
 }
 
 // RecordTripEarning credits the rider's balance with RiderShare of the trip
-// fare (USD, calculado por distancia vial pickup→dropoff), convertido a Bs
-// con bcvRate — análogo a RecordRideEarning pero sin payment_method (los
-// viajes no lo tienen todavía).
-func (f *financeApp) RecordTripEarning(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare, bcvRate float64) error {
+// fare (USD, calculado por distancia vial pickup→dropoff) más el bono de
+// acercamiento al pickup (tripfare.PickupBonus), convertido a Bs con bcvRate
+// — análogo a RecordRideEarning pero sin payment_method (los viajes no lo
+// tienen todavía).
+func (f *financeApp) RecordTripEarning(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare, pickupDistanceKm, bcvRate float64) error {
 	if bcvRate <= 0 {
 		return errcustom.ErrBcvRateUnavailable
 	}
-	deltaBs := money.RoundBs(models.RiderPayUSD(fare) * bcvRate)
+	bonus := tripfare.PickupBonus(pickupDistanceKm)
+	deltaBs := money.RoundBs(models.RiderPayUSD(fare+bonus) * bcvRate)
 	rate := bcvRate
 	serviceType := models.ServiceTypeTrip
 
@@ -119,6 +122,10 @@ func (f *financeApp) RecordTripEarning(ctx context.Context, riderID uuid.UUID, t
 		Currency:     models.CurrencyVES,
 		BcvRate:      &rate,
 		CreatedAt:    time.Now(),
+	}
+	// Solo se deja rastro de la distancia en el ledger cuando de verdad disparó un bono.
+	if bonus > 0 {
+		tx.DistanceKm = &pickupDistanceKm
 	}
 
 	_, err := f.repo.RecordMovement(ctx, riderID, entityTypeRider, deltaBs, 0, tx)

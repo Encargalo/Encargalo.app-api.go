@@ -21,11 +21,12 @@ type TripQuote struct {
 	DropoffLongitude float64
 	DistanceMeters   float64
 	DurationMin      int64
-	// FareUSD ya trae restado DiscountUSD: es lo que paga el cliente.
-	FareUSD     float64
-	DiscountUSD float64
-	FareBs      float64
-	BcvRate     float64
+	// FareUSD ya trae restado DiscountUSD y sumado PickupSurchargeUSD: es lo que paga el cliente.
+	FareUSD            float64
+	DiscountUSD        float64
+	PickupSurchargeUSD float64
+	FareBs             float64
+	BcvRate            float64
 	// FareBand es el tramo horario que produjo FareUSD, congelado junto con él.
 	FareBand string
 	// VehicleType es el servicio elegido; el viaje lo hereda de acá, no del request.

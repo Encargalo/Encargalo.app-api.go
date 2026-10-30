@@ -26,20 +26,21 @@ import (
 )
 
 type tripsApp struct {
-	repo        ports.TripsRepo
-	matcher     ports.TripRiderMatcher
-	bcv         bcvPorts.BcvApp
-	quotes      ports.TripQuotesRepo
-	upload      uploadimage.UploadImage
-	reviews     paymentsPorts.PaymentReviewsApp
-	hub         paymentsPorts.StaffReviewHub
-	riders      ports.RiderPublicInfoLookup
-	balance     paymentsPorts.CustomerBalanceCreditor
-	customers   ports.CustomerTripNotifier
-	nearby      ports.NearbyRidersLookup
-	riderNotify ports.TripRiderNotifier
-	events      ports.TripEventPublisher
-	fareQuotes  ports.FareQuotesRepo
+	repo             ports.TripsRepo
+	matcher          ports.TripRiderMatcher
+	bcv              bcvPorts.BcvApp
+	quotes           ports.TripQuotesRepo
+	upload           uploadimage.UploadImage
+	reviews          paymentsPorts.PaymentReviewsApp
+	hub              paymentsPorts.StaffReviewHub
+	riders           ports.RiderPublicInfoLookup
+	balance          paymentsPorts.CustomerBalanceCreditor
+	customers        ports.CustomerTripNotifier
+	nearby           ports.NearbyRidersLookup
+	riderNotify      ports.TripRiderNotifier
+	events           ports.TripEventPublisher
+	fareQuotes       ports.FareQuotesRepo
+	pickupCandidates ports.PickupCandidatesLookup
 }
 
 func NewTripsApp(
@@ -57,22 +58,24 @@ func NewTripsApp(
 	riderNotify ports.TripRiderNotifier,
 	events ports.TripEventPublisher,
 	fareQuotes ports.FareQuotesRepo,
+	pickupCandidates ports.PickupCandidatesLookup,
 ) ports.TripsApp {
 	return &tripsApp{
-		repo:        repo,
-		matcher:     matcher,
-		bcv:         bcv,
-		quotes:      quotes,
-		upload:      upload,
-		reviews:     reviews,
-		hub:         hub,
-		riders:      riders,
-		balance:     balance,
-		customers:   customers,
-		nearby:      nearby,
-		riderNotify: riderNotify,
-		events:      events,
-		fareQuotes:  fareQuotes,
+		repo:             repo,
+		matcher:          matcher,
+		bcv:              bcv,
+		quotes:           quotes,
+		upload:           upload,
+		reviews:          reviews,
+		hub:              hub,
+		riders:           riders,
+		balance:          balance,
+		customers:        customers,
+		nearby:           nearby,
+		riderNotify:      riderNotify,
+		events:           events,
+		fareQuotes:       fareQuotes,
+		pickupCandidates: pickupCandidates,
 	}
 }
 
@@ -626,28 +629,30 @@ func (a *tripsApp) EstimateFare(ctx context.Context, req dtos.FareEstimateReques
 	}
 
 	discount := a.firstTripDiscount(ctx, req.CustomerID, estimate.Fee)
-	fare := money.RoundUSD(estimate.Fee - discount)
+	surcharge := a.pickupSurcharge(ctx, req.PickupLatitude, req.PickupLongitude)
+	fare := money.RoundUSD(estimate.Fee - discount + surcharge)
 
 	now := time.Now()
 	quote := &models.TripQuote{
-		QuoteID:          id.New(),
-		CustomerID:       req.CustomerID,
-		PickupAddress:    req.PickupAddress,
-		PickupLatitude:   req.PickupLatitude,
-		PickupLongitude:  req.PickupLongitude,
-		DropoffAddress:   req.DropoffAddress,
-		DropoffLatitude:  req.DropoffLatitude,
-		DropoffLongitude: req.DropoffLongitude,
-		DistanceMeters:   estimate.DistanceMeters,
-		DurationMin:      estimate.DurationMin,
-		FareUSD:          fare,
-		DiscountUSD:      discount,
-		FareBs:           money.RoundBs(fare * rate),
-		BcvRate:          rate,
-		FareBand:         string(estimate.Band),
-		VehicleType:      vehicleType,
-		CreatedAt:        now,
-		ExpiresAt:        now.Add(models.TripQuoteTTL),
+		QuoteID:            id.New(),
+		CustomerID:         req.CustomerID,
+		PickupAddress:      req.PickupAddress,
+		PickupLatitude:     req.PickupLatitude,
+		PickupLongitude:    req.PickupLongitude,
+		DropoffAddress:     req.DropoffAddress,
+		DropoffLatitude:    req.DropoffLatitude,
+		DropoffLongitude:   req.DropoffLongitude,
+		DistanceMeters:     estimate.DistanceMeters,
+		DurationMin:        estimate.DurationMin,
+		FareUSD:            fare,
+		DiscountUSD:        discount,
+		PickupSurchargeUSD: surcharge,
+		FareBs:             money.RoundBs(fare * rate),
+		BcvRate:            rate,
+		FareBand:           string(estimate.Band),
+		VehicleType:        vehicleType,
+		CreatedAt:          now,
+		ExpiresAt:          now.Add(models.TripQuoteTTL),
 	}
 	if err := a.quotes.Save(ctx, quote, models.TripQuoteTTL); err != nil {
 		return dtos.FareEstimateResponse{}, err
@@ -668,7 +673,25 @@ func (a *tripsApp) EstimateFare(ctx context.Context, req dtos.FareEstimateReques
 		resp.FareOriginalUSD = money.RoundUSD(estimate.Fee)
 		resp.DiscountUSD = discount
 	}
+	if surcharge > 0 {
+		resp.PickupSurchargeUSD = surcharge
+	}
 	return resp, nil
+}
+
+// pickupSurcharge resuelve el cargo de acercamiento (tripfare.PickupSurcharge)
+// sobre el promedio de distancia de los riders candidatos al pickup. Sin
+// candidato disponible no se puede estimar, así que cotiza sin cargo en vez
+// de bloquear la cotización por falta de ese dato.
+func (a *tripsApp) pickupSurcharge(ctx context.Context, lat, lng float64) float64 {
+	if a.pickupCandidates == nil {
+		return 0
+	}
+	avgKm, found := a.pickupCandidates.AvgPickupDistanceKm(ctx, lat, lng)
+	if !found {
+		return 0
+	}
+	return tripfare.PickupSurcharge(avgKm)
 }
 
 // Services mapea el catálogo del dominio al DTO: dtos no puede importar models.

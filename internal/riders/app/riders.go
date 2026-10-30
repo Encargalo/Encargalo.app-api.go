@@ -1033,6 +1033,32 @@ func (r *appRidersManager) nearestTripsRiders(ctx context.Context, trip tripsMod
 	return r.connectedCandidates(entries)
 }
 
+// riderPickupDistanceKm devuelve 0 si la presencia del rider ya no está disponible al aceptar — sin bono, como antes de esta feature.
+func (r *appRidersManager) riderPickupDistanceKm(ctx context.Context, trip tripsModels.Trip, riderID uuid.UUID) float64 {
+	if r.presence == nil {
+		return 0
+	}
+	// Radio amplio a propósito: cubre hasta la ronda más lejana en la que pudo haberse ofertado el viaje.
+	maxRings := tripSearchMaxRings + tripOfferMaxRounds - 1
+	entries, err := r.presence.SearchNearby(ctx, riderModels.PresenceQuery{
+		Latitude:  trip.PickupLatitude,
+		Longitude: trip.PickupLongitude,
+		RadiusKm:  geo.RingsToKm(maxRings),
+		Mode:      riderModels.RiderModeTrips,
+		MaxAge:    riderModels.TripMatchRiderMaxAge,
+	})
+	if err != nil {
+		slog.Error("error buscando ubicación del rider para el bono de acercamiento", "tripID", trip.ID, "riderID", riderID, "error", err)
+		return 0
+	}
+	for _, entry := range entries {
+		if entry.RiderID == riderID {
+			return geo.HaversineKm(entry.Location.Latitude, entry.Location.Longitude, trip.PickupLatitude, trip.PickupLongitude)
+		}
+	}
+	return 0
+}
+
 // connectedCandidates deja solo a los riders con socket en esta réplica y recién
 // ahí aplica el tope. La presencia en Redis sobrevive al reinicio del proceso
 // por su TTL, así que después de un deploy hay riders frescos que todavía no
@@ -1079,7 +1105,8 @@ func (r *appRidersManager) AcceptTrip(ctx context.Context, riderID, tripID uuid.
 	if err != nil {
 		return errcustom.ErrUnexpectedError
 	}
-	ok, err := r.tripsRepo.AssignTripRider(ctx, tripID, riderID, pickupCode)
+	pickupDistanceKm := r.riderPickupDistanceKm(ctx, *trip, riderID)
+	ok, err := r.tripsRepo.AssignTripRider(ctx, tripID, riderID, pickupCode, pickupDistanceKm)
 	if err != nil {
 		return err
 	}
@@ -1094,6 +1121,7 @@ func (r *appRidersManager) AcceptTrip(ctx context.Context, riderID, tripID uuid.
 	trip.Status = tripsModels.TripStatusAccepted
 	trip.AcceptedAt = &acceptedAt
 	trip.PickupCode = &pickupCode
+	trip.PickupDistanceKm = &pickupDistanceKm
 	r.rememberRiderTrip(riderID, trip.ID, trip.CustomerID)
 	r.publishTripStatusChanged(ctx, trip)
 	accepted, _ := json.Marshal(tripBroadcast{Type: "trip_accepted", Trip: r.riderTripDTO(ctx, trip)})
@@ -1285,7 +1313,7 @@ func (r *appRidersManager) completeTrip(ctx context.Context, trip *tripsModels.T
 		earnErr = r.tripEarnings.RecordTripCash(ctx, *trip.RiderID, trip.ID, gross, r.bcvRate(ctx))
 	}
 	if cashUSD <= 0 {
-		earnErr = r.tripEarnings.RecordTripEarning(ctx, *trip.RiderID, trip.ID, gross, r.bcvRate(ctx))
+		earnErr = r.tripEarnings.RecordTripEarning(ctx, *trip.RiderID, trip.ID, gross, trip.PickupDistanceKmOrZero(), r.bcvRate(ctx))
 	}
 	if earnErr != nil {
 		slog.Error("error recording trip earning", "tripID", trip.ID, "riderID", *trip.RiderID, "error", earnErr)

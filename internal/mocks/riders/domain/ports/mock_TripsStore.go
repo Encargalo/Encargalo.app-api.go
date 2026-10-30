@@ -16,9 +16,9 @@ type TripsStore struct {
 	mock.Mock
 }
 
-// AssignTripRider provides a mock function with given fields: ctx, tripID, riderID, pickupCode
-func (_m *TripsStore) AssignTripRider(ctx context.Context, tripID uuid.UUID, riderID uuid.UUID, pickupCode string) (bool, error) {
-	ret := _m.Called(ctx, tripID, riderID, pickupCode)
+// AssignTripRider provides a mock function with given fields: ctx, tripID, riderID, pickupCode, pickupDistanceKm
+func (_m *TripsStore) AssignTripRider(ctx context.Context, tripID uuid.UUID, riderID uuid.UUID, pickupCode string, pickupDistanceKm float64) (bool, error) {
+	ret := _m.Called(ctx, tripID, riderID, pickupCode, pickupDistanceKm)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AssignTripRider")
@@ -26,17 +26,17 @@ func (_m *TripsStore) AssignTripRider(ctx context.Context, tripID uuid.UUID, rid
 
 	var r0 bool
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string) (bool, error)); ok {
-		return rf(ctx, tripID, riderID, pickupCode)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string, float64) (bool, error)); ok {
+		return rf(ctx, tripID, riderID, pickupCode, pickupDistanceKm)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string) bool); ok {
-		r0 = rf(ctx, tripID, riderID, pickupCode)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string, float64) bool); ok {
+		r0 = rf(ctx, tripID, riderID, pickupCode, pickupDistanceKm)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, string) error); ok {
-		r1 = rf(ctx, tripID, riderID, pickupCode)
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, string, float64) error); ok {
+		r1 = rf(ctx, tripID, riderID, pickupCode, pickupDistanceKm)
 	} else {
 		r1 = ret.Error(1)
 	}

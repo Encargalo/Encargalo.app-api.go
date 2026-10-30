@@ -32,7 +32,8 @@ type TripsRepo interface {
 	SaveTripPayment(ctx context.Context, tripID uuid.UUID, payment *models.TripPayment) error
 	// SaveTripCancelReason escribe el motivo solo si el viaje aún no tiene uno.
 	SaveTripCancelReason(ctx context.Context, tripID uuid.UUID, reason models.CancelReason) error
-	AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID, pickupCode string) (bool, error)
+	// pickupDistanceKm congela la distancia del rider al pickup para liquidar el bono de acercamiento al completar.
+	AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID, pickupCode string, pickupDistanceKm float64) (bool, error)
 	// StartTripWithPickupCode pasa arriving→in_progress si el código de subida coincide
 	// y guarda el código de bajada que el cliente mostrará al llegar.
 	StartTripWithPickupCode(ctx context.Context, tripID, riderID uuid.UUID, pickupCode, dropoffCode string) (bool, error)
@@ -91,6 +92,14 @@ type RiderPublicInfoLookup interface {
 // Lo implementa el mismo proceso que guarda su ubicación en vivo.
 type NearbyRidersLookup interface {
 	NearbyRiders(ctx context.Context, lat, lng float64) ([]dtos.NearbyRider, error)
+}
+
+// PickupCandidatesLookup resuelve, al cotizar, el promedio de distancia de los
+// riders que el matching real ofertaría primero (mismo criterio de candidatos
+// que nearestTripsRiders) — insumo de tripfare.PickupSurcharge. found es false
+// si no hay ningún candidato disponible (no se puede estimar el cargo).
+type PickupCandidatesLookup interface {
+	AvgPickupDistanceKm(ctx context.Context, lat, lng float64) (avgKm float64, found bool)
 }
 
 // TripQuotesRepo persiste TripQuote en Redis con TTL.
