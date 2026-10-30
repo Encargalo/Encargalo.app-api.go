@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.12.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.11.2...v2.12.0) (2026-10-30)
+
+
+### Features
+
+* **trips:** tarifas por zona geográfica H3 por banda horaria ([57dace0](https://github.com/Encargalo/Encargalo.app-api.go/commit/57dace07fc7203cd6d5021617136273c089c76a0))
+
+
+### Bug Fixes
+
+* **deps:** actualiza echo, compress y go-archive por vulnerabilidades ([48db137](https://github.com/Encargalo/Encargalo.app-api.go/commit/48db13743fe0bd3392c45e72426ebbd9f421247c))
+* **deps:** actualiza echo, compress y go-archive por vulnerabilidades ([b80dd89](https://github.com/Encargalo/Encargalo.app-api.go/commit/b80dd890b56ae297a9b73911e2568feb961e04e0))
+* **deps:** actualiza echo, compress y go-archive por vulnerabilidades ([0b7641d](https://github.com/Encargalo/Encargalo.app-api.go/commit/0b7641d4b99788bbe23d6105e578797ad16ef5cb))
+
 ## [2.11.2](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.11.1...v2.11.2) (2026-10-30)
 
 
