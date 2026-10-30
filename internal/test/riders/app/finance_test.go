@@ -81,8 +81,8 @@ func TestRecordTripEarning_SumaBonoDeAcercamientoAntesDelSplit(t *testing.T) {
 	riderID := uuid.New()
 	tripID := uuid.New()
 
-	// (10 fare + 1.82 bono) * 0.90 rider share * 36 bcv = 382.97
-	repo.On("RecordMovement", mock.Anything, riderID, "rider", 382.97, 0.0, mock.MatchedBy(func(tx models.Transaction) bool {
+	// (10 fare + 1.82 bono) * 0.90 rider share * 36 bcv = 382.97, redondeado a la decena
+	repo.On("RecordMovement", mock.Anything, riderID, "rider", money.RoundBs(382.97), 0.0, mock.MatchedBy(func(tx models.Transaction) bool {
 		return tx.DistanceKm != nil && *tx.DistanceKm == 4.54
 	})).Return(0.0, nil)
 
@@ -99,7 +99,7 @@ func TestRecordTripEarning_SinBono_NoGuardaDistancia(t *testing.T) {
 	riderID := uuid.New()
 	tripID := uuid.New()
 
-	repo.On("RecordMovement", mock.Anything, riderID, "rider", 10*0.90*36.0, 0.0, mock.MatchedBy(func(tx models.Transaction) bool {
+	repo.On("RecordMovement", mock.Anything, riderID, "rider", money.RoundBs(10*0.90*36.0), 0.0, mock.MatchedBy(func(tx models.Transaction) bool {
 		return tx.DistanceKm == nil
 	})).Return(0.0, nil)
 

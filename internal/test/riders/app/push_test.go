@@ -126,7 +126,7 @@ func TestNotifyTripCancelled_NotifiesPushToAssignedRiderOnly(t *testing.T) {
 	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&tripsModels.Trip{
 		ID: trip.ID, Status: tripsModels.TripStatusSearching,
 	}, nil)
-	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything).Return(true, nil)
+	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything, mock.Anything).Return(true, nil)
 	asMatcher(t, svc).OfferTrip(context.Background(), trip)
 	require.NoError(t, svc.AcceptTrip(context.Background(), riderID, trip.ID, conn))
 
