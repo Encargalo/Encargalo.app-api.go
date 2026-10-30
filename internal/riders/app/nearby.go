@@ -37,6 +37,39 @@ func (r *appRidersManager) NearbyRiders(ctx context.Context, lat, lng float64) (
 	return r.pinsForAvailable(entries), nil
 }
 
+// AvgPickupDistanceKm usa el mismo criterio de candidatos que el matching real
+// (connectedCandidates: conectados, tope de tripOfferCandidateCount) para que
+// el cargo de acercamiento en la cotización refleje a quién se le ofertaría
+// de verdad el viaje, no a cualquier rider con presencia reciente.
+func (r *appRidersManager) AvgPickupDistanceKm(ctx context.Context, lat, lng float64) (float64, bool) {
+	if r.presence == nil {
+		return 0, false
+	}
+
+	entries, err := r.presence.SearchNearby(ctx, riderModels.PresenceQuery{
+		Latitude:        lat,
+		Longitude:       lng,
+		RadiusKm:        geo.RingsToKm(tripSearchMaxRings),
+		Mode:            riderModels.RiderModeTrips,
+		MaxAge:          riderModels.TripMatchRiderMaxAge,
+		ExcludeVehicles: []string{riderModels.VehicleTypeBike},
+	})
+	if err != nil {
+		return 0, false
+	}
+
+	candidates := r.connectedCandidates(entries)
+	if len(candidates) == 0 {
+		return 0, false
+	}
+
+	sum := 0.0
+	for _, c := range candidates {
+		sum += geo.HaversineKm(c.Location.Latitude, c.Location.Longitude, lat, lng)
+	}
+	return sum / float64(len(candidates)), true
+}
+
 // pinsForAvailable descarta a los riders con viaje asignado y corta en el tope
 // del mapa. El tope no viaja en la query porque se aplica después de ese filtro.
 func (r *appRidersManager) pinsForAvailable(entries []riderModels.RiderLocationEntry) []tripsDtos.NearbyRider {

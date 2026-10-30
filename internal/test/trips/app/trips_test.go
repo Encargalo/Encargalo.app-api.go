@@ -51,7 +51,7 @@ func newTripsDeps(t *testing.T) tripsDeps {
 	riders := mockstrips.NewRiderPublicInfoLookup(t)
 	balance := mockpayments.NewCustomerBalanceCreditor(t)
 	return tripsDeps{
-		svc:     app.NewTripsApp(repo, matcher, bcv, quotes, upload, reviews, hub, riders, balance, nil, nil, nil, nil, nil),
+		svc:     app.NewTripsApp(repo, matcher, bcv, quotes, upload, reviews, hub, riders, balance, nil, nil, nil, nil, nil, nil),
 		repo:    repo,
 		matcher: matcher,
 		bcv:     bcv,

@@ -96,7 +96,7 @@ func TestAcceptTrip_RejectsBike(t *testing.T) {
 	err := svc.AcceptTrip(context.Background(), riderID, trip.ID, reconnected)
 
 	require.ErrorIs(t, err, errcustom.ErrVehicleCannotCarryTrip)
-	tripsStore.AssertNotCalled(t, "AssignTripRider", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	tripsStore.AssertNotCalled(t, "AssignTripRider", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }
 
 // "Bici" del CRM es la misma bici: el upsert de staff no normaliza el campo, y

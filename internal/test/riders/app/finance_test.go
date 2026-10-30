@@ -58,7 +58,7 @@ func TestRecordTripEarning_CreditsNinetyPercentInBs(t *testing.T) {
 			tx.ServiceType != nil && *tx.ServiceType == models.ServiceTypeTrip
 	})).Return(0.0, nil)
 
-	err := svc.RecordTripEarning(context.Background(), riderID, tripID, 10, 36.0)
+	err := svc.RecordTripEarning(context.Background(), riderID, tripID, 10, 0, 36.0)
 
 	require.NoError(t, err)
 }
@@ -67,9 +67,44 @@ func TestRecordTripEarning_NoRate_Fails(t *testing.T) {
 	repo := mocksriders.NewFinanceRepo(t)
 	svc := app.NewFinanceApp(repo, mockbcvports.NewBcvApp(t), nil, nil, nil)
 
-	err := svc.RecordTripEarning(context.Background(), uuid.New(), uuid.New(), 10, 0)
+	err := svc.RecordTripEarning(context.Background(), uuid.New(), uuid.New(), 10, 0, 0)
 
 	assert.ErrorIs(t, err, errcustom.ErrBcvRateUnavailable)
+}
+
+// Caso real: rider a 4.54 km del pickup — bono $1.82 (4.54 × 0.40) antes del split.
+func TestRecordTripEarning_SumaBonoDeAcercamientoAntesDelSplit(t *testing.T) {
+	repo := mocksriders.NewFinanceRepo(t)
+	svc := app.NewFinanceApp(repo, mockbcvports.NewBcvApp(t), nil, nil, nil)
+
+	riderID := uuid.New()
+	tripID := uuid.New()
+
+	// (10 fare + 1.82 bono) * 0.90 rider share * 36 bcv = 382.97
+	repo.On("RecordMovement", mock.Anything, riderID, "rider", 382.97, 0.0, mock.MatchedBy(func(tx models.Transaction) bool {
+		return tx.DistanceKm != nil && *tx.DistanceKm == 4.54
+	})).Return(0.0, nil)
+
+	err := svc.RecordTripEarning(context.Background(), riderID, tripID, 10, 4.54, 36.0)
+
+	require.NoError(t, err)
+}
+
+// Por debajo del umbral no hay bono, y el ledger no guarda distancia.
+func TestRecordTripEarning_SinBono_NoGuardaDistancia(t *testing.T) {
+	repo := mocksriders.NewFinanceRepo(t)
+	svc := app.NewFinanceApp(repo, mockbcvports.NewBcvApp(t), nil, nil, nil)
+
+	riderID := uuid.New()
+	tripID := uuid.New()
+
+	repo.On("RecordMovement", mock.Anything, riderID, "rider", 10*0.90*36.0, 0.0, mock.MatchedBy(func(tx models.Transaction) bool {
+		return tx.DistanceKm == nil
+	})).Return(0.0, nil)
+
+	err := svc.RecordTripEarning(context.Background(), riderID, tripID, 10, 2, 36.0)
+
+	require.NoError(t, err)
 }
 
 func TestGetBalance_BuildsResponseWithZoneAndTransactions(t *testing.T) {

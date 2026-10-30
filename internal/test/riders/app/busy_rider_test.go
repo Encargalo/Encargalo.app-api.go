@@ -37,7 +37,7 @@ func openSearchingTrip(t *testing.T, svc ridersPorts.RidersApp, tripsRepo *mocks
 
 func acceptOfferedTrip(t *testing.T, svc ridersPorts.RidersApp, tripsRepo *mockstrips.TripsRepo, riderID uuid.UUID, trip tripsModels.Trip) {
 	t.Helper()
-	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything).Return(true, nil).Once()
+	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything, mock.Anything).Return(true, nil).Once()
 	conn := mocksriders.NewRiderConn(t)
 	conn.On("Send", mock.Anything).Return().Maybe()
 	require.NoError(t, svc.AcceptTrip(context.Background(), riderID, trip.ID, conn))
@@ -93,7 +93,7 @@ func TestAcceptTrip_RejectsSecondTripWhileBusy(t *testing.T) {
 	err := svc.AcceptTrip(context.Background(), riderID, second.ID, mocksriders.NewRiderConn(t))
 
 	require.ErrorIs(t, err, errcustom.ErrRiderBusy)
-	tripsRepo.AssertNotCalled(t, "AssignTripRider", mock.Anything, second.ID, riderID, mock.Anything)
+	tripsRepo.AssertNotCalled(t, "AssignTripRider", mock.Anything, second.ID, riderID, mock.Anything, mock.Anything)
 }
 
 func TestAcceptTrip_DatabaseRejectsBusyRider(t *testing.T) {
@@ -104,7 +104,7 @@ func TestAcceptTrip_DatabaseRejectsBusyRider(t *testing.T) {
 	trip := openSearchingTrip(t, svc, tripsRepo)
 	asMatcher(t, svc).OfferTrip(context.Background(), trip)
 	// Sin estado en memoria (p. ej. tras reiniciar): la BD rechaza y el viaje sigue en searching.
-	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything).Return(false, nil)
+	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything, mock.Anything).Return(false, nil)
 	conn := mocksriders.NewRiderConn(t)
 
 	err := svc.AcceptTrip(context.Background(), riderID, trip.ID, conn)

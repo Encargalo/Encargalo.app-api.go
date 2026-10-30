@@ -13,7 +13,7 @@ import (
 )
 
 func TestNearbyRiders_InvalidCoordinates(t *testing.T) {
-	svc := app.NewTripsApp(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	svc := app.NewTripsApp(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	_, err := svc.NearbyRiders(context.Background(), 120, 0)
 
@@ -21,7 +21,7 @@ func TestNearbyRiders_InvalidCoordinates(t *testing.T) {
 }
 
 func TestNearbyRiders_EmptyWhenLookupMissing(t *testing.T) {
-	svc := app.NewTripsApp(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	svc := app.NewTripsApp(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	resp, err := svc.NearbyRiders(context.Background(), 10.48, -66.90)
 
@@ -31,7 +31,7 @@ func TestNearbyRiders_EmptyWhenLookupMissing(t *testing.T) {
 
 func TestNearbyRiders_ReturnsLookupPins(t *testing.T) {
 	nearby := mockstrips.NewNearbyRidersLookup(t)
-	svc := app.NewTripsApp(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nearby, nil, nil, nil)
+	svc := app.NewTripsApp(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nearby, nil, nil, nil, nil)
 	pins := []dtos.NearbyRider{{Latitude: 10.481, Longitude: -66.904}}
 	nearby.On("NearbyRiders", mock.Anything, 10.48, -66.90).Return(pins, nil)
 
@@ -43,7 +43,7 @@ func TestNearbyRiders_ReturnsLookupPins(t *testing.T) {
 
 func TestNearbyRiders_PropagatesLookupError(t *testing.T) {
 	nearby := mockstrips.NewNearbyRidersLookup(t)
-	svc := app.NewTripsApp(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nearby, nil, nil, nil)
+	svc := app.NewTripsApp(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nearby, nil, nil, nil, nil)
 	nearby.On("NearbyRiders", mock.Anything, 10.48, -66.90).Return(nil, errcustom.ErrUnexpectedError)
 
 	_, err := svc.NearbyRiders(context.Background(), 10.48, -66.90)

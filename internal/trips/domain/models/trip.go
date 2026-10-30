@@ -103,11 +103,13 @@ type Trip struct {
 	// Payment es el crédito a la cartera si el Pago Móvil aprobado no se prestó.
 	Payment *TripPayment `bun:"payment,type:jsonb"`
 	// CancelReason es por qué terminó en cancelled o no_driver. Solo lo ve el cliente.
-	CancelReason      *CancelReason `bun:"cancel_reason"`
-	PickupCode        *string       `bun:"pickup_code"`
-	DropoffCode       *string       `bun:"dropoff_code"`
-	PickupCodeUsedAt  *time.Time    `bun:"pickup_code_used_at"`
-	DropoffCodeUsedAt *time.Time    `bun:"dropoff_code_used_at"`
+	CancelReason *CancelReason `bun:"cancel_reason"`
+	PickupCode   *string       `bun:"pickup_code"`
+	DropoffCode  *string       `bun:"dropoff_code"`
+	// PickupDistanceKm es la distancia del rider al pickup al momento de aceptar, congelada para el bono de acercamiento.
+	PickupDistanceKm  *float64   `bun:"pickup_distance_km"`
+	PickupCodeUsedAt  *time.Time `bun:"pickup_code_used_at"`
+	DropoffCodeUsedAt *time.Time `bun:"dropoff_code_used_at"`
 	// FareBs no se persiste, se recalcula en cada respuesta (patrón Order.DeliveryFeeBs).
 	FareBs      *float64   `bun:"-"`
 	RequestedAt time.Time  `bun:"requested_at,notnull,default:current_timestamp"`
@@ -129,6 +131,14 @@ func (t *Trip) GrossFareUSD() float64 {
 		return 0
 	}
 	return money.RoundUSD(*t.Fare + t.DiscountUSD)
+}
+
+// PickupDistanceKmOrZero evita que el caller del bono maneje el nil de viajes sin distancia congelada.
+func (t *Trip) PickupDistanceKmOrZero() float64 {
+	if t.PickupDistanceKm == nil {
+		return 0
+	}
+	return *t.PickupDistanceKm
 }
 
 // ApplyBsFare es no-op si todavía no hay Fare o la tasa no es válida.

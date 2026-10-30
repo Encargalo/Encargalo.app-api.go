@@ -105,3 +105,44 @@ func TestFromDistanceAt_UsaHoraDeNegocioNoUTC(t *testing.T) {
 	assert.Equal(t, 1.00, tripfare.FromDistanceAt(4270, local),
 		"18:00 local es tarifa diurna")
 }
+
+func TestPickupBonus_DebajoOIgualAlUmbralNoPaga(t *testing.T) {
+	cases := []float64{0, 1, 2, 3}
+
+	for _, km := range cases {
+		assert.Equal(t, 0.0, tripfare.PickupBonus(km))
+	}
+}
+
+// Caso real: rider a 4.54 km del pickup (Arandu/Charallave).
+func TestPickupBonus_EncimaDelUmbralPagaPorDistanciaReal(t *testing.T) {
+	cases := []struct {
+		km       float64
+		expected float64
+	}{
+		{3.01, 1.20},
+		{4.54, 1.82},
+		{6.0, 2.40},
+	}
+
+	for _, tc := range cases {
+		assert.Equal(t, tc.expected, tripfare.PickupBonus(tc.km))
+	}
+}
+
+func TestPickupSurcharge_DebajoOIgualAlUmbralNoCobra(t *testing.T) {
+	cases := []float64{0, 1, 2, 3}
+
+	for _, km := range cases {
+		assert.Equal(t, 0.0, tripfare.PickupSurcharge(km))
+	}
+}
+
+// El cargo es un monto fijo (2 km) sin importar cuánto exceda el promedio el umbral.
+func TestPickupSurcharge_EncimaDelUmbralCobraMontoFijo(t *testing.T) {
+	cases := []float64{3.01, 4.54, 10.0}
+
+	for _, km := range cases {
+		assert.Equal(t, 0.80, tripfare.PickupSurcharge(km))
+	}
+}
