@@ -434,7 +434,7 @@ func (n *notifications) BalanceRefundPending(requestID string, minutesPending in
 		Color: 15105570, // orange
 		Fields: []models.NotificationField{
 			{Name: "Cliente", Value: customerName, Inline: true},
-			{Name: "Monto", Value: fmt.Sprintf("Bs %.2f", req.AmountBs), Inline: true},
+			{Name: "Monto", Value: fmt.Sprintf("Bs %.0f", req.AmountBs), Inline: true},
 			{Name: "Tiempo pendiente", Value: waitLabel, Inline: true},
 			{Name: "Estado solicitud", Value: refundStatus, Inline: true},
 			{Name: "Estado de la orden", Value: orderStatus, Inline: true},
@@ -506,8 +506,8 @@ func truncateText(s string, max int) string {
 
 func formatUSDAndBs(usd, bcvRate float64) string {
 	if bcvRate > 0 {
-		bs := math.Round(usd*bcvRate*100) / 100
-		return fmt.Sprintf("Bs %.2f (≈ $%.2f)", bs, usd)
+		bs := math.Round(usd * bcvRate)
+		return fmt.Sprintf("Bs %.0f (≈ $%.2f)", bs, usd)
 	}
 	return fmt.Sprintf("$%.2f", usd)
 }
@@ -515,9 +515,9 @@ func formatUSDAndBs(usd, bcvRate float64) string {
 func formatBsAndUSD(bs, bcvRate float64) string {
 	if bcvRate > 0 {
 		usd := math.Round(bs/bcvRate*100) / 100
-		return fmt.Sprintf("Bs %.2f (≈ $%.2f)", bs, usd)
+		return fmt.Sprintf("Bs %.0f (≈ $%.2f)", bs, usd)
 	}
-	return fmt.Sprintf("Bs %.2f", bs)
+	return fmt.Sprintf("Bs %.0f", bs)
 }
 
 // WithdrawalRequested avisa que un rider espera una transferencia. Sin este
@@ -552,7 +552,7 @@ func (n *notifications) WithdrawalRequested(requestID string) error {
 		Color: 3447003, // blue
 		Fields: []models.NotificationField{
 			{Name: "Rider", Value: riderName, Inline: true},
-			{Name: "Monto solicitado", Value: fmt.Sprintf("Bs %.2f", req.Amount), Inline: true},
+			{Name: "Monto solicitado", Value: fmt.Sprintf("Bs %.0f", req.Amount), Inline: true},
 			{Name: "Pago Móvil", Value: phone, Inline: true},
 			{Name: "Banco", Value: bank, Inline: true},
 		},

@@ -13,11 +13,15 @@ import (
 )
 
 // Caso real de prod: 1,20 USD × 871,3689 = 1.045,64 Bs; 500,64 de cartera y Pago Móvil de 1.000.
+// money.RoundBs redondea a la decena de Bs: el monto de cartera solicitado/sembrado
+// (mixedBalanceBs) termina asentado como mixedBalancePaidBs, y el total/PM se
+// recalculan sobre totales ya redondeados a la decena.
 const (
-	mixedFareUSD   = 1.20
-	mixedRate      = 871.3689
-	mixedBalanceBs = 500.64
-	mixedPMBs      = 545.00
+	mixedFareUSD       = 1.20
+	mixedRate          = 871.3689
+	mixedBalanceBs     = 500.64
+	mixedBalancePaidBs = 500.00
+	mixedPMBs          = 550.00
 )
 
 func TestE2E_HTTP_MixedTripCancelRefundsBalanceAndPagoMovil(t *testing.T) {
@@ -37,11 +41,11 @@ func TestE2E_HTTP_MixedTripCancelRefundsBalanceAndPagoMovil(t *testing.T) {
 	require.InDelta(t, mixedPMBs, *cancelled.Payment.CreditedBs, 0.001)
 
 	movements := movementsByType(t, tripID)
-	require.InDelta(t, -mixedBalanceBs, movements["balance_payment"], 0.001)
-	require.InDelta(t, 455.0, movements["payment_overage"], 0.001)
-	require.InDelta(t, mixedBalanceBs, movements["balance_payment_refund"], 0.001)
+	require.InDelta(t, -mixedBalancePaidBs, movements["balance_payment"], 0.001)
+	require.InDelta(t, 450.0, movements["payment_overage"], 0.001)
+	require.InDelta(t, mixedBalancePaidBs, movements["balance_payment_refund"], 0.001)
 	require.InDelta(t, mixedPMBs, movements["order_rejected_refund"], 0.001)
-	require.InDelta(t, mixedBalanceBs+1000.0, walletBalance(t, customerID), 0.001)
+	require.InDelta(t, mixedBalancePaidBs+1000.0, walletBalance(t, customerID), 0.001)
 
 	_, raw := customerJSON(t, customerID, http.MethodPost, "/trips/"+tripID.String()+"/cancel", nil)
 	require.Len(t, ledgerForReference(t, tripID), 4, string(raw))
@@ -59,9 +63,9 @@ func TestE2E_HTTP_MixedTripRejectedProofRefundsBalance(t *testing.T) {
 
 	require.Equal(t, string(tripsmodels.TripStatusCancelled), getTripHTTP(t, customerID, tripID).Status)
 	movements := movementsByType(t, tripID)
-	require.InDelta(t, -mixedBalanceBs, movements["balance_payment"], 0.001)
-	require.InDelta(t, mixedBalanceBs, movements["balance_payment_refund"], 0.001)
-	require.InDelta(t, mixedBalanceBs, walletBalance(t, customerID), 0.001)
+	require.InDelta(t, -mixedBalancePaidBs, movements["balance_payment"], 0.001)
+	require.InDelta(t, mixedBalancePaidBs, movements["balance_payment_refund"], 0.001)
+	require.InDelta(t, mixedBalancePaidBs, walletBalance(t, customerID), 0.001)
 }
 
 func TestE2E_HTTP_CashTripCancelDoesNotCredit(t *testing.T) {

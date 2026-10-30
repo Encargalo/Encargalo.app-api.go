@@ -34,7 +34,7 @@ func TestRecordRideEarning_CashDebitsRemainderAfterRiderPay(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, 7.75, models.CashOwedUSD(total, models.RiderPayUSD(delivery)))
-	require.Equal(t, -279.0, owedBs)
+	require.Equal(t, -280.0, owedBs)
 }
 
 func TestRecordTripCash_DebitsPlatformShare(t *testing.T) {
@@ -55,5 +55,5 @@ func TestRecordTripCash_DebitsPlatformShare(t *testing.T) {
 	err := svc.RecordTripCash(context.Background(), riderID, tripID, fare, rate)
 
 	require.NoError(t, err)
-	require.Equal(t, -36.0, owedBs)
+	require.Equal(t, -40.0, owedBs)
 }
