@@ -278,6 +278,7 @@ var orderColumns = []string{
 }
 
 func orderRowToCubeOrder(row orderRow, syncedAt time.Time) models.CubeOrder {
+	local := row.CreatedAt.In(bizclock.Location())
 	return models.CubeOrder{
 		OrderID:            row.ID,
 		QuoteID:            row.QuoteID,
@@ -291,7 +292,7 @@ func orderRowToCubeOrder(row orderRow, syncedAt time.Time) models.CubeOrder {
 		PromoSubsidyAmount: row.PromoSubsidyAmount,
 		IsLaunchPromo:      row.IsLaunchPromo,
 		IsZeroCommission:   row.IsZeroCommission,
-		OrderDate:          row.CreatedAt.UTC().Truncate(24 * time.Hour),
+		OrderDate:          time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, time.UTC),
 		CreatedAt:          row.CreatedAt,
 		SyncedAt:           syncedAt,
 		H3Cell:             row.H3Cell,
@@ -357,6 +358,7 @@ var tripColumns = []string{
 }
 
 func tripRowToCubeTrip(row tripRow, syncedAt time.Time) models.CubeTrip {
+	local := row.CreatedAt.In(bizclock.Location())
 	return models.CubeTrip{
 		TripID:        row.ID,
 		QuoteID:       row.QuoteID,
@@ -366,7 +368,7 @@ func tripRowToCubeTrip(row tripRow, syncedAt time.Time) models.CubeTrip {
 		Fare:          row.Fare,
 		PickupH3Cell:  row.PickupH3CellZone,
 		DropoffH3Cell: row.DropoffH3CellZone,
-		TripDate:      row.CreatedAt.UTC().Truncate(24 * time.Hour),
+		TripDate:      time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, time.UTC),
 		CreatedAt:     row.CreatedAt,
 		SyncedAt:      syncedAt,
 	}
