@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.12.1](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.12.0...v2.12.1) (2026-10-30)
+
+
+### Bug Fixes
+
+* **analytics:** calcula order_date y trip_date en zona de negocio ([54a8c0e](https://github.com/Encargalo/Encargalo.app-api.go/commit/54a8c0eaef3f56c25d200c51d1a2b823b5e64950))
+* **analytics:** calcula order_date y trip_date en zona de negocio ([93b54b0](https://github.com/Encargalo/Encargalo.app-api.go/commit/93b54b0136bae10cd39d4828704423f7d61d66d8))
+* **analytics:** calcula order_date y trip_date en zona de negocio ([2a9c5c6](https://github.com/Encargalo/Encargalo.app-api.go/commit/2a9c5c64aa8ecad7d3df486960dd8535e4d038f9))
+* **products:** oculta categorías sin productos en el catálogo del cliente ([e663d2b](https://github.com/Encargalo/Encargalo.app-api.go/commit/e663d2b5d58473e826da349b7f61209c26521e17))
+* **shops:** baja comisión a 4% y oculta categorías vacías del catálogo ([c4f3669](https://github.com/Encargalo/Encargalo.app-api.go/commit/c4f36698fdd84a7bb072a26201fd50c8e500442c))
+* **shops:** baja la comisión estándar de 10% a 4% ([400c9aa](https://github.com/Encargalo/Encargalo.app-api.go/commit/400c9aa896f172910db4c7f4329f9ad53e29c6de))
+
 ## [2.12.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.11.2...v2.12.0) (2026-10-30)
 
 
