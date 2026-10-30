@@ -133,6 +133,55 @@ type Estimate struct {
 // CalculateWithDuration obtiene la distancia vial y la duración del trayecto
 // junto con la tarifa calculada.
 func CalculateWithDuration(originLat, originLon, destLat, destLon float64) (Estimate, error) {
+	return CalculateWithDurationZone(originLat, originLon, destLat, destLon, nil)
+}
+
+// ZoneFareParams son los montos de una zona geográfica (ej. Charallave),
+// resueltos por quien llama (trips/app, consultando ZoneFareRulesRepo por la
+// celda H3 del pickup) antes de pasarlos acá: este paquete no conoce esa
+// tabla ni hace I/O. A diferencia del fallback global, estos montos por
+// banda ya son finales — no se multiplican por Band.Multiplier().
+type ZoneFareParams struct {
+	IncludedKm                 float64
+	DayMinFare                 float64
+	DayExtraRatePerKm          float64
+	NightMinFare               float64
+	NightExtraRatePerKm        float64
+	EarlyMorningMinFare        float64
+	EarlyMorningExtraRatePerKm float64
+}
+
+func (z ZoneFareParams) forBand(b Band) (minFare, extraRatePerKm float64) {
+	switch b {
+	case BandNight:
+		return z.NightMinFare, z.NightExtraRatePerKm
+	case BandEarlyMorning:
+		return z.EarlyMorningMinFare, z.EarlyMorningExtraRatePerKm
+	default:
+		return z.DayMinFare, z.DayExtraRatePerKm
+	}
+}
+
+// FromDistanceAtZone es FromDistanceAt con la zona resuelta inyectada. zone
+// nil cae en el fallback global (igual que FromDistanceAt, multiplicador de
+// banda incluido); zone no nil usa la mínima/tarifa ya finales de esa banda.
+func FromDistanceAtZone(distanceMeters float64, now time.Time, zone *ZoneFareParams) float64 {
+	if zone == nil {
+		return FromDistanceAt(distanceMeters, now)
+	}
+
+	km := distanceMeters / 1000
+	minFare, extraRate := zone.forBand(BandAt(now))
+	fare := minFare
+	if km > zone.IncludedKm {
+		fare += (km - zone.IncludedKm) * extraRate
+	}
+	return money.RoundUSD(fare)
+}
+
+// CalculateWithDurationZone es CalculateWithDuration con la zona resuelta
+// inyectada. Ver FromDistanceAtZone.
+func CalculateWithDurationZone(originLat, originLon, destLat, destLon float64, zone *ZoneFareParams) (Estimate, error) {
 	results, err := googlemaps.DistanceMatrix(originLat, originLon, [][2]float64{{destLat, destLon}})
 	if err != nil {
 		return Estimate{}, err
@@ -148,7 +197,7 @@ func CalculateWithDuration(originLat, originLon, destLat, destLon float64) (Esti
 	return Estimate{
 		DistanceMeters: elem.DistanceMeters,
 		DurationMin:    elem.DurationMin,
-		Fee:            FromDistanceAt(elem.DistanceMeters, now),
+		Fee:            FromDistanceAtZone(elem.DistanceMeters, now, zone),
 		Band:           BandAt(now),
 	}, nil
 }

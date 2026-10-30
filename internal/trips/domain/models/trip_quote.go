@@ -29,6 +29,10 @@ type TripQuote struct {
 	BcvRate            float64
 	// FareBand es el tramo horario que produjo FareUSD, congelado junto con él.
 	FareBand string
+	// ZoneFareRuleID es la zona (si alguna) cuya regla produjo FareUSD, para
+	// que el viaje no cambie de precio si la zona se edita después. nil =
+	// se usó el fallback global de tripfare.go.
+	ZoneFareRuleID *uuid.UUID
 	// VehicleType es el servicio elegido; el viaje lo hereda de acá, no del request.
 	VehicleType string
 	CreatedAt   time.Time

@@ -21,7 +21,7 @@ func newTripsAppWithPickupCandidates(t *testing.T) (*mockstrips.TripsRepo, *mock
 	bcv := mockbcvports.NewBcvApp(t)
 	quotes := mockstrips.NewTripQuotesRepo(t)
 	pickupCandidates := mockstrips.NewPickupCandidatesLookup(t)
-	svc := app.NewTripsApp(repo, nil, bcv, quotes, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, pickupCandidates)
+	svc := app.NewTripsApp(repo, nil, bcv, quotes, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, pickupCandidates, nil)
 	return repo, bcv, quotes, pickupCandidates, svc
 }
 
@@ -85,7 +85,7 @@ func TestEstimateFare_PickupSurcharge_NilLookupSkipsSurcharge(t *testing.T) {
 	repo := mockstrips.NewTripsRepo(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	quotes := mockstrips.NewTripQuotesRepo(t)
-	svc := app.NewTripsApp(repo, nil, bcv, quotes, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	svc := app.NewTripsApp(repo, nil, bcv, quotes, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	customerID := uuid.New()
 	req := sampleFareEstimateRequest(customerID)
 	mockBcvRate(bcv, 40)

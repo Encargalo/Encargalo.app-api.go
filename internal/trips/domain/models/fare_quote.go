@@ -28,6 +28,9 @@ type FareQuote struct {
 	DiscountUSD       float64   `bun:"discount_usd,notnull,default:0"`
 	BcvRate           float64   `bun:"bcv_rate,notnull"`
 	FareBand          string    `bun:"fare_band,notnull"`
-	VehicleType       string    `bun:"vehicle_type,notnull"`
-	CreatedAt         time.Time `bun:"created_at,notnull"`
+	// ZoneFareRuleID es la zona cuya regla produjo FareUSD, congelada igual
+	// que FareBand/BcvRate. nil = se usó el fallback global de tripfare.go.
+	ZoneFareRuleID *uuid.UUID `bun:"zone_fare_rule_id"`
+	VehicleType    string     `bun:"vehicle_type,notnull"`
+	CreatedAt      time.Time  `bun:"created_at,notnull"`
 }

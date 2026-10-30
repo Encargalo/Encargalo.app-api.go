@@ -2253,11 +2253,27 @@ definitions:
         type: number
       fare_usd:
         type: number
+      pickup_surcharge_usd:
+        description: PickupSurchargeUSD solo viene si el acercamiento de los riders
+          disponibles superó el umbral; fare_usd ya lo trae sumado.
+        type: number
       quote_id:
         type: string
       vehicle_type:
         description: VehicleType es el servicio que quedó congelado en la cotización.
         type: string
+    type: object
+  Encargalo_app-api_go_internal_trips_domain_dtos.LatLngPoint:
+    properties:
+      lat:
+        example: 10.1167
+        type: number
+      lng:
+        example: -66.85
+        type: number
+    required:
+    - lat
+    - lng
     type: object
   Encargalo_app-api_go_internal_trips_domain_dtos.NearbyRider:
     properties:
@@ -2426,6 +2442,89 @@ definitions:
       services:
         items:
           $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.TripServiceResponse'
+        type: array
+    type: object
+  Encargalo_app-api_go_internal_trips_domain_dtos.ZoneFareRuleRequest:
+    properties:
+      day_extra_rate_per_km_usd:
+        example: 0.3
+        minimum: 0
+        type: number
+      day_min_fare_usd:
+        example: 1.2375
+        type: number
+      early_morning_extra_rate_per_km_usd:
+        example: 0.7
+        minimum: 0
+        type: number
+      early_morning_min_fare_usd:
+        example: 1.8
+        type: number
+      included_km:
+        example: 3
+        type: number
+      name:
+        example: Charallave
+        type: string
+      night_extra_rate_per_km_usd:
+        example: 0.5
+        minimum: 0
+        type: number
+      night_min_fare_usd:
+        example: 1.575
+        type: number
+      polygon:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.LatLngPoint'
+        minItems: 3
+        type: array
+    required:
+    - day_min_fare_usd
+    - early_morning_min_fare_usd
+    - included_km
+    - name
+    - night_min_fare_usd
+    - polygon
+    type: object
+  Encargalo_app-api_go_internal_trips_domain_dtos.ZoneFareRuleResponse:
+    properties:
+      active:
+        type: boolean
+      created_at:
+        type: string
+      day_extra_rate_per_km_usd:
+        type: number
+      day_min_fare_usd:
+        type: number
+      early_morning_extra_rate_per_km_usd:
+        type: number
+      early_morning_min_fare_usd:
+        type: number
+      h3_cells:
+        description: |-
+          H3Cells es el resultado de convertir el polígono enviado; el CRM lo usa
+          para redibujar la zona al editarla.
+        items:
+          type: string
+        type: array
+      included_km:
+        type: number
+      name:
+        type: string
+      night_extra_rate_per_km_usd:
+        type: number
+      night_min_fare_usd:
+        type: number
+      updated_at:
+        type: string
+      zone_id:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_trips_domain_dtos.ZoneFareRulesResponse:
+    properties:
+      zones:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.ZoneFareRuleResponse'
         type: array
     type: object
   Encargalo_app-api_go_internal_users_domain_dto.Address:
@@ -7784,6 +7883,157 @@ paths:
       summary: Catálogo de servicios de viaje
       tags:
       - Trips
+  /trips/staff/zone-fare-rules:
+    get:
+      description: Lista todas las zonas (activas e inactivas), con sus celdas H3.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.ZoneFareRulesResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Listar zonas de tarifa (staff)
+      tags:
+      - Trips Staff
+    post:
+      consumes:
+      - application/json
+      description: Crea una zona con su mínima y tarifa extra/km por banda horaria
+        (día/noche/madrugada) e included_km único para las tres. El polígono (lat/lng,
+        ej. pegado de geojson.io) se convierte a celdas H3 res. 7 en el momento de
+        crear. Los viajes cuyo pickup caiga en una de esas celdas usan esta regla
+        en vez de la fórmula global.
+      parameters:
+      - description: Datos de la zona
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.ZoneFareRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.ZoneFareRuleResponse'
+        "400":
+          description: payload inválido o polígono inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Crear zona de tarifa
+      tags:
+      - Trips Staff
+  /trips/staff/zone-fare-rules/{zone_id}:
+    delete:
+      description: 'Soft delete (active=false): los viajes ya cotizados en esta zona
+        conservan su zone_fare_rule_id. Los pickups en sus celdas vuelven a usar el
+        fallback global.'
+      parameters:
+      - description: Zone ID
+        in: path
+        name: zone_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Sin contenido
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: No encontrado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Desactivar zona de tarifa
+      tags:
+      - Trips Staff
+    get:
+      parameters:
+      - description: Zone ID
+        in: path
+        name: zone_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.ZoneFareRuleResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: No encontrado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Detalle de zona de tarifa (staff)
+      tags:
+      - Trips Staff
+    patch:
+      consumes:
+      - application/json
+      description: 'Reemplazo completo: precios y polígono (las celdas se recalculan
+        y sustituyen por completo). No es un parche parcial.'
+      parameters:
+      - description: Zone ID
+        in: path
+        name: zone_id
+        required: true
+        type: string
+      - description: Datos de la zona
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.ZoneFareRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.ZoneFareRuleResponse'
+        "400":
+          description: zone_id inválido, payload inválido o polígono inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: No encontrado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Reemplazar zona de tarifa
+      tags:
+      - Trips Staff
   /turbo/entry:
     get:
       description: 'Dadas las coordenadas del cliente, asigna el nodo Turbo abierto

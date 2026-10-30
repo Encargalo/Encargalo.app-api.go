@@ -38,13 +38,19 @@ type TripsGroup interface {
 }
 
 type tripsGroup struct {
-	middle       auth.AuthMiddleware
-	handlerTrips handler.TripsHandler
-	rateLimiter  sharedmw.RateLimiter
+	middle               auth.AuthMiddleware
+	handlerTrips         handler.TripsHandler
+	handlerZoneFareRules handler.StaffZoneFareRulesHandler
+	rateLimiter          sharedmw.RateLimiter
 }
 
-func NewTripsGroup(middle auth.AuthMiddleware, handlerTrips handler.TripsHandler, rateLimiter sharedmw.RateLimiter) TripsGroup {
-	return &tripsGroup{middle, handlerTrips, rateLimiter}
+func NewTripsGroup(
+	middle auth.AuthMiddleware,
+	handlerTrips handler.TripsHandler,
+	handlerZoneFareRules handler.StaffZoneFareRulesHandler,
+	rateLimiter sharedmw.RateLimiter,
+) TripsGroup {
+	return &tripsGroup{middle, handlerTrips, handlerZoneFareRules, rateLimiter}
 }
 
 func (t *tripsGroup) Resource(g *echo.Echo) {
@@ -64,4 +70,11 @@ func (t *tripsGroup) Resource(g *echo.Echo) {
 	)
 	group.GET("/:id", t.handlerTrips.GetTrip, t.middle.Auth, t.middle.Require(models.Customer))
 	group.POST("/:id/cancel", t.handlerTrips.CancelTrip, t.middle.Auth, t.middle.Require(models.Customer))
+
+	staffGroup := g.Group("/trips/staff/zone-fare-rules", t.middle.Auth, t.middle.Require(models.Staff))
+	staffGroup.POST("", t.handlerZoneFareRules.CreateZoneFareRule)
+	staffGroup.GET("", t.handlerZoneFareRules.ListZoneFareRules)
+	staffGroup.GET("/:zone_id", t.handlerZoneFareRules.GetZoneFareRule)
+	staffGroup.PATCH("/:zone_id", t.handlerZoneFareRules.UpdateZoneFareRule)
+	staffGroup.DELETE("/:zone_id", t.handlerZoneFareRules.DeactivateZoneFareRule)
 }
