@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.11.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.10.1...v2.11.0) (2026-10-30)
+
+
+### Features
+
+* **trips:** cobra acercamiento al pickup y paga bono al rider sobre 3km ([486e0a4](https://github.com/Encargalo/Encargalo.app-api.go/commit/486e0a4bee8f64c85628b2b56e2fbbffc5117361))
+* **trips:** cobra acercamiento al pickup y paga bono al rider sobre 3km ([e4a8594](https://github.com/Encargalo/Encargalo.app-api.go/commit/e4a8594574b8966711dc0e194e3ff32fdd1325e8))
+
 ## [2.10.1](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.10.0...v2.10.1) (2026-10-27)
 
 
