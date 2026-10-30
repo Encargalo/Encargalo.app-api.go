@@ -135,6 +135,21 @@ func filterCategoriesBySchedule(data dtos.CategoriesResponse, now time.Time) dto
 	return filtered
 }
 
+// filterEmptyCategories oculta del catálogo del cliente las categorías sin
+// items — las categorías por defecto que trae cada shop nuevo (Pizza, Sushi,
+// etc.) quedan vacías hasta que el owner carga productos en ellas, y no
+// aportan nada mostrarlas como secciones vacías en la tienda.
+func filterEmptyCategories(data dtos.CategoriesResponse) dtos.CategoriesResponse {
+	filtered := make(dtos.CategoriesResponse, 0, len(data))
+	for _, cat := range data {
+		if len(cat.Items) == 0 {
+			continue
+		}
+		filtered = append(filtered, cat)
+	}
+	return filtered
+}
+
 func filterItemsBySchedule(data dtos.ItemsResponse, now time.Time) dtos.ItemsResponse {
 	filtered := make(dtos.ItemsResponse, 0, len(data))
 	for _, item := range data {
@@ -443,6 +458,7 @@ func (p *productsApp) SearchProductsByShopID(ctx context.Context, shopID uuid.UU
 		return nil, err
 	}
 	data = filterCategoriesBySchedule(data, bizclock.Now())
+	data = filterEmptyCategories(data)
 	applyLaunchDiscountToCategories(&data, p.launchPromoEndsAt(ctx, shopID))
 	applyRateToCategories(p.bcvRate(ctx), &data)
 	return data, nil
