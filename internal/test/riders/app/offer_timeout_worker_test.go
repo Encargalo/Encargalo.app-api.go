@@ -67,7 +67,7 @@ func TestAcceptTrip_CancelsTimeoutInStore(t *testing.T) {
 
 	trip := samplePickupTrip(t)
 	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&tripsModels.Trip{ID: trip.ID, Status: tripsModels.TripStatusSearching}, nil)
-	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything).Return(true, nil)
+	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything, mock.Anything).Return(true, nil)
 	matcher.OfferTrip(context.Background(), trip)
 
 	err := svc.AcceptTrip(context.Background(), riderID, trip.ID, conn)

@@ -136,7 +136,7 @@ func TestAcceptTrip_SendsPassengerPhoneOnlyToAccepter(t *testing.T) {
 		ID: trip.ID, CustomerID: customerID, Status: tripsModels.TripStatusSearching,
 		PickupLatitude: trip.PickupLatitude, PickupLongitude: trip.PickupLongitude, PickupH3Cell: trip.PickupH3Cell,
 	}, nil)
-	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, accepter, mock.Anything).Return(true, nil)
+	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, accepter, mock.Anything, mock.Anything).Return(true, nil)
 	asMatcher(t, svc).OfferTrip(context.Background(), trip)
 
 	require.NoError(t, svc.AcceptTrip(context.Background(), accepter, trip.ID, connA))
@@ -193,7 +193,7 @@ func TestCompleteTrip_DropsPassengerPhoneKeepsName(t *testing.T) {
 	}, nil)
 	tripsRepo.On("CompleteTrip", mock.Anything, tripID, fare, "5678").Return(true, nil)
 	bcv.On("GetRate", mock.Anything).Return(&bcvmodels.ExchangeRate{Rate: 40}, nil)
-	tripEarnings.On("RecordTripEarning", mock.Anything, riderID, tripID, fare, 40.0).Return(nil)
+	tripEarnings.On("RecordTripEarning", mock.Anything, riderID, tripID, fare, 0.0, 40.0).Return(nil)
 	passengers.On("GetByCustomerID", mock.Anything, customerID).
 		Return(tripsDtos.PassengerContact{Name: "Ana", LastName: "Pérez", Phone: "04141234567"}, nil)
 

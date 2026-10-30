@@ -22,7 +22,7 @@ func TestEstimateFare_RecordsFareQuoteForConversion(t *testing.T) {
 	quotes := mockstrips.NewTripQuotesRepo(t)
 	fareQuotes := mockstrips.NewFareQuotesRepo(t)
 	bcv := mockbcvports.NewBcvApp(t)
-	svc := app.NewTripsApp(repo, nil, bcv, quotes, nil, nil, nil, nil, nil, nil, nil, nil, nil, fareQuotes)
+	svc := app.NewTripsApp(repo, nil, bcv, quotes, nil, nil, nil, nil, nil, nil, nil, nil, nil, fareQuotes, nil)
 
 	customerID := uuid.New()
 	req := sampleFareEstimateRequest(customerID)
@@ -59,7 +59,7 @@ func TestEstimateFare_PublishesFareQuoteCreated(t *testing.T) {
 	fareQuotes := mockstrips.NewFareQuotesRepo(t)
 	bcv := mockbcvports.NewBcvApp(t)
 	events := &fakeTripEvents{}
-	svc := app.NewTripsApp(repo, nil, bcv, quotes, nil, nil, nil, nil, nil, nil, nil, nil, events, fareQuotes)
+	svc := app.NewTripsApp(repo, nil, bcv, quotes, nil, nil, nil, nil, nil, nil, nil, nil, events, fareQuotes, nil)
 
 	req := sampleFareEstimateRequest(uuid.New())
 	mockBcvRate(bcv, 40)
@@ -82,7 +82,7 @@ func TestEstimateFare_SucceedsWhenFareQuoteRecordFails(t *testing.T) {
 	quotes := mockstrips.NewTripQuotesRepo(t)
 	fareQuotes := mockstrips.NewFareQuotesRepo(t)
 	bcv := mockbcvports.NewBcvApp(t)
-	svc := app.NewTripsApp(repo, nil, bcv, quotes, nil, nil, nil, nil, nil, nil, nil, nil, nil, fareQuotes)
+	svc := app.NewTripsApp(repo, nil, bcv, quotes, nil, nil, nil, nil, nil, nil, nil, nil, nil, fareQuotes, nil)
 
 	req := sampleFareEstimateRequest(uuid.New())
 	mockBcvRate(bcv, 40)

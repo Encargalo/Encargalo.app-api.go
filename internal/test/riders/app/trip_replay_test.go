@@ -56,11 +56,11 @@ func TestUpdateLocation_OffersOpenTripToLateRider(t *testing.T) {
 	require.Equal(t, 1, offersReceived())
 
 	// La oferta reenviada debe ser aceptable: el rider quedó dentro del set de ofertados.
-	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything).Return(true, nil)
+	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything, mock.Anything).Return(true, nil)
 	conn := mocksriders.NewRiderConn(t)
 	conn.On("Send", mock.Anything).Return().Maybe()
 	require.NoError(t, svc.AcceptTrip(context.Background(), riderID, trip.ID, conn))
-	tripsRepo.AssertCalled(t, "AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything)
+	tripsRepo.AssertCalled(t, "AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything, mock.Anything)
 }
 
 func TestUpdateLocation_DoesNotResendWhileStayingInSameCell(t *testing.T) {

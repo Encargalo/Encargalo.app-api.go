@@ -144,17 +144,17 @@ func (_m *FinanceApp) RecordTripCashCollected(ctx context.Context, riderID uuid.
 	return r0
 }
 
-// RecordTripEarning provides a mock function with given fields: ctx, riderID, tripID, fare, bcvRate
-func (_m *FinanceApp) RecordTripEarning(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare float64, bcvRate float64) error {
-	ret := _m.Called(ctx, riderID, tripID, fare, bcvRate)
+// RecordTripEarning provides a mock function with given fields: ctx, riderID, tripID, fare, pickupDistanceKm, bcvRate
+func (_m *FinanceApp) RecordTripEarning(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare float64, pickupDistanceKm float64, bcvRate float64) error {
+	ret := _m.Called(ctx, riderID, tripID, fare, pickupDistanceKm, bcvRate)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RecordTripEarning")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) error); ok {
-		r0 = rf(ctx, riderID, tripID, fare, bcvRate)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64, float64) error); ok {
+		r0 = rf(ctx, riderID, tripID, fare, pickupDistanceKm, bcvRate)
 	} else {
 		r0 = ret.Error(0)
 	}

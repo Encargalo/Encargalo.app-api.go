@@ -82,7 +82,8 @@ type TripsStore interface {
 	UpdateTripStatus(ctx context.Context, tripID uuid.UUID, fromStatus, toStatus tripsModels.TripStatus) (bool, error)
 	SaveTripPayment(ctx context.Context, tripID uuid.UUID, payment *tripsModels.TripPayment) error
 	SaveTripCancelReason(ctx context.Context, tripID uuid.UUID, reason tripsModels.CancelReason) error
-	AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID, pickupCode string) (bool, error)
+	// pickupDistanceKm congela la distancia del rider al pickup para liquidar el bono de acercamiento al completar.
+	AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID, pickupCode string, pickupDistanceKm float64) (bool, error)
 	StartTripWithPickupCode(ctx context.Context, tripID, riderID uuid.UUID, pickupCode, dropoffCode string) (bool, error)
 	ReleaseTripRider(ctx context.Context, tripID, riderID uuid.UUID) (bool, error)
 	CompleteTrip(ctx context.Context, tripID uuid.UUID, fare float64, dropoffCode string) (bool, error)

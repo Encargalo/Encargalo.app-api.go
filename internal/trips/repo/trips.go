@@ -284,13 +284,14 @@ func (r *tripsRepo) ListSearchingTripIDs(ctx context.Context) ([]uuid.UUID, erro
 	return ids, nil
 }
 
-func (r *tripsRepo) AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID, pickupCode string) (bool, error) {
+func (r *tripsRepo) AssignTripRider(ctx context.Context, tripID, riderID uuid.UUID, pickupCode string, pickupDistanceKm float64) (bool, error) {
 	res, err := r.db.NewUpdate().
 		TableExpr("trips.trips").
 		Set("rider_id = ?", riderID).
 		Set("status = ?", models.TripStatusAccepted).
 		Set("accepted_at = now()").
 		Set("pickup_code = ?", pickupCode).
+		Set("pickup_distance_km = ?", pickupDistanceKm).
 		Set("updated_at = now()").
 		Where("id = ? AND status = ?", tripID, models.TripStatusSearching).
 		Where("NOT EXISTS (SELECT 1 FROM trips.trips busy WHERE busy.rider_id = ? AND busy.status IN (?))",

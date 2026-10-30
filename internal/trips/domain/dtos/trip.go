@@ -170,6 +170,8 @@ type FareEstimateResponse struct {
 	// FareOriginalUSD y DiscountUSD solo vienen con el descuento de primer viaje; fare_usd ya lo trae restado.
 	FareOriginalUSD float64 `json:"fare_original_usd,omitempty"`
 	DiscountUSD     float64 `json:"discount_usd,omitempty"`
+	// PickupSurchargeUSD solo viene si el acercamiento de los riders disponibles superó el umbral; fare_usd ya lo trae sumado.
+	PickupSurchargeUSD float64 `json:"pickup_surcharge_usd,omitempty"`
 	// BcvRate es la tasa congelada en la cotización; fare_bs = fare_usd * BcvRate.
 	BcvRate float64 `json:"bcv_rate"`
 	// VehicleType es el servicio que quedó congelado en la cotización.

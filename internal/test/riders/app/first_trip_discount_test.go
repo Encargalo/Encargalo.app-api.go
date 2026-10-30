@@ -77,7 +77,7 @@ func TestAdvanceTrip_DiscountedBankTripPaysOnGrossFare(t *testing.T) {
 	}, nil)
 	tripsRepo.On("CompleteTrip", mock.Anything, tripID, fare, "5678").Return(true, nil)
 	bcv.On("GetRate", mock.Anything).Return(&bcvmodels.ExchangeRate{Rate: 40}, nil)
-	tripEarnings.On("RecordTripEarning", mock.Anything, riderID, tripID, 20.0, 40.0).Return(nil)
+	tripEarnings.On("RecordTripEarning", mock.Anything, riderID, tripID, 20.0, 0.0, 40.0).Return(nil)
 
 	err := svc.AdvanceTrip(context.Background(), riderID, tripID, "5678", conn)
 

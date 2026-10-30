@@ -1,5 +1,230 @@
 # Changelog
 
+## [2.11.1](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.11.0...v2.11.1) (2026-10-30)
+
+
+### Bug Fixes
+
+* **riders:** muestra el bono de acercamiento al rider desde la oferta ([acad72b](https://github.com/Encargalo/Encargalo.app-api.go/commit/acad72b202fa38968f802855dc967c1ed38f0f86))
+
+## [2.11.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.10.1...v2.11.0) (2026-10-30)
+
+
+### Features
+
+* **trips:** cobra acercamiento al pickup y paga bono al rider sobre 3km ([486e0a4](https://github.com/Encargalo/Encargalo.app-api.go/commit/486e0a4bee8f64c85628b2b56e2fbbffc5117361))
+* **trips:** cobra acercamiento al pickup y paga bono al rider sobre 3km ([e4a8594](https://github.com/Encargalo/Encargalo.app-api.go/commit/e4a8594574b8966711dc0e194e3ff32fdd1325e8))
+
+## [2.10.1](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.10.0...v2.10.1) (2026-10-27)
+
+
+### Bug Fixes
+
+* **riders:** distribuye el vencimiento de la ronda de oferta a Redis ([9f596ec](https://github.com/Encargalo/Encargalo.app-api.go/commit/9f596ec29e6413994fddc6c8a0e6f8f08b008171))
+
+## [2.10.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.9.0...v2.10.0) (2026-10-27)
+
+
+### Features
+
+* **analytics:** agrega sincronización puntual de una orden a OLAP ([ad95c55](https://github.com/Encargalo/Encargalo.app-api.go/commit/ad95c55af632eb8adb3daf34c51232f657944a58))
+* **config:** agrega configuración de Redis Stream para cmd/etl ([ff3eaff](https://github.com/Encargalo/Encargalo.app-api.go/commit/ff3eaffb8a52ac6a05c38183f5e80020008780a2))
+* **etl:** modelo OLAP dirigido por eventos en tiempo real ([b049a7f](https://github.com/Encargalo/Encargalo.app-api.go/commit/b049a7f10266b901a572aa76bbbde1bc9f136a0f))
+* **etl:** sincroniza cube_delivery_quote por evento y lo saca del cron ([f096c25](https://github.com/Encargalo/Encargalo.app-api.go/commit/f096c256942d035e9117dfad564aca928b881123))
+* **etl:** sincroniza cube_fare_quote por evento y lo saca del cron ([3d85dcf](https://github.com/Encargalo/Encargalo.app-api.go/commit/3d85dcf48f8106b69cc591fe555556a8f4ea638a))
+* **etl:** sincroniza cube_order por evento y acota el cron a las demás entidades ([91d9f6d](https://github.com/Encargalo/Encargalo.app-api.go/commit/91d9f6dd5b6cd483adc78ee12481cf5324d19520))
+* **etl:** sincroniza cube_trip por evento y lo saca del cron ([a4937bb](https://github.com/Encargalo/Encargalo.app-api.go/commit/a4937bb77d0931b505495377d476b73b448b0cdf))
+* **etl:** sincroniza dim_rider por evento y lo saca del cron ([59835ba](https://github.com/Encargalo/Encargalo.app-api.go/commit/59835bafc309ec6693bdf7581c168513f945aa67))
+* **etl:** sincroniza dim_shop por evento y lo saca del cron ([a184a3f](https://github.com/Encargalo/Encargalo.app-api.go/commit/a184a3fdde68764b6fe2cb67e7361f7e2e3137b6))
+* **etl:** sincroniza dim_user por evento y elimina el cron por completo ([bd3addf](https://github.com/Encargalo/Encargalo.app-api.go/commit/bd3addfd4954a65004644f65ccf66f32baa0a14d))
+* **etl:** sincroniza fact_order_status_change para medir tiempo de ciclo del pedido ([3616937](https://github.com/Encargalo/Encargalo.app-api.go/commit/3616937e8c145997ede8f3ed499a2aa59f5d249d))
+* **etl:** sincroniza OLAP por eventos en vez de cron horario ([a755a2e](https://github.com/Encargalo/Encargalo.app-api.go/commit/a755a2eafa8d0332fafde8f2f633f851a7f7a2b8))
+* **orders:** publica order_status_changed al rechazar o completar una orden ([8c17447](https://github.com/Encargalo/Encargalo.app-api.go/commit/8c174479e10bffac61526bb28ceaa4a480ff600b))
+
+
+### Bug Fixes
+
+* **notifications:** ackea tipos de mensaje que no reconoce en vez de reintentarlos para siempre ([c655a7d](https://github.com/Encargalo/Encargalo.app-api.go/commit/c655a7d41539638d472ee9332dbddc5bc48fecfe))
+
+
+### Documentation
+
+* documenta el modelo ETL final por eventos en CLAUDE.md ([a37a9be](https://github.com/Encargalo/Encargalo.app-api.go/commit/a37a9be5cf3ccf632e3f1b4e5ba7aa418383e07a))
+
+## [2.9.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.8.0...v2.9.0) (2026-10-26)
+
+
+### Features
+
+* **banners:** agrega dominio de banners publicitarios ([f5a6a5b](https://github.com/Encargalo/Encargalo.app-api.go/commit/f5a6a5bce6597b637c32095dfc67ffe78ae86fd1))
+* **banners:** dominio de banners publicitarios ([440f036](https://github.com/Encargalo/Encargalo.app-api.go/commit/440f03644f7b0195a6be28c9e0b3e2f2f451bcad))
+* **riders:** la bici no lleva pedidos Turbo ni de supermercado ([d67d20c](https://github.com/Encargalo/Encargalo.app-api.go/commit/d67d20cf7fb29abb4f6f68e47e7a3127067d3989))
+* **riders:** la bici no lleva pedidos Turbo ni de supermercado ([a473ca7](https://github.com/Encargalo/Encargalo.app-api.go/commit/a473ca7c115f8df105ed10af49aafed4f6f2279d))
+* **trips:** el cliente elige el vehículo del viaje y queda congelado en la cotización ([664dd0c](https://github.com/Encargalo/Encargalo.app-api.go/commit/664dd0cd59863b0ec9b656a1da5433346a9464f6))
+* **trips:** el cliente elige el vehículo del viaje y queda congelado en la cotización ([784fcfa](https://github.com/Encargalo/Encargalo.app-api.go/commit/784fcfa8240732977b5a3659f82d3434054d7432))
+
+
+### Bug Fixes
+
+* **retiros,viajes:** el anulado automático no se revierte y la bici no acepta pasajeros ([4002cf4](https://github.com/Encargalo/Encargalo.app-api.go/commit/4002cf4c96867167c28156d20444b42654dd2185))
+* **retiros,viajes:** el anulado automático no se revierte y la bici no acepta pasajeros ([16dfb5c](https://github.com/Encargalo/Encargalo.app-api.go/commit/16dfb5c423906074d456d5b61261f62cb0ccc98d))
+* **riders:** la bici ya no aparece como disponible en el mapa del cliente ([7ff5f4d](https://github.com/Encargalo/Encargalo.app-api.go/commit/7ff5f4dc5ffc413d0cf66aa03e69a89cab6d392d))
+* **riders:** no ofertar viajes a riders sin conexion en esta replica ([3ee2e71](https://github.com/Encargalo/Encargalo.app-api.go/commit/3ee2e71991b6c6337e0811b353a103cc032b6b6c))
+* **uploadImage:** conversión a WebP no se aplicaba por conflicto con AllowedFormats ([763c36e](https://github.com/Encargalo/Encargalo.app-api.go/commit/763c36e8c51c71f98b6db9e5da6f4c1a161970f8))
+* **uploadImage:** las imágenes subidas a Cloudinary no quedaban en WebP ([6e6ad5d](https://github.com/Encargalo/Encargalo.app-api.go/commit/6e6ad5d22c8f98f2520405de11495d3bf3348c85))
+* **viajes:** descartar ubicaciones viejas en el matching de riders ([77f2e54](https://github.com/Encargalo/Encargalo.app-api.go/commit/77f2e54c3b8fdbc3483506a18afc3c9de9e37970))
+* **viajes:** descartar ubicaciones viejas en el matching de riders ([2469ad7](https://github.com/Encargalo/Encargalo.app-api.go/commit/2469ad7f8e82bd8fb6b6226c9d4dba7fb740a4f1))
+* **viajes:** la bici no recibe viajes de pasajeros ([b2043c3](https://github.com/Encargalo/Encargalo.app-api.go/commit/b2043c3fb58dfd2a5a75b309f3f824476940674d))
+* **viajes:** la bici no recibe viajes de pasajeros ([588b262](https://github.com/Encargalo/Encargalo.app-api.go/commit/588b26287cfc958871e0e62aa399be761be35e2e))
+
+
+### Refactors
+
+* **riders:** borra el indice H3 de riders en memoria ([e1186c9](https://github.com/Encargalo/Encargalo.app-api.go/commit/e1186c977d230b98f05437e889b14cdf4454db68))
+* **riders:** borra SnapshotTripsRiders del puerto de riders ([e9fb333](https://github.com/Encargalo/Encargalo.app-api.go/commit/e9fb333c62c04a2bba25f90ae5c4d6778644e520))
+* **riders:** el mapa de riders cercanos se resuelve en Redis ([3a42374](https://github.com/Encargalo/Encargalo.app-api.go/commit/3a42374d16f6280c76cb2dd352e5fac43ac05ce1))
+* **riders:** el matching de viajes se resuelve en Redis ([6cb1774](https://github.com/Encargalo/Encargalo.app-api.go/commit/6cb17749017b42ac70700ace3d6451bde243c027))
+* **riders:** la presencia y la búsqueda de riders salen del proceso a Redis ([e980f38](https://github.com/Encargalo/Encargalo.app-api.go/commit/e980f38ffbf82720e54541b9d1dd64b4319ee9f4))
+* **riders:** publica la presencia del rider en Redis junto a la memoria ([947b543](https://github.com/Encargalo/Encargalo.app-api.go/commit/947b54370f5782f45ea7cca12299aa87012bd64b))
+* **riders:** puerto y adapter Redis para la presencia de riders ([9e1487c](https://github.com/Encargalo/Encargalo.app-api.go/commit/9e1487c21515978c2bb684f19af717899d1870f9))
+
+## [2.8.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.7.0...v2.8.0) (2026-10-23)
+
+
+### Features
+
+* **pedidos:** envío gratis en el primer pedido con tope de $3 ([17d40b4](https://github.com/Encargalo/Encargalo.app-api.go/commit/17d40b4732ebad25e2111d09b1e3f70d5444f756))
+* **pedidos:** envío gratis en el primer pedido con tope de $3 ([cb6f8d6](https://github.com/Encargalo/Encargalo.app-api.go/commit/cb6f8d688e82f15b20220f69aef03a67b626bf15))
+* **trips:** decirle al cliente por qué se canceló su viaje ([a3fa56c](https://github.com/Encargalo/Encargalo.app-api.go/commit/a3fa56c282acd7a8697329541a10c95eed267069))
+* **trips:** decirle al cliente por qué se canceló su viaje ([ab22238](https://github.com/Encargalo/Encargalo.app-api.go/commit/ab2223873bf42fb6ee01b865187c22a02d86bf8a)), closes [#310](https://github.com/Encargalo/Encargalo.app-api.go/issues/310)
+* **viajes:** descuento del 50% en el primer viaje con tope de $6 ([8c5ec1c](https://github.com/Encargalo/Encargalo.app-api.go/commit/8c5ec1c2fee0e91105bdbc58ed7ea6394ff0a159))
+* **viajes:** descuento del 50% en el primer viaje con tope de $6 ([7d31572](https://github.com/Encargalo/Encargalo.app-api.go/commit/7d315725b380a700bc62fb483e2858d12577896a))
+
+## [2.7.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.6.0...v2.7.0) (2026-10-23)
+
+
+### Features
+
+* **analytics:** registrar cotizaciones y su conversión para validar la tarifa ([1ae836f](https://github.com/Encargalo/Encargalo.app-api.go/commit/1ae836f5e6a5e623d2781a10e4a679ed8684f214))
+* **analytics:** registrar cotizaciones y su conversión para validar la tarifa ([70f8870](https://github.com/Encargalo/Encargalo.app-api.go/commit/70f88709b8e1917821e6fcd805dcf48231268ab1))
+* **maps:** listar los lugares populares cerca de una coordenada ([79b23b3](https://github.com/Encargalo/Encargalo.app-api.go/commit/79b23b3fb8f0556ffc79e157b5b015b1b792ea70))
+* **maps:** lugares populares cerca de una coordenada ([c426a46](https://github.com/Encargalo/Encargalo.app-api.go/commit/c426a46caa0ba41771bd2105adcbf40856db13a9))
+* **tarifas:** cobrar por distancia exacta con piso de $1 y tramos horarios ([a5d1716](https://github.com/Encargalo/Encargalo.app-api.go/commit/a5d171638e0b8935ea2d194901e8852ad59b34f7))
+* **tarifas:** cobrar por distancia exacta con piso de $1 y tramos horarios ([790b463](https://github.com/Encargalo/Encargalo.app-api.go/commit/790b463ea70e8fac0783bf35518c19a2d173a6d8))
+
+
+### Bug Fixes
+
+* **tarifas:** devolver al delivery su tarifa por distancia ([f0371e2](https://github.com/Encargalo/Encargalo.app-api.go/commit/f0371e2ca25962d7e4d774747ef122720db61bec))
+* **tarifas:** devolver al delivery su tarifa por distancia ([e3bbf89](https://github.com/Encargalo/Encargalo.app-api.go/commit/e3bbf89f239f75f514d5760cb51e8cd1d77badf6))
+* **upload:** validar el data-URL antes de subir a Cloudinary y guardar en WebP ([db2b7ca](https://github.com/Encargalo/Encargalo.app-api.go/commit/db2b7ca57381d2616a7924bc38c3de333af60c2b))
+
+## [2.6.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.5.0...v2.6.0) (2026-10-22)
+
+
+### Features
+
+* **auth:** identificar por teléfono el siguiente paso en la app de riders ([3d687ad](https://github.com/Encargalo/Encargalo.app-api.go/commit/3d687add5976ea6ddb3165a42d611cf3c1493fd2))
+* **notifications:** integrar el consumer de notificaciones al monorepo ([b733adf](https://github.com/Encargalo/Encargalo.app-api.go/commit/b733adf7a23b1ed373249988eb9c27eb54508321))
+* **notifications:** integrar el consumer de notificaciones al monorepo ([85a37b7](https://github.com/Encargalo/Encargalo.app-api.go/commit/85a37b7dc561115aada3eb38f418921305018e00))
+* **riders:** el conductor envía su solicitud con los datos del vehículo ([4415421](https://github.com/Encargalo/Encargalo.app-api.go/commit/44154212e633e9deab74ca9d4be0f279fbc8bf54))
+* **riders:** el conductor envía su solicitud con los datos del vehículo ([41c0f68](https://github.com/Encargalo/Encargalo.app-api.go/commit/41c0f68cb8ba7db3e981216aee8fbeef87ef3067)), closes [#284](https://github.com/Encargalo/Encargalo.app-api.go/issues/284)
+* **riders:** el staff pide cambios o rechaza la solicitud del conductor ([cf54add](https://github.com/Encargalo/Encargalo.app-api.go/commit/cf54add210339a31484a38add86cb092aa23334a))
+* **riders:** el staff pide cambios o rechaza la solicitud del conductor ([84db9f8](https://github.com/Encargalo/Encargalo.app-api.go/commit/84db9f81d7b80040201ab1f57d2e4096bbaf6689)), closes [#286](https://github.com/Encargalo/Encargalo.app-api.go/issues/286)
+
+
+### Bug Fixes
+
+* **auth:** limitar por minuto y por día la identificación de riders ([05b5727](https://github.com/Encargalo/Encargalo.app-api.go/commit/05b57278327320174f930fe6c6530c288b044877))
+* **auth:** limitar por minuto y por día la identificación de riders ([51aa6f1](https://github.com/Encargalo/Encargalo.app-api.go/commit/51aa6f1fa96878ca428f393aaba11879383be1e5))
+
+
+### Documentation
+
+* agregar skills de agentes y alinear la base url de postman ([ce09c7c](https://github.com/Encargalo/Encargalo.app-api.go/commit/ce09c7c22081ce7770fcdf9c2a0ed298aace697b))
+* agregar skills de agentes y alinear la base url de postman ([e132ad6](https://github.com/Encargalo/Encargalo.app-api.go/commit/e132ad6e167f642196c967b25bf4164e263acee8))
+
+## [2.5.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.4.0...v2.5.0) (2026-10-19)
+
+
+### Features
+
+* **trips:** exponer bcv_rate en la cotización de viaje ([f89bb5a](https://github.com/Encargalo/Encargalo.app-api.go/commit/f89bb5aeff9749427dc5d0c1716645edd586499a))
+
+
+### Performance
+
+* **db:** generar las PK nuevas como UUID v7 ([4d241ac](https://github.com/Encargalo/Encargalo.app-api.go/commit/4d241ac311bc60057dd869516e7386b2e08c60ff))
+* **db:** generar las PK nuevas como UUID v7 ([917e519](https://github.com/Encargalo/Encargalo.app-api.go/commit/917e51998fb757a076f7d63e1d7d1fcbc4e34f89))
+
+
+### Documentation
+
+* **swagger:** regenerar los docs y hacer que swag init termine ([bffe978](https://github.com/Encargalo/Encargalo.app-api.go/commit/bffe97844246ea700c1bcb5f156c2c7374c76ac9))
+* **swagger:** regenerar los docs y hacer que swag init termine ([a7f4bb4](https://github.com/Encargalo/Encargalo.app-api.go/commit/a7f4bb4ab38f29f016ac6c9cccf20bcf124bd3a2))
+
+## [2.4.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.3.0...v2.4.0) (2026-10-11)
+
+
+### Features
+
+* **orders:** enriquecer GET /orders/history ([d7a1f0a](https://github.com/Encargalo/Encargalo.app-api.go/commit/d7a1f0a51135dc0ab792ca0fbd7bd6535d804ce3))
+* **orders:** enriquecer GET /orders/history con tienda, items, pagos y status_history ([47316f1](https://github.com/Encargalo/Encargalo.app-api.go/commit/47316f14d6ac65bda6d93fb6ac2f193dc2b32d22))
+* **riders:** enviar al cliente la ubicación en vivo del rider en las órdenes ([508d5a4](https://github.com/Encargalo/Encargalo.app-api.go/commit/508d5a4892655e7fb27474a402267a9cff15398f))
+* **riders:** enviar al cliente la ubicación en vivo del rider en las órdenes ([29f73d9](https://github.com/Encargalo/Encargalo.app-api.go/commit/29f73d92a40b115750ec7d98a436f867d772876a)), closes [#273](https://github.com/Encargalo/Encargalo.app-api.go/issues/273)
+* **riders:** incluir nombre y apellido del pasajero en la oferta de viaje ([6f17390](https://github.com/Encargalo/Encargalo.app-api.go/commit/6f173908a47f138ea54e1ec2af339ef7cb942b41))
+* **riders:** incluir nombre y apellido del pasajero en la oferta de viaje ([13af36f](https://github.com/Encargalo/Encargalo.app-api.go/commit/13af36f0254db80a12a725bf27713606b549b05c))
+* **riders:** reducir la comisión de la plataforma al rider a 10% ([afb29f1](https://github.com/Encargalo/Encargalo.app-api.go/commit/afb29f1bb63e968e701723ad1755781c8a663c5f))
+* **trips:** publicar eventos de viaje para el servicio de notificaciones ([dc1bdc0](https://github.com/Encargalo/Encargalo.app-api.go/commit/dc1bdc00f46c548f11d9ff0a57d37b83f316a47c))
+
+
+### Bug Fixes
+
+* **riders:** enviar fare_bs y collect_bs al rider con la tasa congelada del viaje ([32b330c](https://github.com/Encargalo/Encargalo.app-api.go/commit/32b330cee44aea68458eb2fe5d537d48c5440363))
+* **riders:** mostrar al rider su ganancia en la tarifa del viaje ([065b049](https://github.com/Encargalo/Encargalo.app-api.go/commit/065b04958863c51ba3d83f4f7b5513a974640a6d))
+
+## [2.3.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.2.0...v2.3.0) (2026-10-07)
+
+
+### Features
+
+* conductores ocupados, idempotencia en POST /trips, started_at, GET /maps/directions y código de activación seguro ([39de81a](https://github.com/Encargalo/Encargalo.app-api.go/commit/39de81a4a6727e4350458fc6b39ee1e0c751c895))
+* **maps:** agregar GET /maps/directions para trazar la ruta desde el backend ([fa046d8](https://github.com/Encargalo/Encargalo.app-api.go/commit/fa046d87562d718c6691f97e997e05099eb6bf8e))
+* **maps:** agregar GET /maps/directions para trazar la ruta desde el backend ([beaa20d](https://github.com/Encargalo/Encargalo.app-api.go/commit/beaa20dbd746a46ce3881b15c5db7ef8a130372a)), closes [#220](https://github.com/Encargalo/Encargalo.app-api.go/issues/220)
+* **trips:** exponer started_at en TripResponse ([9f2a075](https://github.com/Encargalo/Encargalo.app-api.go/commit/9f2a075cc10e1395d07a33465a8c6c38053559f6))
+* **trips:** exponer started_at en TripResponse ([0126e50](https://github.com/Encargalo/Encargalo.app-api.go/commit/0126e5039bd622d52325a248b45234b21174335e)), closes [#221](https://github.com/Encargalo/Encargalo.app-api.go/issues/221)
+* **trips:** idempotencia por id en POST /trips ([16b5bcf](https://github.com/Encargalo/Encargalo.app-api.go/commit/16b5bcfefda240c19d42011255a74b265055953d))
+* **trips:** idempotencia por id en POST /trips ([dfab2b9](https://github.com/Encargalo/Encargalo.app-api.go/commit/dfab2b917e670a389318947091a805546b723539)), closes [#206](https://github.com/Encargalo/Encargalo.app-api.go/issues/206)
+
+
+### Bug Fixes
+
+* **trips:** no ofertar ni asignar viajes a conductores ocupados ([fb1e2b5](https://github.com/Encargalo/Encargalo.app-api.go/commit/fb1e2b58015be502a4e4455a64515c60d35eec87))
+* **trips:** no ofertar ni asignar viajes a conductores ocupados ([0ce827f](https://github.com/Encargalo/Encargalo.app-api.go/commit/0ce827ffa5313e6b2649fc5328dd5fcc80aea334)), closes [#202](https://github.com/Encargalo/Encargalo.app-api.go/issues/202)
+* **users:** generar el código de activación con crypto/rand ([08e8645](https://github.com/Encargalo/Encargalo.app-api.go/commit/08e8645389e9ab60368300803eb665568f258e1d))
+* **users:** generar el código de activación con crypto/rand ([5fdaade](https://github.com/Encargalo/Encargalo.app-api.go/commit/5fdaaded716294a2ea7c7f024fd98fa9f575da29)), closes [#243](https://github.com/Encargalo/Encargalo.app-api.go/issues/243)
+
+## [2.2.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.1.0...v2.2.0) (2026-10-05)
+
+
+### Features
+
+* **maps:** devolver todos los resultados del geocoding inverso ([38ad2c8](https://github.com/Encargalo/Encargalo.app-api.go/commit/38ad2c8c256bfcf5517212ff0f1061b1759da29c))
+* **products:** incluir macro categoría en el catálogo de productos ([19b8add](https://github.com/Encargalo/Encargalo.app-api.go/commit/19b8adde468d9087cd06a20a4af340f3d09f32fd))
+* **products:** permitir precios con centavos en productos y pedidos ([0cefada](https://github.com/Encargalo/Encargalo.app-api.go/commit/0cefada12cad2679769bb69f10f5919006e2a0a8))
+
+
+### Bug Fixes
+
+* **products:** excluir negocios Turbo del trending ([8c7efe8](https://github.com/Encargalo/Encargalo.app-api.go/commit/8c7efe89a98bd5473e2be7f76f7ef674c220f3b0))
+* **products:** excluir negocios Turbo del trending ([8490f2f](https://github.com/Encargalo/Encargalo.app-api.go/commit/8490f2f844919be6555ddb270a117fee3acaf6f7))
+* **products:** radio de cobertura y sin Turbo en trending ([2fce84c](https://github.com/Encargalo/Encargalo.app-api.go/commit/2fce84c29efb7bfe0ab87606b96d420ce4a43a42))
+* **products:** usar el radio de cobertura de negocios en trending ([dd043ab](https://github.com/Encargalo/Encargalo.app-api.go/commit/dd043ab469fd711363edeaf51024a7afc4e0d645))
+* **products:** usar el radio de cobertura de negocios en trending ([6b1e672](https://github.com/Encargalo/Encargalo.app-api.go/commit/6b1e6723c987cd778845809b2d6be5c3efa8a6af))
+* **trips:** reembolsar completo los viajes con pago mixto ([b26df39](https://github.com/Encargalo/Encargalo.app-api.go/commit/b26df391143823aceff3fac3fed8aa107f31b561))
+* **trips:** reembolsar completo los viajes con pago mixto ([9bafa1b](https://github.com/Encargalo/Encargalo.app-api.go/commit/9bafa1b058fa9ce1903656f532f911e93be4ad9f))
+* **trips:** reembolsar completo los viajes con pago mixto ([587ba99](https://github.com/Encargalo/Encargalo.app-api.go/commit/587ba9979f0ed199f390351a5ba3394d3e721254))
+
 ## [2.1.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.0.1...v2.1.0) (2026-10-01)
 
 

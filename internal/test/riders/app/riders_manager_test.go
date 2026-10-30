@@ -469,7 +469,7 @@ func TestAcceptTrip_Success(t *testing.T) {
 
 	trip := samplePickupTrip(t)
 	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&tripsModels.Trip{ID: trip.ID, Status: tripsModels.TripStatusSearching}, nil)
-	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything).Return(true, nil)
+	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything, mock.Anything).Return(true, nil)
 	matcher.OfferTrip(context.Background(), trip)
 
 	err := svc.AcceptTrip(context.Background(), riderID, trip.ID, conn)
@@ -500,7 +500,7 @@ func TestAcceptTrip_PublishesTripStatusChanged(t *testing.T) {
 
 	trip := samplePickupTrip(t)
 	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&tripsModels.Trip{ID: trip.ID, Status: tripsModels.TripStatusSearching}, nil)
-	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything).Return(true, nil)
+	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything, mock.Anything).Return(true, nil)
 	matcher.OfferTrip(context.Background(), trip)
 
 	err := svc.AcceptTrip(context.Background(), riderID, trip.ID, conn)
@@ -533,7 +533,7 @@ func TestAcceptTrip_AlreadyTakenNotifiesTripTaken(t *testing.T) {
 	otherRider := uuid.New()
 	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&tripsModels.Trip{ID: trip.ID, Status: tripsModels.TripStatusSearching}, nil).Once()
 	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&tripsModels.Trip{ID: trip.ID, Status: tripsModels.TripStatusAccepted, RiderID: &otherRider}, nil)
-	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything).Return(false, nil)
+	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything, mock.Anything).Return(false, nil)
 	matcher.OfferTrip(context.Background(), trip)
 
 	err := svc.AcceptTrip(context.Background(), riderID, trip.ID, conn)
@@ -634,7 +634,7 @@ func TestAdvanceTrip_InProgressCompletesAndRecordsEarning(t *testing.T) {
 	tripsRepo.On("GetTripByID", mock.Anything, tripID).Return(&tripsModels.Trip{ID: tripID, RiderID: &riderID, Status: tripsModels.TripStatusInProgress, Fare: &fare}, nil)
 	tripsRepo.On("CompleteTrip", mock.Anything, tripID, deliveryfee.DevPlaceholderFee, "5678").Return(true, nil)
 	bcv.On("GetRate", mock.Anything).Return(&bcvmodels.ExchangeRate{Rate: 40}, nil)
-	tripEarnings.On("RecordTripEarning", mock.Anything, riderID, tripID, deliveryfee.DevPlaceholderFee, 40.0).Return(nil)
+	tripEarnings.On("RecordTripEarning", mock.Anything, riderID, tripID, deliveryfee.DevPlaceholderFee, 0.0, 40.0).Return(nil)
 
 	err := svc.AdvanceTrip(context.Background(), riderID, tripID, "5678", conn)
 
@@ -705,7 +705,7 @@ func TestAdvanceTrip_ConcurrentCompletionIsSerialized(t *testing.T) {
 		<-proceed
 	}).Return(true, nil).Once()
 	bcv.On("GetRate", mock.Anything).Return(&bcvmodels.ExchangeRate{Rate: 40}, nil)
-	tripEarnings.On("RecordTripEarning", mock.Anything, riderID, tripID, deliveryfee.DevPlaceholderFee, 40.0).Return(nil)
+	tripEarnings.On("RecordTripEarning", mock.Anything, riderID, tripID, deliveryfee.DevPlaceholderFee, 0.0, 40.0).Return(nil)
 
 	var wg sync.WaitGroup
 	var firstErr error
@@ -1112,7 +1112,7 @@ func TestAcceptTrip_NotifiesCustomerCodeHiddenFromRider(t *testing.T) {
 	tripsRepo.On("GetTripByID", mock.Anything, trip.ID).Return(&tripsModels.Trip{
 		ID: trip.ID, CustomerID: customerID, Status: tripsModels.TripStatusSearching,
 	}, nil)
-	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything).Return(true, nil)
+	tripsRepo.On("AssignTripRider", mock.Anything, trip.ID, riderID, mock.Anything, mock.Anything).Return(true, nil)
 	matcher.OfferTrip(context.Background(), trip)
 
 	require.NoError(t, svc.AcceptTrip(context.Background(), riderID, trip.ID, conn))
