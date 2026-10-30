@@ -19,6 +19,7 @@ import (
 	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/deliveryfee"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/shared/tripfare"
 	tripsApp "Encargalo.app-api.go/internal/trips/app"
 	tripsDtos "Encargalo.app-api.go/internal/trips/domain/dtos"
 	tripsModels "Encargalo.app-api.go/internal/trips/domain/models"
@@ -123,7 +124,11 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 // ganancia (RiderShare), igual que delivery_fee en los pedidos. collect_usd/
 // collect_bs siguen siendo el total que cobra en efectivo. Bs siempre con la
 // tasa congelada del viaje.
-func riderTripOfferDTO(trip *tripsModels.Trip) tripsDtos.TripResponse {
+// pickupDistanceKm es la distancia de ESTE rider al pickup: en la oferta (antes de
+// aceptar) es la suya propia dentro del matching; ya aceptado, es la congelada en
+// trip.PickupDistanceKm. Sin sumar el bono acá, el rider solo vería el precio real
+// hasta completar el viaje y seguiría rechazando ofertas lejanas por "no compensar".
+func riderTripOfferDTO(trip *tripsModels.Trip, pickupDistanceKm float64) tripsDtos.TripResponse {
 	frozen := *trip
 	frozen.ApplyFrozenBsFare()
 	resp := frozen.ToDTO()
@@ -132,7 +137,7 @@ func riderTripOfferDTO(trip *tripsModels.Trip) tripsDtos.TripResponse {
 		return resp
 	}
 	// El pago del rider sale de la tarifa completa: el descuento de primer viaje lo absorbe la plataforma.
-	gross := trip.GrossFareUSD()
+	gross := trip.GrossFareUSD() + tripfare.PickupBonus(pickupDistanceKm)
 	usd := money.RoundUSD(riderModels.RiderPayUSD(gross))
 	resp.FareUSD = &usd
 	if trip.BcvRate != nil && *trip.BcvRate > 0 {
@@ -144,9 +149,9 @@ func riderTripOfferDTO(trip *tripsModels.Trip) tripsDtos.TripResponse {
 
 // riderTripDTO es la vista del viaje para el rider asignado. El nombre y el
 // apellido del pasajero salen siempre; el teléfono entra solo en accepted,
-// arriving e in_progress.
+// arriving e in_progress. Ya aceptado, PickupDistanceKm viene congelado en el trip.
 func (r *appRidersManager) riderTripDTO(ctx context.Context, trip *tripsModels.Trip) tripsDtos.TripResponse {
-	resp := riderTripOfferDTO(trip)
+	resp := riderTripOfferDTO(trip, trip.PickupDistanceKmOrZero())
 	if r.passengers == nil {
 		return resp
 	}
@@ -164,8 +169,10 @@ func (r *appRidersManager) riderTripDTO(ctx context.Context, trip *tripsModels.T
 
 // tripOfferWithPassenger es la oferta de viaje con nombre y apellido del
 // pasajero, antes de que algún rider acepte. Nunca incluye el teléfono.
-func (r *appRidersManager) tripOfferWithPassenger(ctx context.Context, trip *tripsModels.Trip) tripsDtos.TripResponse {
-	resp := riderTripOfferDTO(trip)
+// pickupDistanceKm es la de este candidato puntual: la misma oferta no se
+// reusa entre candidatos porque cada uno está a su propia distancia del pickup.
+func (r *appRidersManager) tripOfferWithPassenger(ctx context.Context, trip *tripsModels.Trip, pickupDistanceKm float64) tripsDtos.TripResponse {
+	resp := riderTripOfferDTO(trip, pickupDistanceKm)
 	if r.passengers == nil {
 		return resp
 	}
@@ -422,6 +429,7 @@ func isTerminalOrderStatus(status string) bool {
 func (r *appRidersManager) offerOpenTripsToRider(ctx context.Context, riderID uuid.UUID, cell string) {
 	r.mu.RLock()
 	conn, connected := r.availableRiders[riderID]
+	loc, hasLoc := r.riderLocation[riderID]
 	// La bici no lleva pasajeros: tampoco por este camino, que corre en cada cambio de celda.
 	if !connected || riderModels.IsBike(r.riderVehicle[riderID]) || len(r.tripOfferTrip) == 0 || r.riderBusyLocked(riderID) {
 		r.mu.RUnlock()
@@ -456,7 +464,11 @@ func (r *appRidersManager) offerOpenTripsToRider(ctx context.Context, riderID uu
 		if current.Status != tripsModels.TripStatusSearching {
 			continue
 		}
-		data, err := json.Marshal(tripBroadcast{Type: "trip_offer", Trip: r.tripOfferWithPassenger(ctx, &trip)})
+		pickupDistanceKm := 0.0
+		if hasLoc {
+			pickupDistanceKm = geo.HaversineKm(loc.Latitude, loc.Longitude, trip.PickupLatitude, trip.PickupLongitude)
+		}
+		data, err := json.Marshal(tripBroadcast{Type: "trip_offer", Trip: r.tripOfferWithPassenger(ctx, &trip, pickupDistanceKm)})
 		if err != nil {
 			slog.Error("error marshaling trip_offer for late rider", "error", err)
 			continue
@@ -783,12 +795,6 @@ func (r *appRidersManager) offerTripRound(trip tripsModels.Trip, round int) {
 		return
 	}
 
-	data, err := json.Marshal(tripBroadcast{Type: "trip_offer", Trip: r.tripOfferWithPassenger(ctx, &trip)})
-	if err != nil {
-		slog.Error("error marshaling trip_offer broadcast", "error", err)
-		return
-	}
-
 	r.mu.Lock()
 	if _, withdrawn := r.tripWithdrawn[trip.ID]; withdrawn {
 		r.mu.Unlock()
@@ -813,9 +819,19 @@ func (r *appRidersManager) offerTripRound(trip tripsModels.Trip, round int) {
 		return
 	}
 	for _, c := range candidates {
-		if conn, ok := r.availableRiders[c.RiderID]; ok {
-			conn.Send(data)
+		conn, ok := r.availableRiders[c.RiderID]
+		if !ok {
+			continue
 		}
+		// Cada candidato ve su propio bono: la misma oferta no se reusa entre
+		// riders porque cada uno está a su propia distancia del pickup.
+		pickupDistanceKm := geo.HaversineKm(c.Location.Latitude, c.Location.Longitude, trip.PickupLatitude, trip.PickupLongitude)
+		data, err := json.Marshal(tripBroadcast{Type: "trip_offer", Trip: r.tripOfferWithPassenger(ctx, &trip, pickupDistanceKm)})
+		if err != nil {
+			slog.Error("error marshaling trip_offer broadcast", "riderID", c.RiderID, "error", err)
+			continue
+		}
+		conn.Send(data)
 	}
 	r.mu.RUnlock()
 
