@@ -210,7 +210,7 @@ func (o *Order) ApplyLaunchPromo(active bool) {
 }
 
 // ApplyZeroCommission marca el pedido para que, al liquidar, el negocio
-// reciba el 100% del subtotal en vez del 90% habitual. No cambia el precio
+// reciba el 100% del subtotal en vez del 96% habitual. No cambia el precio
 // que paga el cliente, solo la comisión que retiene la plataforma.
 func (o *Order) ApplyZeroCommission(active bool) {
 	o.IsZeroCommission = active

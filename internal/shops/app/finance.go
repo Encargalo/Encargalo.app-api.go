@@ -25,7 +25,7 @@ func NewShopFinanceApp(repo ports.ShopFinanceRepo, bcv bcvPorts.BcvApp) ports.Sh
 
 // RecordSaleCommission liquida la venta al negocio. Durante los primeros 8
 // días de vida del negocio (isZeroCommission) recibe el 100% del subtotal en
-// vez del 90% habitual. El día 1 (isLaunchPromo), además, la plataforma
+// vez del 96% habitual. El día 1 (isLaunchPromo), además, la plataforma
 // desembolsa promoSubsidyAmount (el 50% que le restó al cliente) para que el
 // negocio siga recibiendo el subtotal completo: base reconstruye ese
 // subtotal original sumando de vuelta lo que el cliente no pagó.

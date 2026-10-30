@@ -20,9 +20,9 @@ func TestRecordSaleCommission_RegularSale(t *testing.T) {
 	orderID := uuid.New()
 
 	// totalPrice=52 incluye delivery=2 -> subtotal=50, comision estandar
-	// del negocio es 90% -> delta esperado 45.
-	repo.On("RecordMovement", context.Background(), shopID, models.EntityTypeShop, 45.0, 0.0, mock.AnythingOfType("models.ShopTransaction")).
-		Return(45.0, nil)
+	// del negocio es 96% -> delta esperado 48.
+	repo.On("RecordMovement", context.Background(), shopID, models.EntityTypeShop, 48.0, 0.0, mock.AnythingOfType("models.ShopTransaction")).
+		Return(48.0, nil)
 
 	err := financeApp.RecordSaleCommission(context.Background(), shopID, orderID, 52, 2, "cash", false, false, 0)
 
