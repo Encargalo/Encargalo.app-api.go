@@ -106,7 +106,7 @@ type RideEarningRecorder interface {
 
 // ShopCommissionRecorder is implemented by shops/finance to record the shop's commission on delivery completion.
 // Defined here to avoid a cross-domain import from orders → shops.
-// isZeroCommission (días 1-8 desde la primera apertura) hace que el negocio reciba el 100% en vez del 90% habitual.
+// isZeroCommission (días 1-8 desde la primera apertura) hace que el negocio reciba el 100% en vez del 96% habitual.
 // isLaunchPromo + promoSubsidyAmount (solo día 1) registran el desembolso real que la plataforma puso para cubrir el 50% del cliente.
 type ShopCommissionRecorder interface {
 	RecordSaleCommission(ctx context.Context, shopID uuid.UUID, orderID uuid.UUID, totalPrice, deliveryFee float64, method string, isLaunchPromo, isZeroCommission bool, promoSubsidyAmount float64) error

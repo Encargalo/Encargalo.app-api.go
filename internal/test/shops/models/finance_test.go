@@ -12,8 +12,8 @@ func TestComputeShopSaleBreakdown_RegularSale(t *testing.T) {
 
 	assert.Equal(t, 50.0, breakdown.Base)
 	assert.Equal(t, models.ShopShare, breakdown.Share)
-	assert.Equal(t, 5.0, breakdown.Commission)
-	assert.Equal(t, 45.0, breakdown.Net)
+	assert.Equal(t, 2.0, breakdown.Commission)
+	assert.Equal(t, 48.0, breakdown.Net)
 }
 
 func TestComputeShopSaleBreakdown_ZeroCommission(t *testing.T) {

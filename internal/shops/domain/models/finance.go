@@ -11,9 +11,9 @@ const (
 	EntityTypeShop            = "shop"
 	EntityTypePlatformSubsidy = "platform_subsidy"
 	CurrencyUSD               = "USD"
-	ShopShare                 = 0.90
+	ShopShare                 = 0.96
 	// ZeroCommissionShare es el share que recibe el negocio durante sus
-	// primeros 8 días de vida (comisión 0% en vez del 10% habitual).
+	// primeros 8 días de vida (comisión 0% en vez del 4% habitual).
 	ZeroCommissionShare = 1.0
 	MethodEfectivo      = "Efectivo"
 )
