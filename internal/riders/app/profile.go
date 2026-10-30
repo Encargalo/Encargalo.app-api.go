@@ -27,6 +27,15 @@ func NewRiderProfileApp(repo ports.RiderProfileRepo, uploader uploadimage.Upload
 	return &riderProfileApp{repo: repo, uploader: uploader, stream: stream}
 }
 
+func (a *riderProfileApp) UpsertDeviceToken(ctx context.Context, userID uuid.UUID, req dtos.UpsertDeviceTokenRequest) error {
+	token := models.RiderDeviceToken{
+		RiderID:  userID,
+		FCMToken: strings.TrimSpace(req.FCMToken),
+		Platform: req.Platform,
+	}
+	return a.repo.UpsertDeviceToken(ctx, token)
+}
+
 func (a *riderProfileApp) publishRiderUpdated(ctx context.Context, userID uuid.UUID) {
 	if a.stream == nil {
 		return

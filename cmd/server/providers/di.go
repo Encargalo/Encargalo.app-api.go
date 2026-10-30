@@ -1,6 +1,8 @@
 package providers
 
 import (
+	"log/slog"
+
 	"Encargalo.app-api.go/api/router"
 	"Encargalo.app-api.go/api/router/groups"
 	authMiddle "Encargalo.app-api.go/internal/auth/domain/middleware/auth"
@@ -9,6 +11,7 @@ import (
 	"Encargalo.app-api.go/internal/pkg/cache"
 	"Encargalo.app-api.go/internal/pkg/cookie"
 	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
+	"Encargalo.app-api.go/internal/shared/adapters/fcm"
 	"Encargalo.app-api.go/internal/shared/adapters/googleauth"
 	"Encargalo.app-api.go/internal/shared/adapters/postgres"
 	"Encargalo.app-api.go/internal/shared/adapters/redis"
@@ -124,6 +127,18 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(redis.NewProducerRedisStreamConnection)
 	_ = Container.Provide(cache.NewCache)
 
+	// Un error acá (JSON de credenciales inválido) no debe tirar abajo todo el
+	// servidor por una feature best-effort: se loguea y el push queda en
+	// no-op (nil *fcm.Client), igual que cuando la env var no está seteada.
+	_ = Container.Provide(func(cfg config.Config) *fcm.Client {
+		client, err := fcm.NewClient(cfg)
+		if err != nil {
+			slog.Error("error inicializando cliente FCM: push de riders queda deshabilitado", "error", err)
+			return nil
+		}
+		return client
+	})
+
 	_ = Container.Provide(router.New)
 
 	_ = Container.Provide(groups.NewAuthGroup)
@@ -228,6 +243,8 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(repoRiders.NewPassengerLookup)
 	_ = Container.Provide(repoRiders.NewRiderPresenceRepo)
 	_ = Container.Provide(repoRiders.NewTripOfferTimeoutRepo)
+	_ = Container.Provide(repoRiders.NewLastKnownLocationRepo)
+	_ = Container.Provide(repoRiders.NewPushNotifier)
 	_ = Container.Provide(appRiders.NewRiderProfileApp)
 	_ = Container.Provide(func(mgr ridersPorts.RidersApp) ordersPorts.OrderRiderBroadcaster {
 		return mgr.(ordersPorts.OrderRiderBroadcaster)

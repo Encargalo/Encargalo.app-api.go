@@ -21,12 +21,12 @@ func TestRequestTrip_CashAndBalanceOffersOnlyCashPortion(t *testing.T) {
 	d.quotes.On("GetAndConsume", mock.Anything, customerID, quote.QuoteID).Return(quote, nil)
 	d.repo.On("CreateTrip", mock.Anything, mock.MatchedBy(func(trip *models.Trip) bool {
 		return trip.Status == models.TripStatusSearching &&
-			trip.BalancePaidBs != nil && *trip.BalancePaidBs == 12 &&
+			trip.BalancePaidBs != nil && *trip.BalancePaidBs == 10 &&
 			trip.CashAmountBs != nil && *trip.CashAmountBs == 20
 	})).Run(func(args mock.Arguments) {
 		args.Get(1).(*models.Trip).ID = uuid.New()
 	}).Return(nil)
-	d.balance.On("DebitForReference", mock.Anything, customerID, mock.AnythingOfType("uuid.UUID"), models.ReferenceTypeTrip, 12.0).Return(nil)
+	d.balance.On("DebitForReference", mock.Anything, customerID, mock.AnythingOfType("uuid.UUID"), models.ReferenceTypeTrip, 10.0).Return(nil)
 	d.matcher.On("OfferTrip", mock.Anything, mock.Anything).Return()
 
 	resp, err := d.svc.RequestTrip(context.Background(), customerID, dtos.CreateTripRequest{

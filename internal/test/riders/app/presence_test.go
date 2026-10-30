@@ -22,8 +22,9 @@ func newPresenceMgr(t *testing.T) (ridersPorts.RidersApp, *mocksriders.RiderPres
 	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound).Maybe()
 	vehicles := mocksriders.NewVehicleLookup(t)
 	presence := mocksriders.NewRiderPresenceStore(t)
+	presence.On("IsPaused", mock.Anything, mock.Anything).Return(false, nil).Maybe()
 	svc := app.New(repo, newRidersStream(t), mockbcvports.NewBcvApp(t), mocksriders.NewTripsStore(t),
-		mocksriders.NewTripEarningRecorder(t), nil, nil, nil, vehicles, presence, newOfferTimeoutStore(t))
+		mocksriders.NewTripEarningRecorder(t), nil, nil, nil, vehicles, presence, newOfferTimeoutStore(t), nil, nil)
 	return svc, presence, vehicles
 }
 

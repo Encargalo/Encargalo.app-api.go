@@ -10,6 +10,7 @@ import (
 	financePorts "Encargalo.app-api.go/internal/finance/domain/ports"
 	mockbcvports "Encargalo.app-api.go/internal/mocks/bcv/domain/ports"
 	mocksriders "Encargalo.app-api.go/internal/mocks/riders/domain/ports"
+	"Encargalo.app-api.go/internal/pkg/money"
 	"Encargalo.app-api.go/internal/riders/app"
 	"Encargalo.app-api.go/internal/riders/domain/models"
 	"Encargalo.app-api.go/internal/shared/errcustom"
@@ -27,7 +28,7 @@ func TestRecordRideEarning_CreditsNinetyPercentInBs(t *testing.T) {
 	riderID := uuid.New()
 	orderID := uuid.New()
 
-	repo.On("RecordMovement", mock.Anything, riderID, "rider", 40*0.90*36.0, 0.0, mock.MatchedBy(func(tx models.Transaction) bool {
+	repo.On("RecordMovement", mock.Anything, riderID, "rider", money.RoundBs(40*0.90*36.0), 0.0, mock.MatchedBy(func(tx models.Transaction) bool {
 		return tx.MovementType == string(models.MovementTypeRideBank) && tx.OrderID != nil && *tx.OrderID == orderID
 	})).Return(0.0, nil)
 
@@ -52,7 +53,7 @@ func TestRecordTripEarning_CreditsNinetyPercentInBs(t *testing.T) {
 	riderID := uuid.New()
 	tripID := uuid.New()
 
-	repo.On("RecordMovement", mock.Anything, riderID, "rider", 10*0.90*36.0, 0.0, mock.MatchedBy(func(tx models.Transaction) bool {
+	repo.On("RecordMovement", mock.Anything, riderID, "rider", money.RoundBs(10*0.90*36.0), 0.0, mock.MatchedBy(func(tx models.Transaction) bool {
 		return tx.MovementType == string(models.MovementTypeTripBank) &&
 			tx.TripID != nil && *tx.TripID == tripID &&
 			tx.ServiceType != nil && *tx.ServiceType == models.ServiceTypeTrip
@@ -80,8 +81,8 @@ func TestRecordTripEarning_SumaBonoDeAcercamientoAntesDelSplit(t *testing.T) {
 	riderID := uuid.New()
 	tripID := uuid.New()
 
-	// (10 fare + 1.82 bono) * 0.90 rider share * 36 bcv = 382.97
-	repo.On("RecordMovement", mock.Anything, riderID, "rider", 382.97, 0.0, mock.MatchedBy(func(tx models.Transaction) bool {
+	// (10 fare + 1.82 bono) * 0.90 rider share * 36 bcv = 382.97, redondeado a la decena
+	repo.On("RecordMovement", mock.Anything, riderID, "rider", money.RoundBs(382.97), 0.0, mock.MatchedBy(func(tx models.Transaction) bool {
 		return tx.DistanceKm != nil && *tx.DistanceKm == 4.54
 	})).Return(0.0, nil)
 
@@ -98,7 +99,7 @@ func TestRecordTripEarning_SinBono_NoGuardaDistancia(t *testing.T) {
 	riderID := uuid.New()
 	tripID := uuid.New()
 
-	repo.On("RecordMovement", mock.Anything, riderID, "rider", 10*0.90*36.0, 0.0, mock.MatchedBy(func(tx models.Transaction) bool {
+	repo.On("RecordMovement", mock.Anything, riderID, "rider", money.RoundBs(10*0.90*36.0), 0.0, mock.MatchedBy(func(tx models.Transaction) bool {
 		return tx.DistanceKm == nil
 	})).Return(0.0, nil)
 

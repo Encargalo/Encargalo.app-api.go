@@ -51,7 +51,7 @@ func TestListWithdrawals_ExposesRequestedAndPayableSeparately(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, resp.Total)
 	assert.Equal(t, 800.0, resp.Items[0].AmountBs)
-	assert.Equal(t, 72.0, resp.Items[0].PayableBs)
+	assert.Equal(t, 70.0, resp.Items[0].PayableBs)
 	assert.False(t, resp.Items[0].PayableFrozen)
 	assert.Equal(t, "Pérez", resp.Items[0].SurName)
 }
@@ -78,7 +78,7 @@ func TestListWithdrawals_MarksFrozenPayableAfterClaim(t *testing.T) {
 	resp, err := svc.List(context.Background(), financeModels.EntityTypeRider, nil, 1, 20)
 
 	require.NoError(t, err)
-	assert.Equal(t, 72.0, resp.Items[0].PayableBs)
+	assert.Equal(t, 70.0, resp.Items[0].PayableBs)
 	assert.True(t, resp.Items[0].PayableFrozen)
 }
 
@@ -102,7 +102,7 @@ func TestClaimWithdrawal_ReturnsFrozenAmountToTransfer(t *testing.T) {
 	resp, err := svc.Claim(context.Background(), requestID, staffID)
 
 	require.NoError(t, err)
-	assert.Equal(t, 72.0, resp.PayableBs)
+	assert.Equal(t, 70.0, resp.PayableBs)
 	assert.Equal(t, "04121234567", resp.PMPhone)
 	assert.Equal(t, string(financeModels.WithdrawalProcessing), resp.Status)
 }

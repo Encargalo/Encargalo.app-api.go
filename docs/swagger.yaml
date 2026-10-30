@@ -1313,6 +1313,25 @@ definitions:
       user_id:
         type: string
     type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.ReportLocationRequest:
+    properties:
+      latitude:
+        example: 10.4806
+        type: number
+      longitude:
+        example: -66.9036
+        type: number
+      mode:
+        enum:
+        - orders
+        - trips
+        example: trips
+        type: string
+    required:
+    - latitude
+    - longitude
+    - mode
+    type: object
   Encargalo_app-api_go_internal_riders_domain_dtos.ReviewApplicationRequest:
     properties:
       reason:
@@ -1532,6 +1551,12 @@ definitions:
       type:
         type: string
     type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.SetAvailabilityRequest:
+    properties:
+      accepting_new_work:
+        example: false
+        type: boolean
+    type: object
   Encargalo_app-api_go_internal_riders_domain_dtos.TouchContactRequest:
     properties:
       notes:
@@ -1580,6 +1605,21 @@ definitions:
         items:
           $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.TransactionDTO'
         type: array
+    type: object
+  Encargalo_app-api_go_internal_riders_domain_dtos.UpsertDeviceTokenRequest:
+    properties:
+      fcm_token:
+        example: d_9x...token
+        type: string
+      platform:
+        enum:
+        - android
+        - ios
+        example: android
+        type: string
+    required:
+    - fcm_token
+    - platform
     type: object
   Encargalo_app-api_go_internal_riders_domain_dtos.UpsertRiderProfileRequest:
     properties:
@@ -5180,6 +5220,7 @@ paths:
       description: |-
         Devuelve la solicitud del customer autenticado: estado, datos del vehículo, fotos subidas y `completion` con lo que falta. Si aún no tiene solicitud, responde una vacía en `draft`.
         `can_edit` indica si puede guardar y enviar (`draft` o `changes_requested`). `review_reason` trae el motivo cuando el staff rechaza o pide cambios.
+        Si el staff ya aprobó la solicitud, responde 200 con `status: active` (no 409): el 409 `already_rider` queda solo para cuentas rider legacy sin expediente en `riders.profiles`.
       produces:
       - application/json
       responses:
@@ -5196,7 +5237,7 @@ paths:
           schema:
             type: string
         "409":
-          description: La cuenta ya es rider (already_rider)
+          description: Cuenta rider legacy sin expediente (already_rider)
           schema:
             type: string
         "500":
@@ -5306,6 +5347,43 @@ paths:
       summary: Enviar a revisión la propia solicitud para ser conductor
       tags:
       - Riders Application
+  /riders/availability:
+    put:
+      consumes:
+      - application/json
+      description: El rider sigue conectado y conserva su orden o viaje activo, pero
+        mientras accepting_new_work sea false deja de recibir nuevas órdenes (new_order)
+        y ofertas de viaje (trip_offer). No afecta lo ya asignado ni ofertas que le
+        hayan llegado antes de pausar.
+      parameters:
+      - description: Estado de disponibilidad
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.SetAvailabilityRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Sin contenido
+        "400":
+          description: Datos inválidos
+          schema:
+            type: string
+        "401":
+          description: Sesión no encontrada o inválida
+          schema:
+            type: string
+        "403":
+          description: Acceso denegado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Pausar o reanudar nuevas asignaciones
+      tags:
+      - Riders
   /riders/balance:
     get:
       description: Retorna balance_bs y balance_usd (tasa BCV vigente en bcv_rate),
@@ -5333,6 +5411,83 @@ paths:
       summary: Balance del rider
       tags:
       - Riders Finance
+  /riders/device-token:
+    put:
+      consumes:
+      - application/json
+      description: Registra o reemplaza el token FCM del dispositivo del rider autenticado.
+        La app lo llama al iniciar sesión y cada vez que el token rota. Un rider tiene
+        un solo token activo — un login nuevo pisa el anterior. Se usa para mandarle
+        push cuando se le oferta un viaje o un pedido, en paralelo al WebSocket.
+      parameters:
+      - description: Token FCM y plataforma
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.UpsertDeviceTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Sin contenido
+        "400":
+          description: Datos inválidos
+          schema:
+            type: string
+        "401":
+          description: Sesión no encontrada o inválida
+          schema:
+            type: string
+        "403":
+          description: Acceso denegado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Registrar token de push (FCM)
+      tags:
+      - Riders
+  /riders/location:
+    post:
+      consumes:
+      - application/json
+      description: 'Equivalente REST de update_location, para cuando la app está en
+        background y el WebSocket no está vivo. `mode` es obligatorio (`orders` o
+        `trips`): sin conexión el backend no tiene de dónde inferirlo. Publica la
+        misma presencia (Redis, TTL 45s) y última ubicación conocida (Postgres) que
+        el WebSocket, y notifica al cliente si el rider tiene un viaje o pedido asignado
+        en curso. No mete al rider en rondas de oferta nuevas: eso sigue exigiendo
+        un socket conectado. Requiere cookie `encargalo-session`. Rol: Rider.'
+      parameters:
+      - description: Ubicación y modo actual
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_riders_domain_dtos.ReportLocationRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Sin contenido
+        "400":
+          description: Datos inválidos o coordenadas fuera del área de servicio
+          schema:
+            type: string
+        "401":
+          description: Sesión no encontrada o inválida
+          schema:
+            type: string
+        "403":
+          description: Acceso denegado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Reportar ubicación en background
+      tags:
+      - Riders
   /riders/profile:
     get:
       consumes:

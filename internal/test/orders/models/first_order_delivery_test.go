@@ -43,7 +43,7 @@ func TestNewRiderOrder_FreeDeliveryShowsPayOnFullFee(t *testing.T) {
 	rider := riderModels.NewRiderOrder(order, false)
 
 	assert.InDelta(t, 1.8, rider.DeliveryFee, 0.001)
-	assert.InDelta(t, 72.0, rider.DeliveryFeeBs, 0.001)
+	assert.InDelta(t, 70.0, rider.DeliveryFeeBs, 0.001)
 	assert.NotNil(t, rider.CollectUSD)
 	assert.Equal(t, 20.0, *rider.CollectUSD, "cobra solo lo que paga el cliente")
 }

@@ -412,6 +412,24 @@ func (_m *RiderProfileApp) TouchContact(ctx context.Context, userID uuid.UUID, n
 	return r0, r1
 }
 
+// UpsertDeviceToken provides a mock function with given fields: ctx, userID, req
+func (_m *RiderProfileApp) UpsertDeviceToken(ctx context.Context, userID uuid.UUID, req dtos.UpsertDeviceTokenRequest) error {
+	ret := _m.Called(ctx, userID, req)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpsertDeviceToken")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, dtos.UpsertDeviceTokenRequest) error); ok {
+		r0 = rf(ctx, userID, req)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // UpsertProfile provides a mock function with given fields: ctx, userID, req
 func (_m *RiderProfileApp) UpsertProfile(ctx context.Context, userID uuid.UUID, req dtos.UpsertRiderProfileRequest) (dtos.RiderProfileResponse, error) {
 	ret := _m.Called(ctx, userID, req)

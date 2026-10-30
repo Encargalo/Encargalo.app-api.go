@@ -9,6 +9,7 @@ import (
 	mockbcvports "Encargalo.app-api.go/internal/mocks/bcv/domain/ports"
 	mocksriders "Encargalo.app-api.go/internal/mocks/riders/domain/ports"
 	mockstrips "Encargalo.app-api.go/internal/mocks/trips/domain/ports"
+	"Encargalo.app-api.go/internal/pkg/money"
 	"Encargalo.app-api.go/internal/riders/app"
 	"Encargalo.app-api.go/internal/riders/domain/models"
 	tripsDtos "Encargalo.app-api.go/internal/trips/domain/dtos"
@@ -25,7 +26,7 @@ func TestAdvanceTrip_DiscountedCashTripCreditsRiderTheDifference(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t), newOfferTimeoutStore(t))
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, nil)
 
 	riderID, tripID := uuid.New(), uuid.New()
 	var sent tripsDtos.TripResponse
@@ -63,7 +64,7 @@ func TestAdvanceTrip_DiscountedBankTripPaysOnGrossFare(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t), newOfferTimeoutStore(t))
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, nil)
 
 	riderID, tripID := uuid.New(), uuid.New()
 	conn := mocksriders.NewRiderConn(t)
@@ -89,7 +90,7 @@ func TestRecordTripCashCollected_CreditsWhenCashIsBelowRiderPay(t *testing.T) {
 
 	riderID, tripID := uuid.New(), uuid.New()
 	// Pago $7.20 - efectivo $4 = $3.20 a favor del rider.
-	repo.On("RecordMovement", mock.Anything, riderID, "rider", 115.2, 0.0, mock.MatchedBy(func(tx models.Transaction) bool {
+	repo.On("RecordMovement", mock.Anything, riderID, "rider", money.RoundBs(115.2), 0.0, mock.MatchedBy(func(tx models.Transaction) bool {
 		return tx.MovementType == string(models.MovementTypeTripCash) && tx.TripID != nil && *tx.TripID == tripID
 	})).Return(0.0, nil)
 
