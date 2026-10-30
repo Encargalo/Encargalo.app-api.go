@@ -58,6 +58,32 @@ func GridDisk(cell string, k int) ([]string, error) {
 	return out, nil
 }
 
+// LatLng es un punto geográfico, para describir el polígono que delimita una
+// zona administrativa (ver PolygonToCells).
+type LatLng struct {
+	Lat float64
+	Lng float64
+}
+
+// PolygonToCells devuelve las celdas H3 de la resolución dada que cubren el
+// polígono (sin huecos) descrito por points. points debe venir cerrado o
+// abierto indistintamente: h3-go no exige repetir el primer punto al final.
+func PolygonToCells(points []LatLng, res int) ([]string, error) {
+	loop := make(h3.GeoLoop, len(points))
+	for i, p := range points {
+		loop[i] = h3.NewLatLng(p.Lat, p.Lng)
+	}
+	cells, err := h3.PolygonToCells(h3.GeoPolygon{GeoLoop: loop}, res)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, len(cells))
+	for i, c := range cells {
+		out[i] = c.String()
+	}
+	return out, nil
+}
+
 // h3Res8NeighborKm es la distancia entre centros de celdas vecinas en resolución 8: la arista por raíz de 3.
 const h3Res8NeighborKm = 0.7991
 

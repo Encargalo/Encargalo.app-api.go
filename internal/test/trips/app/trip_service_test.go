@@ -66,7 +66,7 @@ func TestEstimateFare_RejectsUnavailableService(t *testing.T) {
 	repo := mockstrips.NewTripsRepo(t)
 	quotes := mockstrips.NewTripQuotesRepo(t)
 	bcv := mockbcvports.NewBcvApp(t)
-	svc := app.NewTripsApp(repo, nil, bcv, quotes, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	svc := app.NewTripsApp(repo, nil, bcv, quotes, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	req := sampleFareEstimateRequest(uuid.New())
 	req.VehicleType = riderModels.VehicleTypeCar
@@ -79,7 +79,7 @@ func TestEstimateFare_RejectsUnavailableService(t *testing.T) {
 
 func TestEstimateFare_RejectsUnknownService(t *testing.T) {
 	repo := mockstrips.NewTripsRepo(t)
-	svc := app.NewTripsApp(repo, nil, mockbcvports.NewBcvApp(t), mockstrips.NewTripQuotesRepo(t), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	svc := app.NewTripsApp(repo, nil, mockbcvports.NewBcvApp(t), mockstrips.NewTripQuotesRepo(t), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	req := sampleFareEstimateRequest(uuid.New())
 	req.VehicleType = "helicoptero"
@@ -95,7 +95,7 @@ func TestEstimateFare_RecordsVehicleTypeForConversion(t *testing.T) {
 	quotes := mockstrips.NewTripQuotesRepo(t)
 	fareQuotes := mockstrips.NewFareQuotesRepo(t)
 	bcv := mockbcvports.NewBcvApp(t)
-	svc := app.NewTripsApp(repo, nil, bcv, quotes, nil, nil, nil, nil, nil, nil, nil, nil, nil, fareQuotes, nil)
+	svc := app.NewTripsApp(repo, nil, bcv, quotes, nil, nil, nil, nil, nil, nil, nil, nil, nil, fareQuotes, nil, nil)
 
 	customerID := uuid.New()
 	req := sampleFareEstimateRequest(customerID)

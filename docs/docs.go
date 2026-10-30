@@ -7221,6 +7221,234 @@ const docTemplate = `{
                 }
             }
         },
+        "/trips/staff/zone-fare-rules": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Lista todas las zonas (activas e inactivas), con sus celdas H3.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Trips Staff"
+                ],
+                "summary": "Listar zonas de tarifa (staff)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.ZoneFareRulesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Crea una zona con su mínima y tarifa extra/km por banda horaria (día/noche/madrugada) e included_km único para las tres. El polígono (lat/lng, ej. pegado de geojson.io) se convierte a celdas H3 res. 7 en el momento de crear. Los viajes cuyo pickup caiga en una de esas celdas usan esta regla en vez de la fórmula global.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Trips Staff"
+                ],
+                "summary": "Crear zona de tarifa",
+                "parameters": [
+                    {
+                        "description": "Datos de la zona",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.ZoneFareRuleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.ZoneFareRuleResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "payload inválido o polígono inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/trips/staff/zone-fare-rules/{zone_id}": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Trips Staff"
+                ],
+                "summary": "Detalle de zona de tarifa (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Zone ID",
+                        "name": "zone_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.ZoneFareRuleResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Soft delete (active=false): los viajes ya cotizados en esta zona conservan su zone_fare_rule_id. Los pickups en sus celdas vuelven a usar el fallback global.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Trips Staff"
+                ],
+                "summary": "Desactivar zona de tarifa",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Zone ID",
+                        "name": "zone_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Sin contenido"
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Reemplazo completo: precios y polígono (las celdas se recalculan y sustituyen por completo). No es un parche parcial.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Trips Staff"
+                ],
+                "summary": "Reemplazar zona de tarifa",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Zone ID",
+                        "name": "zone_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos de la zona",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.ZoneFareRuleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.ZoneFareRuleResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "zone_id inválido, payload inválido o polígono inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/trips/{id}": {
             "get": {
                 "security": [
@@ -11822,12 +12050,33 @@ const docTemplate = `{
                 "fare_usd": {
                     "type": "number"
                 },
+                "pickup_surcharge_usd": {
+                    "description": "PickupSurchargeUSD solo viene si el acercamiento de los riders disponibles superó el umbral; fare_usd ya lo trae sumado.",
+                    "type": "number"
+                },
                 "quote_id": {
                     "type": "string"
                 },
                 "vehicle_type": {
                     "description": "VehicleType es el servicio que quedó congelado en la cotización.",
                     "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_trips_domain_dtos.LatLngPoint": {
+            "type": "object",
+            "required": [
+                "lat",
+                "lng"
+            ],
+            "properties": {
+                "lat": {
+                    "type": "number",
+                    "example": 10.1167
+                },
+                "lng": {
+                    "type": "number",
+                    "example": -66.85
                 }
             }
         },
@@ -12066,6 +12315,120 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.TripServiceResponse"
+                    }
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_trips_domain_dtos.ZoneFareRuleRequest": {
+            "type": "object",
+            "required": [
+                "day_min_fare_usd",
+                "early_morning_min_fare_usd",
+                "included_km",
+                "name",
+                "night_min_fare_usd",
+                "polygon"
+            ],
+            "properties": {
+                "day_extra_rate_per_km_usd": {
+                    "type": "number",
+                    "minimum": 0,
+                    "example": 0.3
+                },
+                "day_min_fare_usd": {
+                    "type": "number",
+                    "example": 1.2375
+                },
+                "early_morning_extra_rate_per_km_usd": {
+                    "type": "number",
+                    "minimum": 0,
+                    "example": 0.7
+                },
+                "early_morning_min_fare_usd": {
+                    "type": "number",
+                    "example": 1.8
+                },
+                "included_km": {
+                    "type": "number",
+                    "example": 3
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Charallave"
+                },
+                "night_extra_rate_per_km_usd": {
+                    "type": "number",
+                    "minimum": 0,
+                    "example": 0.5
+                },
+                "night_min_fare_usd": {
+                    "type": "number",
+                    "example": 1.575
+                },
+                "polygon": {
+                    "type": "array",
+                    "minItems": 3,
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.LatLngPoint"
+                    }
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_trips_domain_dtos.ZoneFareRuleResponse": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "day_extra_rate_per_km_usd": {
+                    "type": "number"
+                },
+                "day_min_fare_usd": {
+                    "type": "number"
+                },
+                "early_morning_extra_rate_per_km_usd": {
+                    "type": "number"
+                },
+                "early_morning_min_fare_usd": {
+                    "type": "number"
+                },
+                "h3_cells": {
+                    "description": "H3Cells es el resultado de convertir el polígono enviado; el CRM lo usa\npara redibujar la zona al editarla.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "included_km": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "night_extra_rate_per_km_usd": {
+                    "type": "number"
+                },
+                "night_min_fare_usd": {
+                    "type": "number"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "zone_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_trips_domain_dtos.ZoneFareRulesResponse": {
+            "type": "object",
+            "properties": {
+                "zones": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.ZoneFareRuleResponse"
                     }
                 }
             }

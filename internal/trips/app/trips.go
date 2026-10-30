@@ -41,6 +41,7 @@ type tripsApp struct {
 	events           ports.TripEventPublisher
 	fareQuotes       ports.FareQuotesRepo
 	pickupCandidates ports.PickupCandidatesLookup
+	zoneFareRules    ports.ZoneFareRulesRepo
 }
 
 func NewTripsApp(
@@ -59,6 +60,7 @@ func NewTripsApp(
 	events ports.TripEventPublisher,
 	fareQuotes ports.FareQuotesRepo,
 	pickupCandidates ports.PickupCandidatesLookup,
+	zoneFareRules ports.ZoneFareRulesRepo,
 ) ports.TripsApp {
 	return &tripsApp{
 		repo:             repo,
@@ -76,6 +78,7 @@ func NewTripsApp(
 		events:           events,
 		fareQuotes:       fareQuotes,
 		pickupCandidates: pickupCandidates,
+		zoneFareRules:    zoneFareRules,
 	}
 }
 
@@ -619,7 +622,8 @@ func (a *tripsApp) EstimateFare(ctx context.Context, req dtos.FareEstimateReques
 		return dtos.FareEstimateResponse{}, errcustom.ErrTripServiceUnavailable
 	}
 
-	estimate, err := a.fareEstimate(req.PickupLatitude, req.PickupLongitude, req.DropoffLatitude, req.DropoffLongitude)
+	zoneParams, zoneID := a.resolveZoneFare(ctx, req.PickupLatitude, req.PickupLongitude)
+	estimate, err := a.fareEstimate(req.PickupLatitude, req.PickupLongitude, req.DropoffLatitude, req.DropoffLongitude, zoneParams)
 	if err != nil {
 		return dtos.FareEstimateResponse{}, err
 	}
@@ -650,6 +654,7 @@ func (a *tripsApp) EstimateFare(ctx context.Context, req dtos.FareEstimateReques
 		FareBs:             money.RoundBs(fare * rate),
 		BcvRate:            rate,
 		FareBand:           string(estimate.Band),
+		ZoneFareRuleID:     zoneID,
 		VehicleType:        vehicleType,
 		CreatedAt:          now,
 		ExpiresAt:          now.Add(models.TripQuoteTTL),
@@ -743,6 +748,7 @@ func (a *tripsApp) recordFareQuote(ctx context.Context, quote *models.TripQuote)
 		DiscountUSD:      quote.DiscountUSD,
 		BcvRate:          quote.BcvRate,
 		FareBand:         quote.FareBand,
+		ZoneFareRuleID:   quote.ZoneFareRuleID,
 		VehicleType:      quote.VehicleType,
 		CreatedAt:        quote.CreatedAt,
 	}
@@ -771,18 +777,56 @@ func (a *tripsApp) publishFareQuoteCreated(ctx context.Context, quoteID uuid.UUI
 	}
 }
 
-// fareEstimate evita gastar cuota de Google Maps fuera de producción.
-func (a *tripsApp) fareEstimate(pickupLat, pickupLon, dropoffLat, dropoffLon float64) (tripfare.Estimate, error) {
+// fareEstimate evita gastar cuota de Google Maps fuera de producción. Sin
+// zona (zone nil) usa el placeholder de siempre; con zona, el placeholder se
+// reemplaza por la fórmula de esa zona para poder probarla en staging.
+func (a *tripsApp) fareEstimate(pickupLat, pickupLon, dropoffLat, dropoffLon float64, zone *tripfare.ZoneFareParams) (tripfare.Estimate, error) {
 	if !config.Get().IsProduction() {
 		distanceMeters := geo.HaversineKm(pickupLat, pickupLon, dropoffLat, dropoffLon) * 1000
+		now := bizclock.Now()
+		fee := tripfare.DevPlaceholderFee
+		if zone != nil {
+			fee = tripfare.FromDistanceAtZone(distanceMeters, now, zone)
+		}
 		return tripfare.Estimate{
 			DistanceMeters: distanceMeters,
 			DurationMin:    0,
-			Fee:            tripfare.DevPlaceholderFee,
-			Band:           tripfare.BandAt(bizclock.Now()),
+			Fee:            fee,
+			Band:           tripfare.BandAt(now),
 		}, nil
 	}
-	return tripfare.CalculateWithDuration(pickupLat, pickupLon, dropoffLat, dropoffLon)
+	return tripfare.CalculateWithDurationZone(pickupLat, pickupLon, dropoffLat, dropoffLon, zone)
+}
+
+// resolveZoneFare busca, por la celda H3 del pickup, la zona cuya regla debe
+// reemplazar el fallback global de tripfare.go. Sin repo conectado, sin
+// celda resoluble, o sin zona activa en esa celda, devuelve (nil, nil): el
+// llamador cae en el fallback global sin tratarlo como error.
+func (a *tripsApp) resolveZoneFare(ctx context.Context, pickupLat, pickupLon float64) (*tripfare.ZoneFareParams, *uuid.UUID) {
+	if a.zoneFareRules == nil {
+		return nil, nil
+	}
+	cell, err := geo.LatLngToCell(pickupLat, pickupLon, geo.ZoneAnalyticsResolution)
+	if err != nil {
+		return nil, nil
+	}
+	rule, err := a.zoneFareRules.FindActiveByCell(ctx, cell)
+	if err != nil {
+		if !errors.Is(err, errcustom.ErrNotFound) {
+			slog.Error("resolveZoneFare lookup failed", "cell", cell, "error", err)
+		}
+		return nil, nil
+	}
+	params := &tripfare.ZoneFareParams{
+		IncludedKm:                 rule.IncludedKm,
+		DayMinFare:                 rule.DayMinFareUSD,
+		DayExtraRatePerKm:          rule.DayExtraRatePerKmUSD,
+		NightMinFare:               rule.NightMinFareUSD,
+		NightExtraRatePerKm:        rule.NightExtraRatePerKmUSD,
+		EarlyMorningMinFare:        rule.EarlyMorningMinFareUSD,
+		EarlyMorningExtraRatePerKm: rule.EarlyMorningExtraRatePerKmUSD,
+	}
+	return params, &rule.ZoneID
 }
 
 func (a *tripsApp) bcvRate(ctx context.Context) float64 {
