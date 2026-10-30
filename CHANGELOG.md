@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.11.1](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.11.0...v2.11.1) (2026-10-30)
+
+
+### Bug Fixes
+
+* **riders:** muestra el bono de acercamiento al rider desde la oferta ([acad72b](https://github.com/Encargalo/Encargalo.app-api.go/commit/acad72b202fa38968f802855dc967c1ed38f0f86))
+
 ## [2.11.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.10.1...v2.11.0) (2026-10-30)
 
 
