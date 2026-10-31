@@ -733,6 +733,18 @@ func (s *shopsRepo) GetLaunchPromoEndsAt(ctx context.Context, shopID uuid.UUID) 
 	return endsAt, nil
 }
 
+func (s *shopsRepo) GetShopSchedule(ctx context.Context, shopID uuid.UUID) ([]shopsDTO.ScheduleResponse, error) {
+	return getShopSchedule(ctx, s.db, shopID)
+}
+
+func (s *shopsRepo) GetSchedulesByShopIDs(ctx context.Context, shopIDs []uuid.UUID) (map[uuid.UUID][]shopsDTO.ScheduleResponse, error) {
+	return getSchedulesByShopIDs(ctx, s.db, shopIDs)
+}
+
+func (s *shopsRepo) ReplaceShopSchedule(ctx context.Context, shopID uuid.UUID, schedules []shopsDTO.ScheduleInput) error {
+	return replaceShopSchedule(ctx, s.db, shopID, schedules)
+}
+
 func (s *shopsRepo) SearchBatchByShopID(ctx context.Context, shopID uuid.UUID) (uuid.UUID, error) {
 
 	var batchID uuid.UUID

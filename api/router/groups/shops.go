@@ -64,6 +64,8 @@ func (s *shopGroup) Resource(g *echo.Echo) {
 		s.middleAuth.Require(models.Owner),
 	)
 	ownerRoutes.PATCH("/me/status", s.handlerShops.SetOpenClose)
+	ownerRoutes.GET("/me/schedule", s.handlerShops.GetMySchedule)
+	ownerRoutes.PUT("/me/schedule", s.handlerShops.SetMySchedule)
 
 	statsRoutes := g.Group("/business/shops/stats",
 		s.middleAuth.Auth,
@@ -86,6 +88,8 @@ func (s *shopGroup) Resource(g *echo.Echo) {
 	staffRoutes.GET("/:id", s.handlerStaffShops.GetShop)
 	staffRoutes.PATCH("/:id", s.handlerStaffShops.UpdateDraftShop)
 	staffRoutes.POST("/:id/activate", s.handlerStaffShops.ActivateShop)
+	staffRoutes.GET("/:id/schedule", s.handlerStaffShops.GetShopSchedule)
+	staffRoutes.PUT("/:id/schedule", s.handlerStaffShops.SetShopSchedule)
 
 	staffRoutes.GET("/finance/payables", s.handlerStaffFinance.ListPayables)
 	staffRoutes.GET("/finance/:shopId/balance", s.handlerStaffFinance.GetBalance)

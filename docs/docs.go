@@ -1906,6 +1906,110 @@ const docTemplate = `{
                 }
             }
         },
+        "/business/shops/me/schedule": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna el horario configurado (día de semana, apertura, cierre, habilitado) del local asociado a la sesión del owner.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Obtener horario semanal del negocio propio",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ScheduleResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "El usuario no tiene un negocio asociado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Sustituye por completo el horario semanal del local asociado a la sesión del owner (una entrada por día de semana que aplique).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Configurar horario semanal del negocio propio",
+                "parameters": [
+                    {
+                        "description": "Horario semanal",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopScheduleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Horario actualizado"
+                    },
+                    "400": {
+                        "description": "Body inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "El usuario no tiene un negocio asociado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/business/shops/me/status": {
             "patch": {
                 "security": [
@@ -5221,7 +5325,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna la información de una tienda junto con sus productos. Se debe enviar al menos uno de los parámetros: ` + "`" + `id` + "`" + ` o ` + "`" + `slug` + "`" + `.",
+                "description": "Retorna la información de una tienda junto con sus productos. Se debe enviar al menos uno de los parámetros: ` + "`" + `id` + "`" + ` o ` + "`" + `slug` + "`" + `. Incluye ` + "`" + `closes_at` + "`" + `/` + "`" + `opens_at` + "`" + ` (ver GetAllShops), pero no oculta la tienda aunque esté cerrada y abra en más de 30 minutos.",
                 "produces": [
                     "application/json"
                 ],
@@ -5301,7 +5405,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Retorna todas las tiendas disponibles ordenadas por proximidad a las coordenadas proporcionadas, dentro de 3 km (2 km si type=Turbo). Query opcional ` + "`" + `type` + "`" + ` (` + "`" + `Restaurant` + "`" + `|` + "`" + `Supermarket` + "`" + `|` + "`" + `Turbo` + "`" + `); si se omite, incluye Restaurant y Supermarket (Turbo se descubre vía /turbo/entry).",
+                "description": "Retorna todas las tiendas disponibles ordenadas por proximidad a las coordenadas proporcionadas, dentro de 3 km (2 km si type=Turbo). Query opcional ` + "`" + `type` + "`" + ` (` + "`" + `Restaurant` + "`" + `|` + "`" + `Supermarket` + "`" + `|` + "`" + `Turbo` + "`" + `); si se omite, incluye Restaurant y Supermarket (Turbo se descubre vía /turbo/entry). Cada tienda incluye ` + "`" + `closes_at` + "`" + ` (si está abierta) u ` + "`" + `opens_at` + "`" + ` (si está cerrada), calculados desde su horario semanal. Las tiendas cerradas que abren en más de 30 minutos no se incluyen; las que sí aplican se muestran con las abiertas primero y las cerradas al final (ordenadas por ` + "`" + `opens_at` + "`" + `).",
                 "produces": [
                     "application/json"
                 ],
@@ -6947,6 +7051,108 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shops/staff/{id}/schedule": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna el horario configurado (día de semana, apertura, cierre, habilitado) del shop indicado.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff"
+                ],
+                "summary": "Obtener horario semanal de un shop (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shop ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ScheduleResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "id inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Sustituye por completo el horario semanal del shop indicado (una entrada por día de semana que aplique).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shops Staff"
+                ],
+                "summary": "Configurar horario semanal de un shop (staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shop ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Horario semanal",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopScheduleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Horario actualizado"
+                    },
+                    "400": {
+                        "description": "id inválido / payload inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
                         "schema": {
                             "type": "string"
                         }
@@ -11674,6 +11880,49 @@ const docTemplate = `{
                 }
             }
         },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.ScheduleInput": {
+            "type": "object",
+            "required": [
+                "close",
+                "open"
+            ],
+            "properties": {
+                "close": {
+                    "type": "string",
+                    "example": "20:00:00"
+                },
+                "day_of_week": {
+                    "type": "integer",
+                    "maximum": 6,
+                    "minimum": 0
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "open": {
+                    "type": "string",
+                    "example": "08:00:00"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.ScheduleResponse": {
+            "type": "object",
+            "properties": {
+                "close": {
+                    "type": "string"
+                },
+                "day_of_week": {
+                    "type": "integer"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "open": {
+                    "type": "string"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_shops_domain_dtos.SearchShopResponse": {
             "type": "object",
             "properties": {
@@ -11681,6 +11930,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "banner": {
+                    "type": "string"
+                },
+                "closes_at": {
                     "type": "string"
                 },
                 "delivery_fee": {
@@ -11719,6 +11971,10 @@ const docTemplate = `{
                 },
                 "opened": {
                     "type": "boolean"
+                },
+                "opens_at": {
+                    "description": "OpensAt/ClosesAt se calculan a partir del horario semanal configurado\n(business.schedules): ClosesAt solo si Opened=true, OpensAt solo si\nOpened=false. Ambos nil si el shop no tiene horario configurado.",
+                    "type": "string"
                 },
                 "score": {
                     "type": "number"
@@ -11800,6 +12056,9 @@ const docTemplate = `{
                 "banner": {
                     "type": "string"
                 },
+                "closes_at": {
+                    "type": "string"
+                },
                 "delivery_fee": {
                     "type": "number"
                 },
@@ -11831,6 +12090,10 @@ const docTemplate = `{
                 "opened": {
                     "type": "boolean"
                 },
+                "opens_at": {
+                    "description": "OpensAt/ClosesAt se calculan a partir del horario semanal configurado\n(business.schedules): ClosesAt solo si Opened=true, OpensAt solo si\nOpened=false. Ambos nil si el shop no tiene horario configurado.",
+                    "type": "string"
+                },
                 "score": {
                     "type": "number"
                 },
@@ -11845,6 +12108,17 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shops_domain_dtos.ShopScheduleRequest": {
+            "type": "object",
+            "properties": {
+                "schedules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ScheduleInput"
+                    }
                 }
             }
         },

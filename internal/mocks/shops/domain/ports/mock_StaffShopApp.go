@@ -130,6 +130,36 @@ func (_m *StaffShopApp) GetShop(ctx context.Context, shopID uuid.UUID) (dtos.Sta
 	return r0, r1
 }
 
+// GetShopSchedule provides a mock function with given fields: ctx, shopID
+func (_m *StaffShopApp) GetShopSchedule(ctx context.Context, shopID uuid.UUID) ([]dtos.ScheduleResponse, error) {
+	ret := _m.Called(ctx, shopID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetShopSchedule")
+	}
+
+	var r0 []dtos.ScheduleResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) ([]dtos.ScheduleResponse, error)); ok {
+		return rf(ctx, shopID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) []dtos.ScheduleResponse); ok {
+		r0 = rf(ctx, shopID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]dtos.ScheduleResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, shopID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // ListShops provides a mock function with given fields: ctx, status, page, limit
 func (_m *StaffShopApp) ListShops(ctx context.Context, status shops.ShopStatus, page int, limit int) (dtos.StaffShopsResponse, error) {
 	ret := _m.Called(ctx, status, page, limit)
@@ -156,6 +186,24 @@ func (_m *StaffShopApp) ListShops(ctx context.Context, status shops.ShopStatus, 
 	}
 
 	return r0, r1
+}
+
+// SetShopSchedule provides a mock function with given fields: ctx, shopID, schedules
+func (_m *StaffShopApp) SetShopSchedule(ctx context.Context, shopID uuid.UUID, schedules []dtos.ScheduleInput) error {
+	ret := _m.Called(ctx, shopID, schedules)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetShopSchedule")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, []dtos.ScheduleInput) error); ok {
+		r0 = rf(ctx, shopID, schedules)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // UpdateDraftShop provides a mock function with given fields: ctx, shopID, req

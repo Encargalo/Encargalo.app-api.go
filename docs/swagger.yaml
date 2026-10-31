@@ -1939,11 +1939,43 @@ definitions:
           $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.SalesDataPoint'
         type: array
     type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.ScheduleInput:
+    properties:
+      close:
+        example: "20:00:00"
+        type: string
+      day_of_week:
+        maximum: 6
+        minimum: 0
+        type: integer
+      enabled:
+        example: true
+        type: boolean
+      open:
+        example: "08:00:00"
+        type: string
+    required:
+    - close
+    - open
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.ScheduleResponse:
+    properties:
+      close:
+        type: string
+      day_of_week:
+        type: integer
+      enabled:
+        type: boolean
+      open:
+        type: string
+    type: object
   Encargalo_app-api_go_internal_shops_domain_dtos.SearchShopResponse:
     properties:
       address:
         type: string
       banner:
+        type: string
+      closes_at:
         type: string
       delivery_fee:
         type: number
@@ -1972,6 +2004,12 @@ definitions:
         type: string
       opened:
         type: boolean
+      opens_at:
+        description: |-
+          OpensAt/ClosesAt se calculan a partir del horario semanal configurado
+          (business.schedules): ClosesAt solo si Opened=true, OpensAt solo si
+          Opened=false. Ambos nil si el shop no tiene horario configurado.
+        type: string
       score:
         type: number
       slug:
@@ -2024,6 +2062,8 @@ definitions:
         type: string
       banner:
         type: string
+      closes_at:
+        type: string
       delivery_fee:
         type: number
       delivery_fee_bs:
@@ -2047,6 +2087,12 @@ definitions:
         type: string
       opened:
         type: boolean
+      opens_at:
+        description: |-
+          OpensAt/ClosesAt se calculan a partir del horario semanal configurado
+          (business.schedules): ClosesAt solo si Opened=true, OpensAt solo si
+          Opened=false. Ambos nil si el shop no tiene horario configurado.
+        type: string
       score:
         type: number
       slug:
@@ -2057,6 +2103,13 @@ definitions:
         type: integer
       type:
         type: string
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.ShopScheduleRequest:
+    properties:
+      schedules:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ScheduleInput'
+        type: array
     type: object
   Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionDTO:
     properties:
@@ -4283,6 +4336,74 @@ paths:
       security:
       - SessionCookie: []
       summary: Obtener información del negocio propio
+      tags:
+      - Business
+  /business/shops/me/schedule:
+    get:
+      description: Retorna el horario configurado (día de semana, apertura, cierre,
+        habilitado) del local asociado a la sesión del owner.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ScheduleResponse'
+            type: array
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "422":
+          description: El usuario no tiene un negocio asociado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Obtener horario semanal del negocio propio
+      tags:
+      - Business
+    put:
+      consumes:
+      - application/json
+      description: Sustituye por completo el horario semanal del local asociado a
+        la sesión del owner (una entrada por día de semana que aplique).
+      parameters:
+      - description: Horario semanal
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopScheduleRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Horario actualizado
+        "400":
+          description: Body inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "422":
+          description: El usuario no tiene un negocio asociado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Configurar horario semanal del negocio propio
       tags:
       - Business
   /business/shops/me/status:
@@ -6558,7 +6679,9 @@ paths:
   /shops:
     get:
       description: 'Retorna la información de una tienda junto con sus productos.
-        Se debe enviar al menos uno de los parámetros: `id` o `slug`.'
+        Se debe enviar al menos uno de los parámetros: `id` o `slug`. Incluye `closes_at`/`opens_at`
+        (ver GetAllShops), pero no oculta la tienda aunque esté cerrada y abra en
+        más de 30 minutos.'
       parameters:
       - description: ID de la tienda (UUID)
         in: query
@@ -6613,7 +6736,11 @@ paths:
       description: Retorna todas las tiendas disponibles ordenadas por proximidad
         a las coordenadas proporcionadas, dentro de 3 km (2 km si type=Turbo). Query
         opcional `type` (`Restaurant`|`Supermarket`|`Turbo`); si se omite, incluye
-        Restaurant y Supermarket (Turbo se descubre vía /turbo/entry).
+        Restaurant y Supermarket (Turbo se descubre vía /turbo/entry). Cada tienda
+        incluye `closes_at` (si está abierta) u `opens_at` (si está cerrada), calculados
+        desde su horario semanal. Las tiendas cerradas que abren en más de 30 minutos
+        no se incluyen; las que sí aplican se muestran con las abiertas primero y
+        las cerradas al final (ordenadas por `opens_at`).
       parameters:
       - description: 'Latitud del usuario, ej: 4.678034'
         in: query
@@ -7474,6 +7601,73 @@ paths:
       security:
       - SessionCookie: []
       summary: Obtener macro categorías (staff)
+      tags:
+      - Shops Staff
+  /shops/staff/{id}/schedule:
+    get:
+      description: Retorna el horario configurado (día de semana, apertura, cierre,
+        habilitado) del shop indicado.
+      parameters:
+      - description: Shop ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ScheduleResponse'
+            type: array
+        "400":
+          description: id inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Obtener horario semanal de un shop (staff)
+      tags:
+      - Shops Staff
+    put:
+      consumes:
+      - application/json
+      description: Sustituye por completo el horario semanal del shop indicado (una
+        entrada por día de semana que aplique).
+      parameters:
+      - description: Shop ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Horario semanal
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopScheduleRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Horario actualizado
+        "400":
+          description: id inválido / payload inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Configurar horario semanal de un shop (staff)
       tags:
       - Shops Staff
   /shops/staff/candidates:

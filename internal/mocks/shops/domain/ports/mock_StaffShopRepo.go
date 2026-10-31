@@ -5,6 +5,7 @@ package mocks
 import (
 	context "context"
 
+	dtos "Encargalo.app-api.go/internal/shops/domain/dtos"
 	mock "github.com/stretchr/testify/mock"
 
 	shops "Encargalo.app-api.go/internal/shops/domain/models/shops"
@@ -161,6 +162,36 @@ func (_m *StaffShopRepo) GetShopByID(ctx context.Context, shopID uuid.UUID) (*sh
 	return r0, r1
 }
 
+// GetShopSchedule provides a mock function with given fields: ctx, shopID
+func (_m *StaffShopRepo) GetShopSchedule(ctx context.Context, shopID uuid.UUID) ([]dtos.ScheduleResponse, error) {
+	ret := _m.Called(ctx, shopID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetShopSchedule")
+	}
+
+	var r0 []dtos.ScheduleResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) ([]dtos.ScheduleResponse, error)); ok {
+		return rf(ctx, shopID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) []dtos.ScheduleResponse); ok {
+		r0 = rf(ctx, shopID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]dtos.ScheduleResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, shopID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // HasAnyOwnerRole provides a mock function with given fields: ctx, userID
 func (_m *StaffShopRepo) HasAnyOwnerRole(ctx context.Context, userID uuid.UUID) (bool, error) {
 	ret := _m.Called(ctx, userID)
@@ -224,6 +255,24 @@ func (_m *StaffShopRepo) ListShopsByStatus(ctx context.Context, status shops.Sho
 	}
 
 	return r0, r1, r2
+}
+
+// ReplaceShopSchedule provides a mock function with given fields: ctx, shopID, schedules
+func (_m *StaffShopRepo) ReplaceShopSchedule(ctx context.Context, shopID uuid.UUID, schedules []dtos.ScheduleInput) error {
+	ret := _m.Called(ctx, shopID, schedules)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReplaceShopSchedule")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, []dtos.ScheduleInput) error); ok {
+		r0 = rf(ctx, shopID, schedules)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // UpdateDraftShop provides a mock function with given fields: ctx, shop

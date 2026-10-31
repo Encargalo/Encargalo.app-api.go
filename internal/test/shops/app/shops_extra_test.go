@@ -26,6 +26,8 @@ func TestGetShopsBy_AppliesBsRate(t *testing.T) {
 	repo.On("GetShopsBy", context.Background(), criteria, coords).
 		Return(dtos.ShopsResponse{{DeliveryFee: 2}}, nil)
 	bcv.On("GetRate", mock.Anything).Return(&bcvmodels.ExchangeRate{Rate: 40}, nil)
+	repo.On("GetSchedulesByShopIDs", context.Background(), mock.Anything).
+		Return(map[uuid.UUID][]dtos.ScheduleResponse{}, nil)
 
 	result, err := shopsApp.GetShopsBy(context.Background(), criteria, coords)
 

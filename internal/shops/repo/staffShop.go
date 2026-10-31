@@ -10,6 +10,7 @@ import (
 
 	"Encargalo.app-api.go/internal/pkg/id"
 	"Encargalo.app-api.go/internal/shared/errcustom"
+	"Encargalo.app-api.go/internal/shops/domain/dtos"
 	shopsmodels "Encargalo.app-api.go/internal/shops/domain/models/shops"
 	"Encargalo.app-api.go/internal/shops/domain/ports"
 	userModels "Encargalo.app-api.go/internal/users/domain/models"
@@ -149,6 +150,14 @@ func (r *staffShopRepo) UpdateDraftShop(ctx context.Context, shop *shopsmodels.S
 		return errcustom.Unexpected(err)
 	}
 	return nil
+}
+
+func (r *staffShopRepo) GetShopSchedule(ctx context.Context, shopID uuid.UUID) ([]dtos.ScheduleResponse, error) {
+	return getShopSchedule(ctx, r.db, shopID)
+}
+
+func (r *staffShopRepo) ReplaceShopSchedule(ctx context.Context, shopID uuid.UUID, schedules []dtos.ScheduleInput) error {
+	return replaceShopSchedule(ctx, r.db, shopID, schedules)
 }
 
 func (r *staffShopRepo) ActivateShop(ctx context.Context, shopID, staffID uuid.UUID, activatedAt time.Time) error {

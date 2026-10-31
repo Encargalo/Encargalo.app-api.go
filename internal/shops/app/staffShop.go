@@ -219,6 +219,14 @@ func (a *staffShopApp) UpdateDraftShop(ctx context.Context, shopID uuid.UUID, re
 	return a.GetShop(ctx, shopID)
 }
 
+func (a *staffShopApp) GetShopSchedule(ctx context.Context, shopID uuid.UUID) ([]dtos.ScheduleResponse, error) {
+	return a.repo.GetShopSchedule(ctx, shopID)
+}
+
+func (a *staffShopApp) SetShopSchedule(ctx context.Context, shopID uuid.UUID, schedules []dtos.ScheduleInput) error {
+	return a.repo.ReplaceShopSchedule(ctx, shopID, schedules)
+}
+
 func (a *staffShopApp) ActivateShop(ctx context.Context, shopID, staffID uuid.UUID) (dtos.StaffShopResponse, error) {
 	shop, err := a.repo.GetShopByID(ctx, shopID)
 	if err != nil {
