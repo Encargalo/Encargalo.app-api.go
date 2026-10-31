@@ -1,5 +1,31 @@
 # Changelog
 
+## [2.13.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.12.0...v2.13.0) (2026-10-31)
+
+
+### Features
+
+* **maps:** agrega lugar con nombre más cercano al reverse geocode ([c85ee9d](https://github.com/Encargalo/Encargalo.app-api.go/commit/c85ee9d5465187e61b8dcb524e3c03c1cea41171))
+* **products:** agrega endpoint de home de supermercado con rotación diaria de repisas ([9329816](https://github.com/Encargalo/Encargalo.app-api.go/commit/9329816c6883974ee2982c33d07f56e9b2d55973))
+* **shipments:** agrega modo de envíos de paquetes pequeños ([2d6efe7](https://github.com/Encargalo/Encargalo.app-api.go/commit/2d6efe76f00bb7e3c4fd8f924d23e5e3e9b39e01))
+* **shops:** agrega especialidad (specialty) a los negocios ([04d8793](https://github.com/Encargalo/Encargalo.app-api.go/commit/04d87935aee256140c813d9d6ee8c2d629782ed0))
+* **shops:** agrega horario comercial por local y filtra cerrados que no abren pronto ([49c1138](https://github.com/Encargalo/Encargalo.app-api.go/commit/49c1138afdc2e893c487fcfad28d03f2cb7be858))
+
+
+### Bug Fixes
+
+* **analytics:** calcula order_date y trip_date en zona de negocio ([54a8c0e](https://github.com/Encargalo/Encargalo.app-api.go/commit/54a8c0eaef3f56c25d200c51d1a2b823b5e64950))
+* **analytics:** calcula order_date y trip_date en zona de negocio ([93b54b0](https://github.com/Encargalo/Encargalo.app-api.go/commit/93b54b0136bae10cd39d4828704423f7d61d66d8))
+* **analytics:** calcula order_date y trip_date en zona de negocio ([2a9c5c6](https://github.com/Encargalo/Encargalo.app-api.go/commit/2a9c5c64aa8ecad7d3df486960dd8535e4d038f9))
+* **products:** oculta categorías sin productos en el catálogo del cliente ([e663d2b](https://github.com/Encargalo/Encargalo.app-api.go/commit/e663d2b5d58473e826da349b7f61209c26521e17))
+* **shops:** baja comisión a 4% y oculta categorías vacías del catálogo ([c4f3669](https://github.com/Encargalo/Encargalo.app-api.go/commit/c4f36698fdd84a7bb072a26201fd50c8e500442c))
+* **shops:** baja la comisión estándar de 10% a 4% ([400c9aa](https://github.com/Encargalo/Encargalo.app-api.go/commit/400c9aa896f172910db4c7f4329f9ad53e29c6de))
+
+
+### Documentation
+
+* actualiza swagger para home de supermercado y specialty de shops ([160c78e](https://github.com/Encargalo/Encargalo.app-api.go/commit/160c78e8eae1e10fb390a806ca0fcfe0c8d0d39d))
+
 ## [2.12.0](https://github.com/Encargalo/Encargalo.app-api.go/compare/v2.11.2...v2.12.0) (2026-10-30)
 
 
