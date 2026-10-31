@@ -730,6 +730,66 @@ func (_m *ProductsRepo) SearchProductsByShopID(ctx context.Context, shopID uuid.
 	return r0, r1
 }
 
+// SearchSupermarketCategoryPool provides a mock function with given fields: ctx, coords
+func (_m *ProductsRepo) SearchSupermarketCategoryPool(ctx context.Context, coords dtos.SupermarketHomeCoords) ([]models.SupermarketCategoryCandidate, error) {
+	ret := _m.Called(ctx, coords)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SearchSupermarketCategoryPool")
+	}
+
+	var r0 []models.SupermarketCategoryCandidate
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, dtos.SupermarketHomeCoords) ([]models.SupermarketCategoryCandidate, error)); ok {
+		return rf(ctx, coords)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, dtos.SupermarketHomeCoords) []models.SupermarketCategoryCandidate); ok {
+		r0 = rf(ctx, coords)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.SupermarketCategoryCandidate)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, dtos.SupermarketHomeCoords) error); ok {
+		r1 = rf(ctx, coords)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SearchSupermarketHomeEntries provides a mock function with given fields: ctx, coords, categoryNames
+func (_m *ProductsRepo) SearchSupermarketHomeEntries(ctx context.Context, coords dtos.SupermarketHomeCoords, categoryNames []string) (dtos.HomeEntriesResponse, error) {
+	ret := _m.Called(ctx, coords, categoryNames)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SearchSupermarketHomeEntries")
+	}
+
+	var r0 dtos.HomeEntriesResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, dtos.SupermarketHomeCoords, []string) (dtos.HomeEntriesResponse, error)); ok {
+		return rf(ctx, coords, categoryNames)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, dtos.SupermarketHomeCoords, []string) dtos.HomeEntriesResponse); ok {
+		r0 = rf(ctx, coords, categoryNames)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(dtos.HomeEntriesResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, dtos.SupermarketHomeCoords, []string) error); ok {
+		r1 = rf(ctx, coords, categoryNames)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // SyncAdditionSnapshots provides a mock function with given fields: ctx, shopID, entry
 func (_m *ProductsRepo) SyncAdditionSnapshots(ctx context.Context, shopID uuid.UUID, entry models.AdditionEntry) error {
 	ret := _m.Called(ctx, shopID, entry)

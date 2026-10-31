@@ -23,6 +23,7 @@ type ProductsHandler interface {
 	RegisterCategory(e echo.Context) error
 	UpdateCategory(e echo.Context) error
 	GetTrendingProducts(e echo.Context) error
+	GetSupermarketHome(e echo.Context) error
 	RegisterFlavor(e echo.Context) error
 	UpdateFlavor(e echo.Context) error
 	DeleteFlavor(e echo.Context) error
@@ -426,6 +427,38 @@ func (p *productsHandler) GetTrendingProducts(e echo.Context) error {
 	}
 
 	result, err := p.svc.GetTrendingByCoords(ctx, coords)
+	if err != nil {
+		return err
+	}
+
+	return response.Send(e, http.StatusOK, result)
+}
+
+// GetSupermarketHome godoc
+// @Summary      Home de supermercado (macro → micro categoría → productos)
+// @Description  Retorna, para negocios type=Supermarket abiertos en la zona (mismo radio de cobertura que /shops/all), una selección diaria de micro-categorías agrupadas por macro-categoría, cada una con hasta 15 productos (tope de 4 por negocio por repisa para que no la domine un solo super). La selección rota cada día (día del año); "Licores y Cervezas" se incluye siempre viernes, sábado y domingo. Excluye productos cuya categoría tiene un horario configurado que no cubre la hora actual (America/Caracas). Cacheado 15 minutos.
+// @Tags         Products
+// @Produce      json
+// @Security     SessionCookie
+// @Param        lat  query     number  true  "Latitud del usuario"
+// @Param        lon  query     number  true  "Longitud del usuario"
+// @Success      200  {object}  dtos.SupermarketHomeResponse
+// @Failure      400  {string}  string  "lat/lon requeridos o inválidos"
+// @Failure      401  {string}  string  "No autorizado"
+// @Failure      500  {string}  string  "Error interno del servidor"
+// @Router       /products/home/supermarket [get]
+func (p *productsHandler) GetSupermarketHome(e echo.Context) error {
+	ctx := e.Request().Context()
+
+	var coords dtos.SupermarketHomeCoords
+	if err := e.Bind(&coords); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := coords.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	result, err := p.svc.GetSupermarketHome(ctx, coords)
 	if err != nil {
 		return err
 	}

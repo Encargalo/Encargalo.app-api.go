@@ -28,6 +28,7 @@ func (r *productsGroup) Resource(g *echo.Echo) {
 	)
 	customerRoutes.GET("", r.handlerProducts.SearchProductsByShopID)
 	customerRoutes.GET("/trending", r.handlerProducts.GetTrendingProducts)
+	customerRoutes.GET("/home/supermarket", r.handlerProducts.GetSupermarketHome)
 	customerRoutes.GET("/best-sellers", r.handlerProducts.SearchBestSellersByShopID)
 	customerRoutes.GET("/additions", r.handlerProducts.SearchAdditionsByItemID)
 	customerRoutes.GET("/flavors", r.handlerProducts.SearchFlavorsByItemID)

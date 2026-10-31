@@ -90,6 +90,36 @@ func (_m *ProductsApp) DeleteItemDiscountByItemID(ctx context.Context, itemID uu
 	return r0
 }
 
+// GetSupermarketHome provides a mock function with given fields: ctx, coords
+func (_m *ProductsApp) GetSupermarketHome(ctx context.Context, coords dtos.SupermarketHomeCoords) (dtos.SupermarketHomeResponse, error) {
+	ret := _m.Called(ctx, coords)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSupermarketHome")
+	}
+
+	var r0 dtos.SupermarketHomeResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, dtos.SupermarketHomeCoords) (dtos.SupermarketHomeResponse, error)); ok {
+		return rf(ctx, coords)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, dtos.SupermarketHomeCoords) dtos.SupermarketHomeResponse); ok {
+		r0 = rf(ctx, coords)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(dtos.SupermarketHomeResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, dtos.SupermarketHomeCoords) error); ok {
+		r1 = rf(ctx, coords)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetTrendingByCoords provides a mock function with given fields: ctx, coords
 func (_m *ProductsApp) GetTrendingByCoords(ctx context.Context, coords dtos.TrendingCoords) (dtos.TrendingResponse, error) {
 	ret := _m.Called(ctx, coords)

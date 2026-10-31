@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"log/slog"
+	"sort"
 	"strings"
 	"time"
 
@@ -527,6 +528,187 @@ func (p *productsApp) GetTrendingByCoords(ctx context.Context, coords dtos.Trend
 	}
 	applyRateToTrending(p.bcvRate(ctx), &data)
 	return data, nil
+}
+
+// supermarketHomeShelvesCount es cuántas micro-categorías (repisas) se
+// eligen por día para el home de supermercado, antes de sumar el pin de
+// licores de fin de semana.
+const supermarketHomeShelvesCount = 8
+
+// supermarketHomeFinalPerShelf es el tope final de productos por repisa, ya
+// filtrados por horario (SQL deja hasta supermarketHomeMaxPerShopPerShelf
+// por negocio, así que siempre hay margen de sobra).
+const supermarketHomeFinalPerShelf = 15
+
+func (p *productsApp) GetSupermarketHome(ctx context.Context, coords dtos.SupermarketHomeCoords) (dtos.SupermarketHomeResponse, error) {
+	pool, err := p.repo.SearchSupermarketCategoryPool(ctx, coords)
+	if err != nil {
+		return nil, err
+	}
+	if len(pool) == 0 {
+		return dtos.SupermarketHomeResponse{}, nil
+	}
+
+	now := bizclock.Now()
+	selected := SelectDailyShelves(pool, now, supermarketHomeShelvesCount)
+
+	names := make([]string, len(selected))
+	for i, c := range selected {
+		names[i] = c.CategoryName
+	}
+
+	entries, err := p.repo.SearchSupermarketHomeEntries(ctx, coords, names)
+	if err != nil {
+		return nil, err
+	}
+	entries = filterHomeEntriesBySchedule(entries, now)
+
+	result := groupHomeEntries(entries, selected, supermarketHomeFinalPerShelf)
+	applyRateToHome(p.bcvRate(ctx), &result)
+	return result, nil
+}
+
+// SelectDailyShelves elige, de forma determinística por día y sin estado en
+// BD, hasta `count` categorías del pool completo: una ventana distinta cada
+// día (día_del_año % tamaño_del_pool), de modo que el home no se vea siempre
+// igual y, en unos días, se termine de recorrer todo el catálogo. "Licores y
+// Cervezas" se fija viernes/sábado/domingo aunque la rotación no la haya
+// elegido ese día.
+func SelectDailyShelves(pool []models.SupermarketCategoryCandidate, now time.Time, count int) []models.SupermarketCategoryCandidate {
+	if len(pool) == 0 {
+		return nil
+	}
+
+	sorted := make([]models.SupermarketCategoryCandidate, len(pool))
+	copy(sorted, pool)
+	sort.Slice(sorted, func(i, j int) bool {
+		if sorted[i].MacroName != sorted[j].MacroName {
+			return sorted[i].MacroName < sorted[j].MacroName
+		}
+		return sorted[i].CategoryName < sorted[j].CategoryName
+	})
+
+	n := len(sorted)
+	limit := min(count, n)
+
+	start := now.YearDay() % n
+	seen := make(map[string]bool, limit+1)
+	selected := make([]models.SupermarketCategoryCandidate, 0, limit+1)
+	for i := range limit {
+		c := sorted[(start+i)%n]
+		if seen[c.CategoryName] {
+			continue
+		}
+		seen[c.CategoryName] = true
+		selected = append(selected, c)
+	}
+
+	if isLiquorWeekend(now) {
+		for _, c := range sorted {
+			if !isLiquorCategoryName(c.CategoryName) {
+				continue
+			}
+			if !seen[c.CategoryName] {
+				selected = append(selected, c)
+			}
+			break
+		}
+	}
+
+	return selected
+}
+
+func isLiquorWeekend(now time.Time) bool {
+	switch now.Weekday() {
+	case time.Friday, time.Saturday, time.Sunday:
+		return true
+	default:
+		return false
+	}
+}
+
+func isLiquorCategoryName(name string) bool {
+	lower := strings.ToLower(name)
+	return strings.Contains(lower, "licor") || strings.Contains(lower, "cerveza")
+}
+
+func filterHomeEntriesBySchedule(data dtos.HomeEntriesResponse, now time.Time) dtos.HomeEntriesResponse {
+	filtered := make(dtos.HomeEntriesResponse, 0, len(data))
+	for _, entry := range data {
+		if !bizclock.IsAvailableAt(toWindows(entry.Schedules), now) {
+			continue
+		}
+		filtered = append(filtered, entry)
+	}
+	return filtered
+}
+
+// groupHomeEntries agrupa las entradas (ya filtradas por horario) en
+// macro -> micro -> productos, respetando el orden de `selected` (la
+// rotación del día) y recortando cada repisa a perShelfLimit. Una macro solo
+// aparece en el resultado si terminó con al menos una micro-categoría con
+// productos disponibles ahora.
+func groupHomeEntries(entries dtos.HomeEntriesResponse, selected []models.SupermarketCategoryCandidate, perShelfLimit int) dtos.SupermarketHomeResponse {
+	byCategory := make(map[string][]dtos.HomeEntry)
+	for _, e := range entries {
+		byCategory[e.CategoryName] = append(byCategory[e.CategoryName], e)
+	}
+
+	result := dtos.SupermarketHomeResponse{}
+	macroIndex := make(map[uuid.UUID]int)
+
+	for _, c := range selected {
+		shelf := byCategory[c.CategoryName]
+		if len(shelf) == 0 {
+			continue
+		}
+		if len(shelf) > perShelfLimit {
+			shelf = shelf[:perShelfLimit]
+		}
+
+		products := make([]dtos.HomeProduct, 0, len(shelf))
+		for _, e := range shelf {
+			product := e.Product
+			product.Shop = e.Shop
+			products = append(products, product)
+		}
+
+		macroID, err := uuid.Parse(c.MacroID)
+		if err != nil {
+			continue
+		}
+		idx, ok := macroIndex[macroID]
+		if !ok {
+			result = append(result, dtos.HomeMacroCategory{
+				MacroCategory: dtos.MacroCategoryResponse{
+					ID:       macroID,
+					Name:     c.MacroName,
+					Slug:     c.MacroSlug,
+					ShopType: shopsmodels.ShopTypeSupermarket,
+				},
+			})
+			idx = len(result) - 1
+			macroIndex[macroID] = idx
+		}
+		result[idx].MicroCategories = append(result[idx].MicroCategories, dtos.HomeMicroCategory{
+			Name:     c.CategoryName,
+			Products: products,
+		})
+	}
+
+	return result
+}
+
+func applyRateToHome(rate float64, data *dtos.SupermarketHomeResponse) {
+	for i := range *data {
+		for j := range (*data)[i].MicroCategories {
+			products := (*data)[i].MicroCategories[j].Products
+			for k := range products {
+				products[k].Bs = money.RoundBs(products[k].Ref * rate)
+				products[k].Shop.DeliveryFeeBs = money.RoundBs(products[k].Shop.DeliveryFee * rate)
+			}
+		}
+	}
 }
 
 func (p *productsApp) RegisterCategory(ctx context.Context, category dtos.RegisterCategory) error {

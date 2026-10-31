@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
+	"Encargalo.app-api.go/internal/pkg/bizclock"
 	"Encargalo.app-api.go/internal/pkg/cache"
 	"Encargalo.app-api.go/internal/pkg/id"
 	"Encargalo.app-api.go/internal/pkg/money"
@@ -773,6 +775,318 @@ func (p *productsRepo) deliveryEstimatesByShop(coords dtos.TrendingCoords, rows 
 	elements, err := googlemaps.DistanceMatrix(coords.Latitude, coords.Longitude, destinations)
 	if err != nil {
 		slog.Error("error al calcular distancias para trending", "error", err)
+		return fee, minutes
+	}
+
+	for _, elem := range elements {
+		shopID := shopIDs[elem.Index]
+		fee[shopID] = deliveryfee.FromDistance(elem.DistanceMeters)
+		minutes[shopID] = int(elem.DurationMin) + 20
+	}
+
+	return fee, minutes
+}
+
+const prefix_supermarket_home_cache = "products:supermarket-home:"
+
+// supermarketHomeMaxPerShopPerShelf acota, en SQL, cuántos productos de un
+// mismo negocio pueden entrar en una repisa (micro-categoría) — sin esto, un
+// super con catálogo grande eclipsaría a los demás negocios de la zona.
+const supermarketHomeMaxPerShopPerShelf = 4
+
+// supermarketHomeCacheBundle es lo que se cachea 15 minutos: filas crudas más
+// los cálculos costosos (Google Maps, horarios), igual que trending.
+type supermarketHomeCacheBundle struct {
+	Rows      []models.SupermarketHomeRow
+	Fee       map[uuid.UUID]float64
+	Minutes   map[uuid.UUID]int
+	Schedules map[uuid.UUID][]dtos.ScheduleResponse
+}
+
+// SearchSupermarketCategoryPool retorna las (macro, categoría) distintas
+// disponibles hoy en la zona para supermercados — es el universo del que el
+// app layer elige la rotación diaria. Consulta liviana, sin cache.
+func (p *productsRepo) SearchSupermarketCategoryPool(ctx context.Context, coords dtos.SupermarketHomeCoords) ([]models.SupermarketCategoryCandidate, error) {
+	var pool []models.SupermarketCategoryCandidate
+	query, args := SupermarketCategoryPoolQuery(config.Get().IsProduction(), coords.Latitude, coords.Longitude)
+	if err := p.db.NewRaw(query, args...).Scan(ctx, &pool); err != nil {
+		slog.Error("error al obtener el pool de categorías de supermarket home", "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+	return pool, nil
+}
+
+// SupermarketCategoryPoolQuery usa el mismo radio de cobertura que el listado
+// de negocios (CoverageRadiusKm), restringido a shops type=Supermarket.
+func SupermarketCategoryPoolQuery(isProduction bool, lat, lon float64) (string, []any) {
+	query := `
+		SELECT DISTINCT
+			mc.id::text AS macro_id,
+			mc.name     AS macro_name,
+			mc.slug     AS macro_slug,
+			c.name      AS category_name
+		FROM business.shops s
+		JOIN products.categories c ON c.shop_id = s.id
+		JOIN products.macro_categories mc ON mc.id = c.macro_category_id
+		JOIN products.items i ON i.category_id = c.id
+		WHERE s.opened = true
+			AND s.license_status = 'active'
+			AND s.type = ?
+			AND c.availability_status != ?
+			AND i.is_available = true
+			AND i.availability_status != ?
+	`
+	args := []any{shops.ShopTypeSupermarket, models.AvailabilityHidden, models.AvailabilityHidden}
+	if isProduction {
+		query += `
+			AND s.latitude IS NOT NULL
+			AND s.longitude IS NOT NULL
+			AND 6371 * acos(
+				cos(radians(?)) * cos(radians(s.latitude)) *
+				cos(radians(s.longitude) - radians(?)) +
+				sin(radians(?)) * sin(radians(s.latitude))
+			) <= ?
+		`
+		args = append(args, lat, lon, lat, shops.CoverageRadiusKm)
+	}
+	return query, args
+}
+
+// SearchSupermarketHomeEntries retorna, para el conjunto de categorías ya
+// elegido por la rotación diaria del app layer, los productos de negocios
+// Supermarket de la zona (tope supermarketHomeMaxPerShopPerShelf por negocio
+// por categoría), con delivery fee/tiempo y horarios ya resueltos. Cachea 15
+// minutos; el key incluye la fecha de negocio porque la rotación cambia cada
+// día.
+func (p *productsRepo) SearchSupermarketHomeEntries(ctx context.Context, coords dtos.SupermarketHomeCoords, categoryNames []string) (dtos.HomeEntriesResponse, error) {
+	if len(categoryNames) == 0 {
+		return dtos.HomeEntriesResponse{}, nil
+	}
+
+	lat, lon := coords.Latitude, coords.Longitude
+	dateKey := bizclock.Now().Format("2006-01-02")
+	cacheKey := fmt.Sprintf("%s%v_%v_%s", prefix_supermarket_home_cache, lat, lon, dateKey)
+
+	if cached, err := p.cache.Get(ctx, cacheKey); err == nil && cached != "" {
+		var bundle supermarketHomeCacheBundle
+		if err := json.Unmarshal([]byte(cached), &bundle); err == nil {
+			return buildSupermarketHomeEntries(bundle), nil
+		}
+		slog.Error("error al deserializar supermarket home del cache", "key", cacheKey)
+	}
+
+	var rows []models.SupermarketHomeRow
+	query, args := SupermarketHomeProductsQuery(config.Get().IsProduction(), lat, lon, categoryNames, supermarketHomeMaxPerShopPerShelf)
+	if err := p.db.NewRaw(query, args...).Scan(ctx, &rows); err != nil {
+		slog.Error("error al obtener productos de supermarket home", "error", err)
+		return nil, errcustom.ErrUnexpectedError
+	}
+
+	fee, minutes := p.deliveryEstimatesForHome(coords, rows)
+	bundle := supermarketHomeCacheBundle{
+		Rows:      rows,
+		Fee:       fee,
+		Minutes:   minutes,
+		Schedules: p.schedulesByHomeCategory(ctx, rows),
+	}
+
+	if err := p.cache.Set(ctx, cacheKey, bundle, 15*time.Minute); err != nil {
+		slog.Error("error al guardar supermarket home en cache", "error", err)
+	}
+
+	return buildSupermarketHomeEntries(bundle), nil
+}
+
+// SupermarketHomeProductsQuery rankea con ROW_NUMBER() por (categoría, shop)
+// para acotar en SQL cuántos productos de un mismo negocio entran en cada
+// repisa, antes de que el app layer filtre por horario y recorte al tope
+// final por repisa.
+func SupermarketHomeProductsQuery(isProduction bool, lat, lon float64, categoryNames []string, maxPerShopPerShelf int) (string, []any) {
+	placeholders := make([]string, len(categoryNames))
+	args := []any{shops.ShopTypeSupermarket, models.AvailabilityHidden, models.AvailabilityHidden}
+	for i, name := range categoryNames {
+		placeholders[i] = "?"
+		args = append(args, name)
+	}
+
+	query := `
+		WITH ranked AS (
+			SELECT
+				s.id::text        AS shop_id,
+				s.name            AS shop_name,
+				s.slug            AS shop_slug,
+				s.logo_image      AS shop_logo,
+				s.latitude        AS shop_latitude,
+				s.longitude       AS shop_longitude,
+				c.id::text        AS category_id,
+				c.name            AS category_name,
+				mc.id::text       AS macro_id,
+				mc.name           AS macro_name,
+				mc.slug           AS macro_slug,
+				i.id::text        AS item_id,
+				i.name            AS item_name,
+				i.price           AS item_price,
+				i.image           AS item_image,
+				i.score           AS item_score,
+				i.sold            AS item_sold,
+				ROW_NUMBER() OVER (PARTITION BY c.name, s.id ORDER BY i.sold DESC) AS shop_rank
+			FROM business.shops s
+			JOIN products.categories c ON c.shop_id = s.id
+			JOIN products.macro_categories mc ON mc.id = c.macro_category_id
+			JOIN products.items i ON i.category_id = c.id
+			WHERE s.opened = true
+				AND s.license_status = 'active'
+				AND s.type = ?
+				AND c.availability_status != ?
+				AND i.is_available = true
+				AND i.availability_status != ?
+				AND c.name IN (` + strings.Join(placeholders, ",") + `)
+	`
+	if isProduction {
+		query += `
+				AND s.latitude IS NOT NULL
+				AND s.longitude IS NOT NULL
+				AND 6371 * acos(
+					cos(radians(?)) * cos(radians(s.latitude)) *
+					cos(radians(s.longitude) - radians(?)) +
+					sin(radians(?)) * sin(radians(s.latitude))
+				) <= ?
+		`
+		args = append(args, lat, lon, lat, shops.CoverageRadiusKm)
+	}
+	query += `
+		)
+		SELECT shop_id, shop_name, shop_slug, shop_logo, shop_latitude, shop_longitude,
+			category_id, category_name, macro_id, macro_name, macro_slug,
+			item_id, item_name, item_price, item_image, item_score, item_sold
+		FROM ranked
+		WHERE shop_rank <= ?
+		ORDER BY category_name, item_sold DESC
+	`
+	args = append(args, maxPerShopPerShelf)
+	return query, args
+}
+
+// buildSupermarketHomeEntries arma la lista plana a partir del bundle
+// (cacheado o recién consultado). El app layer la filtra en vivo por horario
+// y la agrupa en macro -> micro -> productos.
+func buildSupermarketHomeEntries(bundle supermarketHomeCacheBundle) dtos.HomeEntriesResponse {
+	data := make(dtos.HomeEntriesResponse, 0, len(bundle.Rows))
+	for _, r := range bundle.Rows {
+		shopID, _ := uuid.Parse(r.ShopID)
+		itemID, _ := uuid.Parse(r.ItemID)
+		categoryID, _ := uuid.Parse(r.CategoryID)
+
+		data = append(data, dtos.HomeEntry{
+			CategoryName: r.CategoryName,
+			Shop: dtos.HomeShop{
+				ID:          shopID,
+				Name:        r.ShopName,
+				Slug:        r.ShopSlug,
+				Logo:        r.ShopLogo,
+				DeliveryFee: bundle.Fee[shopID],
+				Time:        bundle.Minutes[shopID],
+			},
+			Product: dtos.HomeProduct{
+				ID:    itemID,
+				Name:  r.ItemName,
+				Ref:   r.ItemPrice,
+				Image: r.ItemImage,
+				Score: r.ItemScore,
+				Sold:  r.ItemSold,
+			},
+			Schedules: bundle.Schedules[categoryID],
+		})
+	}
+	return data
+}
+
+// schedulesByHomeCategory carga en una sola query los horarios de todas las
+// categorías presentes en rows, agrupados por category_id — mismo propósito
+// que schedulesByCategory pero para SupermarketHomeRow.
+func (p *productsRepo) schedulesByHomeCategory(ctx context.Context, rows []models.SupermarketHomeRow) map[uuid.UUID][]dtos.ScheduleResponse {
+	result := make(map[uuid.UUID][]dtos.ScheduleResponse)
+
+	categoryIDs := make([]uuid.UUID, 0, len(rows))
+	seen := make(map[uuid.UUID]struct{})
+	for _, r := range rows {
+		categoryID, err := uuid.Parse(r.CategoryID)
+		if err != nil {
+			continue
+		}
+		if _, ok := seen[categoryID]; ok {
+			continue
+		}
+		seen[categoryID] = struct{}{}
+		categoryIDs = append(categoryIDs, categoryID)
+	}
+
+	if len(categoryIDs) == 0 {
+		return result
+	}
+
+	var schedules models.Schedules
+	if err := p.db.NewSelect().
+		Model(&schedules).
+		Where("category_id IN (?)", bun.In(categoryIDs)).
+		Scan(ctx); err != nil {
+		slog.Error("error al obtener horarios para supermarket home", "error", err)
+		return result
+	}
+
+	for _, s := range schedules {
+		if s.CategoryID == nil {
+			continue
+		}
+		result[*s.CategoryID] = append(result[*s.CategoryID], s.ToDomainDTO())
+	}
+
+	return result
+}
+
+// deliveryEstimatesForHome es deliveryEstimatesByShop pero para
+// SupermarketHomeRow — misma fórmula (fee por distancia, tiempo = minutos de
+// viaje + 20 de preparación), mismo placeholder fuera de producción.
+func (p *productsRepo) deliveryEstimatesForHome(coords dtos.SupermarketHomeCoords, rows []models.SupermarketHomeRow) (map[uuid.UUID]float64, map[uuid.UUID]int) {
+	fee := make(map[uuid.UUID]float64)
+	minutes := make(map[uuid.UUID]int)
+
+	if !config.Get().IsProduction() {
+		for _, r := range rows {
+			shopID, err := uuid.Parse(r.ShopID)
+			if err != nil {
+				continue
+			}
+			fee[shopID] = deliveryfee.DevPlaceholderFee
+			minutes[shopID] = 12
+		}
+		return fee, minutes
+	}
+
+	var shopIDs []uuid.UUID
+	var destinations [][2]float64
+	seen := make(map[uuid.UUID]struct{})
+
+	for _, r := range rows {
+		shopID, err := uuid.Parse(r.ShopID)
+		if err != nil {
+			continue
+		}
+		if _, ok := seen[shopID]; ok {
+			continue
+		}
+		seen[shopID] = struct{}{}
+		shopIDs = append(shopIDs, shopID)
+		destinations = append(destinations, [2]float64{r.ShopLatitude, r.ShopLongitude})
+	}
+
+	if len(destinations) == 0 {
+		return fee, minutes
+	}
+
+	elements, err := googlemaps.DistanceMatrix(coords.Latitude, coords.Longitude, destinations)
+	if err != nil {
+		slog.Error("error al calcular distancias para supermarket home", "error", err)
 		return fee, minutes
 	}
 
