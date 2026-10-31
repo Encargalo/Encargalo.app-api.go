@@ -120,7 +120,7 @@ func newWatchedConn(t *testing.T) (*mocksriders.RiderConn, chan []byte) {
 func TestSetAvailability_NoPresenceStoreFails(t *testing.T) {
 	repo := mocksriders.NewRidersRepo(t)
 	svc := app.New(repo, newRidersStream(t), mockbcvports.NewBcvApp(t), mocksriders.NewTripsStore(t),
-		mocksriders.NewTripEarningRecorder(t), nil, nil, nil, nil, nil, newOfferTimeoutStore(t), nil, nil)
+		mocksriders.NewTripEarningRecorder(t), nil, nil, nil, nil, nil, newOfferTimeoutStore(t), nil, nil, nil, nil, nil, nil)
 
 	err := svc.SetAvailability(context.Background(), uuid.New(), false)
 

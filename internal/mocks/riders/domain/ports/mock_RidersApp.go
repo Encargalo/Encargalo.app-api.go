@@ -38,6 +38,24 @@ func (_m *RidersApp) AcceptOrder(ctx context.Context, riderID uuid.UUID, orderID
 	return r0
 }
 
+// AcceptShipment provides a mock function with given fields: ctx, riderID, shipmentID, conn
+func (_m *RidersApp) AcceptShipment(ctx context.Context, riderID uuid.UUID, shipmentID uuid.UUID, conn ports.RiderConn) error {
+	ret := _m.Called(ctx, riderID, shipmentID, conn)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AcceptShipment")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, ports.RiderConn) error); ok {
+		r0 = rf(ctx, riderID, shipmentID, conn)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // AcceptTrip provides a mock function with given fields: ctx, riderID, tripID, conn
 func (_m *RidersApp) AcceptTrip(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, conn ports.RiderConn) error {
 	ret := _m.Called(ctx, riderID, tripID, conn)
@@ -86,6 +104,24 @@ func (_m *RidersApp) ActiveTrips(ctx context.Context, riderID uuid.UUID) ([]dtos
 	return r0, r1
 }
 
+// AdvanceShipment provides a mock function with given fields: ctx, riderID, shipmentID, code, conn
+func (_m *RidersApp) AdvanceShipment(ctx context.Context, riderID uuid.UUID, shipmentID uuid.UUID, code string, conn ports.RiderConn) error {
+	ret := _m.Called(ctx, riderID, shipmentID, code, conn)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AdvanceShipment")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string, ports.RiderConn) error); ok {
+		r0 = rf(ctx, riderID, shipmentID, code, conn)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // AdvanceTrip provides a mock function with given fields: ctx, riderID, tripID, code, conn
 func (_m *RidersApp) AdvanceTrip(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, code string, conn ports.RiderConn) error {
 	ret := _m.Called(ctx, riderID, tripID, code, conn)
@@ -97,6 +133,24 @@ func (_m *RidersApp) AdvanceTrip(ctx context.Context, riderID uuid.UUID, tripID 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string, ports.RiderConn) error); ok {
 		r0 = rf(ctx, riderID, tripID, code, conn)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// CancelAcceptedShipment provides a mock function with given fields: ctx, riderID, shipmentID, conn
+func (_m *RidersApp) CancelAcceptedShipment(ctx context.Context, riderID uuid.UUID, shipmentID uuid.UUID, conn ports.RiderConn) error {
+	ret := _m.Called(ctx, riderID, shipmentID, conn)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CancelAcceptedShipment")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, ports.RiderConn) error); ok {
+		r0 = rf(ctx, riderID, shipmentID, conn)
 	} else {
 		r0 = ret.Error(0)
 	}

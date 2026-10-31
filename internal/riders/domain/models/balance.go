@@ -15,6 +15,10 @@ const (
 	MovementTypeRideCash MovementType = "ride_cash"
 	MovementTypeTripBank MovementType = "trip_bank"
 	MovementTypeTripCash MovementType = "trip_cash"
+	// MovementTypeShipmentBank es la única variante de envíos: no hay efectivo
+	// (decisión de producto, solo Balance/PagoMovil), así que no existe un
+	// MovementTypeShipmentCash análogo a trip_cash/ride_cash.
+	MovementTypeShipmentBank MovementType = "shipment_bank"
 
 	// PaymentMethodEfectivo es el method_payment que cobra el rider en la entrega.
 	PaymentMethodEfectivo = "Efectivo"
@@ -43,6 +47,7 @@ const (
 	// un viaje (ambos comparten el mismo ledger de balance/transactions).
 	ServiceTypeDelivery = "delivery"
 	ServiceTypeTrip     = "trip"
+	ServiceTypeShipment = "shipment"
 )
 
 type Balance struct {
@@ -63,6 +68,7 @@ type Transaction struct {
 	EntityType string     `bun:"entity_type"`
 	OrderID    *uuid.UUID `bun:"order_id,nullzero"`
 	TripID     *uuid.UUID `bun:"trip_id,nullzero"`
+	ShipmentID *uuid.UUID `bun:"shipment_id,nullzero"`
 	Amount     float64    `bun:"amount"`
 	Currency   string     `bun:"currency"`
 	// BcvRate es la tasa usada para convertir el monto original en USD

@@ -31,7 +31,7 @@ func newReportLocationSvc(t *testing.T, vehicleType string) (ridersPorts.RidersA
 	vehicles := mocksriders.NewVehicleLookup(t)
 	vehicles.On("GetByUserID", mock.Anything, mock.Anything).Return(&riderModels.RiderProfile{VehicleType: &vehicleType}, nil).Maybe()
 	store := newPresenceStore(t)
-	svc := app.New(repo, newRidersStream(t), bcv, mocksriders.NewTripsStore(t), mocksriders.NewTripEarningRecorder(t), nil, nil, nil, vehicles, store, newOfferTimeoutStore(t), nil, nil)
+	svc := app.New(repo, newRidersStream(t), bcv, mocksriders.NewTripsStore(t), mocksriders.NewTripEarningRecorder(t), nil, nil, nil, vehicles, store, newOfferTimeoutStore(t), nil, nil, nil, nil, nil, nil)
 	return svc, repo, store
 }
 

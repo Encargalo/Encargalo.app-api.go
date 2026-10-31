@@ -3,13 +3,11 @@ package app
 import (
 	"Encargalo.app-api.go/internal/pkg/id"
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"math"
-	"math/big"
 	"strings"
 	"time"
 
@@ -19,6 +17,7 @@ import (
 	"Encargalo.app-api.go/internal/orders/domain/ports"
 	paymentsModels "Encargalo.app-api.go/internal/payments/domain/models"
 	"Encargalo.app-api.go/internal/pkg/bizclock"
+	"Encargalo.app-api.go/internal/pkg/code"
 	"Encargalo.app-api.go/internal/pkg/geo"
 	"Encargalo.app-api.go/internal/pkg/money"
 	uploadimage "Encargalo.app-api.go/internal/pkg/uploadImage"
@@ -1094,17 +1093,17 @@ func (o *orderApp) notifyRiderUpdate(ctx context.Context, order *models.Order) {
 }
 
 func (o *orderApp) generateAndSavePickupCode(ctx context.Context, orderID uuid.UUID) {
-	code, err := generateCode()
+	pickupCode, err := code.GenerateFourDigits()
 	if err != nil {
 		slog.Error("error generating pickup code", "orderID", orderID, "error", err)
 		return
 	}
-	if err := o.repo.SavePickupCode(ctx, orderID, code); err != nil {
+	if err := o.repo.SavePickupCode(ctx, orderID, pickupCode); err != nil {
 		slog.Error("error saving pickup code", "orderID", orderID, "error", err)
 	}
 }
 
-func (o *orderApp) ConfirmPickup(ctx context.Context, orderID uuid.UUID, code string, callerShopID uuid.UUID) (models.Order, error) {
+func (o *orderApp) ConfirmPickup(ctx context.Context, orderID uuid.UUID, pickupCode string, callerShopID uuid.UUID) (models.Order, error) {
 	order, err := o.SearchOrdersByID(ctx, orderID)
 	if err != nil {
 		return models.Order{}, err
@@ -1118,7 +1117,7 @@ func (o *orderApp) ConfirmPickup(ctx context.Context, orderID uuid.UUID, code st
 		return models.Order{}, errcustom.ErrInvalidTransition
 	}
 
-	if order.PickupCode == nil || *order.PickupCode != code {
+	if order.PickupCode == nil || *order.PickupCode != pickupCode {
 		return models.Order{}, errcustom.ErrInvalidCode
 	}
 
@@ -1130,7 +1129,7 @@ func (o *orderApp) ConfirmPickup(ctx context.Context, orderID uuid.UUID, code st
 		return models.Order{}, err
 	}
 
-	deliveryCode, err := generateCode()
+	deliveryCode, err := code.GenerateFourDigits()
 	if err != nil {
 		slog.Error("error generating delivery code", "orderID", orderID, "error", err)
 		if err := o.repo.UpdateOrderStatus(ctx, orderID, string(models.StatusOnTheWay)); err != nil {
@@ -1341,12 +1340,4 @@ func (o *orderApp) addSoldItemsAsync(order models.Order) {
 			}
 		}
 	}()
-}
-
-func generateCode() (string, error) {
-	n, err := rand.Int(rand.Reader, big.NewInt(10_000))
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%04d", n.Int64()), nil
 }

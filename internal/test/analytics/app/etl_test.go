@@ -61,6 +61,7 @@ func TestRun_SyncsAllEntities(t *testing.T) {
 	riderID := uuid.New()
 	orderID := uuid.New()
 	tripID := uuid.New()
+	shipmentID := uuid.New()
 
 	shops := []models.DimShop{{ShopID: shopID, Name: "A"}}
 	users := []models.DimUser{{UserID: userID, Name: "U", Roles: []string{"Customer"}}}
@@ -94,6 +95,10 @@ func TestRun_SyncsAllEntities(t *testing.T) {
 		ID: 1, OrderID: orderID, Status: "Completed", At: to,
 	}}
 
+	shipments := []models.CubeShipment{{
+		ShipmentID: shipmentID, CustomerID: userID, RiderID: &riderID, Status: "delivered",
+	}}
+
 	source.On("FetchShops", mock.Anything, from, to).Return(shops, nil)
 	source.On("FetchUsers", mock.Anything, from, to).Return(users, nil)
 	source.On("FetchRiders", mock.Anything, from, to).Return(riders, nil)
@@ -103,6 +108,7 @@ func TestRun_SyncsAllEntities(t *testing.T) {
 	source.On("FetchFareQuotes", mock.Anything, from, to).Return(quotes, nil)
 	source.On("FetchDeliveryQuotes", mock.Anything, from, to).Return(deliveryQuotes, nil)
 	source.On("FetchOrderStatusChanges", mock.Anything, from, to).Return(statusChanges, nil)
+	source.On("FetchShipments", mock.Anything, from, to).Return(shipments, nil)
 
 	sink.On("UpsertShops", mock.Anything, shops).Return(nil)
 	sink.On("UpsertUsers", mock.Anything, users).Return(nil)
@@ -115,6 +121,7 @@ func TestRun_SyncsAllEntities(t *testing.T) {
 	sink.On("UpsertFareQuotes", mock.Anything, quotes).Return(nil)
 	sink.On("UpsertDeliveryQuotes", mock.Anything, deliveryQuotes).Return(nil)
 	sink.On("UpsertOrderStatusChanges", mock.Anything, statusChanges).Return(nil)
+	sink.On("UpsertShipments", mock.Anything, shipments).Return(nil)
 
 	syncLog.On("Upsert", mock.Anything, models.EntityDimShop, to).Return(nil)
 	syncLog.On("Upsert", mock.Anything, models.EntityDimUser, to).Return(nil)
@@ -125,11 +132,12 @@ func TestRun_SyncsAllEntities(t *testing.T) {
 	syncLog.On("Upsert", mock.Anything, models.EntityCubeFareQuote, to).Return(nil)
 	syncLog.On("Upsert", mock.Anything, models.EntityCubeDeliveryQuote, to).Return(nil)
 	syncLog.On("Upsert", mock.Anything, models.EntityFactOrderStatusChange, to).Return(nil)
+	syncLog.On("Upsert", mock.Anything, models.EntityCubeShipment, to).Return(nil)
 
 	etl := newETLApp(source, sink, syncLog)
 	result, err := etl.Run(context.Background(), from, to, nil)
 	require.NoError(t, err)
-	require.Equal(t, 9, len(result.Results))
+	require.Equal(t, 10, len(result.Results))
 	for _, item := range result.Results {
 		require.True(t, item.Success, item.Entity)
 	}
@@ -431,4 +439,40 @@ func TestSyncUserByID_FetchError(t *testing.T) {
 
 	require.ErrorIs(t, err, errcustom.ErrNotFound)
 	sink.AssertNotCalled(t, "UpsertUsers", mock.Anything, mock.Anything)
+}
+
+func TestSyncShipmentByID_Success(t *testing.T) {
+	source := new(mocks.OLTPSourceRepo)
+	sink := new(mocks.OLAPSinkRepo)
+	syncLog := new(mocks.SyncLogRepo)
+
+	shipmentID := uuid.New()
+	shipment := &models.CubeShipment{ShipmentID: shipmentID, Status: "delivered"}
+
+	source.On("FetchShipmentByID", mock.Anything, shipmentID).Return(shipment, nil)
+	sink.On("UpsertShipments", mock.Anything, []models.CubeShipment{*shipment}).Return(nil)
+
+	etl := newETLApp(source, sink, syncLog)
+	err := etl.SyncShipmentByID(context.Background(), shipmentID)
+
+	require.NoError(t, err)
+	source.AssertExpectations(t)
+	sink.AssertExpectations(t)
+}
+
+// TestSyncShipmentByID_NotFound: el envío fue borrado o hay una carrera entre
+// el evento y el procesamiento — cmd/etl trata esto como warning, no error fatal.
+func TestSyncShipmentByID_NotFound(t *testing.T) {
+	source := new(mocks.OLTPSourceRepo)
+	sink := new(mocks.OLAPSinkRepo)
+	syncLog := new(mocks.SyncLogRepo)
+
+	shipmentID := uuid.New()
+	source.On("FetchShipmentByID", mock.Anything, shipmentID).Return((*models.CubeShipment)(nil), errcustom.ErrNotFound)
+
+	etl := newETLApp(source, sink, syncLog)
+	err := etl.SyncShipmentByID(context.Background(), shipmentID)
+
+	require.ErrorIs(t, err, errcustom.ErrNotFound)
+	sink.AssertNotCalled(t, "UpsertShipments", mock.Anything, mock.Anything)
 }

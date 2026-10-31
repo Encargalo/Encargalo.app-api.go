@@ -5307,6 +5307,313 @@
                 }
             }
         },
+        "/shipments": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Crea un envío de paquete (\u003c5kg) a partir de una cotización vigente, con la misma tarifa que un viaje de pasajeros. method_payment solo acepta PagoMovil (comprobante, nace en payment_review) o Balance (debita la tarifa, nace en searching) — sin efectivo. sender/recipient indican quién retira y quién recibe el paquete: is_customer=true usa los datos de la cuenta; is_customer=false exige name y phone de un tercero. id (UUID, opcional) es la llave de idempotencia: un reintento con el mismo id devuelve el envío ya creado sin volver a cobrar.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shipments"
+                ],
+                "summary": "Solicitar un envío",
+                "parameters": [
+                    {
+                        "description": "quote_id, method_payment (PagoMovil o Balance), sender, recipient y package_description",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.CreateShipmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "payload inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Cotización no encontrada, expirada o de otro cliente",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "El id ya lo usa un envío de otro cliente",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "No se pudo subir el comprobante o saldo insuficiente",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shipments/fare-estimate": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Calcula distancia, tiempo estimado y tarifa (USD/Bs) entre el punto de retiro y el de entrega, con la misma fórmula que los viajes de pasajeros, y la congela por 10 minutos en una cotización. El quote_id devuelto es obligatorio para crear el envío (POST /shipments): el precio mostrado acá es el que queda fijado, no se recalcula.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shipments"
+                ],
+                "summary": "Cotizar tarifa de un envío",
+                "parameters": [
+                    {
+                        "description": "Direcciones y coordenadas de retiro/entrega",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.FareEstimateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.FareEstimateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "payload inválido o coordenadas fuera del área de servicio",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "503": {
+                        "description": "Tasa BCV no disponible",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shipments/history": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Cada envío con rider asignado incluye `rider` (nombre, teléfono, foto y vehículo). Los envíos cancelled y no_driver traen `cancel_reason` con el motivo.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shipments"
+                ],
+                "summary": "Historial de envíos del cliente",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentHistoryResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shipments/live": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "El cliente recibe el estado del envío sin volver a consultar. Al conectar se envían los envíos activos.",
+                "tags": [
+                    "Shipments"
+                ],
+                "summary": "WebSocket del cliente para seguir sus envíos",
+                "responses": {
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Acceso denegado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shipments/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "pickup_code y dropoff_code SIEMPRE vienen presentes en la respuesta, sin importar el estado del envío: el cliente los reenvía manualmente (WhatsApp, llamada) a quien esté físicamente presente en el retiro o la entrega, sea él mismo o un tercero. Si el envío ya tiene rider asignado, `rider` trae nombre, teléfono, foto y vehículo. En envíos cancelled o no_driver, `cancel_reason` dice por qué. Los cambios en vivo llegan por GET /shipments/live.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shipments"
+                ],
+                "summary": "Detalle de un envío",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shipment ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "id inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "El envío no pertenece a este cliente",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/shipments/{id}/cancel": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Solo permitido mientras el envío esté en requested/searching/accepted. En payment_review responde 422 shipment_payment_review_pending: hay que esperar a que el staff resuelva el comprobante. Si se pagó con balance, el débito se reintegra. Si el Pago Móvil ya estaba aprobado, se acredita la tarifa en Bs a la cartera. La respuesta trae cancel_reason = customer_cancelled.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shipments"
+                ],
+                "summary": "Cancelar un envío",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shipment ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "id inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "El envío no pertenece a este cliente",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "Pago en revisión, o el envío no se puede cancelar en su estado actual",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/shops": {
             "get": {
                 "security": [
@@ -11561,6 +11868,292 @@
                 "ZoneNormal",
                 "ZoneWithdrawalAvailable"
             ]
+        },
+        "Encargalo_app-api_go_internal_shipments_domain_dtos.CreateShipmentRequest": {
+            "type": "object",
+            "required": [
+                "method_payment",
+                "package_description",
+                "quote_id",
+                "recipient",
+                "sender"
+            ],
+            "properties": {
+                "id": {
+                    "description": "ID es la llave de idempotencia: un reintento con el mismo id devuelve el envío ya creado.",
+                    "type": "string",
+                    "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                },
+                "method_payment": {
+                    "type": "string",
+                    "enum": [
+                        "PagoMovil",
+                        "Balance"
+                    ],
+                    "example": "Balance"
+                },
+                "package_description": {
+                    "description": "PackageDescription es lo que se envía, en texto libre (ej. \"una torta\").",
+                    "type": "string",
+                    "maxLength": 500,
+                    "example": "Una torta de cumpleaños"
+                },
+                "payment_proof_image": {
+                    "type": "string",
+                    "maxLength": 7000000,
+                    "example": "data:image/jpeg;base64,/9j/4AAQ..."
+                },
+                "quote_id": {
+                    "type": "string"
+                },
+                "recipient": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentContact"
+                },
+                "sender": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentContact"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shipments_domain_dtos.FareEstimateRequest": {
+            "type": "object",
+            "required": [
+                "dropoff_address",
+                "dropoff_latitude",
+                "dropoff_longitude",
+                "pickup_address",
+                "pickup_latitude",
+                "pickup_longitude"
+            ],
+            "properties": {
+                "dropoff_address": {
+                    "type": "string",
+                    "example": "CC Sambil, Caracas"
+                },
+                "dropoff_latitude": {
+                    "type": "number",
+                    "example": 10.4956
+                },
+                "dropoff_longitude": {
+                    "type": "number",
+                    "example": -66.8517
+                },
+                "pickup_address": {
+                    "type": "string",
+                    "example": "Av. Libertador, Caracas"
+                },
+                "pickup_latitude": {
+                    "type": "number",
+                    "example": 10.4806
+                },
+                "pickup_longitude": {
+                    "type": "number",
+                    "example": -66.9036
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shipments_domain_dtos.FareEstimateResponse": {
+            "type": "object",
+            "properties": {
+                "bcv_rate": {
+                    "description": "BcvRate es la tasa congelada en la cotización; fare_bs = fare_usd * BcvRate.",
+                    "type": "number"
+                },
+                "distance_meters": {
+                    "type": "number"
+                },
+                "duration_min": {
+                    "type": "integer"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "fare_bs": {
+                    "type": "number"
+                },
+                "fare_usd": {
+                    "type": "number"
+                },
+                "quote_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shipments_domain_dtos.RiderPublicInfo": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "profile_photo_url": {
+                    "type": "string"
+                },
+                "sur_name": {
+                    "type": "string"
+                },
+                "vehicle_brand": {
+                    "type": "string"
+                },
+                "vehicle_color": {
+                    "type": "string"
+                },
+                "vehicle_model": {
+                    "type": "string"
+                },
+                "vehicle_plate": {
+                    "type": "string"
+                },
+                "vehicle_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentContact": {
+            "type": "object",
+            "properties": {
+                "is_customer": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentHistoryResponse": {
+            "type": "object",
+            "properties": {
+                "shipments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentResponse"
+                    }
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentPayment": {
+            "type": "object",
+            "properties": {
+                "can_request_refund": {
+                    "type": "boolean"
+                },
+                "credited_bs": {
+                    "type": "number"
+                },
+                "difference_bs": {
+                    "type": "number"
+                },
+                "expected_amount_bs": {
+                    "type": "number"
+                },
+                "observed_amount_bs": {
+                    "type": "number"
+                },
+                "refund_eligible_until": {
+                    "type": "string"
+                },
+                "refundable_pm_bs": {
+                    "type": "number"
+                },
+                "rejection_reason": {
+                    "description": "RejectionReason solo se llena en rejected_underpaid. El motivo que\nescribe el staff en rejected_invalid nunca sale hacia el cliente.",
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "rejected_underpaid"
+                },
+                "transaction_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentResponse": {
+            "type": "object",
+            "properties": {
+                "accepted_at": {
+                    "type": "string"
+                },
+                "cancel_reason": {
+                    "description": "CancelReason es un código: payment_rejected, payment_underpaid,\ncustomer_cancelled o no_driver. La app lo traduce; no dice quién canceló.",
+                    "type": "string",
+                    "example": "no_driver"
+                },
+                "cancelled_at": {
+                    "type": "string"
+                },
+                "customer_id": {
+                    "type": "string"
+                },
+                "delivered_at": {
+                    "type": "string"
+                },
+                "dropoff_address": {
+                    "type": "string"
+                },
+                "dropoff_code": {
+                    "type": "string"
+                },
+                "dropoff_latitude": {
+                    "type": "number"
+                },
+                "dropoff_longitude": {
+                    "type": "number"
+                },
+                "fare_bs": {
+                    "type": "number"
+                },
+                "fare_usd": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "method_payment": {
+                    "type": "string"
+                },
+                "package_description": {
+                    "type": "string"
+                },
+                "payment": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentPayment"
+                },
+                "pickup_address": {
+                    "type": "string"
+                },
+                "pickup_code": {
+                    "description": "PickupCode/DropoffCode siempre vienen presentes (lo genera el servidor al\ncrear el envío), sin importar el estado: el cliente los reenvía a quien\nesté físicamente presente en retiro o entrega si no es él mismo.",
+                    "type": "string"
+                },
+                "pickup_latitude": {
+                    "type": "number"
+                },
+                "pickup_longitude": {
+                    "type": "number"
+                },
+                "recipient": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentContact"
+                },
+                "requested_at": {
+                    "type": "string"
+                },
+                "rider": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.RiderPublicInfo"
+                },
+                "rider_id": {
+                    "type": "string"
+                },
+                "sender": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentContact"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
         },
         "Encargalo_app-api_go_internal_shops_domain_dtos.CreateDraftShopRequest": {
             "type": "object",

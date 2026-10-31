@@ -5,6 +5,7 @@ import (
 	"time"
 
 	riderModels "Encargalo.app-api.go/internal/riders/domain/models"
+	shipmentsModels "Encargalo.app-api.go/internal/shipments/domain/models"
 	tripsDtos "Encargalo.app-api.go/internal/trips/domain/dtos"
 	tripsModels "Encargalo.app-api.go/internal/trips/domain/models"
 	"github.com/google/uuid"
@@ -45,6 +46,16 @@ type RidersApp interface {
 	// SetAvailability pausa o reanuda la recepción de nuevas órdenes y viajes.
 	// El rider sigue conectado y conserva lo que ya tiene asignado.
 	SetAvailability(ctx context.Context, riderID uuid.UUID, acceptingNewWork bool) error
+	// AcceptShipment asigna el envío por CAS en BD (sin candado en memoria: a
+	// diferencia de trips, el pool "orders" permite varias asignaciones
+	// simultáneas por rider). Si otro rider ya ganó, manda shipment_taken.
+	AcceptShipment(ctx context.Context, riderID, shipmentID uuid.UUID, conn RiderConn) error
+	// AdvanceShipment avanza accepted→in_transit (valida pickup_code) o
+	// in_transit→delivered (valida dropoff_code, acredita la ganancia del rider).
+	AdvanceShipment(ctx context.Context, riderID, shipmentID uuid.UUID, code string, conn RiderConn) error
+	// CancelAcceptedShipment libera un envío accepted y lo vuelve a ofertar a
+	// todo el pool en modo orders (sin lista de exclusión: el broadcast ya es abierto).
+	CancelAcceptedShipment(ctx context.Context, riderID, shipmentID uuid.UUID, conn RiderConn) error
 }
 
 // OrderCustomerNotifier entrega al cliente de una orden la ubicación en vivo de su rider.
@@ -110,4 +121,33 @@ type TripOfferTimeoutStore interface {
 	// pendiente — lo usa el barrido de rescate para no adelantar el de un
 	// viaje que ya está esperando su ronda real.
 	ScheduleIfAbsent(ctx context.Context, tripID uuid.UUID, at time.Time) error
+}
+
+// ShipmentsStore is the slice of shipments persistence the riders domain needs
+// to offer and accept shipments — narrower than the full
+// shipments/domain/ports.ShipmentsRepo surface, which also covers shipment
+// creation and history unrelated to matching. Igual relación que TripsStore.
+type ShipmentsStore interface {
+	GetShipmentByID(ctx context.Context, shipmentID uuid.UUID) (*shipmentsModels.Shipment, error)
+	UpdateShipmentStatus(ctx context.Context, shipmentID uuid.UUID, fromStatus, toStatus shipmentsModels.ShipmentStatus) (bool, error)
+	SaveShipmentPayment(ctx context.Context, shipmentID uuid.UUID, payment *shipmentsModels.ShipmentPayment) error
+	SaveShipmentCancelReason(ctx context.Context, shipmentID uuid.UUID, reason shipmentsModels.CancelReason) error
+	AssignShipmentRider(ctx context.Context, shipmentID, riderID uuid.UUID) (bool, error)
+	AdvanceShipmentStatus(ctx context.Context, shipmentID, riderID uuid.UUID, code string) (bool, error)
+	ReleaseShipmentRider(ctx context.Context, shipmentID, riderID uuid.UUID) (bool, error)
+	ListActiveShipmentsByRider(ctx context.Context, riderID uuid.UUID) ([]shipmentsModels.Shipment, error)
+	// ListSearchingShipmentIDs alimenta el barrido de rescate del
+	// ShipmentOfferTimeoutWorker, análogo a ListSearchingTripIDs.
+	ListSearchingShipmentIDs(ctx context.Context) ([]uuid.UUID, error)
+}
+
+// ShipmentOfferTimeoutStore guarda fuera del proceso cuándo vence la espera de
+// oferta de cada envío, para que un reinicio no la pierda. Análogo
+// simplificado de TripOfferTimeoutStore: un único vencimiento por envío, sin
+// rondas, porque el broadcast ya salió a todo el pool desde la primera oferta.
+type ShipmentOfferTimeoutStore interface {
+	Schedule(ctx context.Context, shipmentID uuid.UUID, at time.Time) error
+	Cancel(ctx context.Context, shipmentID uuid.UUID) error
+	PopDue(ctx context.Context, limit int64) ([]uuid.UUID, error)
+	ScheduleIfAbsent(ctx context.Context, shipmentID uuid.UUID, at time.Time) error
 }

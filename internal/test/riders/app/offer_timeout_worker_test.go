@@ -31,7 +31,7 @@ func TestOfferTripRound_SchedulesTimeoutInStore(t *testing.T) {
 	trip := samplePickupTrip(t)
 	offerTimeouts.On("Schedule", mock.Anything, trip.ID, mock.AnythingOfType("time.Time")).Return(nil).Once()
 
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t), offerTimeouts, nil, nil)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t), offerTimeouts, nil, nil, nil, nil, nil, nil)
 	matcher := asMatcher(t, svc)
 
 	matcher.OfferTrip(context.Background(), trip)
@@ -53,7 +53,7 @@ func TestAcceptTrip_CancelsTimeoutInStore(t *testing.T) {
 	offerTimeouts.On("Schedule", mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 	offerTimeouts.On("Cancel", mock.Anything, mock.AnythingOfType("uuid.UUID")).Return(nil).Once()
 
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t), offerTimeouts, nil, nil)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t), offerTimeouts, nil, nil, nil, nil, nil, nil)
 	matcher := asMatcher(t, svc)
 
 	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)

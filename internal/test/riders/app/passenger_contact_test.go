@@ -26,7 +26,7 @@ func TestOfferTrip_IncludesPassengerNameWithoutPhone(t *testing.T) {
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
 	passengers := mocksriders.NewPassengerLookup(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, passengers, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, nil)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, passengers, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, nil, nil, nil, nil, nil)
 
 	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
 	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound)
@@ -64,7 +64,7 @@ func TestOfferTrip_OmitsCustomerWhenPassengerLookupFails(t *testing.T) {
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
 	passengers := mocksriders.NewPassengerLookup(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, passengers, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, nil)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, passengers, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, nil, nil, nil, nil, nil)
 
 	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
 	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound)
@@ -100,7 +100,7 @@ func TestAcceptTrip_SendsPassengerPhoneOnlyToAccepter(t *testing.T) {
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
 	passengers := mocksriders.NewPassengerLookup(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, passengers, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, nil)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, passengers, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, nil, nil, nil, nil, nil)
 
 	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
 	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound)
@@ -153,7 +153,7 @@ func TestActiveTrips_IncludesPassengerWhileInProgress(t *testing.T) {
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
 	passengers := mocksriders.NewPassengerLookup(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, passengers, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, nil)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, passengers, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, nil, nil, nil, nil, nil)
 
 	riderID := uuid.New()
 	customerID := uuid.New()
@@ -183,7 +183,7 @@ func TestCompleteTrip_DropsPassengerPhoneKeepsName(t *testing.T) {
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
 	passengers := mocksriders.NewPassengerLookup(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, passengers, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, nil)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, passengers, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, nil, nil, nil, nil, nil)
 
 	riderID, customerID, tripID := uuid.New(), uuid.New(), uuid.New()
 	fare := deliveryfee.DevPlaceholderFee

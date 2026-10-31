@@ -161,6 +161,17 @@ var userSyncEventTypes = map[string]bool{
 	"user_updated": true,
 }
 
+// shipmentSyncEventTypes son los tipos de mensaje del stream de shipments que
+// implican que CubeShipment puede haber cambiado. shipment_status_changed lo
+// publican tanto shipments/app (RequestShipment, CancelShipment) como
+// riders/app (accept_shipment, advance_shipment) — mismo precedente que
+// tripSyncEventTypes. shipment_no_driver también cambia el status a no_driver.
+var shipmentSyncEventTypes = map[string]bool{
+	"shipment_created":        true,
+	"shipment_status_changed": true,
+	"shipment_no_driver":      true,
+}
+
 // startOrderEventConsumer lee el stream con su propio consumer group y
 // resincroniza puntualmente la entidad de cada evento relevante contra OLAP.
 func startOrderEventConsumer(ctx context.Context, cfg config.ETLConfig, etlApp ports.ETLApp) {
@@ -220,6 +231,8 @@ func processStreamEvent(ctx context.Context, msg redis.XMessage, etlApp ports.ET
 		return processRiderEvent(ctx, msg, messageType, etlApp)
 	case userSyncEventTypes[messageType]:
 		return processUserEvent(ctx, msg, messageType, etlApp)
+	case shipmentSyncEventTypes[messageType]:
+		return processShipmentEvent(ctx, msg, messageType, etlApp)
 	default:
 		return nil
 	}
@@ -313,6 +326,19 @@ func processUserEvent(ctx context.Context, msg redis.XMessage, messageType strin
 		return err
 	}
 	slog.Info("etl consumer: cuenta resincronizada", "user_id", userID, "type", messageType)
+	return nil
+}
+
+func processShipmentEvent(ctx context.Context, msg redis.XMessage, messageType string, etlApp ports.ETLApp) error {
+	shipmentID, ok := parseEventID(msg, messageType, "shipment_id")
+	if !ok {
+		return nil
+	}
+
+	if err := etlApp.SyncShipmentByID(ctx, shipmentID); err != nil {
+		return err
+	}
+	slog.Info("etl consumer: envío resincronizado", "shipment_id", shipmentID, "type", messageType)
 	return nil
 }
 

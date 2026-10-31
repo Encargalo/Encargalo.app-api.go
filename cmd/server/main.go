@@ -23,6 +23,8 @@ import (
 	"Encargalo.app-api.go/internal/shared/config"
 	"Encargalo.app-api.go/internal/shared/otelsetup"
 	"Encargalo.app-api.go/internal/shared/reqctx"
+	appShipments "Encargalo.app-api.go/internal/shipments/app"
+	shipmentsModels "Encargalo.app-api.go/internal/shipments/domain/models"
 	appShops "Encargalo.app-api.go/internal/shops/app"
 	appTrips "Encargalo.app-api.go/internal/trips/app"
 	tripsModels "Encargalo.app-api.go/internal/trips/domain/models"
@@ -75,6 +77,7 @@ func run() error {
 		registry *appPayments.SubjectRegistry,
 		orderSubject paymentsPorts.PaymentSubject,
 		tripSubject *appTrips.TripPaymentSubject,
+		shipmentSubject *appShipments.ShipmentPaymentSubject,
 		tripSnapshot appTrips.TripStaffSnapshot,
 		staffSnapshot appOrders.OrderStaffSnapshot,
 		pendingWorker *appOrders.PendingAcceptWorker,
@@ -89,9 +92,11 @@ func run() error {
 		ridersMgr ridersPorts.RidersApp,
 		streamTrimWorker *redis.StreamTrimWorker,
 		tripOfferTimeoutWorker *appRiders.TripOfferTimeoutWorker,
+		shipmentOfferTimeoutWorker *appRiders.ShipmentOfferTimeoutWorker,
 	) error {
 		registry.Register(paymentsModels.ReferenceTypeOrder, orderSubject)
 		registry.Register(tripsModels.ReferenceTypeTrip, tripSubject)
+		registry.Register(shipmentsModels.ReferenceTypeShipment, shipmentSubject)
 		reviews.SetSnapshotProvider(staffSnapshot)
 		hub.SetSnapshotProvider(reviews.ListActiveForStaff)
 		hub.SetSnapshotProvider(tripSnapshot)
@@ -110,6 +115,7 @@ func run() error {
 		accountDeletionWorker.Start(context.Background())
 		streamTrimWorker.Start(context.Background())
 		tripOfferTimeoutWorker.Start(context.Background())
+		shipmentOfferTimeoutWorker.Start(context.Background())
 		router.Init()
 
 		addr := fmt.Sprintf(":%d", cfg.Server.Port)

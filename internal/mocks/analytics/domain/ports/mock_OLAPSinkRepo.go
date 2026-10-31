@@ -104,6 +104,24 @@ func (_m *OLAPSinkRepo) UpsertRiders(ctx context.Context, rows []models.DimRider
 	return r0
 }
 
+// UpsertShipments provides a mock function with given fields: ctx, rows
+func (_m *OLAPSinkRepo) UpsertShipments(ctx context.Context, rows []models.CubeShipment) error {
+	ret := _m.Called(ctx, rows)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpsertShipments")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, []models.CubeShipment) error); ok {
+		r0 = rf(ctx, rows)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // UpsertShops provides a mock function with given fields: ctx, rows
 func (_m *OLAPSinkRepo) UpsertShops(ctx context.Context, rows []models.DimShop) error {
 	ret := _m.Called(ctx, rows)

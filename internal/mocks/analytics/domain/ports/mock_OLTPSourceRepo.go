@@ -318,6 +318,66 @@ func (_m *OLTPSourceRepo) FetchRiders(ctx context.Context, from time.Time, to ti
 	return r0, r1
 }
 
+// FetchShipmentByID provides a mock function with given fields: ctx, shipmentID
+func (_m *OLTPSourceRepo) FetchShipmentByID(ctx context.Context, shipmentID uuid.UUID) (*models.CubeShipment, error) {
+	ret := _m.Called(ctx, shipmentID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FetchShipmentByID")
+	}
+
+	var r0 *models.CubeShipment
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*models.CubeShipment, error)); ok {
+		return rf(ctx, shipmentID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) *models.CubeShipment); ok {
+		r0 = rf(ctx, shipmentID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.CubeShipment)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, shipmentID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// FetchShipments provides a mock function with given fields: ctx, from, to
+func (_m *OLTPSourceRepo) FetchShipments(ctx context.Context, from time.Time, to time.Time) ([]models.CubeShipment, error) {
+	ret := _m.Called(ctx, from, to)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FetchShipments")
+	}
+
+	var r0 []models.CubeShipment
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time) ([]models.CubeShipment, error)); ok {
+		return rf(ctx, from, to)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time) []models.CubeShipment); ok {
+		r0 = rf(ctx, from, to)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.CubeShipment)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, time.Time, time.Time) error); ok {
+		r1 = rf(ctx, from, to)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // FetchShopByID provides a mock function with given fields: ctx, shopID
 func (_m *OLTPSourceRepo) FetchShopByID(ctx context.Context, shopID uuid.UUID) (*models.DimShop, error) {
 	ret := _m.Called(ctx, shopID)

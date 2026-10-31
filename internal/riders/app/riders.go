@@ -13,6 +13,7 @@ import (
 	bcvPorts "Encargalo.app-api.go/internal/bcv/domain/ports"
 	ordersModels "Encargalo.app-api.go/internal/orders/domain/models"
 	paymentsPorts "Encargalo.app-api.go/internal/payments/domain/ports"
+	"Encargalo.app-api.go/internal/pkg/code"
 	"Encargalo.app-api.go/internal/pkg/geo"
 	"Encargalo.app-api.go/internal/pkg/money"
 	riderModels "Encargalo.app-api.go/internal/riders/domain/models"
@@ -20,6 +21,7 @@ import (
 	"Encargalo.app-api.go/internal/shared/deliveryfee"
 	"Encargalo.app-api.go/internal/shared/errcustom"
 	"Encargalo.app-api.go/internal/shared/tripfare"
+	shipmentsPorts "Encargalo.app-api.go/internal/shipments/domain/ports"
 	tripsApp "Encargalo.app-api.go/internal/trips/app"
 	tripsDtos "Encargalo.app-api.go/internal/trips/domain/dtos"
 	tripsModels "Encargalo.app-api.go/internal/trips/domain/models"
@@ -97,6 +99,13 @@ type appRidersManager struct {
 	offerTimeouts ridersPorts.TripOfferTimeoutStore
 	lastKnown     ridersPorts.LastKnownLocationStore
 	push          ridersPorts.PushNotifier
+	// completingShipments evita liquidar dos veces la ganancia de un mismo
+	// envío, igual que completingTrips para viajes (ver completeShipment).
+	completingShipments   map[uuid.UUID]struct{}
+	shipmentsRepo         ridersPorts.ShipmentsStore
+	shipmentOfferTimeouts ridersPorts.ShipmentOfferTimeoutStore
+	shipmentEarnings      ridersPorts.ShipmentEarningRecorder
+	customersShipment     shipmentsPorts.CustomerShipmentNotifier
 }
 
 type riderAssignment struct {
@@ -104,37 +113,42 @@ type riderAssignment struct {
 	customerID uuid.UUID
 }
 
-func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPorts.BcvApp, tripsRepo ridersPorts.TripsStore, tripEarnings ridersPorts.TripEarningRecorder, customers tripsPorts.CustomerTripNotifier, balance paymentsPorts.CustomerBalanceCreditor, passengers ridersPorts.PassengerLookup, vehicles ridersPorts.VehicleLookup, presence ridersPorts.RiderPresenceStore, offerTimeouts ridersPorts.TripOfferTimeoutStore, lastKnown ridersPorts.LastKnownLocationStore, push ridersPorts.PushNotifier) ridersPorts.RidersApp {
+func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPorts.BcvApp, tripsRepo ridersPorts.TripsStore, tripEarnings ridersPorts.TripEarningRecorder, customers tripsPorts.CustomerTripNotifier, balance paymentsPorts.CustomerBalanceCreditor, passengers ridersPorts.PassengerLookup, vehicles ridersPorts.VehicleLookup, presence ridersPorts.RiderPresenceStore, offerTimeouts ridersPorts.TripOfferTimeoutStore, lastKnown ridersPorts.LastKnownLocationStore, push ridersPorts.PushNotifier, shipmentsRepo ridersPorts.ShipmentsStore, shipmentOfferTimeouts ridersPorts.ShipmentOfferTimeoutStore, shipmentEarnings ridersPorts.ShipmentEarningRecorder, customersShipment shipmentsPorts.CustomerShipmentNotifier) ridersPorts.RidersApp {
 	return &appRidersManager{
-		availableRiders:    make(map[uuid.UUID]ridersPorts.RiderConn),
-		assignedOrders:     make(map[uuid.UUID][]uuid.UUID),
-		orderCustomer:      make(map[uuid.UUID]uuid.UUID),
-		riderMode:          make(map[uuid.UUID]riderModels.RiderMode),
-		riderLocation:      make(map[uuid.UUID]riderModels.RiderLocation),
-		riderVehicle:       make(map[uuid.UUID]string),
-		tripOffers:         make(map[uuid.UUID]map[uuid.UUID]struct{}),
-		tripAlreadyOffered: make(map[uuid.UUID]map[uuid.UUID]struct{}),
-		tripOfferRounds:    make(map[uuid.UUID]int),
-		tripOfferTrip:      make(map[uuid.UUID]tripsModels.Trip),
-		tripExcluded:       make(map[uuid.UUID]map[uuid.UUID]struct{}),
-		tripWithdrawn:      make(map[uuid.UUID]struct{}),
-		completingTrips:    make(map[uuid.UUID]struct{}),
-		acceptingRiders:    make(map[uuid.UUID]struct{}),
-		pausedRiders:       make(map[uuid.UUID]struct{}),
-		repo:               repo,
-		stream:             stream,
-		bcv:                bcv,
-		tripsRepo:          tripsRepo,
-		tripEarnings:       tripEarnings,
-		customers:          customers,
-		balance:            balance,
-		passengers:         passengers,
-		vehicles:           vehicles,
-		presence:           presence,
-		riderTrips:         make(map[uuid.UUID]riderAssignment),
-		offerTimeouts:      offerTimeouts,
-		lastKnown:          lastKnown,
-		push:               push,
+		availableRiders:       make(map[uuid.UUID]ridersPorts.RiderConn),
+		assignedOrders:        make(map[uuid.UUID][]uuid.UUID),
+		orderCustomer:         make(map[uuid.UUID]uuid.UUID),
+		riderMode:             make(map[uuid.UUID]riderModels.RiderMode),
+		riderLocation:         make(map[uuid.UUID]riderModels.RiderLocation),
+		riderVehicle:          make(map[uuid.UUID]string),
+		tripOffers:            make(map[uuid.UUID]map[uuid.UUID]struct{}),
+		tripAlreadyOffered:    make(map[uuid.UUID]map[uuid.UUID]struct{}),
+		tripOfferRounds:       make(map[uuid.UUID]int),
+		tripOfferTrip:         make(map[uuid.UUID]tripsModels.Trip),
+		tripExcluded:          make(map[uuid.UUID]map[uuid.UUID]struct{}),
+		tripWithdrawn:         make(map[uuid.UUID]struct{}),
+		completingTrips:       make(map[uuid.UUID]struct{}),
+		acceptingRiders:       make(map[uuid.UUID]struct{}),
+		pausedRiders:          make(map[uuid.UUID]struct{}),
+		repo:                  repo,
+		stream:                stream,
+		bcv:                   bcv,
+		tripsRepo:             tripsRepo,
+		tripEarnings:          tripEarnings,
+		customers:             customers,
+		balance:               balance,
+		passengers:            passengers,
+		vehicles:              vehicles,
+		presence:              presence,
+		riderTrips:            make(map[uuid.UUID]riderAssignment),
+		offerTimeouts:         offerTimeouts,
+		lastKnown:             lastKnown,
+		push:                  push,
+		completingShipments:   make(map[uuid.UUID]struct{}),
+		shipmentsRepo:         shipmentsRepo,
+		shipmentOfferTimeouts: shipmentOfferTimeouts,
+		shipmentEarnings:      shipmentEarnings,
+		customersShipment:     customersShipment,
 	}
 }
 
@@ -254,6 +268,21 @@ func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn
 		deliveryfee.ApplyBsToOrder(ctx, r.bcv, &order)
 		data, _ := json.Marshal(r.orderBroadcast(ctx, "order_update", order, true))
 		conn.Send(data)
+	}
+
+	// Envíos asignados en curso, igual que activeOrders arriba: no hay "modo
+	// shipments" propio, comparten el pool orders, así que se reenvían sin
+	// condicionar por mode (ver "AcceptShipment" y la nota de reconexión en
+	// internal/riders/app/shipments.go).
+	if r.shipmentsRepo != nil {
+		activeShipments, err := r.shipmentsRepo.ListActiveShipmentsByRider(ctx, riderID)
+		if err != nil && !errors.Is(err, errcustom.ErrNotFound) {
+			return err
+		}
+		for _, shipment := range activeShipments {
+			data, _ := json.Marshal(shipmentBroadcast{Type: "shipment_status", Shipment: shipment.ToDTO()})
+			conn.Send(data)
+		}
 	}
 
 	availableOrders, err := r.repo.SearchAvailableOrders(ctx)
@@ -1466,7 +1495,7 @@ func (r *appRidersManager) AcceptTrip(ctx context.Context, riderID, tripID uuid.
 	}
 	defer r.endAccepting(riderID)
 
-	pickupCode, err := generateTripCode()
+	pickupCode, err := code.GenerateFourDigits()
 	if err != nil {
 		return errcustom.ErrUnexpectedError
 	}
@@ -1606,7 +1635,7 @@ func (r *appRidersManager) startTrip(ctx context.Context, trip *tripsModels.Trip
 	if pickupCode == "" {
 		return errcustom.ErrInvalidCode
 	}
-	dropoffCode, err := generateTripCode()
+	dropoffCode, err := code.GenerateFourDigits()
 	if err != nil {
 		return errcustom.ErrUnexpectedError
 	}

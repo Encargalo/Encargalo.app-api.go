@@ -26,7 +26,7 @@ func TestAdvanceTrip_DiscountedCashTripCreditsRiderTheDifference(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, nil)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, nil, nil, nil, nil, nil)
 
 	riderID, tripID := uuid.New(), uuid.New()
 	var sent tripsDtos.TripResponse
@@ -64,7 +64,7 @@ func TestAdvanceTrip_DiscountedBankTripPaysOnGrossFare(t *testing.T) {
 	bcv := mockbcvports.NewBcvApp(t)
 	tripsRepo := mockstrips.NewTripsRepo(t)
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, nil)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, nil, nil, nil, nil, nil)
 
 	riderID, tripID := uuid.New(), uuid.New()
 	conn := mocksriders.NewRiderConn(t)

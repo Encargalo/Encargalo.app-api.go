@@ -51,6 +51,10 @@ type FinanceApp interface {
 	RecordTripCash(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare, bcvRate float64) error
 	RecordRideCashCollected(ctx context.Context, riderID uuid.UUID, orderID uuid.UUID, deliveryFee, cashUSD, bcvRate float64) error
 	RecordTripCashCollected(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare, cashUSD, bcvRate float64) error
+	// RecordShipmentEarning acredita RiderShare (90%) de fare, igual que
+	// RecordTripEarning pero sin bono de acercamiento (shipments no congela
+	// pickup_distance_km) ni rama de efectivo (sin Efectivo en envíos).
+	RecordShipmentEarning(ctx context.Context, riderID uuid.UUID, shipmentID uuid.UUID, fare, bcvRate float64) error
 	GetBalance(ctx context.Context, riderID uuid.UUID) (dtos.BalanceResponse, error)
 	RequestWithdrawal(ctx context.Context, riderID uuid.UUID) (dtos.WithdrawalResponse, error)
 	ListTransactions(ctx context.Context, riderID uuid.UUID, page, limit int) (dtos.TransactionsResponse, error)
@@ -64,6 +68,13 @@ type TripEarningRecorder interface {
 	// RecordTripCash debita lo que el rider cobró en efectivo y no es su pago.
 	RecordTripCash(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare, bcvRate float64) error
 	RecordTripCashCollected(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare, cashUSD, bcvRate float64) error
+}
+
+// ShipmentEarningRecorder is the narrow slice of FinanceApp that the
+// rider-shipment matching flow needs to settle a completed shipment —
+// implemented by financeApp.
+type ShipmentEarningRecorder interface {
+	RecordShipmentEarning(ctx context.Context, riderID uuid.UUID, shipmentID uuid.UUID, fare, bcvRate float64) error
 }
 
 // WithdrawalPublisher avisa al equipo de una solicitud nueva. Es conveniencia,

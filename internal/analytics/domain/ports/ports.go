@@ -35,6 +35,10 @@ type ETLApp interface {
 	// user_updated (publicado también desde riders/app y shops/app cuando
 	// otorgan el rol Rider u Owner, ya que eso muta DimUser.Roles).
 	SyncUserByID(ctx context.Context, userID uuid.UUID) error
+	// SyncShipmentByID re-sincroniza un solo envío contra OLAP, en reacción a
+	// shipment_status_changed (publicado tanto desde shipments/app como desde
+	// riders/app, mismo precedente que SyncTripByID).
+	SyncShipmentByID(ctx context.Context, shipmentID uuid.UUID) error
 }
 
 type SyncLogRepo interface {
@@ -63,6 +67,8 @@ type OLTPSourceRepo interface {
 	// una sola fila): a diferencia de las demás entidades, cada orden tiene
 	// varias filas de status_history.
 	FetchOrderStatusChangesByOrderID(ctx context.Context, orderID uuid.UUID) ([]models.FactOrderStatusChange, error)
+	FetchShipments(ctx context.Context, from, to time.Time) ([]models.CubeShipment, error)
+	FetchShipmentByID(ctx context.Context, shipmentID uuid.UUID) (*models.CubeShipment, error)
 }
 
 type OLAPSinkRepo interface {
@@ -75,4 +81,5 @@ type OLAPSinkRepo interface {
 	UpsertFareQuotes(ctx context.Context, rows []models.CubeFareQuote) error
 	UpsertDeliveryQuotes(ctx context.Context, rows []models.CubeDeliveryQuote) error
 	UpsertOrderStatusChanges(ctx context.Context, rows []models.FactOrderStatusChange) error
+	UpsertShipments(ctx context.Context, rows []models.CubeShipment) error
 }
