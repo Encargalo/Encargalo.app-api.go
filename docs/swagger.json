@@ -3455,6 +3455,68 @@
                 }
             }
         },
+        "/products/home/supermarket": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Retorna, para negocios type=Supermarket abiertos en la zona (mismo radio de cobertura que /shops/all), una selección diaria de micro-categorías agrupadas por macro-categoría, cada una con hasta 15 productos (tope de 4 por negocio por repisa para que no la domine un solo super). La selección rota cada día (día del año); \"Licores y Cervezas\" se incluye siempre viernes, sábado y domingo. Excluye productos cuya categoría tiene un horario configurado que no cubre la hora actual (America/Caracas). Cacheado 15 minutos.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Home de supermercado (macro → micro categoría → productos)",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "Latitud del usuario",
+                        "name": "lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Longitud del usuario",
+                        "name": "lon",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.HomeMacroCategory"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "lat/lon requeridos o inválidos",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/products/trending": {
             "get": {
                 "security": [
@@ -5256,6 +5318,12 @@
                         "description": "Filtro de tipo: Restaurant, Supermarket o Turbo",
                         "name": "type",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtro de especialidad: General, Panadería, Carnicería, Charcutería, Frutería, Licorería, Pizzería, Comida Rápida, Comida China, Heladería o Cafetería",
+                        "name": "specialty",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -5336,6 +5404,12 @@
                         "type": "string",
                         "description": "Filtro de tipo: Restaurant, Supermarket o Turbo",
                         "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtro de especialidad: General, Panadería, Carnicería, Charcutería, Frutería, Licorería, Pizzería, Comida Rápida, Comida China, Heladería o Cafetería",
+                        "name": "specialty",
                         "in": "query"
                     }
                 ],
@@ -9947,6 +10021,89 @@
                 }
             }
         },
+        "Encargalo_app-api_go_internal_products_domain_dtos.HomeMacroCategory": {
+            "type": "object",
+            "properties": {
+                "macro_category": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.MacroCategoryResponse"
+                },
+                "micro_categories": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.HomeMicroCategory"
+                    }
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.HomeMicroCategory": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "products": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.HomeProduct"
+                    }
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.HomeProduct": {
+            "type": "object",
+            "properties": {
+                "bs": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "image": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ref": {
+                    "type": "number"
+                },
+                "score": {
+                    "type": "number"
+                },
+                "shop": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.HomeShop"
+                },
+                "sold": {
+                    "type": "integer"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_products_domain_dtos.HomeShop": {
+            "type": "object",
+            "properties": {
+                "delivery_fee": {
+                    "type": "number"
+                },
+                "delivery_fee_bs": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "logo": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "time": {
+                    "type": "integer"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_products_domain_dtos.ItemDetailsResponse": {
             "type": "object",
             "properties": {
@@ -11215,6 +11372,23 @@
                     "type": "string",
                     "example": "d33aaf08-2c43-41c4-b2e7-882b019edb1e"
                 },
+                "specialty": {
+                    "type": "string",
+                    "enum": [
+                        "General",
+                        "Panadería",
+                        "Carnicería",
+                        "Charcutería",
+                        "Frutería",
+                        "Licorería",
+                        "Pizzería",
+                        "Comida Rápida",
+                        "Comida China",
+                        "Heladería",
+                        "Cafetería"
+                    ],
+                    "example": "Pizzería"
+                },
                 "type": {
                     "type": "string",
                     "enum": [
@@ -11541,6 +11715,9 @@
                 "slug": {
                     "type": "string"
                 },
+                "specialty": {
+                    "type": "string"
+                },
                 "time": {
                     "type": "integer"
                 },
@@ -11647,6 +11824,9 @@
                     "type": "number"
                 },
                 "slug": {
+                    "type": "string"
+                },
+                "specialty": {
                     "type": "string"
                 },
                 "time": {
@@ -11758,6 +11938,9 @@
                     "type": "string"
                 },
                 "slug": {
+                    "type": "string"
+                },
+                "specialty": {
                     "type": "string"
                 },
                 "status": {
@@ -11906,6 +12089,23 @@
                 },
                 "slug": {
                     "type": "string"
+                },
+                "specialty": {
+                    "type": "string",
+                    "enum": [
+                        "General",
+                        "Panadería",
+                        "Carnicería",
+                        "Charcutería",
+                        "Frutería",
+                        "Licorería",
+                        "Pizzería",
+                        "Comida Rápida",
+                        "Comida China",
+                        "Heladería",
+                        "Cafetería"
+                    ],
+                    "example": "Panadería"
                 }
             }
         },

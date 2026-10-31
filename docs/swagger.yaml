@@ -804,6 +804,60 @@ definitions:
         example: single_select
         type: string
     type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.HomeMacroCategory:
+    properties:
+      macro_category:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.MacroCategoryResponse'
+      micro_categories:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.HomeMicroCategory'
+        type: array
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.HomeMicroCategory:
+    properties:
+      name:
+        type: string
+      products:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.HomeProduct'
+        type: array
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.HomeProduct:
+    properties:
+      bs:
+        type: number
+      id:
+        type: string
+      image:
+        type: string
+      name:
+        type: string
+      ref:
+        type: number
+      score:
+        type: number
+      shop:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.HomeShop'
+      sold:
+        type: integer
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.HomeShop:
+    properties:
+      delivery_fee:
+        type: number
+      delivery_fee_bs:
+        type: number
+      id:
+        type: string
+      logo:
+        type: string
+      name:
+        type: string
+      slug:
+        type: string
+      time:
+        type: integer
+    type: object
   Encargalo_app-api_go_internal_products_domain_dtos.ItemDetailsResponse:
     properties:
       additions:
@@ -1687,6 +1741,21 @@ definitions:
       owner_id:
         example: d33aaf08-2c43-41c4-b2e7-882b019edb1e
         type: string
+      specialty:
+        enum:
+        - General
+        - Panadería
+        - Carnicería
+        - Charcutería
+        - Frutería
+        - Licorería
+        - Pizzería
+        - Comida Rápida
+        - Comida China
+        - Heladería
+        - Cafetería
+        example: Pizzería
+        type: string
       type:
         enum:
         - Restaurant
@@ -1907,6 +1976,8 @@ definitions:
         type: number
       slug:
         type: string
+      specialty:
+        type: string
       time:
         type: integer
       type:
@@ -1980,6 +2051,8 @@ definitions:
         type: number
       slug:
         type: string
+      specialty:
+        type: string
       time:
         type: integer
       type:
@@ -2052,6 +2125,8 @@ definitions:
       owner_id:
         type: string
       slug:
+        type: string
+      specialty:
         type: string
       status:
         type: string
@@ -2150,6 +2225,21 @@ definitions:
       name:
         type: string
       slug:
+        type: string
+      specialty:
+        enum:
+        - General
+        - Panadería
+        - Carnicería
+        - Charcutería
+        - Frutería
+        - Licorería
+        - Pizzería
+        - Comida Rápida
+        - Comida China
+        - Heladería
+        - Cafetería
+        example: Panadería
         type: string
     type: object
   Encargalo_app-api_go_internal_tracking_domain_dtos.TrackEvent:
@@ -5270,6 +5360,52 @@ paths:
       summary: Obtener sabores por categoría
       tags:
       - Products
+  /products/home/supermarket:
+    get:
+      description: Retorna, para negocios type=Supermarket abiertos en la zona (mismo
+        radio de cobertura que /shops/all), una selección diaria de micro-categorías
+        agrupadas por macro-categoría, cada una con hasta 15 productos (tope de 4
+        por negocio por repisa para que no la domine un solo super). La selección
+        rota cada día (día del año); "Licores y Cervezas" se incluye siempre viernes,
+        sábado y domingo. Excluye productos cuya categoría tiene un horario configurado
+        que no cubre la hora actual (America/Caracas). Cacheado 15 minutos.
+      parameters:
+      - description: Latitud del usuario
+        in: query
+        name: lat
+        required: true
+        type: number
+      - description: Longitud del usuario
+        in: query
+        name: lon
+        required: true
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.HomeMacroCategory'
+            type: array
+        "400":
+          description: lat/lon requeridos o inválidos
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Home de supermercado (macro → micro categoría → productos)
+      tags:
+      - Products
   /products/trending:
     get:
       description: Retorna productos más vendidos de locales abiertos. En producción
@@ -6493,6 +6629,12 @@ paths:
         in: query
         name: type
         type: string
+      - description: 'Filtro de especialidad: General, Panadería, Carnicería, Charcutería,
+          Frutería, Licorería, Pizzería, Comida Rápida, Comida China, Heladería o
+          Cafetería'
+        in: query
+        name: specialty
+        type: string
       produces:
       - application/json
       responses:
@@ -6549,6 +6691,12 @@ paths:
       - description: 'Filtro de tipo: Restaurant, Supermarket o Turbo'
         in: query
         name: type
+        type: string
+      - description: 'Filtro de especialidad: General, Panadería, Carnicería, Charcutería,
+          Frutería, Licorería, Pizzería, Comida Rápida, Comida China, Heladería o
+          Cafetería'
+        in: query
+        name: specialty
         type: string
       produces:
       - application/json
