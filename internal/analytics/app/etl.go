@@ -193,6 +193,16 @@ func (a *etlApp) SyncUserByID(ctx context.Context, userID uuid.UUID) error {
 	return a.sink.UpsertUsers(ctx, []models.DimUser{*row})
 }
 
+// SyncShipmentByID re-sincroniza un solo envío contra OLAP. La llama el
+// consumidor de eventos (cmd/etl) al recibir shipment_status_changed.
+func (a *etlApp) SyncShipmentByID(ctx context.Context, shipmentID uuid.UUID) error {
+	row, err := a.source.FetchShipmentByID(ctx, shipmentID)
+	if err != nil {
+		return err
+	}
+	return a.sink.UpsertShipments(ctx, []models.CubeShipment{*row})
+}
+
 func (a *etlApp) syncEntity(ctx context.Context, entity models.ETLEntity, from, to time.Time) (int, error) {
 	switch entity {
 	case models.EntityDimShop:
@@ -252,6 +262,12 @@ func (a *etlApp) syncEntity(ctx context.Context, entity models.ETLEntity, from, 
 			return 0, err
 		}
 		return len(rows), a.sink.UpsertOrderStatusChanges(ctx, rows)
+	case models.EntityCubeShipment:
+		rows, err := a.source.FetchShipments(ctx, from, to)
+		if err != nil {
+			return 0, err
+		}
+		return len(rows), a.sink.UpsertShipments(ctx, rows)
 	default:
 		return 0, errcustom.ErrUnknownETLEntity
 	}

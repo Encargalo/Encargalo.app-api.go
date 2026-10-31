@@ -24,6 +24,8 @@ type StaffShopHandler interface {
 	GetShop(c echo.Context) error
 	UpdateDraftShop(c echo.Context) error
 	ActivateShop(c echo.Context) error
+	GetShopSchedule(c echo.Context) error
+	SetShopSchedule(c echo.Context) error
 }
 
 type staffShopHandler struct {
@@ -173,6 +175,9 @@ func (h *staffShopHandler) UpdateDraftShop(c echo.Context) error {
 	if err := c.Bind(&body); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "payload inválido")
 	}
+	if err := body.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
 	resp, err := h.svc.UpdateDraftShop(c.Request().Context(), shopID, body)
 	if err != nil {
 		return errcustom.ToHTTPError(err)
@@ -219,4 +224,58 @@ func (h *staffShopHandler) ActivateShop(c echo.Context) error {
 		return errcustom.ToHTTPError(err)
 	}
 	return response.Send(c, http.StatusOK, resp)
+}
+
+// GetShopSchedule godoc
+// @Summary      Obtener horario semanal de un shop (staff)
+// @Description  Retorna el horario configurado (día de semana, apertura, cierre, habilitado) del shop indicado.
+// @Tags         Shops Staff
+// @Produce      json
+// @Security     SessionCookie
+// @Param        id  path  string  true  "Shop ID"
+// @Success      200  {array}   dtos.ScheduleResponse
+// @Failure      400  {string}  string  "id inválido"
+// @Failure      401  {string}  string  "No autorizado"
+// @Router       /shops/staff/{id}/schedule [get]
+func (h *staffShopHandler) GetShopSchedule(c echo.Context) error {
+	shopID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "id inválido")
+	}
+	resp, err := h.svc.GetShopSchedule(c.Request().Context(), shopID)
+	if err != nil {
+		return errcustom.ToHTTPError(err)
+	}
+	return response.Send(c, http.StatusOK, resp)
+}
+
+// SetShopSchedule godoc
+// @Summary      Configurar horario semanal de un shop (staff)
+// @Description  Sustituye por completo el horario semanal del shop indicado (una entrada por día de semana que aplique).
+// @Tags         Shops Staff
+// @Accept       json
+// @Produce      json
+// @Security     SessionCookie
+// @Param        id    path  string  true  "Shop ID"
+// @Param        body  body  dtos.ShopScheduleRequest  true  "Horario semanal"
+// @Success      204  "Horario actualizado"
+// @Failure      400  {string}  string  "id inválido / payload inválido"
+// @Failure      401  {string}  string  "No autorizado"
+// @Router       /shops/staff/{id}/schedule [put]
+func (h *staffShopHandler) SetShopSchedule(c echo.Context) error {
+	shopID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "id inválido")
+	}
+	var body dtos.ShopScheduleRequest
+	if err := c.Bind(&body); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "payload inválido")
+	}
+	if err := body.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := h.svc.SetShopSchedule(c.Request().Context(), shopID, body.Schedules); err != nil {
+		return errcustom.ToHTTPError(err)
+	}
+	return c.NoContent(http.StatusNoContent)
 }

@@ -101,6 +101,9 @@ func (a *staffShopApp) CreateDraftShop(ctx context.Context, req dtos.CreateDraft
 		Type:    req.Type,
 		Status:  shopsmodels.ShopStatusDraft,
 	}
+	if specialty := strings.TrimSpace(req.Specialty); specialty != "" {
+		shop.Specialty = &specialty
+	}
 	if err := a.repo.CreateDraftShop(ctx, shop); err != nil {
 		return dtos.StaffShopResponse{}, err
 	}
@@ -170,6 +173,10 @@ func (a *staffShopApp) UpdateDraftShop(ctx context.Context, shopID uuid.UUID, re
 	if req.HomePhone != nil {
 		shop.HomePhone = strings.TrimSpace(*req.HomePhone)
 	}
+	if req.Specialty != nil {
+		specialty := strings.TrimSpace(*req.Specialty)
+		shop.Specialty = &specialty
+	}
 	if req.Latitude.Set {
 		shop.Latitude = nil
 		if req.Latitude.Valid {
@@ -210,6 +217,14 @@ func (a *staffShopApp) UpdateDraftShop(ctx context.Context, shopID uuid.UUID, re
 	}
 	a.publishShopUpdated(ctx, shopID)
 	return a.GetShop(ctx, shopID)
+}
+
+func (a *staffShopApp) GetShopSchedule(ctx context.Context, shopID uuid.UUID) ([]dtos.ScheduleResponse, error) {
+	return a.repo.GetShopSchedule(ctx, shopID)
+}
+
+func (a *staffShopApp) SetShopSchedule(ctx context.Context, shopID uuid.UUID, schedules []dtos.ScheduleInput) error {
+	return a.repo.ReplaceShopSchedule(ctx, shopID, schedules)
 }
 
 func (a *staffShopApp) ActivateShop(ctx context.Context, shopID, staffID uuid.UUID) (dtos.StaffShopResponse, error) {

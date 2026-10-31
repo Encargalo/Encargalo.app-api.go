@@ -87,6 +87,30 @@ func New(svc ridersPorts.RidersApp) RiderHandler {
 // (searching, sin rider) y lo vuelve a ofertar a otros riders cercanos.
 // El rider que canceló no vuelve a recibir esa oferta.
 //
+// **accept_shipment**
+//
+//	{"type":"accept_shipment","shipment_id":"<uuid>"}
+//
+// → Intenta asignar el envío al rider (modo orders, sin filtro de vehículo:
+// cualquiera lleva <5kg). Primero que acepta gana. No cuenta como "ocupado":
+// un rider puede llevar varios envíos y pedidos a la vez, igual que hoy con orders.
+//
+// **advance_shipment**
+//
+//	{"type":"advance_shipment","shipment_id":"<uuid>","code":"1234"}
+//
+// → Solo el rider asignado. accepted→in_transit exige el pickup_code que ve
+// el cliente. in_transit→delivered exige el dropoff_code y acredita la
+// ganancia del rider. El envío que recibe el rider no incluye esos códigos:
+// el cliente los reenvía de palabra a quien esté presente en retiro o entrega.
+//
+// **cancel_shipment**
+//
+//	{"type":"cancel_shipment","shipment_id":"<uuid>"}
+//
+// → Solo el rider asignado, y solo en accepted. Libera el envío (searching,
+// sin rider) y lo vuelve a ofertar a todo el pool en modo orders.
+//
 // ### Mensajes salientes
 //   - `{"type":"connected"}` — confirmación de conexión. En modo trips le siguen
 //     los viajes que el rider ya tiene asignados (accepted, arriving o in_progress),
@@ -102,6 +126,11 @@ func New(svc ridersPorts.RidersApp) RiderHandler {
 //   - `{"type":"trip_taken","trip_id":"<uuid>"}` — otro rider se adelantó
 //   - `{"type":"trip_status","trip":{...}}` — trip avanzó de estado (respuesta a advance_trip) o quedó liberado (respuesta a cancel_trip). `trip.customer` va solo al rider asignado mientras el viaje está en accepted, arriving o in_progress. Al completar o liberar el viaje, el bloque no se envía.
 //   - `{"type":"trip_cancelled","trip_id":"<uuid>"}` — el cliente canceló el viaje. Lo reciben el rider asignado (accepted o arriving) y los riders que tenían la oferta viva. No dice quién canceló ni el motivo. El rider asignado deja de reenviar su ubicación.
+//   - `{"type":"new_shipment","shipment":{...}}` — nuevo envío disponible, mandado a todo rider conectado en modo orders (sin filtro de vehículo). Sin pickup_code/dropoff_code.
+//   - `{"type":"shipment_accepted","shipment":{...}}` — asignación exitosa (sin códigos)
+//   - `{"type":"shipment_taken","shipment_id":"<uuid>"}` — otro rider se adelantó
+//   - `{"type":"shipment_status","shipment":{...}}` — envío avanzó de estado (respuesta a advance_shipment) o quedó liberado (respuesta a cancel_shipment)
+//   - `{"type":"shipment_cancelled","shipment_id":"<uuid>"}` — el cliente canceló el envío. Solo lo recibe el rider ya asignado, si lo hay.
 //   - `{"type":"error","message":"..."}` — error procesando mensaje
 //
 // @Tags         Riders WebSocket
@@ -265,6 +294,79 @@ func (h *riderHandler) HandleWebSocket(c echo.Context) error {
 
 			if err := h.svc.CancelAcceptedTrip(ctx, riderID, tripID, client); err != nil {
 				slog.Error("Error cancelando viaje", "riderID", riderID, "tripID", tripID, "error", err)
+				errMsg, _ := json.Marshal(map[string]string{"type": "error", "message": safeErrorMessage(err)})
+				client.Send(errMsg)
+			}
+
+		case "accept_shipment":
+			var payload struct {
+				Type       string `json:"type"`
+				ShipmentID string `json:"shipment_id"`
+			}
+			if err := json.Unmarshal(msg, &payload); err != nil || payload.ShipmentID == "" {
+				errMsg, _ := json.Marshal(map[string]string{"type": "error", "message": "payload inválido"})
+				client.Send(errMsg)
+				continue
+			}
+
+			shipmentID, err := uuid.Parse(payload.ShipmentID)
+			if err != nil {
+				errMsg, _ := json.Marshal(map[string]string{"type": "error", "message": "shipment_id inválido"})
+				client.Send(errMsg)
+				continue
+			}
+
+			if err := h.svc.AcceptShipment(ctx, riderID, shipmentID, client); err != nil {
+				slog.Error("Error aceptando envío", "riderID", riderID, "shipmentID", shipmentID, "error", err)
+				errMsg, _ := json.Marshal(map[string]string{"type": "error", "message": safeErrorMessage(err)})
+				client.Send(errMsg)
+			}
+
+		case "advance_shipment":
+			var payload struct {
+				Type       string `json:"type"`
+				ShipmentID string `json:"shipment_id"`
+				Code       string `json:"code"`
+			}
+			if err := json.Unmarshal(msg, &payload); err != nil || payload.ShipmentID == "" {
+				errMsg, _ := json.Marshal(map[string]string{"type": "error", "message": "payload inválido"})
+				client.Send(errMsg)
+				continue
+			}
+
+			shipmentID, err := uuid.Parse(payload.ShipmentID)
+			if err != nil {
+				errMsg, _ := json.Marshal(map[string]string{"type": "error", "message": "shipment_id inválido"})
+				client.Send(errMsg)
+				continue
+			}
+
+			if err := h.svc.AdvanceShipment(ctx, riderID, shipmentID, payload.Code, client); err != nil {
+				slog.Error("Error avanzando envío", "riderID", riderID, "shipmentID", shipmentID, "error", err)
+				errMsg, _ := json.Marshal(map[string]string{"type": "error", "message": safeErrorMessage(err)})
+				client.Send(errMsg)
+			}
+
+		case "cancel_shipment":
+			var payload struct {
+				Type       string `json:"type"`
+				ShipmentID string `json:"shipment_id"`
+			}
+			if err := json.Unmarshal(msg, &payload); err != nil || payload.ShipmentID == "" {
+				errMsg, _ := json.Marshal(map[string]string{"type": "error", "message": "payload inválido"})
+				client.Send(errMsg)
+				continue
+			}
+
+			shipmentID, err := uuid.Parse(payload.ShipmentID)
+			if err != nil {
+				errMsg, _ := json.Marshal(map[string]string{"type": "error", "message": "shipment_id inválido"})
+				client.Send(errMsg)
+				continue
+			}
+
+			if err := h.svc.CancelAcceptedShipment(ctx, riderID, shipmentID, client); err != nil {
+				slog.Error("Error cancelando envío", "riderID", riderID, "shipmentID", shipmentID, "error", err)
 				errMsg, _ := json.Marshal(map[string]string{"type": "error", "message": safeErrorMessage(err)})
 				client.Send(errMsg)
 			}

@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"log/slog"
+	"sort"
 	"time"
 
 	bcvPorts "Encargalo.app-api.go/internal/bcv/domain/ports"
@@ -14,6 +15,11 @@ import (
 	portsShops "Encargalo.app-api.go/internal/shops/domain/ports"
 	"github.com/google/uuid"
 )
+
+// closedShopsOpeningWithinMinutes es la ventana usada por GetAllShops para
+// decidir qué locales cerrados se siguen mostrando (solo los que abren
+// pronto), al final del listado.
+const closedShopsOpeningWithinMinutes = 30 * time.Minute
 
 type shopsApp struct {
 	repo        portsShops.ShopsRepo
@@ -58,7 +64,7 @@ func (s *shopsApp) GetAllShops(ctx context.Context, query dtos.ListShopsQuery) (
 		return nil, err
 	}
 	applyBsRate(shops, s.bcvRate(ctx))
-	return shops, nil
+	return s.enrichWithSchedule(ctx, shops, true)
 }
 
 func (p *shopsApp) GetShopsBy(ctx context.Context, criteria dtos.SearchShopsByID, coords dtos.Coords) (dtos.ShopsResponse, error) {
@@ -67,7 +73,88 @@ func (p *shopsApp) GetShopsBy(ctx context.Context, criteria dtos.SearchShopsByID
 		return nil, err
 	}
 	applyBsRate(shops, p.bcvRate(ctx))
-	return shops, nil
+	return p.enrichWithSchedule(ctx, shops, false)
+}
+
+// enrichWithSchedule añade opens_at/closes_at a cada shop a partir de su
+// horario semanal (business.schedules) y, si filterAndSort, descarta los
+// locales cerrados que no abren pronto (≤30min) y ordena abiertos primero,
+// cerrados-que-abren-pronto al final (por opens_at ascendente).
+func (s *shopsApp) enrichWithSchedule(ctx context.Context, shops dtos.ShopsResponse, filterAndSort bool) (dtos.ShopsResponse, error) {
+	if len(shops) == 0 {
+		return shops, nil
+	}
+
+	shopIDs := make([]uuid.UUID, len(shops))
+	for i, shop := range shops {
+		shopIDs[i] = shop.ID
+	}
+
+	schedulesByShop, err := s.repo.GetSchedulesByShopIDs(ctx, shopIDs)
+	if err != nil {
+		slog.Error("error al obtener horario de locales, se omite opens_at/closes_at", "error", err)
+		schedulesByShop = map[uuid.UUID][]dtos.ScheduleResponse{}
+	}
+
+	now := bizclock.Now()
+
+	if !filterAndSort {
+		for i := range shops {
+			opensAt, closesAt := bizclock.NextTransition(toBizclockWindows(schedulesByShop[shops[i].ID]), now)
+			if shops[i].Opened {
+				shops[i].ClosesAt = closesAt
+			} else {
+				shops[i].OpensAt = opensAt
+			}
+		}
+		return shops, nil
+	}
+
+	open := make(dtos.ShopsResponse, 0, len(shops))
+	closedSoon := make(dtos.ShopsResponse, 0)
+
+	for _, shop := range shops {
+		opensAt, closesAt := bizclock.NextTransition(toBizclockWindows(schedulesByShop[shop.ID]), now)
+
+		if shop.Opened {
+			shop.ClosesAt = closesAt
+			open = append(open, shop)
+			continue
+		}
+
+		if opensAt != nil && !opensAt.After(now.Add(closedShopsOpeningWithinMinutes)) {
+			shop.OpensAt = opensAt
+			closedSoon = append(closedSoon, shop)
+		}
+	}
+
+	sort.SliceStable(closedSoon, func(i, j int) bool {
+		return closedSoon[i].OpensAt.Before(*closedSoon[j].OpensAt)
+	})
+
+	return append(open, closedSoon...), nil
+}
+
+func toBizclockWindows(schedules []dtos.ScheduleResponse) []bizclock.Window {
+	windows := make([]bizclock.Window, len(schedules))
+	for i, s := range schedules {
+		dayOfWeek := s.DayOfWeek
+		windows[i] = bizclock.Window{
+			DayOfWeek: &dayOfWeek,
+			StartTime: s.Open,
+			EndTime:   s.Close,
+			Enabled:   s.Enabled,
+		}
+	}
+	return windows
+}
+
+func (s *shopsApp) GetMySchedule(ctx context.Context, shopID uuid.UUID) ([]dtos.ScheduleResponse, error) {
+	return s.repo.GetShopSchedule(ctx, shopID)
+}
+
+func (s *shopsApp) SetMySchedule(ctx context.Context, shopID uuid.UUID, schedules []dtos.ScheduleInput) error {
+	return s.repo.ReplaceShopSchedule(ctx, shopID, schedules)
 }
 
 func (s *shopsApp) GetShopByID(ctx context.Context, shopID uuid.UUID) (dtos.ShopResponse, error) {

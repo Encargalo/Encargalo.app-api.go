@@ -27,6 +27,11 @@ type StaffShopRepo interface {
 	ListShopsByStatus(ctx context.Context, status shopsmodels.ShopStatus, page, limit int) (shops shopsmodels.Shops, total int, err error)
 	UpdateDraftShop(ctx context.Context, shop *shopsmodels.Shop) error
 	ActivateShop(ctx context.Context, shopID, staffID uuid.UUID, activatedAt time.Time) error
+	// GetShopSchedule/ReplaceShopSchedule gestionan el horario semanal
+	// (business.schedules) de cualquier shop por id, para que staff pueda
+	// configurarlo en nombre del owner.
+	GetShopSchedule(ctx context.Context, shopID uuid.UUID) ([]dtos.ScheduleResponse, error)
+	ReplaceShopSchedule(ctx context.Context, shopID uuid.UUID, schedules []dtos.ScheduleInput) error
 }
 
 // ShopCategoriesSeeder crea las categorías base de un shop nuevo (una por
@@ -47,4 +52,6 @@ type StaffShopApp interface {
 	ListShops(ctx context.Context, status shopsmodels.ShopStatus, page, limit int) (dtos.StaffShopsResponse, error)
 	UpdateDraftShop(ctx context.Context, shopID uuid.UUID, req dtos.UpdateDraftShopRequest) (dtos.StaffShopResponse, error)
 	ActivateShop(ctx context.Context, shopID, staffID uuid.UUID) (dtos.StaffShopResponse, error)
+	GetShopSchedule(ctx context.Context, shopID uuid.UUID) ([]dtos.ScheduleResponse, error)
+	SetShopSchedule(ctx context.Context, shopID uuid.UUID, schedules []dtos.ScheduleInput) error
 }

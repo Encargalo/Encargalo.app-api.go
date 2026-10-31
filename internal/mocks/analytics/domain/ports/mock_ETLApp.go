@@ -146,6 +146,24 @@ func (_m *ETLApp) SyncRiderByID(ctx context.Context, riderID uuid.UUID) error {
 	return r0
 }
 
+// SyncShipmentByID provides a mock function with given fields: ctx, shipmentID
+func (_m *ETLApp) SyncShipmentByID(ctx context.Context, shipmentID uuid.UUID) error {
+	ret := _m.Called(ctx, shipmentID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SyncShipmentByID")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = rf(ctx, shipmentID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // SyncShopByID provides a mock function with given fields: ctx, shopID
 func (_m *ETLApp) SyncShopByID(ctx context.Context, shopID uuid.UUID) error {
 	ret := _m.Called(ctx, shopID)

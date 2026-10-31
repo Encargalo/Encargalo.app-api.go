@@ -69,6 +69,60 @@ func IsAvailableAt(windows []Window, now time.Time) bool {
 	return false
 }
 
+// NextTransition calcula, a partir de `now`, el cierre de la ventana que lo
+// cubre en este instante (closesAt) o, si ninguna lo cubre, el inicio de la
+// próxima ventana habilitada (opensAt). Sin ventanas habilitadas retorna
+// (nil, nil): horario desconocido.
+func NextTransition(windows []Window, now time.Time) (opensAt, closesAt *time.Time) {
+	type interval struct {
+		start, end time.Time
+	}
+
+	var intervals []interval
+	for _, w := range windows {
+		if !w.Enabled {
+			continue
+		}
+		startMin, ok := minutesSinceMidnight(w.StartTime)
+		if !ok {
+			continue
+		}
+		endMin, ok := minutesSinceMidnight(w.EndTime)
+		if !ok {
+			continue
+		}
+
+		for offset := -1; offset <= 7; offset++ {
+			day := now.AddDate(0, 0, offset)
+			if !appliesToDay(w.DayOfWeek, int(day.Weekday())) {
+				continue
+			}
+			start := time.Date(day.Year(), day.Month(), day.Day(), startMin/60, startMin%60, 0, 0, now.Location())
+			end := time.Date(day.Year(), day.Month(), day.Day(), endMin/60, endMin%60, 0, 0, now.Location())
+			if !end.After(start) {
+				end = end.AddDate(0, 0, 1)
+			}
+			intervals = append(intervals, interval{start, end})
+		}
+	}
+
+	for _, iv := range intervals {
+		if !now.Before(iv.start) && now.Before(iv.end) {
+			end := iv.end
+			return nil, &end
+		}
+	}
+
+	var next *time.Time
+	for _, iv := range intervals {
+		if iv.start.After(now) && (next == nil || iv.start.Before(*next)) {
+			start := iv.start
+			next = &start
+		}
+	}
+	return next, nil
+}
+
 func appliesToDay(dayOfWeek *int16, weekday int) bool {
 	if dayOfWeek == nil {
 		return true

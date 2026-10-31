@@ -30,6 +30,7 @@ type ProductsApp interface {
 	SearchBestSellersByShopID(ctx context.Context, shopID uuid.UUID) (dtos.ItemsResponse, error)
 	AddSoldItem(ctx context.Context, item models.DataProduceOrder) error
 	GetTrendingByCoords(ctx context.Context, coords dtos.TrendingCoords) (dtos.TrendingResponse, error)
+	GetSupermarketHome(ctx context.Context, coords dtos.SupermarketHomeCoords) (dtos.SupermarketHomeResponse, error)
 	RegisterFlavor(ctx context.Context, flavor dtos.RegisterFlavor) error
 	UpdateFlavor(ctx context.Context, flavor dtos.UpdateFlavor, flavorID, shopID uuid.UUID) error
 	DeleteFlavor(ctx context.Context, flavorID, shopID uuid.UUID) error
@@ -63,6 +64,8 @@ type ProductsRepo interface {
 	SearchBestSellersByShopID(ctx context.Context, shopID uuid.UUID) (dtos.ItemsResponse, error)
 	AddSoldItem(ctx context.Context, item models.DataProduceOrder) error
 	GetTrendingByCoords(ctx context.Context, coords dtos.TrendingCoords) (dtos.TrendingResponse, error)
+	SearchSupermarketCategoryPool(ctx context.Context, coords dtos.SupermarketHomeCoords) ([]models.SupermarketCategoryCandidate, error)
+	SearchSupermarketHomeEntries(ctx context.Context, coords dtos.SupermarketHomeCoords, categoryNames []string) (dtos.HomeEntriesResponse, error)
 	RegisterFlavor(ctx context.Context, flavor models.CatalogFlavor) error
 	SearchFlavorByID(ctx context.Context, flavorID uuid.UUID) (*models.CatalogFlavor, error)
 	UpdateFlavor(ctx context.Context, flavorID uuid.UUID, entry models.FlavorEntry, shopID, categoryID uuid.UUID) error

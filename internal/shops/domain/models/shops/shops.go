@@ -45,6 +45,7 @@ type Shop struct {
 	Banner        string     `bun:"banner,type:varchar"`
 	Opened        bool       `bun:"opened,default:false"`
 	Type          string     `bun:"type,type:varchar,notnull"`
+	Specialty     *string    `bun:"specialty,type:varchar"`
 	Score         float64    `bun:"score,default:0"`
 	LicenseStatus string     `bun:"license_status,type:varchar,default:'active'"`
 	CreatedAt     time.Time  `bun:"created_at,default:current_timestamp"`
@@ -121,6 +122,15 @@ func (c ShopCompletion) ToDTO() dtos.ShopCompletionDTO {
 	}
 }
 
+// SpecialtyOrGeneral expone Specialty con NULL/"" tratado como "General":
+// los negocios existentes antes de esta columna no requieren backfill.
+func (s *Shop) SpecialtyOrGeneral() string {
+	if s.Specialty == nil || *s.Specialty == "" {
+		return ShopSpecialtyGeneral
+	}
+	return *s.Specialty
+}
+
 // HasActiveLaunchPromo indica si el descuento del 50% al cliente (día 1)
 // sigue vigente para este negocio en este instante.
 func (s *Shop) HasActiveLaunchPromo() bool {
@@ -142,6 +152,7 @@ func (s *Shop) ToStaffDTO() dtos.StaffShopResponse {
 		LogoImage:  s.LogoImage,
 		Banner:     s.Banner,
 		Type:       s.Type,
+		Specialty:  s.SpecialtyOrGeneral(),
 		Status:     string(s.Status),
 		Opened:     s.Opened,
 		Completion: s.Completion().ToDTO(),
@@ -172,6 +183,7 @@ func (s *Shop) ToDomainDTO(distance entity.ShopDistance) dtos.ShopResponse {
 		Banner:         s.Banner,
 		Opened:         s.Opened,
 		Type:           s.Type,
+		Specialty:      s.SpecialtyOrGeneral(),
 		Score:          s.Score,
 		DeliveryFee:    deliveryfee.FromDistance(distance.Distance),
 		Time:           prepTimeMinutes(s.Type, distance.Duration),

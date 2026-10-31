@@ -108,6 +108,36 @@ func (_m *ShopsRepo) GetLaunchPromoEndsAt(ctx context.Context, shopID uuid.UUID)
 	return r0, r1
 }
 
+// GetSchedulesByShopIDs provides a mock function with given fields: ctx, shopIDs
+func (_m *ShopsRepo) GetSchedulesByShopIDs(ctx context.Context, shopIDs []uuid.UUID) (map[uuid.UUID][]dtos.ScheduleResponse, error) {
+	ret := _m.Called(ctx, shopIDs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSchedulesByShopIDs")
+	}
+
+	var r0 map[uuid.UUID][]dtos.ScheduleResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []uuid.UUID) (map[uuid.UUID][]dtos.ScheduleResponse, error)); ok {
+		return rf(ctx, shopIDs)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []uuid.UUID) map[uuid.UUID][]dtos.ScheduleResponse); ok {
+		r0 = rf(ctx, shopIDs)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[uuid.UUID][]dtos.ScheduleResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []uuid.UUID) error); ok {
+		r1 = rf(ctx, shopIDs)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetShopByID provides a mock function with given fields: ctx, shopID
 func (_m *ShopsRepo) GetShopByID(ctx context.Context, shopID uuid.UUID) (dtos.ShopResponse, error) {
 	ret := _m.Called(ctx, shopID)
@@ -125,6 +155,36 @@ func (_m *ShopsRepo) GetShopByID(ctx context.Context, shopID uuid.UUID) (dtos.Sh
 		r0 = rf(ctx, shopID)
 	} else {
 		r0 = ret.Get(0).(dtos.ShopResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, shopID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetShopSchedule provides a mock function with given fields: ctx, shopID
+func (_m *ShopsRepo) GetShopSchedule(ctx context.Context, shopID uuid.UUID) ([]dtos.ScheduleResponse, error) {
+	ret := _m.Called(ctx, shopID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetShopSchedule")
+	}
+
+	var r0 []dtos.ScheduleResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) ([]dtos.ScheduleResponse, error)); ok {
+		return rf(ctx, shopID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) []dtos.ScheduleResponse); ok {
+		r0 = rf(ctx, shopID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]dtos.ScheduleResponse)
+		}
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
@@ -222,6 +282,24 @@ func (_m *ShopsRepo) ListTurboCandidates(ctx context.Context) (dtos.ShopsRespons
 	}
 
 	return r0, r1
+}
+
+// ReplaceShopSchedule provides a mock function with given fields: ctx, shopID, schedules
+func (_m *ShopsRepo) ReplaceShopSchedule(ctx context.Context, shopID uuid.UUID, schedules []dtos.ScheduleInput) error {
+	ret := _m.Called(ctx, shopID, schedules)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReplaceShopSchedule")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, []dtos.ScheduleInput) error); ok {
+		r0 = rf(ctx, shopID, schedules)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // ResolveTurboShop provides a mock function with given fields: ctx, shopID, coords

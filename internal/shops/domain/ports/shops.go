@@ -33,6 +33,10 @@ type ShopsApp interface {
 	// GetTurboEntry asigna el nodo Turbo abierto más cercano (≤2 km) a las
 	// coordenadas dadas, o Available=false si no hay cobertura.
 	GetTurboEntry(ctx context.Context, coords dtos.Coords) (dtos.TurboEntryResponse, error)
+	// GetMySchedule/SetMySchedule gestionan el horario semanal (business.schedules)
+	// del shop del owner autenticado.
+	GetMySchedule(ctx context.Context, shopID uuid.UUID) ([]dtos.ScheduleResponse, error)
+	SetMySchedule(ctx context.Context, shopID uuid.UUID, schedules []dtos.ScheduleInput) error
 }
 
 type ShopsRepo interface {
@@ -59,4 +63,11 @@ type ShopsRepo interface {
 	// ResolveTurboShop calcula delivery_fee/time del nodo Turbo ya elegido
 	// para las coordenadas del cliente.
 	ResolveTurboShop(ctx context.Context, shopID uuid.UUID, coords dtos.Coords) (dtos.ShopResponse, error)
+	// GetShopSchedule retorna el horario semanal configurado de un shop.
+	GetShopSchedule(ctx context.Context, shopID uuid.UUID) ([]dtos.ScheduleResponse, error)
+	// GetSchedulesByShopIDs resuelve el horario de varios shops a la vez
+	// (evita N+1 al enriquecer un listado).
+	GetSchedulesByShopIDs(ctx context.Context, shopIDs []uuid.UUID) (map[uuid.UUID][]dtos.ScheduleResponse, error)
+	// ReplaceShopSchedule sustituye el horario semanal completo de un shop.
+	ReplaceShopSchedule(ctx context.Context, shopID uuid.UUID, schedules []dtos.ScheduleInput) error
 }

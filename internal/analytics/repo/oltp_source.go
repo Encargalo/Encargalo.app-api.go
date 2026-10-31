@@ -661,3 +661,80 @@ func (r *oltpSourceRepo) FetchOrderStatusChangesByOrderID(ctx context.Context, o
 	}
 	return out, nil
 }
+
+type shipmentRow struct {
+	ID                uuid.UUID  `bun:"id"`
+	QuoteID           *uuid.UUID `bun:"quote_id"`
+	CustomerID        uuid.UUID  `bun:"customer_id"`
+	RiderID           *uuid.UUID `bun:"rider_id"`
+	Status            string     `bun:"status"`
+	Fare              *float64   `bun:"fare"`
+	MethodPayment     string     `bun:"method_payment"`
+	PickupH3CellZone  *string    `bun:"pickup_h3_cell_zone"`
+	DropoffH3CellZone *string    `bun:"dropoff_h3_cell_zone"`
+	CreatedAt         time.Time  `bun:"created_at"`
+}
+
+var shipmentColumns = []string{
+	"s.id", "s.quote_id", "s.customer_id", "s.rider_id", "s.status", "s.fare",
+	"s.method_payment", "s.pickup_h3_cell_zone", "s.dropoff_h3_cell_zone", "s.created_at",
+}
+
+func shipmentRowToCubeShipment(row shipmentRow, syncedAt time.Time) models.CubeShipment {
+	local := row.CreatedAt.In(bizclock.Location())
+	return models.CubeShipment{
+		ShipmentID:    row.ID,
+		QuoteID:       row.QuoteID,
+		CustomerID:    row.CustomerID,
+		RiderID:       row.RiderID,
+		Status:        row.Status,
+		Fare:          row.Fare,
+		MethodPayment: row.MethodPayment,
+		PickupH3Cell:  row.PickupH3CellZone,
+		DropoffH3Cell: row.DropoffH3CellZone,
+		ShipmentDate:  time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, time.UTC),
+		CreatedAt:     row.CreatedAt,
+		SyncedAt:      syncedAt,
+	}
+}
+
+// Sin updated_at en shipments.shipments: re-sincronizamos por ventana de
+// created_at, igual que FetchTrips (el lookback cubre status tardíos).
+func (r *oltpSourceRepo) FetchShipments(ctx context.Context, from, to time.Time) ([]models.CubeShipment, error) {
+	var rows []shipmentRow
+	err := r.db.NewSelect().
+		TableExpr("shipments.shipments AS s").
+		Column(shipmentColumns...).
+		Where("s.created_at >= ? AND s.created_at < ?", from, to).
+		Scan(ctx, &rows)
+	if err != nil {
+		return nil, errcustom.Unexpected(err)
+	}
+
+	now := time.Now().UTC()
+	out := make([]models.CubeShipment, len(rows))
+	for i, row := range rows {
+		out[i] = shipmentRowToCubeShipment(row, now)
+	}
+	return out, nil
+}
+
+// FetchShipmentByID resincroniza un solo envío puntualmente, en reacción a
+// shipment_status_changed.
+func (r *oltpSourceRepo) FetchShipmentByID(ctx context.Context, shipmentID uuid.UUID) (*models.CubeShipment, error) {
+	var row shipmentRow
+	err := r.db.NewSelect().
+		TableExpr("shipments.shipments AS s").
+		Column(shipmentColumns...).
+		Where("s.id = ?", shipmentID).
+		Scan(ctx, &row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errcustom.ErrNotFound
+		}
+		return nil, errcustom.Unexpected(err)
+	}
+
+	cube := shipmentRowToCubeShipment(row, time.Now().UTC())
+	return &cube, nil
+}

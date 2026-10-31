@@ -88,6 +88,11 @@ import (
 	appBanners "Encargalo.app-api.go/internal/banners/app"
 	handBanners "Encargalo.app-api.go/internal/banners/handler"
 	repoBanners "Encargalo.app-api.go/internal/banners/repo"
+
+	appShipments "Encargalo.app-api.go/internal/shipments/app"
+	shipmentsPorts "Encargalo.app-api.go/internal/shipments/domain/ports"
+	handShipments "Encargalo.app-api.go/internal/shipments/handler"
+	repoShipments "Encargalo.app-api.go/internal/shipments/repo"
 )
 
 var Container *dig.Container
@@ -155,6 +160,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(groups.NewDiagnosticsGroup)
 	_ = Container.Provide(groups.NewTripsGroup)
 	_ = Container.Provide(groups.NewBannersGroup)
+	_ = Container.Provide(groups.NewShipmentsGroup)
 	_ = Container.Provide(handPayment.NewPaymentMethodsHandler)
 	_ = Container.Provide(appPayment.NewPaymentMethodsApp)
 	_ = Container.Provide(repoPayment.NewPaymentMethodsRepo)
@@ -179,6 +185,24 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(repoTrips.NewTripsRepo)
 	_ = Container.Provide(repoTrips.NewTripQuotesRepo)
 	_ = Container.Provide(repoTrips.NewFareQuotesRepo)
+
+	_ = Container.Provide(handShipments.NewShipmentsHandler)
+	_ = Container.Provide(appShipments.NewCustomerShipmentHub)
+	_ = Container.Provide(func(h *appShipments.CustomerShipmentHub) shipmentsPorts.CustomerShipmentNotifier {
+		return h
+	})
+	_ = Container.Provide(func(h *appShipments.CustomerShipmentHub) shipmentsPorts.CustomerShipmentLive {
+		return h
+	})
+	_ = Container.Provide(appShipments.NewShipmentsApp)
+	_ = Container.Provide(func(s ordersPorts.RedisStream) shipmentsPorts.ShipmentEventPublisher {
+		return s
+	})
+	_ = Container.Provide(appShipments.NewShipmentPaymentSubject)
+	_ = Container.Provide(repoShipments.NewShipmentsRepo)
+	_ = Container.Provide(repoShipments.NewShipmentQuotesRepo)
+	_ = Container.Provide(repoShipments.NewFareQuotesRepo)
+	_ = Container.Provide(repoShipments.NewCustomerContactLookup)
 
 	_ = Container.Provide(handBanners.NewBannersHandler)
 	_ = Container.Provide(handBanners.NewStaffBannersHandler)
@@ -246,6 +270,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(repoRiders.NewPassengerLookup)
 	_ = Container.Provide(repoRiders.NewRiderPresenceRepo)
 	_ = Container.Provide(repoRiders.NewTripOfferTimeoutRepo)
+	_ = Container.Provide(repoRiders.NewShipmentOfferTimeoutRepo)
 	_ = Container.Provide(repoRiders.NewLastKnownLocationRepo)
 	_ = Container.Provide(repoRiders.NewPushNotifier)
 	_ = Container.Provide(appRiders.NewRiderProfileApp)
@@ -270,6 +295,18 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(func(repo tripsPorts.TripsRepo) ridersPorts.TripsStore {
 		return repo
 	})
+	_ = Container.Provide(func(mgr ridersPorts.RidersApp) shipmentsPorts.ShipmentRiderMatcher {
+		return mgr.(shipmentsPorts.ShipmentRiderMatcher)
+	})
+	_ = Container.Provide(func(mgr ridersPorts.RidersApp) shipmentsPorts.ShipmentRiderNotifier {
+		return mgr.(shipmentsPorts.ShipmentRiderNotifier)
+	})
+	_ = Container.Provide(func(repo shipmentsPorts.ShipmentsRepo) ridersPorts.ShipmentsStore {
+		return repo.(ridersPorts.ShipmentsStore)
+	})
+	_ = Container.Provide(func(repo ridersPorts.RiderProfileRepo) shipmentsPorts.RiderPublicInfoLookup {
+		return repoRiders.NewShipmentRiderPublicInfoLookup(repo)
+	})
 	_ = Container.Provide(func(repo financePorts.WithdrawalRepo) ridersPorts.WithdrawalStore {
 		return repo
 	})
@@ -278,6 +315,9 @@ func BuildContainer() *dig.Container {
 	})
 	_ = Container.Provide(func(fa ridersPorts.FinanceApp) ridersPorts.TripEarningRecorder {
 		return fa.(ridersPorts.TripEarningRecorder)
+	})
+	_ = Container.Provide(func(fa ridersPorts.FinanceApp) ridersPorts.ShipmentEarningRecorder {
+		return fa.(ridersPorts.ShipmentEarningRecorder)
 	})
 	_ = Container.Provide(func(fa ridersPorts.FinanceApp) ordersPorts.RideEarningRecorder {
 		return fa.(ordersPorts.RideEarningRecorder)
@@ -333,6 +373,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(appRiders.New)
 	_ = Container.Provide(appRiders.NewFinanceApp)
 	_ = Container.Provide(appRiders.NewTripOfferTimeoutWorker)
+	_ = Container.Provide(appRiders.NewShipmentOfferTimeoutWorker)
 
 	_ = Container.Provide(repoAuth.NewAuthRepo)
 	_ = Container.Provide(repoShops.NewShopsRepository)

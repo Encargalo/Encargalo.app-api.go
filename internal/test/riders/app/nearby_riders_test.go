@@ -41,7 +41,7 @@ func newNearbyMgrWithStore(t *testing.T) (ridersPorts.RidersApp, ridersPorts.Rid
 	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound).Maybe()
 
 	store := newPresenceStore(t)
-	return app.New(repo, stream, bcv, tripsRepo, earnings, nil, nil, nil, nil, store, newOfferTimeoutStore(t), nil, nil), store
+	return app.New(repo, stream, bcv, tripsRepo, earnings, nil, nil, nil, nil, store, newOfferTimeoutStore(t), nil, nil, nil, nil, nil, nil), store
 }
 
 // newPresenceStore arma el adapter real contra un Redis en memoria.

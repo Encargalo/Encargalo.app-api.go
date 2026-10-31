@@ -94,3 +94,7 @@ packages:
   Encargalo.app-api.go/internal/banners/domain/ports:
     config:
       dir: "internal/mocks/banners/domain/ports"
+
+  Encargalo.app-api.go/internal/shipments/domain/ports:
+    config:
+      dir: "internal/mocks/shipments/domain/ports"

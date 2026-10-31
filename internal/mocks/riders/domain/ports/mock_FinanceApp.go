@@ -108,6 +108,24 @@ func (_m *FinanceApp) RecordRideEarning(ctx context.Context, riderID uuid.UUID, 
 	return r0
 }
 
+// RecordShipmentEarning provides a mock function with given fields: ctx, riderID, shipmentID, fare, bcvRate
+func (_m *FinanceApp) RecordShipmentEarning(ctx context.Context, riderID uuid.UUID, shipmentID uuid.UUID, fare float64, bcvRate float64) error {
+	ret := _m.Called(ctx, riderID, shipmentID, fare, bcvRate)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RecordShipmentEarning")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, float64, float64) error); ok {
+		r0 = rf(ctx, riderID, shipmentID, fare, bcvRate)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // RecordTripCash provides a mock function with given fields: ctx, riderID, tripID, fare, bcvRate
 func (_m *FinanceApp) RecordTripCash(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare float64, bcvRate float64) error {
 	ret := _m.Called(ctx, riderID, tripID, fare, bcvRate)

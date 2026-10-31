@@ -19,6 +19,7 @@ const (
 	EntityCubeFareQuote         ETLEntity = "cube_fare_quote"
 	EntityCubeDeliveryQuote     ETLEntity = "cube_delivery_quote"
 	EntityFactOrderStatusChange ETLEntity = "fact_order_status_change"
+	EntityCubeShipment          ETLEntity = "cube_shipment"
 )
 
 var DefaultETLEntities = []ETLEntity{
@@ -31,6 +32,7 @@ var DefaultETLEntities = []ETLEntity{
 	EntityCubeFareQuote,
 	EntityCubeDeliveryQuote,
 	EntityFactOrderStatusChange,
+	EntityCubeShipment,
 }
 
 // CronETLEntities es lo que sincroniza el cron del worker. Cada entidad sale
@@ -187,6 +189,26 @@ type CubeDeliveryQuote struct {
 	QuoteHour      int16     `bun:"quote_hour,notnull"`
 	CreatedAt      time.Time `bun:"created_at,notnull"`
 	SyncedAt       time.Time `bun:"synced_at,notnull"`
+}
+
+// CubeShipment: pickup/dropoff H3 son resolución de zona (ZoneAnalyticsResolution),
+// no la de matching — shipments no tiene una resolución de matching: el
+// pool de riders es broadcast, no geográfico.
+type CubeShipment struct {
+	bun.BaseModel `bun:"table:analytics.cube_shipment"`
+
+	ShipmentID    uuid.UUID  `bun:"shipment_id,pk,type:uuid"`
+	QuoteID       *uuid.UUID `bun:"quote_id,type:uuid"`
+	CustomerID    uuid.UUID  `bun:"customer_id,type:uuid,notnull"`
+	RiderID       *uuid.UUID `bun:"rider_id,type:uuid"`
+	Status        string     `bun:"status,notnull"`
+	Fare          *float64   `bun:"fare"`
+	MethodPayment string     `bun:"method_payment"`
+	PickupH3Cell  *string    `bun:"pickup_h3_cell"`
+	DropoffH3Cell *string    `bun:"dropoff_h3_cell"`
+	ShipmentDate  time.Time  `bun:"shipment_date,notnull"`
+	CreatedAt     time.Time  `bun:"created_at,notnull"`
+	SyncedAt      time.Time  `bun:"synced_at,notnull"`
 }
 
 // FactOrderStatusChange es un espejo crudo de orders.order_status_history

@@ -35,6 +35,19 @@ type ReverseGeocodeResult struct {
 	Parts             AddressParts       `json:"parts"`
 	AddressComponents []AddressComponent `json:"address_components"`
 	Results           []GeocodeCandidate `json:"results"`
+	// NearestPlace es el lugar con nombre más cercano a la coordenada (ej. una
+	// estación o urbanización), buscado aparte porque la Geocoding API no
+	// conoce POIs: solo direcciones. Nulo si no hay ninguno dentro del radio.
+	NearestPlace *NearestPlace `json:"nearest_place,omitempty"`
+}
+
+// NearestPlace es el lugar con nombre más cercano a un punto, usado por el
+// cliente para anteponer un nombre reconocible (ej. "Estación Charallave Sur")
+// cuando el reverse geocode por sí solo solo trae calle/urbanización.
+type NearestPlace struct {
+	Name           string `json:"name"`
+	Category       string `json:"category"`
+	DistanceMeters int    `json:"distance_meters"`
 }
 
 // GeocodeCandidate is one entry of Google's reverse geocoding results.

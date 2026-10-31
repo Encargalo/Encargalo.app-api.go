@@ -32,7 +32,7 @@ func TestOfferTrip_NotifiesPushWithLiveCandidate(t *testing.T) {
 	presence := newPresenceStore(t)
 	push := mocksriders.NewPushNotifier(t)
 
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, presence, newOfferTimeoutStore(t), nil, push)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, presence, newOfferTimeoutStore(t), nil, push, nil, nil, nil, nil)
 
 	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
 	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound)
@@ -72,7 +72,7 @@ func TestBroadcastNewOrder_NotifiesPushWithConnectedRider(t *testing.T) {
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
 	push := mocksriders.NewPushNotifier(t)
 
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, push)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, push, nil, nil, nil, nil)
 
 	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
 	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound)
@@ -112,7 +112,7 @@ func TestNotifyTripCancelled_NotifiesPushToAssignedRiderOnly(t *testing.T) {
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
 	push := mocksriders.NewPushNotifier(t)
 
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, push)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, push, nil, nil, nil, nil)
 
 	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
 	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound)
@@ -159,7 +159,7 @@ func TestNotifyTripCancelled_NoPushWithoutAssignedRider(t *testing.T) {
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
 	push := mocksriders.NewPushNotifier(t)
 
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, push)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, push, nil, nil, nil, nil)
 
 	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
 	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound)
@@ -190,7 +190,7 @@ func TestBroadcastOrderUpdate_NotifiesPushOnRejectToAssignedRider(t *testing.T) 
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
 	push := mocksriders.NewPushNotifier(t)
 
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, push)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, push, nil, nil, nil, nil)
 
 	repo.On("SearchActiveOrdersByRiderID", mock.Anything, mock.Anything).Return(nil, errcustom.ErrNotFound)
 	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound)
@@ -236,7 +236,7 @@ func TestBroadcastOrderUpdate_NoPushWithoutAssignedRider(t *testing.T) {
 	tripEarnings := mocksriders.NewTripEarningRecorder(t)
 	push := mocksriders.NewPushNotifier(t)
 
-	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, push)
+	svc := app.New(repo, stream, bcv, tripsRepo, tripEarnings, nil, nil, nil, nil, newPresenceStore(t), newOfferTimeoutStore(t), nil, push, nil, nil, nil, nil)
 
 	order := ordersModels.Order{ID: uuid.New(), ShopID: uuid.New(), Status: string(ordersModels.StatusRejected)}
 	repo.On("SearchShopByID", mock.Anything, order.ShopID).Return(&ordersModels.ShopOrder{}, nil)

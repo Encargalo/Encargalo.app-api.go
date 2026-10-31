@@ -18,6 +18,8 @@ type Shops interface {
 	SearchShops(c echo.Context) error
 	SetOpenClose(c echo.Context) error
 	GetTurboEntry(c echo.Context) error
+	GetMySchedule(c echo.Context) error
+	SetMySchedule(c echo.Context) error
 }
 
 type shops struct {
@@ -98,7 +100,8 @@ func (s *shops) GetMyShop(c echo.Context) error {
 // @Param        q     query     string  true   "Texto a buscar, ej: pizza"
 // @Param        lat   query     number  true   "Latitud del usuario"
 // @Param        lon   query     number  true   "Longitud del usuario"
-// @Param        type  query     string  false  "Filtro de tipo: Restaurant, Supermarket o Turbo"
+// @Param        type       query     string  false  "Filtro de tipo: Restaurant, Supermarket o Turbo"
+// @Param        specialty  query     string  false  "Filtro de especialidad: General, Panadería, Carnicería, Charcutería, Frutería, Licorería, Pizzería, Comida Rápida, Comida China, Heladería o Cafetería"
 // @Success      200  {array}   dtos.SearchShopResponse  "Tiendas encontradas"
 // @Failure      400  {string}  string                   "Parámetros inválidos o faltantes"
 // @Failure      401  {string}  string                   "No autorizado"
@@ -127,13 +130,14 @@ func (s *shops) SearchShops(c echo.Context) error {
 
 // GetAllShops godoc
 // @Summary      Obtener todas las tiendas cercanas
-// @Description  Retorna todas las tiendas disponibles ordenadas por proximidad a las coordenadas proporcionadas, dentro de 3 km (2 km si type=Turbo). Query opcional `type` (`Restaurant`|`Supermarket`|`Turbo`); si se omite, incluye Restaurant y Supermarket (Turbo se descubre vía /turbo/entry).
+// @Description  Retorna todas las tiendas disponibles ordenadas por proximidad a las coordenadas proporcionadas, dentro de 3 km (2 km si type=Turbo). Query opcional `type` (`Restaurant`|`Supermarket`|`Turbo`); si se omite, incluye Restaurant y Supermarket (Turbo se descubre vía /turbo/entry). Cada tienda incluye `closes_at` (si está abierta) u `opens_at` (si está cerrada), calculados desde su horario semanal. Las tiendas cerradas que abren en más de 30 minutos no se incluyen; las que sí aplican se muestran con las abiertas primero y las cerradas al final (ordenadas por `opens_at`).
 // @Tags         Shops
 // @Produce      json
 // @Security     SessionCookie
 // @Param        lat   query     number  true   "Latitud del usuario, ej: 4.678034"
 // @Param        lon   query     number  true   "Longitud del usuario, ej: -74.0496399"
-// @Param        type  query     string  false  "Filtro de tipo: Restaurant, Supermarket o Turbo"
+// @Param        type       query     string  false  "Filtro de tipo: Restaurant, Supermarket o Turbo"
+// @Param        specialty  query     string  false  "Filtro de especialidad: General, Panadería, Carnicería, Charcutería, Frutería, Licorería, Pizzería, Comida Rápida, Comida China, Heladería o Cafetería"
 // @Success      200  {array}   dtos.ShopResponse  "Lista de tiendas"
 // @Failure      400  {string}  string             "Coordenadas inválidas, type inválido o faltantes"
 // @Failure      401  {string}  string             "No autorizado"
@@ -164,7 +168,7 @@ func (s *shops) GetAllShops(c echo.Context) error {
 
 // GetShopsBy godoc
 // @Summary      Obtener tienda por ID o slug
-// @Description  Retorna la información de una tienda junto con sus productos. Se debe enviar al menos uno de los parámetros: `id` o `slug`.
+// @Description  Retorna la información de una tienda junto con sus productos. Se debe enviar al menos uno de los parámetros: `id` o `slug`. Incluye `closes_at`/`opens_at` (ver GetAllShops), pero no oculta la tienda aunque esté cerrada y abra en más de 30 minutos.
 // @Tags         Shops
 // @Produce      json
 // @Security     SessionCookie
@@ -239,4 +243,70 @@ func (s *shops) GetTurboEntry(c echo.Context) error {
 	}
 
 	return response.Send(c, http.StatusOK, entry)
+}
+
+// GetMySchedule godoc
+// @Summary      Obtener horario semanal del negocio propio
+// @Description  Retorna el horario configurado (día de semana, apertura, cierre, habilitado) del local asociado a la sesión del owner.
+// @Tags         Business
+// @Produce      json
+// @Security     SessionCookie
+// @Success      200  {array}   dtos.ScheduleResponse
+// @Failure      401  {string}  string  "No autorizado"
+// @Failure      422  {string}  string  "El usuario no tiene un negocio asociado"
+// @Failure      500  {string}  string  "Error interno del servidor"
+// @Router       /business/shops/me/schedule [get]
+func (s *shops) GetMySchedule(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
+
+	if session.ShopID == nil {
+		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
+	}
+
+	schedule, err := s.app.GetMySchedule(ctx, *session.ShopID)
+	if err != nil {
+		return err
+	}
+
+	return response.Send(c, http.StatusOK, schedule)
+}
+
+// SetMySchedule godoc
+// @Summary      Configurar horario semanal del negocio propio
+// @Description  Sustituye por completo el horario semanal del local asociado a la sesión del owner (una entrada por día de semana que aplique).
+// @Tags         Business
+// @Accept       json
+// @Produce      json
+// @Security     SessionCookie
+// @Param        body  body      dtos.ShopScheduleRequest  true  "Horario semanal"
+// @Success      204  "Horario actualizado"
+// @Failure      400  {string}  string  "Body inválido"
+// @Failure      401  {string}  string  "No autorizado"
+// @Failure      422  {string}  string  "El usuario no tiene un negocio asociado"
+// @Failure      500  {string}  string  "Error interno del servidor"
+// @Router       /business/shops/me/schedule [put]
+func (s *shops) SetMySchedule(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	session := ctx.Value(models.SessionKey).(models.ActiveSession)
+
+	if session.ShopID == nil {
+		return echo.NewHTTPError(http.StatusUnprocessableEntity, "el usuario no tiene un negocio asociado")
+	}
+
+	var req dtos.ShopScheduleRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := req.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := s.app.SetMySchedule(ctx, *session.ShopID, req.Schedules); err != nil {
+		return err
+	}
+
+	return c.NoContent(http.StatusNoContent)
 }

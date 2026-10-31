@@ -224,3 +224,27 @@ func (r *olapSinkRepo) UpsertOrderStatusChanges(ctx context.Context, rows []mode
 		return nil
 	})
 }
+
+func (r *olapSinkRepo) UpsertShipments(ctx context.Context, rows []models.CubeShipment) error {
+	return insertInChunks(rows, func(chunk []models.CubeShipment) error {
+		_, err := r.db.NewInsert().
+			Model(&chunk).
+			On("CONFLICT (shipment_id) DO UPDATE").
+			Set("customer_id = EXCLUDED.customer_id").
+			Set("rider_id = EXCLUDED.rider_id").
+			Set("quote_id = EXCLUDED.quote_id").
+			Set("status = EXCLUDED.status").
+			Set("fare = EXCLUDED.fare").
+			Set("method_payment = EXCLUDED.method_payment").
+			Set("pickup_h3_cell = EXCLUDED.pickup_h3_cell").
+			Set("dropoff_h3_cell = EXCLUDED.dropoff_h3_cell").
+			Set("shipment_date = EXCLUDED.shipment_date").
+			Set("created_at = EXCLUDED.created_at").
+			Set("synced_at = EXCLUDED.synced_at").
+			Exec(ctx)
+		if err != nil {
+			return errcustom.Unexpected(err)
+		}
+		return nil
+	})
+}

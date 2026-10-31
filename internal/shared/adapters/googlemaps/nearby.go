@@ -57,7 +57,7 @@ func NearbyPopularPlaces(ctx context.Context, lat, lng float64, radiusMeters int
 		wg.Add(1)
 		go func(idx int, included []string) {
 			defer wg.Done()
-			places, err := searchNearby(ctx, lat, lng, radiusMeters, included)
+			places, err := searchNearby(ctx, lat, lng, radiusMeters, included, "POPULARITY", nearbyMaxResultCount)
 			if err != nil {
 				err = fmt.Errorf("categorías %v: %w", included, err)
 			}
@@ -67,6 +67,21 @@ func NearbyPopularPlaces(ctx context.Context, lat, lng float64, radiusMeters int
 	wg.Wait()
 
 	return mergeNearbyResults(results, errs)
+}
+
+// NearestPlace devuelve el lugar con nombre más cercano a una coordenada, sin
+// restringir por categoría — a diferencia de NearbyPopularPlaces, acá no
+// importa qué tan popular es, solo qué tan cerca está. Devuelve ErrNoResults
+// si no hay ningún lugar con nombre dentro de radiusMeters.
+func NearestPlace(ctx context.Context, lat, lng float64, radiusMeters int) (*NearbyPlace, error) {
+	places, err := searchNearby(ctx, lat, lng, radiusMeters, nil, "DISTANCE", 1)
+	if err != nil {
+		return nil, err
+	}
+	if len(places) == 0 {
+		return nil, ErrNoResults
+	}
+	return &places[0], nil
 }
 
 // mergeNearbyResults une los resultados de cada grupo de categorías descartando los place_id repetidos.
@@ -105,20 +120,25 @@ func mergeNearbyResults(results [][]NearbyPlace, errs []error) ([]NearbyPlace, e
 	return merged, nil
 }
 
-func searchNearby(ctx context.Context, lat, lng float64, radiusMeters int, includedPrimaryTypes []string) ([]NearbyPlace, error) {
-	body, err := json.Marshal(map[string]any{
+func searchNearby(ctx context.Context, lat, lng float64, radiusMeters int, includedPrimaryTypes []string, rankPreference string, maxResultCount int) ([]NearbyPlace, error) {
+	payload := map[string]any{
 		"locationRestriction": map[string]any{
 			"circle": map[string]any{
 				"center": map[string]any{"latitude": lat, "longitude": lng},
 				"radius": min(radiusMeters, maxNearbySearchRadiusMeters),
 			},
 		},
-		"rankPreference":       "POPULARITY",
-		"maxResultCount":       nearbyMaxResultCount,
-		"languageCode":         languageCode(),
-		"regionCode":           regionCode(),
-		"includedPrimaryTypes": includedPrimaryTypes,
-	})
+		"rankPreference": rankPreference,
+		"maxResultCount": maxResultCount,
+		"languageCode":   languageCode(),
+		"regionCode":     regionCode(),
+	}
+	// Omitido en vez de mandado vacío: un array vacío en includedPrimaryTypes lo rechaza Google con 400, en vez de significar "cualquier categoría".
+	if len(includedPrimaryTypes) > 0 {
+		payload["includedPrimaryTypes"] = includedPrimaryTypes
+	}
+
+	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("building google nearby search body: %w", err)
 	}

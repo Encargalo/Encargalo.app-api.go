@@ -78,6 +78,36 @@ func (_m *ShopsApp) GetLaunchPromoEndsAt(ctx context.Context, shopID uuid.UUID) 
 	return r0, r1
 }
 
+// GetMySchedule provides a mock function with given fields: ctx, shopID
+func (_m *ShopsApp) GetMySchedule(ctx context.Context, shopID uuid.UUID) ([]dtos.ScheduleResponse, error) {
+	ret := _m.Called(ctx, shopID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetMySchedule")
+	}
+
+	var r0 []dtos.ScheduleResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) ([]dtos.ScheduleResponse, error)); ok {
+		return rf(ctx, shopID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) []dtos.ScheduleResponse); ok {
+		r0 = rf(ctx, shopID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]dtos.ScheduleResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, shopID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetShopByID provides a mock function with given fields: ctx, shopID
 func (_m *ShopsApp) GetShopByID(ctx context.Context, shopID uuid.UUID) (dtos.ShopResponse, error) {
 	ret := _m.Called(ctx, shopID)
@@ -192,6 +222,24 @@ func (_m *ShopsApp) SearchShops(ctx context.Context, query dtos.SearchShopsQuery
 	}
 
 	return r0, r1
+}
+
+// SetMySchedule provides a mock function with given fields: ctx, shopID, schedules
+func (_m *ShopsApp) SetMySchedule(ctx context.Context, shopID uuid.UUID, schedules []dtos.ScheduleInput) error {
+	ret := _m.Called(ctx, shopID, schedules)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetMySchedule")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, []dtos.ScheduleInput) error); ok {
+		r0 = rf(ctx, shopID, schedules)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // SetOpenClose provides a mock function with given fields: ctx, shopID, open

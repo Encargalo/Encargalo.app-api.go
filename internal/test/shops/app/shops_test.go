@@ -9,6 +9,7 @@ import (
 	mocksshops "Encargalo.app-api.go/internal/mocks/shops/domain/ports"
 	"Encargalo.app-api.go/internal/shops/app"
 	"Encargalo.app-api.go/internal/shops/domain/dtos"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -25,9 +26,11 @@ func TestGetAllShops_PropagatesTypeFilter(t *testing.T) {
 	}
 
 	repo.On("GetAllShops", context.Background(), query).Return(dtos.ShopsResponse{
-		{Type: "Supermarket", DeliveryFee: 1.5},
+		{Type: "Supermarket", DeliveryFee: 1.5, Opened: true},
 	}, nil)
 	bcv.On("GetRate", mock.Anything).Return(&bcvmodels.ExchangeRate{Rate: 40}, nil)
+	repo.On("GetSchedulesByShopIDs", context.Background(), mock.Anything).
+		Return(map[uuid.UUID][]dtos.ScheduleResponse{}, nil)
 
 	result, err := shopsApp.GetAllShops(context.Background(), query)
 	require.NoError(t, err)

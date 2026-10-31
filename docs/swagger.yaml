@@ -292,6 +292,15 @@ definitions:
           type: string
         type: array
     type: object
+  Encargalo_app-api_go_internal_maps_domain_models.NearestPlace:
+    properties:
+      category:
+        type: string
+      distance_meters:
+        type: integer
+      name:
+        type: string
+    type: object
   Encargalo_app-api_go_internal_maps_domain_models.PlaceDetails:
     properties:
       address:
@@ -341,6 +350,13 @@ definitions:
         type: array
       formatted_address:
         type: string
+      nearest_place:
+        allOf:
+        - $ref: '#/definitions/Encargalo_app-api_go_internal_maps_domain_models.NearestPlace'
+        description: |-
+          NearestPlace es el lugar con nombre más cercano a la coordenada (ej. una
+          estación o urbanización), buscado aparte porque la Geocoding API no
+          conoce POIs: solo direcciones. Nulo si no hay ninguno dentro del radio.
       parts:
         $ref: '#/definitions/Encargalo_app-api_go_internal_maps_domain_models.AddressParts'
       results:
@@ -803,6 +819,60 @@ definitions:
       selector_type:
         example: single_select
         type: string
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.HomeMacroCategory:
+    properties:
+      macro_category:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.MacroCategoryResponse'
+      micro_categories:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.HomeMicroCategory'
+        type: array
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.HomeMicroCategory:
+    properties:
+      name:
+        type: string
+      products:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.HomeProduct'
+        type: array
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.HomeProduct:
+    properties:
+      bs:
+        type: number
+      id:
+        type: string
+      image:
+        type: string
+      name:
+        type: string
+      ref:
+        type: number
+      score:
+        type: number
+      shop:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.HomeShop'
+      sold:
+        type: integer
+    type: object
+  Encargalo_app-api_go_internal_products_domain_dtos.HomeShop:
+    properties:
+      delivery_fee:
+        type: number
+      delivery_fee_bs:
+        type: number
+      id:
+        type: string
+      logo:
+        type: string
+      name:
+        type: string
+      slug:
+        type: string
+      time:
+        type: integer
     type: object
   Encargalo_app-api_go_internal_products_domain_dtos.ItemDetailsResponse:
     properties:
@@ -1679,6 +1749,214 @@ definitions:
     x-enum-varnames:
     - ZoneNormal
     - ZoneWithdrawalAvailable
+  Encargalo_app-api_go_internal_shipments_domain_dtos.CreateShipmentRequest:
+    properties:
+      id:
+        description: 'ID es la llave de idempotencia: un reintento con el mismo id
+          devuelve el envío ya creado.'
+        example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        type: string
+      method_payment:
+        enum:
+        - PagoMovil
+        - Balance
+        example: Balance
+        type: string
+      package_description:
+        description: PackageDescription es lo que se envía, en texto libre (ej. "una
+          torta").
+        example: Una torta de cumpleaños
+        maxLength: 500
+        type: string
+      payment_proof_image:
+        example: data:image/jpeg;base64,/9j/4AAQ...
+        maxLength: 7000000
+        type: string
+      quote_id:
+        type: string
+      recipient:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentContact'
+      sender:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentContact'
+    required:
+    - method_payment
+    - package_description
+    - quote_id
+    - recipient
+    - sender
+    type: object
+  Encargalo_app-api_go_internal_shipments_domain_dtos.FareEstimateRequest:
+    properties:
+      dropoff_address:
+        example: CC Sambil, Caracas
+        type: string
+      dropoff_latitude:
+        example: 10.4956
+        type: number
+      dropoff_longitude:
+        example: -66.8517
+        type: number
+      pickup_address:
+        example: Av. Libertador, Caracas
+        type: string
+      pickup_latitude:
+        example: 10.4806
+        type: number
+      pickup_longitude:
+        example: -66.9036
+        type: number
+    required:
+    - dropoff_address
+    - dropoff_latitude
+    - dropoff_longitude
+    - pickup_address
+    - pickup_latitude
+    - pickup_longitude
+    type: object
+  Encargalo_app-api_go_internal_shipments_domain_dtos.FareEstimateResponse:
+    properties:
+      bcv_rate:
+        description: BcvRate es la tasa congelada en la cotización; fare_bs = fare_usd
+          * BcvRate.
+        type: number
+      distance_meters:
+        type: number
+      duration_min:
+        type: integer
+      expires_at:
+        type: string
+      fare_bs:
+        type: number
+      fare_usd:
+        type: number
+      quote_id:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_shipments_domain_dtos.RiderPublicInfo:
+    properties:
+      name:
+        type: string
+      phone:
+        type: string
+      profile_photo_url:
+        type: string
+      sur_name:
+        type: string
+      vehicle_brand:
+        type: string
+      vehicle_color:
+        type: string
+      vehicle_model:
+        type: string
+      vehicle_plate:
+        type: string
+      vehicle_type:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentContact:
+    properties:
+      is_customer:
+        type: boolean
+      name:
+        type: string
+      phone:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentHistoryResponse:
+    properties:
+      shipments:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentResponse'
+        type: array
+    type: object
+  Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentPayment:
+    properties:
+      can_request_refund:
+        type: boolean
+      credited_bs:
+        type: number
+      difference_bs:
+        type: number
+      expected_amount_bs:
+        type: number
+      observed_amount_bs:
+        type: number
+      refund_eligible_until:
+        type: string
+      refundable_pm_bs:
+        type: number
+      rejection_reason:
+        description: |-
+          RejectionReason solo se llena en rejected_underpaid. El motivo que
+          escribe el staff en rejected_invalid nunca sale hacia el cliente.
+        type: string
+      status:
+        example: rejected_underpaid
+        type: string
+      transaction_id:
+        type: string
+    type: object
+  Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentResponse:
+    properties:
+      accepted_at:
+        type: string
+      cancel_reason:
+        description: |-
+          CancelReason es un código: payment_rejected, payment_underpaid,
+          customer_cancelled o no_driver. La app lo traduce; no dice quién canceló.
+        example: no_driver
+        type: string
+      cancelled_at:
+        type: string
+      customer_id:
+        type: string
+      delivered_at:
+        type: string
+      dropoff_address:
+        type: string
+      dropoff_code:
+        type: string
+      dropoff_latitude:
+        type: number
+      dropoff_longitude:
+        type: number
+      fare_bs:
+        type: number
+      fare_usd:
+        type: number
+      id:
+        type: string
+      method_payment:
+        type: string
+      package_description:
+        type: string
+      payment:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentPayment'
+      pickup_address:
+        type: string
+      pickup_code:
+        description: |-
+          PickupCode/DropoffCode siempre vienen presentes (lo genera el servidor al
+          crear el envío), sin importar el estado: el cliente los reenvía a quien
+          esté físicamente presente en retiro o entrega si no es él mismo.
+        type: string
+      pickup_latitude:
+        type: number
+      pickup_longitude:
+        type: number
+      recipient:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentContact'
+      requested_at:
+        type: string
+      rider:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.RiderPublicInfo'
+      rider_id:
+        type: string
+      sender:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentContact'
+      status:
+        type: string
+    type: object
   Encargalo_app-api_go_internal_shops_domain_dtos.CreateDraftShopRequest:
     properties:
       name:
@@ -1686,6 +1964,21 @@ definitions:
         type: string
       owner_id:
         example: d33aaf08-2c43-41c4-b2e7-882b019edb1e
+        type: string
+      specialty:
+        enum:
+        - General
+        - Panadería
+        - Carnicería
+        - Charcutería
+        - Frutería
+        - Licorería
+        - Pizzería
+        - Comida Rápida
+        - Comida China
+        - Heladería
+        - Cafetería
+        example: Pizzería
         type: string
       type:
         enum:
@@ -1870,11 +2163,43 @@ definitions:
           $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.SalesDataPoint'
         type: array
     type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.ScheduleInput:
+    properties:
+      close:
+        example: "20:00:00"
+        type: string
+      day_of_week:
+        maximum: 6
+        minimum: 0
+        type: integer
+      enabled:
+        example: true
+        type: boolean
+      open:
+        example: "08:00:00"
+        type: string
+    required:
+    - close
+    - open
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.ScheduleResponse:
+    properties:
+      close:
+        type: string
+      day_of_week:
+        type: integer
+      enabled:
+        type: boolean
+      open:
+        type: string
+    type: object
   Encargalo_app-api_go_internal_shops_domain_dtos.SearchShopResponse:
     properties:
       address:
         type: string
       banner:
+        type: string
+      closes_at:
         type: string
       delivery_fee:
         type: number
@@ -1903,9 +2228,17 @@ definitions:
         type: string
       opened:
         type: boolean
+      opens_at:
+        description: |-
+          OpensAt/ClosesAt se calculan a partir del horario semanal configurado
+          (business.schedules): ClosesAt solo si Opened=true, OpensAt solo si
+          Opened=false. Ambos nil si el shop no tiene horario configurado.
+        type: string
       score:
         type: number
       slug:
+        type: string
+      specialty:
         type: string
       time:
         type: integer
@@ -1953,6 +2286,8 @@ definitions:
         type: string
       banner:
         type: string
+      closes_at:
+        type: string
       delivery_fee:
         type: number
       delivery_fee_bs:
@@ -1976,14 +2311,29 @@ definitions:
         type: string
       opened:
         type: boolean
+      opens_at:
+        description: |-
+          OpensAt/ClosesAt se calculan a partir del horario semanal configurado
+          (business.schedules): ClosesAt solo si Opened=true, OpensAt solo si
+          Opened=false. Ambos nil si el shop no tiene horario configurado.
+        type: string
       score:
         type: number
       slug:
+        type: string
+      specialty:
         type: string
       time:
         type: integer
       type:
         type: string
+    type: object
+  Encargalo_app-api_go_internal_shops_domain_dtos.ShopScheduleRequest:
+    properties:
+      schedules:
+        items:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ScheduleInput'
+        type: array
     type: object
   Encargalo_app-api_go_internal_shops_domain_dtos.ShopTransactionDTO:
     properties:
@@ -2052,6 +2402,8 @@ definitions:
       owner_id:
         type: string
       slug:
+        type: string
+      specialty:
         type: string
       status:
         type: string
@@ -2150,6 +2502,21 @@ definitions:
       name:
         type: string
       slug:
+        type: string
+      specialty:
+        enum:
+        - General
+        - Panadería
+        - Carnicería
+        - Charcutería
+        - Frutería
+        - Licorería
+        - Pizzería
+        - Comida Rápida
+        - Comida China
+        - Heladería
+        - Cafetería
+        example: Panadería
         type: string
     type: object
   Encargalo_app-api_go_internal_tracking_domain_dtos.TrackEvent:
@@ -4195,6 +4562,74 @@ paths:
       summary: Obtener información del negocio propio
       tags:
       - Business
+  /business/shops/me/schedule:
+    get:
+      description: Retorna el horario configurado (día de semana, apertura, cierre,
+        habilitado) del local asociado a la sesión del owner.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ScheduleResponse'
+            type: array
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "422":
+          description: El usuario no tiene un negocio asociado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Obtener horario semanal del negocio propio
+      tags:
+      - Business
+    put:
+      consumes:
+      - application/json
+      description: Sustituye por completo el horario semanal del local asociado a
+        la sesión del owner (una entrada por día de semana que aplique).
+      parameters:
+      - description: Horario semanal
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopScheduleRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Horario actualizado
+        "400":
+          description: Body inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "422":
+          description: El usuario no tiene un negocio asociado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Configurar horario semanal del negocio propio
+      tags:
+      - Business
   /business/shops/me/status:
     patch:
       consumes:
@@ -4514,7 +4949,10 @@ paths:
         administrative_area_level_2=municipio/provincia) y address_components crudos
         de Google del primer resultado, y en results todos los candidatos que devolvió
         Google (el primero a menudo no trae street_number y uno posterior sí) para
-        que el cliente elija y arme la dirección. Cacheado por el servidor por coordenadas
+        que el cliente elija y arme la dirección. Incluye además nearest_place (nombre,
+        categoría y distancia en metros) con el lugar con nombre más cercano dentro
+        de 250m, buscado vía Google Places porque la Geocoding API no conoce POIs
+        — nulo si no hay ninguno tan cerca. Cacheado por el servidor por coordenadas
         redondeadas.
       parameters:
       - description: Latitud
@@ -5268,6 +5706,52 @@ paths:
       security:
       - SessionCookie: []
       summary: Obtener sabores por categoría
+      tags:
+      - Products
+  /products/home/supermarket:
+    get:
+      description: Retorna, para negocios type=Supermarket abiertos en la zona (mismo
+        radio de cobertura que /shops/all), una selección diaria de micro-categorías
+        agrupadas por macro-categoría, cada una con hasta 15 productos (tope de 4
+        por negocio por repisa para que no la domine un solo super). La selección
+        rota cada día (día del año); "Licores y Cervezas" se incluye siempre viernes,
+        sábado y domingo. Excluye productos cuya categoría tiene un horario configurado
+        que no cubre la hora actual (America/Caracas). Cacheado 15 minutos.
+      parameters:
+      - description: Latitud del usuario
+        in: query
+        name: lat
+        required: true
+        type: number
+      - description: Longitud del usuario
+        in: query
+        name: lon
+        required: true
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_products_domain_dtos.HomeMacroCategory'
+            type: array
+        "400":
+          description: lat/lon requeridos o inválidos
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "500":
+          description: Error interno del servidor
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Home de supermercado (macro → micro categoría → productos)
       tags:
       - Products
   /products/trending:
@@ -6419,10 +6903,230 @@ paths:
       summary: Solicitar retiro de balance
       tags:
       - Riders Finance
+  /shipments:
+    post:
+      consumes:
+      - application/json
+      description: 'Crea un envío de paquete (<5kg) a partir de una cotización vigente,
+        con la misma tarifa que un viaje de pasajeros. method_payment solo acepta
+        PagoMovil (comprobante, nace en payment_review) o Balance (debita la tarifa,
+        nace en searching) — sin efectivo. sender/recipient indican quién retira y
+        quién recibe el paquete: is_customer=true usa los datos de la cuenta; is_customer=false
+        exige name y phone de un tercero. id (UUID, opcional) es la llave de idempotencia:
+        un reintento con el mismo id devuelve el envío ya creado sin volver a cobrar.'
+      parameters:
+      - description: quote_id, method_payment (PagoMovil o Balance), sender, recipient
+          y package_description
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.CreateShipmentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentResponse'
+        "400":
+          description: payload inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "404":
+          description: Cotización no encontrada, expirada o de otro cliente
+          schema:
+            type: string
+        "409":
+          description: El id ya lo usa un envío de otro cliente
+          schema:
+            type: string
+        "422":
+          description: No se pudo subir el comprobante o saldo insuficiente
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Solicitar un envío
+      tags:
+      - Shipments
+  /shipments/{id}:
+    get:
+      description: 'pickup_code y dropoff_code SIEMPRE vienen presentes en la respuesta,
+        sin importar el estado del envío: el cliente los reenvía manualmente (WhatsApp,
+        llamada) a quien esté físicamente presente en el retiro o la entrega, sea
+        él mismo o un tercero. Si el envío ya tiene rider asignado, `rider` trae nombre,
+        teléfono, foto y vehículo. En envíos cancelled o no_driver, `cancel_reason`
+        dice por qué. Los cambios en vivo llegan por GET /shipments/live.'
+      parameters:
+      - description: Shipment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentResponse'
+        "400":
+          description: id inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "403":
+          description: El envío no pertenece a este cliente
+          schema:
+            type: string
+        "404":
+          description: No encontrado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Detalle de un envío
+      tags:
+      - Shipments
+  /shipments/{id}/cancel:
+    post:
+      description: 'Solo permitido mientras el envío esté en requested/searching/accepted.
+        En payment_review responde 422 shipment_payment_review_pending: hay que esperar
+        a que el staff resuelva el comprobante. Si se pagó con balance, el débito
+        se reintegra. Si el Pago Móvil ya estaba aprobado, se acredita la tarifa en
+        Bs a la cartera. La respuesta trae cancel_reason = customer_cancelled.'
+      parameters:
+      - description: Shipment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentResponse'
+        "400":
+          description: id inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "403":
+          description: El envío no pertenece a este cliente
+          schema:
+            type: string
+        "404":
+          description: No encontrado
+          schema:
+            type: string
+        "422":
+          description: Pago en revisión, o el envío no se puede cancelar en su estado
+            actual
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Cancelar un envío
+      tags:
+      - Shipments
+  /shipments/fare-estimate:
+    post:
+      consumes:
+      - application/json
+      description: 'Calcula distancia, tiempo estimado y tarifa (USD/Bs) entre el
+        punto de retiro y el de entrega, con la misma fórmula que los viajes de pasajeros,
+        y la congela por 10 minutos en una cotización. El quote_id devuelto es obligatorio
+        para crear el envío (POST /shipments): el precio mostrado acá es el que queda
+        fijado, no se recalcula.'
+      parameters:
+      - description: Direcciones y coordenadas de retiro/entrega
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.FareEstimateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.FareEstimateResponse'
+        "400":
+          description: payload inválido o coordenadas fuera del área de servicio
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "503":
+          description: Tasa BCV no disponible
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Cotizar tarifa de un envío
+      tags:
+      - Shipments
+  /shipments/history:
+    get:
+      description: Cada envío con rider asignado incluye `rider` (nombre, teléfono,
+        foto y vehículo). Los envíos cancelled y no_driver traen `cancel_reason` con
+        el motivo.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentHistoryResponse'
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Historial de envíos del cliente
+      tags:
+      - Shipments
+  /shipments/live:
+    get:
+      description: El cliente recibe el estado del envío sin volver a consultar. Al
+        conectar se envían los envíos activos.
+      responses:
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+        "403":
+          description: Acceso denegado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: WebSocket del cliente para seguir sus envíos
+      tags:
+      - Shipments
   /shops:
     get:
       description: 'Retorna la información de una tienda junto con sus productos.
-        Se debe enviar al menos uno de los parámetros: `id` o `slug`.'
+        Se debe enviar al menos uno de los parámetros: `id` o `slug`. Incluye `closes_at`/`opens_at`
+        (ver GetAllShops), pero no oculta la tienda aunque esté cerrada y abra en
+        más de 30 minutos.'
       parameters:
       - description: ID de la tienda (UUID)
         in: query
@@ -6477,7 +7181,11 @@ paths:
       description: Retorna todas las tiendas disponibles ordenadas por proximidad
         a las coordenadas proporcionadas, dentro de 3 km (2 km si type=Turbo). Query
         opcional `type` (`Restaurant`|`Supermarket`|`Turbo`); si se omite, incluye
-        Restaurant y Supermarket (Turbo se descubre vía /turbo/entry).
+        Restaurant y Supermarket (Turbo se descubre vía /turbo/entry). Cada tienda
+        incluye `closes_at` (si está abierta) u `opens_at` (si está cerrada), calculados
+        desde su horario semanal. Las tiendas cerradas que abren en más de 30 minutos
+        no se incluyen; las que sí aplican se muestran con las abiertas primero y
+        las cerradas al final (ordenadas por `opens_at`).
       parameters:
       - description: 'Latitud del usuario, ej: 4.678034'
         in: query
@@ -6492,6 +7200,12 @@ paths:
       - description: 'Filtro de tipo: Restaurant, Supermarket o Turbo'
         in: query
         name: type
+        type: string
+      - description: 'Filtro de especialidad: General, Panadería, Carnicería, Charcutería,
+          Frutería, Licorería, Pizzería, Comida Rápida, Comida China, Heladería o
+          Cafetería'
+        in: query
+        name: specialty
         type: string
       produces:
       - application/json
@@ -6549,6 +7263,12 @@ paths:
       - description: 'Filtro de tipo: Restaurant, Supermarket o Turbo'
         in: query
         name: type
+        type: string
+      - description: 'Filtro de especialidad: General, Panadería, Carnicería, Charcutería,
+          Frutería, Licorería, Pizzería, Comida Rápida, Comida China, Heladería o
+          Cafetería'
+        in: query
+        name: specialty
         type: string
       produces:
       - application/json
@@ -7326,6 +8046,73 @@ paths:
       security:
       - SessionCookie: []
       summary: Obtener macro categorías (staff)
+      tags:
+      - Shops Staff
+  /shops/staff/{id}/schedule:
+    get:
+      description: Retorna el horario configurado (día de semana, apertura, cierre,
+        habilitado) del shop indicado.
+      parameters:
+      - description: Shop ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ScheduleResponse'
+            type: array
+        "400":
+          description: id inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Obtener horario semanal de un shop (staff)
+      tags:
+      - Shops Staff
+    put:
+      consumes:
+      - application/json
+      description: Sustituye por completo el horario semanal del shop indicado (una
+        entrada por día de semana que aplique).
+      parameters:
+      - description: Shop ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Horario semanal
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Encargalo_app-api_go_internal_shops_domain_dtos.ShopScheduleRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Horario actualizado
+        "400":
+          description: id inválido / payload inválido
+          schema:
+            type: string
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Configurar horario semanal de un shop (staff)
       tags:
       - Shops Staff
   /shops/staff/candidates:

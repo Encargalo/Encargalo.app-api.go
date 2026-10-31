@@ -70,3 +70,52 @@ func TestNearbyPopularPlaces_EveryGroupUpIsComplete(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, places, len(popularPlaceCategories))
 }
+
+// capturingTransport guarda el último body enviado y responde siempre con la misma respuesta fija.
+type capturingTransport struct {
+	lastBody string
+	response string
+}
+
+func (t *capturingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	raw, err := io.ReadAll(req.Body)
+	if err != nil {
+		return nil, err
+	}
+	t.lastBody = string(raw)
+	return jsonResponse(http.StatusOK, t.response), nil
+}
+
+func TestNearestPlace_ReturnsTheClosestPlace(t *testing.T) {
+	transport := &capturingTransport{response: `{"places":[{"id":"abc","displayName":{"text":"Charallave Sur"},"primaryTypeDisplayName":{"text":"Estación de tren"},"location":{"latitude":10.2372,"longitude":-66.8565}}]}`}
+	original := httpClient
+	httpClient = &http.Client{Transport: transport}
+	t.Cleanup(func() { httpClient = original })
+
+	place, err := NearestPlace(context.Background(), 10.2372, -66.8565, 250)
+
+	require.NoError(t, err)
+	require.Equal(t, "Charallave Sur", place.Name)
+	require.Equal(t, "Estación de tren", place.Category)
+
+	var sent struct {
+		RankPreference       string   `json:"rankPreference"`
+		MaxResultCount       int      `json:"maxResultCount"`
+		IncludedPrimaryTypes []string `json:"includedPrimaryTypes"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(transport.lastBody), &sent))
+	require.Equal(t, "DISTANCE", sent.RankPreference)
+	require.Equal(t, 1, sent.MaxResultCount)
+	require.Nil(t, sent.IncludedPrimaryTypes)
+	require.NotContains(t, transport.lastBody, "includedPrimaryTypes")
+}
+
+func TestNearestPlace_NoPlacesIsErrNoResults(t *testing.T) {
+	original := httpClient
+	httpClient = &http.Client{Transport: &capturingTransport{response: `{}`}}
+	t.Cleanup(func() { httpClient = original })
+
+	_, err := NearestPlace(context.Background(), 10.2372, -66.8565, 250)
+
+	require.ErrorIs(t, err, ErrNoResults)
+}

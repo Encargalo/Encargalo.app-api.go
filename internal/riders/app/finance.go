@@ -105,6 +105,30 @@ func (f *financeApp) RecordRideCashCollected(ctx context.Context, riderID uuid.U
 // acercamiento al pickup (tripfare.PickupBonus), convertido a Bs con bcvRate
 // — análogo a RecordRideEarning pero sin payment_method (los viajes no lo
 // tienen todavía).
+// RecordShipmentEarning acredita RiderShare (90%) de fare, sin bono de
+// acercamiento (shipments no congela pickup_distance_km) ni rama de efectivo.
+func (f *financeApp) RecordShipmentEarning(ctx context.Context, riderID uuid.UUID, shipmentID uuid.UUID, fare, bcvRate float64) error {
+	if bcvRate <= 0 {
+		return errcustom.ErrBcvRateUnavailable
+	}
+	deltaBs := money.RoundBs(models.RiderPayUSD(fare) * bcvRate)
+	rate := bcvRate
+	serviceType := models.ServiceTypeShipment
+
+	tx := models.Transaction{
+		ID:           id.New(),
+		ShipmentID:   &shipmentID,
+		MovementType: string(models.MovementTypeShipmentBank),
+		ServiceType:  &serviceType,
+		Currency:     models.CurrencyVES,
+		BcvRate:      &rate,
+		CreatedAt:    time.Now(),
+	}
+
+	_, err := f.repo.RecordMovement(ctx, riderID, entityTypeRider, deltaBs, 0, tx)
+	return err
+}
+
 func (f *financeApp) RecordTripEarning(ctx context.Context, riderID uuid.UUID, tripID uuid.UUID, fare, pickupDistanceKm, bcvRate float64) error {
 	if bcvRate <= 0 {
 		return errcustom.ErrBcvRateUnavailable
