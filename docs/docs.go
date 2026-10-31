@@ -2469,7 +2469,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Resuelve una dirección a partir de una coordenada, usando la Google Geocoding API. Incluye formatted_address, parts (locality=ciudad, administrative_area_level_1=estado, administrative_area_level_2=municipio/provincia) y address_components crudos de Google del primer resultado, y en results todos los candidatos que devolvió Google (el primero a menudo no trae street_number y uno posterior sí) para que el cliente elija y arme la dirección. Cacheado por el servidor por coordenadas redondeadas.",
+                "description": "Resuelve una dirección a partir de una coordenada, usando la Google Geocoding API. Incluye formatted_address, parts (locality=ciudad, administrative_area_level_1=estado, administrative_area_level_2=municipio/provincia) y address_components crudos de Google del primer resultado, y en results todos los candidatos que devolvió Google (el primero a menudo no trae street_number y uno posterior sí) para que el cliente elija y arme la dirección. Incluye además nearest_place (nombre, categoría y distancia en metros) con el lugar con nombre más cercano dentro de 250m, buscado vía Google Places porque la Geocoding API no conoce POIs — nulo si no hay ninguno tan cerca. Cacheado por el servidor por coordenadas redondeadas.",
                 "produces": [
                     "application/json"
                 ],
@@ -9801,6 +9801,20 @@ const docTemplate = `{
                 }
             }
         },
+        "Encargalo_app-api_go_internal_maps_domain_models.NearestPlace": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "distance_meters": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "Encargalo_app-api_go_internal_maps_domain_models.PlaceDetails": {
             "type": "object",
             "properties": {
@@ -9875,6 +9889,14 @@ const docTemplate = `{
                 },
                 "formatted_address": {
                     "type": "string"
+                },
+                "nearest_place": {
+                    "description": "NearestPlace es el lugar con nombre más cercano a la coordenada (ej. una\nestación o urbanización), buscado aparte porque la Geocoding API no\nconoce POIs: solo direcciones. Nulo si no hay ninguno dentro del radio.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/Encargalo_app-api_go_internal_maps_domain_models.NearestPlace"
+                        }
+                    ]
                 },
                 "parts": {
                     "$ref": "#/definitions/Encargalo_app-api_go_internal_maps_domain_models.AddressParts"

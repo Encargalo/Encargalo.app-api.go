@@ -42,6 +42,10 @@ const (
 
 	// Circunradio de una celda de esa resolución: el usuario puede estar a ~1.22 km del centro que se le consulta a Google.
 	popularPlacesCellRadiusMeters = 1300
+
+	// nearestPlaceRadiusMeters es el techo para anteponer el nombre de un lugar al pickup/dropoff: evidencia real mostró lugares correctos a 125-218m
+	// y lugares de otro sector (más lejos pero del mismo rubro) a 273-281m — 250 separa uno de otro.
+	nearestPlaceRadiusMeters = 250
 )
 
 type mapsRepo struct {
@@ -80,6 +84,7 @@ func (r *mapsRepo) ReverseGeocode(ctx context.Context, lat, lng float64) (*model
 		Parts:             toDomainParts(raw.Parts),
 		AddressComponents: toDomainComponents(raw.AddressComponents),
 		Results:           toDomainCandidates(raw.Results),
+		NearestPlace:      r.nearestPlace(ctx, lat, lng),
 	}
 
 	if err := r.cache.Set(ctx, cacheKey, result, reverseGeocodeTTL); err != nil {
@@ -87,6 +92,26 @@ func (r *mapsRepo) ReverseGeocode(ctx context.Context, lat, lng float64) (*model
 	}
 
 	return result, nil
+}
+
+// nearestPlace busca el lugar con nombre más cercano a lat/lng vía Places (la
+// Geocoding API no conoce POIs). Nunca falla el reverse geocode por esto: sin
+// resultado o con error de Google, el campo queda nulo y el cliente usa solo
+// la dirección.
+func (r *mapsRepo) nearestPlace(ctx context.Context, lat, lng float64) *models.NearestPlace {
+	raw, err := googlemaps.NearestPlace(ctx, lat, lng, nearestPlaceRadiusMeters)
+	if err != nil {
+		if !errors.Is(err, googlemaps.ErrNoResults) {
+			slog.Error("maps: error al buscar el lugar más cercano", "error", err)
+		}
+		return nil
+	}
+
+	return &models.NearestPlace{
+		Name:           raw.Name,
+		Category:       raw.Category,
+		DistanceMeters: int(math.Round(geo.HaversineKm(lat, lng, raw.Lat, raw.Lng) * 1000)),
+	}
 }
 
 // AutocompletePlaces is never cached: it depends on live input text plus a
