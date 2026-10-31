@@ -11,6 +11,7 @@ type SearchShopsQuery struct {
 	Latitude  float64 `query:"lat" validate:"required,latitude"`
 	Longitude float64 `query:"lon" validate:"required,longitude"`
 	Type      string  `query:"type" validate:"omitempty,oneof=Restaurant Supermarket Turbo"`
+	Specialty string  `query:"specialty" validate:"omitempty,oneof=General Panadería Carnicería Charcutería Frutería Licorería Pizzería 'Comida Rápida' 'Comida China' Heladería Cafetería"`
 }
 
 func (q *SearchShopsQuery) Validate() error {

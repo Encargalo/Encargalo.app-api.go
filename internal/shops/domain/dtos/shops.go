@@ -16,6 +16,7 @@ type ShopResponse struct {
 	Banner        string    `json:"banner"`
 	Opened        bool      `json:"opened"`
 	Type          string    `json:"type"`
+	Specialty     string    `json:"specialty"`
 	Score         float64   `json:"score"`
 	DeliveryFee   float64   `json:"delivery_fee"`
 	DeliveryFeeBs float64   `json:"delivery_fee_bs"`

@@ -42,6 +42,7 @@ type StaffShopResponse struct {
 	LogoImage   string            `json:"logo_image,omitempty"`
 	Banner      string            `json:"banner,omitempty"`
 	Type        string            `json:"type"`
+	Specialty   string            `json:"specialty"`
 	Status      string            `json:"status"`
 	Opened      bool              `json:"opened"`
 	ActivatedAt *string           `json:"activated_at,omitempty"`
@@ -54,9 +55,10 @@ type StaffShopResponse struct {
 // existir como cuenta (se resuelve por OwnerID, obtenido vía el endpoint de
 // candidatos) y gana el rol Owner sobre este shop como parte de la creación.
 type CreateDraftShopRequest struct {
-	Name    string    `json:"name" validate:"required" example:"Pizzería Don Luigi"`
-	Type    string    `json:"type" validate:"required,oneof=Restaurant Supermarket Turbo" example:"Restaurant"`
-	OwnerID uuid.UUID `json:"owner_id" validate:"required" example:"d33aaf08-2c43-41c4-b2e7-882b019edb1e"`
+	Name      string    `json:"name" validate:"required" example:"Pizzería Don Luigi"`
+	Type      string    `json:"type" validate:"required,oneof=Restaurant Supermarket Turbo" example:"Restaurant"`
+	Specialty string    `json:"specialty" validate:"omitempty,oneof=General Panadería Carnicería Charcutería Frutería Licorería Pizzería 'Comida Rápida' 'Comida China' Heladería Cafetería" example:"Pizzería"`
+	OwnerID   uuid.UUID `json:"owner_id" validate:"required" example:"d33aaf08-2c43-41c4-b2e7-882b019edb1e"`
 }
 
 func (r *CreateDraftShopRequest) Validate() error {
@@ -73,10 +75,15 @@ type UpdateDraftShopRequest struct {
 	Slug      *string                    `json:"slug"`
 	Address   *string                    `json:"address"`
 	HomePhone *string                    `json:"home_phone"`
+	Specialty *string                    `json:"specialty" validate:"omitempty,oneof=General Panadería Carnicería Charcutería Frutería Licorería Pizzería 'Comida Rápida' 'Comida China' Heladería Cafetería" example:"Panadería"`
 	Latitude  jsonutil.Nullable[float64] `json:"latitude" swaggertype:"number"`
 	Longitude jsonutil.Nullable[float64] `json:"longitude" swaggertype:"number"`
 	LogoImage jsonutil.Nullable[string]  `json:"logo_image" swaggertype:"string" example:"data:image/jpeg;base64,/9j/4AAQSkZJRg..."`
 	Banner    jsonutil.Nullable[string]  `json:"banner" swaggertype:"string" example:"data:image/jpeg;base64,/9j/4AAQSkZJRg..."`
+}
+
+func (r *UpdateDraftShopRequest) Validate() error {
+	return staffShopValidate.StructCtx(context.Background(), r)
 }
 
 // StaffShopsResponse es la respuesta paginada de GET /shops/staff.

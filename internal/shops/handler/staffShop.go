@@ -173,6 +173,9 @@ func (h *staffShopHandler) UpdateDraftShop(c echo.Context) error {
 	if err := c.Bind(&body); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "payload inválido")
 	}
+	if err := body.Validate(); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
 	resp, err := h.svc.UpdateDraftShop(c.Request().Context(), shopID, body)
 	if err != nil {
 		return errcustom.ToHTTPError(err)

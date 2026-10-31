@@ -74,6 +74,9 @@ func (s *shopsRepo) GetAllShops(ctx context.Context, query shopsDTO.ListShopsQue
 	if query.Type != "" {
 		keyCache += ":type:" + query.Type
 	}
+	if query.Specialty != "" {
+		keyCache += ":specialty:" + query.Specialty
+	}
 
 	cacheTTL := 2 * time.Minute
 
@@ -103,6 +106,9 @@ func (s *shopsRepo) GetAllShops(ctx context.Context, query shopsDTO.ListShopsQue
 	if query.Type == "" {
 		// Sin type, el feed general excluye Turbo: se descubre vía /turbo/entry.
 		q = q.Where("type != ?", turboType)
+	}
+	if query.Specialty != "" {
+		q = q.Where("specialty = ?", query.Specialty)
 	}
 
 	coords := query.Coords()
@@ -350,6 +356,9 @@ func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.Sea
 	if query.Type != "" {
 		keyCache += ":type:" + query.Type
 	}
+	if query.Specialty != "" {
+		keyCache += ":specialty:" + query.Specialty
+	}
 	cacheTTL := 2 * time.Minute
 
 	if cached, err := s.cache.Get(ctx, keyCache); err == nil && cached != "" {
@@ -378,11 +387,16 @@ func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.Sea
 		typeFilter = " AND s.type != ?"
 		args = append(args, shops.ShopTypeTurbo)
 	}
+	specialtyFilter := ""
+	if query.Specialty != "" {
+		specialtyFilter = " AND s.specialty = ?"
+		args = append(args, query.Specialty)
+	}
 
 	rawSQL := `
 		SELECT
 			s.id, s.name, s.slug, s.address, s.latitude, s.longitude,
-			s.home_phone, s.logo_image, s.banner, s.opened, s.type,
+			s.home_phone, s.logo_image, s.banner, s.opened, s.type, s.specialty,
 			s.score,
 			(
 				to_tsvector('spanish', s.name) @@ plainto_tsquery('spanish', ?)
@@ -414,7 +428,7 @@ func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.Sea
 						OR mc.name ILIKE '%' || ? || '%'
 					)
 			  )
-		  )` + typeFilter + `
+		  )` + typeFilter + specialtyFilter + `
 		ORDER BY s.score DESC
 	`
 
@@ -440,6 +454,7 @@ func (s *shopsRepo) SearchShopCandidates(ctx context.Context, query shopsDTO.Sea
 			Banner:    row.Banner,
 			Opened:    row.Opened,
 			Type:      row.Type,
+			Specialty: row.Specialty,
 			Score:     row.Score,
 			Latitude:  row.Latitude,
 			Longitude: row.Longitude,

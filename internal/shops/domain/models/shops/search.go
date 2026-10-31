@@ -14,6 +14,7 @@ type SearchShopRow struct {
 	Banner        string    `bun:"banner"`
 	Opened        bool      `bun:"opened"`
 	Type          string    `bun:"type"`
+	Specialty     *string   `bun:"specialty"`
 	Score         float64   `bun:"score"`
 	MatchedByName bool      `bun:"matched_by_name"`
 }

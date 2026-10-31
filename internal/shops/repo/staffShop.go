@@ -140,7 +140,7 @@ func (r *staffShopRepo) ListShopsByStatus(ctx context.Context, status shopsmodel
 func (r *staffShopRepo) UpdateDraftShop(ctx context.Context, shop *shopsmodels.Shop) error {
 	_, err := r.db.NewUpdate().
 		Model(shop).
-		Column("name", "slug", "address", "home_phone", "latitude", "longitude", "h3_cell", "logo_image", "banner").
+		Column("name", "slug", "address", "home_phone", "specialty", "latitude", "longitude", "h3_cell", "logo_image", "banner").
 		Set("updated_at = now()").
 		WherePK().
 		Exec(ctx)
