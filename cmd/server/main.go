@@ -84,6 +84,7 @@ func run() error {
 		pendingWorker *appOrders.PendingAcceptWorker,
 		paymentProofAlertWorker *appOrders.PaymentProofAlertWorker,
 		tripPaymentProofAlertWorker *appTrips.TripPaymentProofAlertWorker,
+		shipmentPaymentProofAlertWorker *appShipments.ShipmentPaymentProofAlertWorker,
 		batchCloseWorker *appShops.BatchCloseWorker,
 		refundHub *appCustomer.StaffRefundHubImpl,
 		finance usersPorts.CustomerFinanceApp,
@@ -112,6 +113,7 @@ func run() error {
 		pendingWorker.Start(context.Background())
 		paymentProofAlertWorker.Start(context.Background())
 		tripPaymentProofAlertWorker.Start(context.Background())
+		shipmentPaymentProofAlertWorker.Start(context.Background())
 		batchCloseWorker.Start(context.Background())
 		refundAlertWorker.Start(context.Background())
 		accountDeletionWorker.Start(context.Background())

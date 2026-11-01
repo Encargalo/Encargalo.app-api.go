@@ -200,6 +200,7 @@ func BuildContainer() *dig.Container {
 	})
 	_ = Container.Provide(appShipments.NewShipmentPaymentSubject)
 	_ = Container.Provide(appShipments.NewShipmentStaffSnapshot)
+	_ = Container.Provide(appShipments.NewShipmentPaymentProofAlertWorker)
 	_ = Container.Provide(repoShipments.NewShipmentsRepo)
 	_ = Container.Provide(repoShipments.NewShipmentQuotesRepo)
 	_ = Container.Provide(repoShipments.NewFareQuotesRepo)

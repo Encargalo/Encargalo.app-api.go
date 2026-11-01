@@ -58,14 +58,21 @@ func (r *appRidersManager) OfferShipment(ctx context.Context, shipment shipments
 
 	r.mu.RLock()
 	clients := make([]ridersPorts.RiderConn, 0, len(r.availableRiders))
+	riderIDs := make([]uuid.UUID, 0, len(r.availableRiders))
+	seen := make(map[uuid.UUID]struct{}, len(r.availableRiders))
 	for riderID, c := range r.availableRiders {
 		if r.riderMode[riderID] == riderModels.RiderModeTrips {
 			continue
 		}
 		if _, paused := r.pausedRiders[riderID]; paused {
+			// Pausado pero conectado: no recibe el broadcast, y tampoco el
+			// fallback de push por última ubicación conocida más abajo.
+			seen[riderID] = struct{}{}
 			continue
 		}
 		clients = append(clients, c)
+		riderIDs = append(riderIDs, riderID)
+		seen[riderID] = struct{}{}
 	}
 	r.mu.RUnlock()
 
@@ -73,7 +80,44 @@ func (r *appRidersManager) OfferShipment(ctx context.Context, shipment shipments
 		c.Send(data)
 	}
 
+	r.pushNewShipment(shipment, riderIDs, seen)
 	r.scheduleShipmentOfferTimeout(ctx, shipment.ID)
+}
+
+// pushNewShipment manda el push a los riders conectados en modo orders (mismo
+// pool que ya recibe el new_shipment por WS) más el respaldo de última
+// ubicación conocida alrededor del punto de recogida, para riders sin
+// presencia viva — igual que pushNewOrder, sin filtro de vehículo (ver
+// OfferShipment: cualquiera lleva <5kg).
+func (r *appRidersManager) pushNewShipment(shipment shipmentsModels.Shipment, riderIDs []uuid.UUID, exclude map[uuid.UUID]struct{}) {
+	if r.push == nil {
+		return
+	}
+	go func() {
+		if r.lastKnown != nil {
+			queryCtx, cancel := context.WithTimeout(context.Background(), lastKnownLocationTimeout)
+			entries, err := r.lastKnown.SearchNearby(queryCtx, riderModels.LastKnownLocationQuery{
+				Latitude:  shipment.PickupLatitude,
+				Longitude: shipment.PickupLongitude,
+				RadiusKm:  offlineOrderFallbackRadiusKm,
+				Mode:      riderModels.RiderModeOrders,
+				MaxAge:    riderModels.LastKnownLocationMaxAge,
+				Exclude:   exclude,
+			})
+			cancel()
+			if err != nil {
+				slog.Error("error buscando riders por última ubicación conocida para new_shipment", "shipmentID", shipment.ID, "error", err)
+			} else {
+				for _, e := range entries {
+					riderIDs = append(riderIDs, e.RiderID)
+				}
+			}
+		}
+		if len(riderIDs) == 0 {
+			return
+		}
+		r.push.NotifyNewShipment(context.Background(), riderIDs, shipment)
+	}()
 }
 
 func (r *appRidersManager) scheduleShipmentOfferTimeout(ctx context.Context, shipmentID uuid.UUID) {
@@ -163,6 +207,18 @@ func (r *appRidersManager) AcceptShipment(ctx context.Context, riderID, shipment
 	conn.Send(accepted)
 	r.notifyShipmentCustomer(ctx, shipment)
 
+	r.mu.Lock()
+	r.assignedShipments[riderID] = append(r.assignedShipments[riderID], shipmentID)
+	r.shipmentCustomer[shipmentID] = shipment.CustomerID
+	loc, hasLoc := r.riderLocation[riderID]
+	notifier := r.customersShipment
+	r.mu.Unlock()
+
+	// El pin del rider aparece en el cliente apenas acepta, igual que en AcceptOrder.
+	if hasLoc && notifier != nil {
+		notifier.NotifyRiderLocation(ctx, shipment.CustomerID, shipmentID, loc.Latitude, loc.Longitude)
+	}
+
 	return nil
 }
 
@@ -244,6 +300,10 @@ func (r *appRidersManager) completeShipment(ctx context.Context, shipment *shipm
 	conn.Send(data)
 	r.notifyShipmentCustomer(ctx, delivered)
 
+	r.mu.Lock()
+	r.forgetShipmentLocked(shipment.ID)
+	r.mu.Unlock()
+
 	if earnErr := r.shipmentEarnings.RecordShipmentEarning(ctx, riderID, shipment.ID, fare, r.bcvRate(ctx)); earnErr != nil {
 		slog.Error("error recording shipment earning", "shipmentID", shipment.ID, "riderID", riderID, "error", earnErr)
 	}
@@ -300,6 +360,10 @@ func (r *appRidersManager) CancelAcceptedShipment(ctx context.Context, riderID, 
 	conn.Send(released)
 	r.notifyShipmentCustomer(ctx, shipment)
 
+	r.mu.Lock()
+	r.forgetShipmentLocked(shipment.ID)
+	r.mu.Unlock()
+
 	r.OfferShipment(ctx, *shipment)
 	return nil
 }
@@ -310,9 +374,16 @@ func (r *appRidersManager) NotifyShipmentCancelled(ctx context.Context, shipment
 	if err := r.shipmentOfferTimeouts.Cancel(ctx, shipment.ID); err != nil {
 		slog.Error("error cancelling shipment offer timeout", "shipmentID", shipment.ID, "error", err)
 	}
+
+	r.mu.Lock()
+	r.forgetShipmentLocked(shipment.ID)
+	r.mu.Unlock()
+
 	if shipment.RiderID == nil {
 		return
 	}
+
+	r.pushShipmentCancelled(shipment, *shipment.RiderID)
 
 	r.mu.RLock()
 	conn, ok := r.availableRiders[*shipment.RiderID]
@@ -326,6 +397,15 @@ func (r *appRidersManager) NotifyShipmentCancelled(ctx context.Context, shipment
 		return
 	}
 	conn.Send(payload)
+}
+
+// pushShipmentCancelled corre en su propia goroutine por la misma razón que
+// pushOrderCancelled: no puede agregar latencia al camino síncrono de la cancelación.
+func (r *appRidersManager) pushShipmentCancelled(shipment shipmentsModels.Shipment, riderID uuid.UUID) {
+	if r.push == nil {
+		return
+	}
+	go r.push.NotifyShipmentCancelled(context.Background(), []uuid.UUID{riderID}, shipment)
 }
 
 func (r *appRidersManager) notifyShipmentCustomer(ctx context.Context, shipment *shipmentsModels.Shipment) {

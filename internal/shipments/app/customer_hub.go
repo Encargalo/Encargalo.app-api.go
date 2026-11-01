@@ -62,6 +62,26 @@ func (h *CustomerShipmentHub) NotifyShipment(ctx context.Context, shipment model
 	h.sendShipment(ctx, conn, &shipment)
 }
 
+func (h *CustomerShipmentHub) NotifyRiderLocation(_ context.Context, customerID, shipmentID uuid.UUID, lat, lng float64) {
+	h.mu.RLock()
+	conn := h.conns[customerID]
+	h.mu.RUnlock()
+	if conn == nil {
+		return
+	}
+	payload, err := json.Marshal(map[string]any{
+		"type":        "rider_location",
+		"shipment_id": shipmentID,
+		"latitude":    lat,
+		"longitude":   lng,
+	})
+	if err != nil {
+		slog.Error("customer shipment hub marshal rider_location", "error", err)
+		return
+	}
+	conn.Send(payload)
+}
+
 func (h *CustomerShipmentHub) sendShipment(ctx context.Context, conn ports.CustomerConn, shipment *models.Shipment) {
 	resp := shipment.ToCustomerDTO()
 	if shipment.RiderID != nil && h.riders != nil {

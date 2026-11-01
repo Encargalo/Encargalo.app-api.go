@@ -62,6 +62,9 @@ type CustomerConn interface {
 // CustomerShipmentNotifier empuja cambios de estado al cliente conectado.
 type CustomerShipmentNotifier interface {
 	NotifyShipment(ctx context.Context, shipment models.Shipment)
+	// NotifyRiderLocation empuja la ubicación en vivo del rider asignado, igual
+	// que CustomerTripHub.NotifyRiderLocation para viajes.
+	NotifyRiderLocation(ctx context.Context, customerID, shipmentID uuid.UUID, lat, lng float64)
 }
 
 // CustomerShipmentLive es el lado de conexión del mismo hub.

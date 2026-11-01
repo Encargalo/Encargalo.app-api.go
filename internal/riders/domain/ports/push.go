@@ -4,6 +4,7 @@ import (
 	"context"
 
 	ordersModels "Encargalo.app-api.go/internal/orders/domain/models"
+	shipmentsModels "Encargalo.app-api.go/internal/shipments/domain/models"
 	tripsModels "Encargalo.app-api.go/internal/trips/domain/models"
 	"github.com/google/uuid"
 )
@@ -25,4 +26,9 @@ type PushNotifier interface {
 	// pedidos: al rider ya asignado a quien la tienda rechaza o el cliente
 	// cancela, no solo al que seguía ofreciéndosela.
 	NotifyOrderCancelled(ctx context.Context, riderIDs []uuid.UUID, order ordersModels.Order)
+	// NotifyNewShipment es el mismo caso que NotifyNewOrder pero para envíos.
+	NotifyNewShipment(ctx context.Context, riderIDs []uuid.UUID, shipment shipmentsModels.Shipment)
+	// NotifyShipmentCancelled es el mismo caso que NotifyOrderCancelled pero
+	// para envíos: al rider ya asignado a quien el cliente le cancela.
+	NotifyShipmentCancelled(ctx context.Context, riderIDs []uuid.UUID, shipment shipmentsModels.Shipment)
 }

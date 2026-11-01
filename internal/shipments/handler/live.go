@@ -17,6 +17,7 @@ import (
 // ### Mensajes salientes
 //   - `{"type":"connected"}`
 //   - `{"type":"shipment_update","shipment":{...}}` — incluye pickup_code y dropoff_code siempre, y rider público si ya hay conductor. En cancelled y no_driver trae cancel_reason y, si hubo revisión de pago, el bloque payment
+//   - `{"type":"rider_location","shipment_id":"<uuid>","latitude":0,"longitude":0}` — posición del rider asignado
 //
 // @Tags         Shipments
 // @Security     SessionCookie

@@ -106,6 +106,8 @@ type appRidersManager struct {
 	shipmentOfferTimeouts ridersPorts.ShipmentOfferTimeoutStore
 	shipmentEarnings      ridersPorts.ShipmentEarningRecorder
 	customersShipment     shipmentsPorts.CustomerShipmentNotifier
+	assignedShipments     map[uuid.UUID][]uuid.UUID // riderID → []shipmentID
+	shipmentCustomer      map[uuid.UUID]uuid.UUID   // shipmentID → customerID, para avisarle la ubicación del rider
 }
 
 type riderAssignment struct {
@@ -149,6 +151,8 @@ func New(repo ridersPorts.RidersRepo, stream ridersPorts.RidersStream, bcv bcvPo
 		shipmentOfferTimeouts: shipmentOfferTimeouts,
 		shipmentEarnings:      shipmentEarnings,
 		customersShipment:     customersShipment,
+		assignedShipments:     make(map[uuid.UUID][]uuid.UUID),
+		shipmentCustomer:      make(map[uuid.UUID]uuid.UUID),
 	}
 }
 
@@ -279,6 +283,16 @@ func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn
 		if err != nil && !errors.Is(err, errcustom.ErrNotFound) {
 			return err
 		}
+
+		r.mu.Lock()
+		shipmentIDs := make([]uuid.UUID, 0, len(activeShipments))
+		for _, shipment := range activeShipments {
+			shipmentIDs = append(shipmentIDs, shipment.ID)
+			r.shipmentCustomer[shipment.ID] = shipment.CustomerID
+		}
+		r.assignedShipments[riderID] = append(r.assignedShipments[riderID], shipmentIDs...)
+		r.mu.Unlock()
+
 		for _, shipment := range activeShipments {
 			data, _ := json.Marshal(shipmentBroadcast{Type: "shipment_status", Shipment: riderShipmentOfferDTO(&shipment)})
 			conn.Send(data)
@@ -536,6 +550,7 @@ func (r *appRidersManager) applyLocationUpdate(ctx context.Context, riderID uuid
 		r.customers.NotifyRiderLocation(ctx, assignment.customerID, assignment.tripID, lat, lng)
 	}
 	r.notifyOrderLocations(ctx, riderID, lat, lng, time.Now())
+	r.notifyShipmentLocations(ctx, riderID, lat, lng)
 	if inTripsMode && (!hadLocation || prev.H3Cell != cell) {
 		r.offerOpenTripsToRider(ctx, riderID, cell)
 	}
@@ -569,6 +584,44 @@ func (r *appRidersManager) notifyOrderLocations(ctx context.Context, riderID uui
 	}
 	for orderID, customerID := range targets {
 		notifier.NotifyRiderOrderLocation(ctx, customerID, orderID, lat, lng, at)
+	}
+}
+
+// notifyShipmentLocations envía la ubicación del rider al cliente de cada
+// envío que tiene asignado, igual que notifyOrderLocations para pedidos.
+func (r *appRidersManager) notifyShipmentLocations(ctx context.Context, riderID uuid.UUID, lat, lng float64) {
+	r.mu.RLock()
+	notifier := r.customersShipment
+	targets := make(map[uuid.UUID]uuid.UUID, len(r.assignedShipments[riderID]))
+	for _, shipmentID := range r.assignedShipments[riderID] {
+		if customerID, ok := r.shipmentCustomer[shipmentID]; ok {
+			targets[shipmentID] = customerID
+		}
+	}
+	r.mu.RUnlock()
+
+	if notifier == nil {
+		return
+	}
+	for shipmentID, customerID := range targets {
+		notifier.NotifyRiderLocation(ctx, customerID, shipmentID, lat, lng)
+	}
+}
+
+// forgetShipmentLocked saca un envío terminado de assignedShipments y
+// shipmentCustomer. Debe llamarse con r.mu tomado para escritura.
+func (r *appRidersManager) forgetShipmentLocked(shipmentID uuid.UUID) {
+	delete(r.shipmentCustomer, shipmentID)
+	for riderID, ids := range r.assignedShipments {
+		if !slices.Contains(ids, shipmentID) {
+			continue
+		}
+		ids = slices.DeleteFunc(slices.Clone(ids), func(id uuid.UUID) bool { return id == shipmentID })
+		if len(ids) == 0 {
+			delete(r.assignedShipments, riderID)
+		} else {
+			r.assignedShipments[riderID] = ids
+		}
 	}
 }
 

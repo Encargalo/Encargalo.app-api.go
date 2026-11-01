@@ -5,10 +5,12 @@ package mocks
 import (
 	context "context"
 
-	domainmodels "Encargalo.app-api.go/internal/trips/domain/models"
+	domainmodels "Encargalo.app-api.go/internal/shipments/domain/models"
 	mock "github.com/stretchr/testify/mock"
 
 	models "Encargalo.app-api.go/internal/orders/domain/models"
+
+	tripsdomainmodels "Encargalo.app-api.go/internal/trips/domain/models"
 
 	uuid "github.com/google/uuid"
 )
@@ -23,18 +25,28 @@ func (_m *PushNotifier) NotifyNewOrder(ctx context.Context, riderIDs []uuid.UUID
 	_m.Called(ctx, riderIDs, order)
 }
 
+// NotifyNewShipment provides a mock function with given fields: ctx, riderIDs, shipment
+func (_m *PushNotifier) NotifyNewShipment(ctx context.Context, riderIDs []uuid.UUID, shipment domainmodels.Shipment) {
+	_m.Called(ctx, riderIDs, shipment)
+}
+
 // NotifyOrderCancelled provides a mock function with given fields: ctx, riderIDs, order
 func (_m *PushNotifier) NotifyOrderCancelled(ctx context.Context, riderIDs []uuid.UUID, order models.Order) {
 	_m.Called(ctx, riderIDs, order)
 }
 
+// NotifyShipmentCancelled provides a mock function with given fields: ctx, riderIDs, shipment
+func (_m *PushNotifier) NotifyShipmentCancelled(ctx context.Context, riderIDs []uuid.UUID, shipment domainmodels.Shipment) {
+	_m.Called(ctx, riderIDs, shipment)
+}
+
 // NotifyTripCancelled provides a mock function with given fields: ctx, riderIDs, trip
-func (_m *PushNotifier) NotifyTripCancelled(ctx context.Context, riderIDs []uuid.UUID, trip domainmodels.Trip) {
+func (_m *PushNotifier) NotifyTripCancelled(ctx context.Context, riderIDs []uuid.UUID, trip tripsdomainmodels.Trip) {
 	_m.Called(ctx, riderIDs, trip)
 }
 
 // NotifyTripOffer provides a mock function with given fields: ctx, riderIDs, trip
-func (_m *PushNotifier) NotifyTripOffer(ctx context.Context, riderIDs []uuid.UUID, trip domainmodels.Trip) {
+func (_m *PushNotifier) NotifyTripOffer(ctx context.Context, riderIDs []uuid.UUID, trip tripsdomainmodels.Trip) {
 	_m.Called(ctx, riderIDs, trip)
 }
 
