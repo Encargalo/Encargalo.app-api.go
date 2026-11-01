@@ -1768,6 +1768,13 @@ definitions:
         example: Una torta de cumpleaños
         maxLength: 500
         type: string
+      package_photo:
+        description: |-
+          PackagePhoto es opcional: una foto de lo que se envía, para que el rider
+          reconozca el paquete. A diferencia de payment_proof_image, nunca es obligatoria.
+        example: data:image/jpeg;base64,/9j/4AAQ...
+        maxLength: 7000000
+        type: string
       payment_proof_image:
         example: data:image/jpeg;base64,/9j/4AAQ...
         maxLength: 7000000
@@ -1929,6 +1936,8 @@ definitions:
       method_payment:
         type: string
       package_description:
+        type: string
+      package_photo_url:
         type: string
       payment:
         $ref: '#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentPayment'
@@ -6913,7 +6922,10 @@ paths:
         nace en searching) — sin efectivo. sender/recipient indican quién retira y
         quién recibe el paquete: is_customer=true usa los datos de la cuenta; is_customer=false
         exige name y phone de un tercero. id (UUID, opcional) es la llave de idempotencia:
-        un reintento con el mismo id devuelve el envío ya creado sin volver a cobrar.'
+        un reintento con el mismo id devuelve el envío ya creado sin volver a cobrar.
+        package_photo es opcional: una foto de lo que se envía, para que el rider
+        lo reconozca; se sube igual que payment_proof_image y queda en package_photo_url,
+        visible para el cliente y para el rider.'
       parameters:
       - description: quote_id, method_payment (PagoMovil o Balance), sender, recipient
           y package_description

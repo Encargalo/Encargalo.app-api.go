@@ -32,7 +32,7 @@ func NewShipmentsHandler(svc ports.ShipmentsApp, live ports.CustomerShipmentLive
 
 // RequestShipment godoc
 // @Summary      Solicitar un envío
-// @Description  Crea un envío de paquete (<5kg) a partir de una cotización vigente, con la misma tarifa que un viaje de pasajeros. method_payment solo acepta PagoMovil (comprobante, nace en payment_review) o Balance (debita la tarifa, nace en searching) — sin efectivo. sender/recipient indican quién retira y quién recibe el paquete: is_customer=true usa los datos de la cuenta; is_customer=false exige name y phone de un tercero. id (UUID, opcional) es la llave de idempotencia: un reintento con el mismo id devuelve el envío ya creado sin volver a cobrar.
+// @Description  Crea un envío de paquete (<5kg) a partir de una cotización vigente, con la misma tarifa que un viaje de pasajeros. method_payment solo acepta PagoMovil (comprobante, nace en payment_review) o Balance (debita la tarifa, nace en searching) — sin efectivo. sender/recipient indican quién retira y quién recibe el paquete: is_customer=true usa los datos de la cuenta; is_customer=false exige name y phone de un tercero. id (UUID, opcional) es la llave de idempotencia: un reintento con el mismo id devuelve el envío ya creado sin volver a cobrar. package_photo es opcional: una foto de lo que se envía, para que el rider lo reconozca; se sube igual que payment_proof_image y queda en package_photo_url, visible para el cliente y para el rider.
 // @Tags         Shipments
 // @Accept       json
 // @Produce      json

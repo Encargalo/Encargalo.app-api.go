@@ -82,6 +82,8 @@ type Shipment struct {
 	RecipientPhone      string `bun:"recipient_phone,notnull"`
 
 	PackageDescription string `bun:"package_description,notnull"`
+	// PackagePhotoURL es opcional: foto de lo que se envía, para que el rider reconozca el paquete.
+	PackagePhotoURL *string `bun:"package_photo_url"`
 
 	Fare *float64 `bun:"fare"`
 	// MethodPayment: PagoMovil o Balance. Sin Efectivo.
@@ -151,6 +153,7 @@ func (s *Shipment) ToDTO() dtos.ShipmentResponse {
 		Sender:             dtos.ShipmentContact{IsCustomer: s.SenderIsCustomer, Name: s.SenderName, Phone: s.SenderPhone},
 		Recipient:          dtos.ShipmentContact{IsCustomer: s.RecipientIsCustomer, Name: s.RecipientName, Phone: s.RecipientPhone},
 		PackageDescription: s.PackageDescription,
+		PackagePhotoURL:    s.PackagePhotoURL,
 		FareUSD:            s.Fare,
 		FareBs:             s.FareBs,
 		MethodPayment:      s.MethodPayment,

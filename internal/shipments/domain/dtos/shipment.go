@@ -31,6 +31,9 @@ type CreateShipmentRequest struct {
 	Recipient         ShipmentContact `json:"recipient" validate:"required"`
 	// PackageDescription es lo que se envía, en texto libre (ej. "una torta").
 	PackageDescription string `json:"package_description" validate:"required,max=500" example:"Una torta de cumpleaños"`
+	// PackagePhoto es opcional: una foto de lo que se envía, para que el rider
+	// reconozca el paquete. A diferencia de payment_proof_image, nunca es obligatoria.
+	PackagePhoto string `json:"package_photo,omitempty" validate:"omitempty,max=7000000" example:"data:image/jpeg;base64,/9j/4AAQ..."`
 }
 
 func (r *CreateShipmentRequest) Validate() error {
@@ -86,6 +89,7 @@ type ShipmentResponse struct {
 	Sender             ShipmentContact  `json:"sender"`
 	Recipient          ShipmentContact  `json:"recipient"`
 	PackageDescription string           `json:"package_description"`
+	PackagePhotoURL    *string          `json:"package_photo_url,omitempty"`
 	FareUSD            *float64         `json:"fare_usd,omitempty"`
 	FareBs             *float64         `json:"fare_bs,omitempty"`
 	MethodPayment      string           `json:"method_payment,omitempty"`

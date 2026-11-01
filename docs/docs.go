@@ -5325,7 +5325,7 @@ const docTemplate = `{
                         "SessionCookie": []
                     }
                 ],
-                "description": "Crea un envío de paquete (\u003c5kg) a partir de una cotización vigente, con la misma tarifa que un viaje de pasajeros. method_payment solo acepta PagoMovil (comprobante, nace en payment_review) o Balance (debita la tarifa, nace en searching) — sin efectivo. sender/recipient indican quién retira y quién recibe el paquete: is_customer=true usa los datos de la cuenta; is_customer=false exige name y phone de un tercero. id (UUID, opcional) es la llave de idempotencia: un reintento con el mismo id devuelve el envío ya creado sin volver a cobrar.",
+                "description": "Crea un envío de paquete (\u003c5kg) a partir de una cotización vigente, con la misma tarifa que un viaje de pasajeros. method_payment solo acepta PagoMovil (comprobante, nace en payment_review) o Balance (debita la tarifa, nace en searching) — sin efectivo. sender/recipient indican quién retira y quién recibe el paquete: is_customer=true usa los datos de la cuenta; is_customer=false exige name y phone de un tercero. id (UUID, opcional) es la llave de idempotencia: un reintento con el mismo id devuelve el envío ya creado sin volver a cobrar. package_photo es opcional: una foto de lo que se envía, para que el rider lo reconozca; se sube igual que payment_proof_image y queda en package_photo_url, visible para el cliente y para el rider.",
                 "consumes": [
                     "application/json"
                 ],
@@ -11931,6 +11931,12 @@ const docTemplate = `{
                     "maxLength": 500,
                     "example": "Una torta de cumpleaños"
                 },
+                "package_photo": {
+                    "description": "PackagePhoto es opcional: una foto de lo que se envía, para que el rider\nreconozca el paquete. A diferencia de payment_proof_image, nunca es obligatoria.",
+                    "type": "string",
+                    "maxLength": 7000000,
+                    "example": "data:image/jpeg;base64,/9j/4AAQ..."
+                },
                 "payment_proof_image": {
                     "type": "string",
                     "maxLength": 7000000,
@@ -12150,6 +12156,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "package_description": {
+                    "type": "string"
+                },
+                "package_photo_url": {
                     "type": "string"
                 },
                 "payment": {

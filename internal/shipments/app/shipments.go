@@ -255,6 +255,10 @@ func (a *shipmentsApp) buildShipment(ctx context.Context, customerID uuid.UUID, 
 	if err != nil {
 		return nil, errcustom.Unexpected(err)
 	}
+	packagePhotoURL, err := a.uploadPackagePhoto(ctx, req.PackagePhoto)
+	if err != nil {
+		return nil, err
+	}
 
 	fare := quote.FareUSD
 	rate := quote.BcvRate
@@ -278,6 +282,7 @@ func (a *shipmentsApp) buildShipment(ctx context.Context, customerID uuid.UUID, 
 		RecipientName:       recipientName,
 		RecipientPhone:      recipientPhone,
 		PackageDescription:  req.PackageDescription,
+		PackagePhotoURL:     packagePhotoURL,
 		Fare:                &fare,
 		BcvRate:             &rate,
 		PickupCode:          pickupCode,
@@ -290,6 +295,19 @@ func (a *shipmentsApp) buildShipment(ctx context.Context, customerID uuid.UUID, 
 		shipment.DropoffH3CellZone = &cell
 	}
 	return shipment, nil
+}
+
+// uploadPackagePhoto es opcional, a diferencia de payment_proof_image: una
+// cadena vacía no es un error, simplemente no hay foto que subir.
+func (a *shipmentsApp) uploadPackagePhoto(ctx context.Context, packagePhoto string) (*string, error) {
+	if strings.TrimSpace(packagePhoto) == "" {
+		return nil, nil
+	}
+	upload, err := a.upload.UploadImage(ctx, packagePhoto)
+	if err != nil || upload == nil || upload.SecureURL == "" {
+		return nil, errcustom.ErrUploadingImage
+	}
+	return &upload.SecureURL, nil
 }
 
 // resolveContact completa Name/Phone desde la cuenta del cliente cuando
