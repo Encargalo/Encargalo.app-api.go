@@ -93,6 +93,10 @@ import (
 	shipmentsPorts "Encargalo.app-api.go/internal/shipments/domain/ports"
 	handShipments "Encargalo.app-api.go/internal/shipments/handler"
 	repoShipments "Encargalo.app-api.go/internal/shipments/repo"
+
+	appHistory "Encargalo.app-api.go/internal/history/app"
+	historyPorts "Encargalo.app-api.go/internal/history/domain/ports"
+	handHistory "Encargalo.app-api.go/internal/history/handler"
 )
 
 var Container *dig.Container
@@ -161,6 +165,7 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(groups.NewTripsGroup)
 	_ = Container.Provide(groups.NewBannersGroup)
 	_ = Container.Provide(groups.NewShipmentsGroup)
+	_ = Container.Provide(groups.NewHistoryGroup)
 	_ = Container.Provide(handPayment.NewPaymentMethodsHandler)
 	_ = Container.Provide(appPayment.NewPaymentMethodsApp)
 	_ = Container.Provide(repoPayment.NewPaymentMethodsRepo)
@@ -205,6 +210,18 @@ func BuildContainer() *dig.Container {
 	_ = Container.Provide(repoShipments.NewShipmentQuotesRepo)
 	_ = Container.Provide(repoShipments.NewFareQuotesRepo)
 	_ = Container.Provide(repoShipments.NewCustomerContactLookup)
+
+	_ = Container.Provide(handHistory.NewHistoryHandler)
+	_ = Container.Provide(appHistory.NewHistoryApp)
+	_ = Container.Provide(func(a ordersPorts.OrdersApp) historyPorts.OrdersHistoryProvider {
+		return a
+	})
+	_ = Container.Provide(func(a tripsPorts.TripsApp) historyPorts.TripsHistoryProvider {
+		return a
+	})
+	_ = Container.Provide(func(a shipmentsPorts.ShipmentsApp) historyPorts.ShipmentsHistoryProvider {
+		return a
+	})
 
 	_ = Container.Provide(handBanners.NewBannersHandler)
 	_ = Container.Provide(handBanners.NewStaffBannersHandler)

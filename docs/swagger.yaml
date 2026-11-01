@@ -229,6 +229,29 @@ definitions:
       total:
         type: integer
     type: object
+  Encargalo_app-api_go_internal_history_domain_dtos.HistoryItem:
+    properties:
+      created_at:
+        type: string
+      order:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.OrderHistoryItem'
+      shipment:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentResponse'
+      trip:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.TripResponse'
+      type:
+        $ref: '#/definitions/Encargalo_app-api_go_internal_history_domain_dtos.HistoryItemType'
+    type: object
+  Encargalo_app-api_go_internal_history_domain_dtos.HistoryItemType:
+    enum:
+    - order
+    - trip
+    - shipment
+    type: string
+    x-enum-varnames:
+    - HistoryItemOrder
+    - HistoryItemTrip
+    - HistoryItemShipment
   Encargalo_app-api_go_internal_maps_domain_models.AddressComponent:
     properties:
       long_name:
@@ -4868,6 +4891,31 @@ paths:
       summary: Historial de movimientos del local
       tags:
       - Shops Finance
+  /history:
+    get:
+      description: Devuelve en un solo listado las órdenes, viajes y envíos del customer
+        autenticado, ordenados de más reciente a más antiguo. Cada item trae "type"
+        ("order", "trip" o "shipment") y solo el campo correspondiente a ese tipo,
+        con el mismo shape que su endpoint de historial individual (/orders/history,
+        /trips/history, /shipments/history).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Historial combinado
+          schema:
+            items:
+              $ref: '#/definitions/Encargalo_app-api_go_internal_history_domain_dtos.HistoryItem'
+            type: array
+        "401":
+          description: No autorizado
+          schema:
+            type: string
+      security:
+      - SessionCookie: []
+      summary: Historial combinado de ordenes, viajes y envíos
+      tags:
+      - History
   /internal/verify-session:
     get:
       description: |-

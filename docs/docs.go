@@ -2357,6 +2357,40 @@ const docTemplate = `{
                 }
             }
         },
+        "/history": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Devuelve en un solo listado las órdenes, viajes y envíos del customer autenticado, ordenados de más reciente a más antiguo. Cada item trae \"type\" (\"order\", \"trip\" o \"shipment\") y solo el campo correspondiente a ese tipo, con el mismo shape que su endpoint de historial individual (/orders/history, /trips/history, /shipments/history).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "History"
+                ],
+                "summary": "Historial combinado de ordenes, viajes y envíos",
+                "responses": {
+                    "200": {
+                        "description": "Historial combinado",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Encargalo_app-api_go_internal_history_domain_dtos.HistoryItem"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/internal/verify-session": {
             "get": {
                 "description": "Endpoint interno llamado por el ForwardAuth de Traefik en cada\nrequest. Debe ser GET: por defecto ForwardAuth siempre llama\nal servidor de auth con GET, sin importar el método original\nde la request entrante (a menos que se configure\npreserveRequestMethod, que no usamos). Valida el JWT de la\ncookie encargalo-session contra la sesión activa y, si es\nválida, devuelve el header X-Encargalo-Session con el\nActiveSession serializado en JSON, que Traefik reenvía al\nbackend real. No debe llamarse desde clientes de negocio\n(frontend/apps) — solo desde el gateway.",
@@ -9704,6 +9738,39 @@ const docTemplate = `{
                     "type": "integer"
                 }
             }
+        },
+        "Encargalo_app-api_go_internal_history_domain_dtos.HistoryItem": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "order": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_orders_domain_dtos.OrderHistoryItem"
+                },
+                "shipment": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_shipments_domain_dtos.ShipmentResponse"
+                },
+                "trip": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_trips_domain_dtos.TripResponse"
+                },
+                "type": {
+                    "$ref": "#/definitions/Encargalo_app-api_go_internal_history_domain_dtos.HistoryItemType"
+                }
+            }
+        },
+        "Encargalo_app-api_go_internal_history_domain_dtos.HistoryItemType": {
+            "type": "string",
+            "enum": [
+                "order",
+                "trip",
+                "shipment"
+            ],
+            "x-enum-varnames": [
+                "HistoryItemOrder",
+                "HistoryItemTrip",
+                "HistoryItemShipment"
+            ]
         },
         "Encargalo_app-api_go_internal_maps_domain_models.AddressComponent": {
             "type": "object",
