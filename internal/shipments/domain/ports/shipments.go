@@ -49,6 +49,9 @@ type ShipmentsRepo interface {
 	// ListSearchingShipmentIDs devuelve los envíos en "searching", para el
 	// barrido de rescate que reprograma el vencimiento de los que quedaron sin uno.
 	ListSearchingShipmentIDs(ctx context.Context) ([]uuid.UUID, error)
+	// ListSearchingShipments trae los envíos en "searching" completos, para
+	// reofertarlos a un rider que se reconecta (ver riders/app Register).
+	ListSearchingShipments(ctx context.Context) ([]models.Shipment, error)
 }
 
 // CustomerConn es el WebSocket del cliente que sigue un envío.

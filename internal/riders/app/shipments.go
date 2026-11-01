@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"Encargalo.app-api.go/internal/pkg/money"
 	riderModels "Encargalo.app-api.go/internal/riders/domain/models"
 	ridersPorts "Encargalo.app-api.go/internal/riders/domain/ports"
 	"Encargalo.app-api.go/internal/shared/errcustom"
@@ -15,6 +16,26 @@ import (
 	shipmentsModels "Encargalo.app-api.go/internal/shipments/domain/models"
 	"github.com/google/uuid"
 )
+
+// riderShipmentOfferDTO es el envío como lo ve el rider: fare_usd/fare_bs son
+// su ganancia (RiderPayUSD, 90%), igual que fare_usd/fare_bs en viajes
+// (riderTripOfferDTO), convertida con la tasa congelada en la cotización del
+// envío. Sin descuento que absorber: a diferencia de trips, Shipment no tiene DiscountUSD.
+func riderShipmentOfferDTO(shipment *shipmentsModels.Shipment) shipmentsDtos.ShipmentResponse {
+	frozen := *shipment
+	frozen.ApplyFrozenBsFare()
+	resp := frozen.ToDTO()
+	if shipment.Fare == nil {
+		return resp
+	}
+	usd := money.RoundUSD(riderModels.RiderPayUSD(*shipment.Fare))
+	resp.FareUSD = &usd
+	if shipment.BcvRate != nil && *shipment.BcvRate > 0 {
+		bs := money.RoundBs(riderModels.RiderPayUSD(money.RoundBs(*shipment.Fare * *shipment.BcvRate)))
+		resp.FareBs = &bs
+	}
+	return resp
+}
 
 // shipmentOfferTimeout es el único vencimiento del broadcast (sin rondas, a
 // diferencia de trips): si nadie acepta en este plazo, el envío pasa a no_driver.
@@ -29,7 +50,7 @@ type shipmentBroadcast struct {
 // filtro de vehículo (cualquiera lleva <5kg) — a diferencia de BroadcastNewOrder,
 // que sí filtra por tipo de negocio. Nunca lleva pickup_code/dropoff_code.
 func (r *appRidersManager) OfferShipment(ctx context.Context, shipment shipmentsModels.Shipment) {
-	data, err := json.Marshal(shipmentBroadcast{Type: "new_shipment", Shipment: shipment.ToDTO()})
+	data, err := json.Marshal(shipmentBroadcast{Type: "new_shipment", Shipment: riderShipmentOfferDTO(&shipment)})
 	if err != nil {
 		slog.Error("error marshaling new_shipment broadcast", "shipmentID", shipment.ID, "error", err)
 		return
@@ -138,7 +159,7 @@ func (r *appRidersManager) AcceptShipment(ctx context.Context, riderID, shipment
 		return err
 	}
 	r.publishShipmentStatusChanged(ctx, shipment)
-	accepted, _ := json.Marshal(shipmentBroadcast{Type: "shipment_accepted", Shipment: shipment.ToDTO()})
+	accepted, _ := json.Marshal(shipmentBroadcast{Type: "shipment_accepted", Shipment: riderShipmentOfferDTO(shipment)})
 	conn.Send(accepted)
 	r.notifyShipmentCustomer(ctx, shipment)
 
@@ -179,7 +200,7 @@ func (r *appRidersManager) AdvanceShipment(ctx context.Context, riderID, shipmen
 		return err
 	}
 	r.publishShipmentStatusChanged(ctx, shipment)
-	data, _ := json.Marshal(shipmentBroadcast{Type: "shipment_status", Shipment: shipment.ToDTO()})
+	data, _ := json.Marshal(shipmentBroadcast{Type: "shipment_status", Shipment: riderShipmentOfferDTO(shipment)})
 	conn.Send(data)
 	r.notifyShipmentCustomer(ctx, shipment)
 
@@ -215,9 +236,11 @@ func (r *appRidersManager) completeShipment(ctx context.Context, shipment *shipm
 	if err != nil {
 		return err
 	}
+	// ApplyFrozenBsFare es para la vista del cliente (fare completo); la del
+	// rider la recalcula riderShipmentOfferDTO sobre su propia copia.
 	delivered.ApplyFrozenBsFare()
 	r.publishShipmentStatusChanged(ctx, delivered)
-	data, _ := json.Marshal(shipmentBroadcast{Type: "shipment_status", Shipment: delivered.ToDTO()})
+	data, _ := json.Marshal(shipmentBroadcast{Type: "shipment_status", Shipment: riderShipmentOfferDTO(delivered)})
 	conn.Send(data)
 	r.notifyShipmentCustomer(ctx, delivered)
 
@@ -273,7 +296,7 @@ func (r *appRidersManager) CancelAcceptedShipment(ctx context.Context, riderID, 
 		return err
 	}
 	r.publishShipmentStatusChanged(ctx, shipment)
-	released, _ := json.Marshal(shipmentBroadcast{Type: "shipment_status", Shipment: shipment.ToDTO()})
+	released, _ := json.Marshal(shipmentBroadcast{Type: "shipment_status", Shipment: riderShipmentOfferDTO(shipment)})
 	conn.Send(released)
 	r.notifyShipmentCustomer(ctx, shipment)
 

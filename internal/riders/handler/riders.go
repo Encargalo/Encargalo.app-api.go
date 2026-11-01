@@ -126,10 +126,10 @@ func New(svc ridersPorts.RidersApp) RiderHandler {
 //   - `{"type":"trip_taken","trip_id":"<uuid>"}` — otro rider se adelantó
 //   - `{"type":"trip_status","trip":{...}}` — trip avanzó de estado (respuesta a advance_trip) o quedó liberado (respuesta a cancel_trip). `trip.customer` va solo al rider asignado mientras el viaje está en accepted, arriving o in_progress. Al completar o liberar el viaje, el bloque no se envía.
 //   - `{"type":"trip_cancelled","trip_id":"<uuid>"}` — el cliente canceló el viaje. Lo reciben el rider asignado (accepted o arriving) y los riders que tenían la oferta viva. No dice quién canceló ni el motivo. El rider asignado deja de reenviar su ubicación.
-//   - `{"type":"new_shipment","shipment":{...}}` — nuevo envío disponible, mandado a todo rider conectado en modo orders (sin filtro de vehículo). Sin pickup_code/dropoff_code.
+//   - `{"type":"new_shipment","shipment":{...}}` — nuevo envío disponible, mandado a todo rider conectado en modo orders (sin filtro de vehículo). Sin pickup_code/dropoff_code. `fare_usd`/`fare_bs` son la ganancia del rider (90% de la tarifa), igual en todos los mensajes de envío; los Bs usan la tasa BCV congelada en la cotización del envío. Se reenvía también al conectar, junto con los envíos que sigan en searching en ese momento.
 //   - `{"type":"shipment_accepted","shipment":{...}}` — asignación exitosa (sin códigos)
 //   - `{"type":"shipment_taken","shipment_id":"<uuid>"}` — otro rider se adelantó
-//   - `{"type":"shipment_status","shipment":{...}}` — envío avanzó de estado (respuesta a advance_shipment) o quedó liberado (respuesta a cancel_shipment)
+//   - `{"type":"shipment_status","shipment":{...}}` — envío avanzó de estado (respuesta a advance_shipment) o quedó liberado (respuesta a cancel_shipment). También se reenvía al conectar para los envíos ya asignados al rider.
 //   - `{"type":"shipment_cancelled","shipment_id":"<uuid>"}` — el cliente canceló el envío. Solo lo recibe el rider ya asignado, si lo hay.
 //   - `{"type":"error","message":"..."}` — error procesando mensaje
 //

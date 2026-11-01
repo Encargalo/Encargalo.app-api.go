@@ -273,3 +273,17 @@ func (r *shipmentsRepo) ListSearchingShipmentIDs(ctx context.Context) ([]uuid.UU
 	}
 	return ids, nil
 }
+
+func (r *shipmentsRepo) ListSearchingShipments(ctx context.Context) ([]models.Shipment, error) {
+	var shipments []models.Shipment
+	err := r.db.NewSelect().
+		Model(&shipments).
+		Where("status = ?", models.ShipmentStatusSearching).
+		OrderExpr("requested_at ASC").
+		Scan(ctx)
+	if err != nil {
+		slog.Error("shipments ListSearchingShipments failed", "error", err)
+		return nil, errcustom.Unexpected(err)
+	}
+	return shipments, nil
+}

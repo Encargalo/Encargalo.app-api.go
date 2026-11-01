@@ -139,6 +139,9 @@ type ShipmentsStore interface {
 	// ListSearchingShipmentIDs alimenta el barrido de rescate del
 	// ShipmentOfferTimeoutWorker, análogo a ListSearchingTripIDs.
 	ListSearchingShipmentIDs(ctx context.Context) ([]uuid.UUID, error)
+	// ListSearchingShipments trae los envíos en searching completos, para
+	// reofertarlos a un rider que se reconecta (ver Register).
+	ListSearchingShipments(ctx context.Context) ([]shipmentsModels.Shipment, error)
 }
 
 // ShipmentOfferTimeoutStore guarda fuera del proceso cuándo vence la espera de

@@ -280,8 +280,22 @@ func (r *appRidersManager) Register(ctx context.Context, riderID uuid.UUID, conn
 			return err
 		}
 		for _, shipment := range activeShipments {
-			data, _ := json.Marshal(shipmentBroadcast{Type: "shipment_status", Shipment: shipment.ToDTO()})
+			data, _ := json.Marshal(shipmentBroadcast{Type: "shipment_status", Shipment: riderShipmentOfferDTO(&shipment)})
 			conn.Send(data)
+		}
+
+		// Envíos que siguen buscando conductor, igual que availableOrders abajo:
+		// sin esto, un rider que se reconecta (o abre la app) después del broadcast
+		// original nunca los ve hasta el siguiente que se publique.
+		if mode != riderModels.RiderModeTrips {
+			searchingShipments, err := r.shipmentsRepo.ListSearchingShipments(ctx)
+			if err != nil && !errors.Is(err, errcustom.ErrNotFound) {
+				return err
+			}
+			for _, shipment := range searchingShipments {
+				data, _ := json.Marshal(shipmentBroadcast{Type: "new_shipment", Shipment: riderShipmentOfferDTO(&shipment)})
+				conn.Send(data)
+			}
 		}
 	}
 

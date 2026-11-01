@@ -45,6 +45,7 @@ func connectShipmentsRider(t *testing.T, svc ridersPorts.RidersApp, repo *mocksr
 	repo.On("SearchActiveOrdersByRiderID", mock.Anything, id).Return(nil, errcustom.ErrNotFound).Once()
 	repo.On("SearchAvailableOrders", mock.Anything).Return(nil, errcustom.ErrNotFound).Once()
 	shipmentsRepo.On("ListActiveShipmentsByRider", mock.Anything, id).Return(nil, errcustom.ErrNotFound).Once()
+	shipmentsRepo.On("ListSearchingShipments", mock.Anything).Return(nil, errcustom.ErrNotFound).Once()
 
 	sent := make(chan []byte, 8)
 	conn := mocksriders.NewRiderConn(t)
