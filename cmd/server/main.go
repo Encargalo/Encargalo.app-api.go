@@ -79,6 +79,7 @@ func run() error {
 		tripSubject *appTrips.TripPaymentSubject,
 		shipmentSubject *appShipments.ShipmentPaymentSubject,
 		tripSnapshot appTrips.TripStaffSnapshot,
+		shipmentSnapshot appShipments.ShipmentStaffSnapshot,
 		staffSnapshot appOrders.OrderStaffSnapshot,
 		pendingWorker *appOrders.PendingAcceptWorker,
 		paymentProofAlertWorker *appOrders.PaymentProofAlertWorker,
@@ -100,6 +101,7 @@ func run() error {
 		reviews.SetSnapshotProvider(staffSnapshot)
 		hub.SetSnapshotProvider(reviews.ListActiveForStaff)
 		hub.SetSnapshotProvider(tripSnapshot)
+		hub.SetSnapshotProvider(shipmentSnapshot)
 		refundHub.SetFinanceApp(finance)
 		finance.SetCustomerNotifier(orderMgr)
 		if setter, ok := ridersMgr.(ridersPorts.OrderCustomerNotifierSetter); ok {
